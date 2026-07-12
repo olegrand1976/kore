@@ -13,7 +13,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      - "${KORE_DB_PORT:-5434}:5432"
 
   redis:
     image: redis:7
@@ -23,18 +23,18 @@ services:
       timeout: 3s
       retries: 10
     ports:
-      - "6381:6379"
+      - "${KORE_REDIS_PORT:-6381}:6379"
 
   mailhog:
     image: mailhog/mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "${KORE_MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${KORE_MAILHOG_UI_PORT:-8025}:8025"
 
   stripe-mock:
     image: stripe/stripe-mock:latest
     ports:
-      - "12111:12111"
+      - "${KORE_STRIPE_MOCK_PORT:-12111}:12111"
 
   migrate:
     build:
@@ -43,6 +43,7 @@ services:
     command: ["migrate"]
     env_file:
       - ../.env
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +55,7 @@ services:
     env_file:
       - ../.env
     ports:
-      - "8080:8080"
+      - "${KORE_API_PORT:-8081}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -70,9 +71,10 @@ services:
     environment:
       NUXT_PUBLIC_API_BASE: http://api:8080
     ports:
-      - "3000:3000"
+      - "${KORE_FRONTEND_PORT:-3001}:3000"
     depends_on:
-      - api
+      api:
+        condition: service_started
 
 volumes:
   pgdata:
