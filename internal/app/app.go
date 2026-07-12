@@ -1,0 +1,196 @@
+package app
+
+import (
+	"context"
+	"embed"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
+	billingpostgres "github.com/kore/kore/internal/modules/billing/adapters/postgres"
+	billingapp "github.com/kore/kore/internal/modules/billing/app"
+	budgetcra "github.com/kore/kore/internal/modules/budget/adapters/cra"
+	budgethttp "github.com/kore/kore/internal/modules/budget/adapters/http"
+	budgetpostgres "github.com/kore/kore/internal/modules/budget/adapters/postgres"
+	budgetapp "github.com/kore/kore/internal/modules/budget/app"
+	congescra "github.com/kore/kore/internal/modules/conges/adapters/cra"
+	congeshttp "github.com/kore/kore/internal/modules/conges/adapters/http"
+	congesnotif "github.com/kore/kore/internal/modules/conges/adapters/notifications"
+	congespostgres "github.com/kore/kore/internal/modules/conges/adapters/postgres"
+	congesworkflow "github.com/kore/kore/internal/modules/conges/adapters/workflow"
+	congesapp "github.com/kore/kore/internal/modules/conges/app"
+	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
+	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
+	craapp "github.com/kore/kore/internal/modules/cra/app"
+	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
+	notifpostgres "github.com/kore/kore/internal/modules/notifications/adapters/postgres"
+	notifapp "github.com/kore/kore/internal/modules/notifications/app"
+	notifsmtp "github.com/kore/kore/internal/modules/notifications/adapters/smtp"
+	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
+	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
+	orgapp "github.com/kore/kore/internal/modules/org/app"
+	orgseed "github.com/kore/kore/internal/modules/org/seed"
+	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
+	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
+	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
+	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
+	tmacra "github.com/kore/kore/internal/modules/tma/adapters/cra"
+	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
+	tmapostgres "github.com/kore/kore/internal/modules/tma/adapters/postgres"
+	tmaworkflow "github.com/kore/kore/internal/modules/tma/adapters/workflow"
+	tmaapp "github.com/kore/kore/internal/modules/tma/app"
+	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
+	wfnotif "github.com/kore/kore/internal/modules/workflow/adapters/notifications"
+	wfpostgres "github.com/kore/kore/internal/modules/workflow/adapters/postgres"
+	wfapp "github.com/kore/kore/internal/modules/workflow/app"
+	"github.com/kore/kore/internal/platform/authx"
+	"github.com/kore/kore/internal/platform/cache"
+	"github.com/kore/kore/internal/platform/config"
+	"github.com/kore/kore/internal/platform/db"
+	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/internal/platform/logging"
+)
+
+//go:embed openapi.yaml
+var openAPI embed.FS
+
+type Application struct {
+	cfg        config.Config
+	log        *logging.Logger
+	pool       *db.Pool
+	cache      cache.Cache
+	redisCache *cache.RedisCache
+	router     *httpx.Router
+	migrator   *db.MigrationRunner
+	seed       *orgseed.Seeder
+}
+
+func New(ctx context.Context, cfg config.Config) (*Application, error) {
+	log := logging.New(cfg.LogLevel)
+	pool, err := db.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var redisCache *cache.RedisCache
+	var appCache cache.Cache
+	redisCache, err = cache.NewRedisCache(cfg.RedisAddr, cfg.RedisAuth, cfg.RedisTLS)
+	if err != nil {
+		return nil, err
+	}
+	if err := redisCache.Ping(ctx); err != nil {
+		log.Logger.Warn("redis unavailable, falling back to in-memory cache", "error", err)
+		appCache = cache.NewInMemoryCache()
+		redisCache = nil
+	} else {
+		appCache = redisCache
+	}
+
+	keyBuilder := cache.NewKeyBuilder(cfg.RedisKeyPrefix)
+	tokenIssuer := authx.NewTokenIssuer(cfg.JWTSigningKey, cfg.JWTTTL, cfg.JWTRefreshTTL)
+
+	migrator := db.NewMigrationRunner(pool, AllModuleMigrations())
+
+	orgRepo := orgpostgres.NewRepository(pool)
+	notifRepo := notifpostgres.NewRepository(pool)
+	wfRepo := wfpostgres.NewRepository(pool)
+	craRepo := crapostgres.NewRepository(pool)
+	congesRepo := congespostgres.NewRepository(pool)
+	budgetRepo := budgetpostgres.NewRepository(pool)
+	tmaRepo := tmapostgres.NewRepository(pool)
+	billingRepo := billingpostgres.NewRepository(pool)
+	publicRepo := publicpostgres.NewRepository(pool)
+
+	billingService := billingapp.NewService(billingRepo, cfg.BillingTrialDays)
+
+	orgService := orgapp.NewOrganizationService(orgRepo)
+	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder)
+	clientService := orgapp.NewClientService(orgRepo)
+
+	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
+	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
+	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
+	craService := craapp.NewService(craRepo, appCache, keyBuilder)
+	congesService := congesapp.NewService(
+		congesRepo,
+		congescra.NewFeederAdapter(craService),
+		congesworkflow.NewAdapter(wfService),
+		congesapp.WithNotifier(congesnotif.NewPublisherAdapter(notifService)),
+	)
+	budgetService := budgetapp.NewService(budgetRepo, budgetcra.NewReaderAdapter(craService))
+	tmaService := tmaapp.NewService(tmaRepo, tmaworkflow.NewAdapter(wfService), tmacra.NewFeederAdapter(craService), budgetRepo)
+	publicService := publicapp.NewServiceWithCache(publicRepo, billingService, publicnotif.NewNotifierAdapter(notifService), cfg.StripePublishableKey, appCache, keyBuilder)
+
+	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
+	deps := httpx.Dependencies{
+		Logger:            log,
+		Pool:              pool,
+		Cache:             appCache,
+		TokenIssuer:       tokenIssuer,
+		EntitlementReader: billingService,
+		Authorizer:        authorizer,
+	}
+	router := httpx.NewRouter(deps)
+	pingRedis := func(r *http.Request) error {
+		if redisCache == nil {
+			return nil
+		}
+		return redisCache.Ping(r.Context())
+	}
+	router.MountHealth(pool, pingRedis)
+
+	router.Get("/openapi.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		data, err := openAPI.ReadFile("openapi.yaml")
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, "openapi unavailable")
+			return
+		}
+		w.Header().Set("Content-Type", "application/yaml")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+	})
+
+	router.Route("/api/v1", func(r chi.Router) {
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer)
+		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer)
+		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer)
+		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer)
+		congeshttp.RegisterRoutes(r, congesService, tokenIssuer, authorizer)
+		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer)
+		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer)
+		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret)
+		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
+	})
+
+	seed := orgseed.NewSeeder(orgRepo, userService, cfg.DevSeedEnabled)
+
+	return &Application{
+		cfg:        cfg,
+		log:        log,
+		pool:       pool,
+		cache:      appCache,
+		redisCache: redisCache,
+		router:     router,
+		migrator:   migrator,
+		seed:       seed,
+	}, nil
+}
+
+func (a *Application) Migrate(ctx context.Context) error {
+	return a.migrator.Up(ctx)
+}
+
+func (a *Application) Seed(ctx context.Context) error {
+	return a.seed.Run(ctx)
+}
+
+func (a *Application) Handler() http.Handler {
+	return a.router
+}
+
+func (a *Application) Close() {
+	if a.redisCache != nil {
+		_ = a.redisCache.Close()
+	}
+	a.pool.Close()
+}

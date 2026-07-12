@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: kore
+      POSTGRES_PASSWORD: kore
+      POSTGRES_DB: kore_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kore -d kore_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6380:6379"
+
+  stripe-mock:
+    image: stripe/stripe-mock:latest
+    ports:
+      - "12112:12111"
