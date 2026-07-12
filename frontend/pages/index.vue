@@ -208,13 +208,7 @@ const previewModules = computed(() => {
   return list.slice(0, 3)
 })
 
-const minPrice = computed(() => {
-  const modules = parsePricingModules(pricingData.value)
-  if (modules.length === 0) {
-    return null
-  }
-  return Math.min(...modules.map((mod) => mod.unitAmount ?? Infinity))
-})
+const minPrice = computed(() => minEditionPrice(pricingData.value))
 
 const formatPrice = (cents: number) =>
   new Intl.NumberFormat(locale.value === 'fr' ? 'fr-FR' : 'en-US', {

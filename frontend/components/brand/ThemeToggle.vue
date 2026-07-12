@@ -1,8 +1,14 @@
 <script setup lang="ts">
+withDefaults(
+  defineProps<{ variant?: 'icon' | 'chip' }>(),
+  { variant: 'icon' }
+)
+
 const { theme, toggleTheme } = useTheme()
+const { t } = useI18n()
 
 const label = computed(() =>
-  theme.value === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'
+  theme.value === 'dark' ? t('theme.aria_light') : t('theme.aria_dark')
 )
 </script>
 
@@ -10,8 +16,10 @@ const label = computed(() =>
   <button
     type="button"
     class="theme-toggle"
+    :class="{ 'theme-toggle--chip': variant === 'chip' }"
     :aria-pressed="theme === 'dark'"
     :aria-label="label"
+    :title="label"
     @click="toggleTheme"
   >
     <AppIcon :name="theme === 'dark' ? 'light_mode' : 'dark_mode'" />
@@ -29,9 +37,17 @@ const label = computed(() =>
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-md);
   background: var(--kore-bg-elevated);
-  color: var(--kore-text);
+  color: var(--kore-text-muted);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.theme-toggle--chip {
+  width: auto;
+  height: auto;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--kore-radius-full);
+  background: var(--kore-bg);
 }
 
 .theme-toggle:hover {

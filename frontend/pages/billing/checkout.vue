@@ -6,14 +6,19 @@
 
     <div v-else class="checkout-grid">
       <AppCard padding="lg" class="checkout-modules">
+        <p v-if="activeEdition" class="edition-banner">
+          {{ $t(`pricing.editions.${activeEdition.code}.title`) }}
+          <span class="edition-banner__price">{{ formatPrice(activeEdition.unitAmount) }}{{ $t('pricing.per_seat') }}</span>
+        </p>
         <h3 class="section-title">{{ $t('billing.checkout_select_modules') }}</h3>
         <ul class="module-list">
-          <li v-for="mod in modules" :key="mod.code" class="module-item">
+          <li v-for="mod in visibleModules" :key="mod.code" class="module-item">
             <label class="module-item__label">
               <input
                 type="checkbox"
                 :value="mod.code"
                 :checked="selected.has(mod.code)"
+                :disabled="Boolean(activeEdition)"
                 @change="toggle(mod.code)"
               />
               <span class="module-item__text">
@@ -21,7 +26,8 @@
                 <span class="module-item__desc">{{ mod.description }}</span>
               </span>
             </label>
-            <span class="module-item__price">{{ formatPrice(mod.unitAmount) }}</span>
+            <span v-if="!activeEdition" class="module-item__price">{{ formatPrice(mod.unitAmount) }}</span>
+            <span v-else-if="selected.has(mod.code)" class="module-item__included">{{ $t('pricing.included') }}</span>
           </li>
         </ul>
       </AppCard>
@@ -63,25 +69,45 @@ type ModulePrice = { code: string; name: string; description: string; unitAmount
 const { t } = useI18n()
 const { startCheckout, loading } = useBilling()
 
+const route = useRoute()
 const { data, pending } = await useFetch('/api/public/pricing')
 
 const modules = computed<ModulePrice[]>(() => parsePricingModules(data.value))
+const editions = computed(() => parsePricingEditions(data.value))
 
 const selected = ref(new Set<string>())
 const seats = ref(1)
 const errorMsg = ref<string | null>(null)
 
+function modulesForEdition(code: string | undefined) {
+  if (!code) {
+    return []
+  }
+  const edition = editions.value.find((item) => item.code === code)
+  return edition?.modules ?? []
+}
+
 watch(
-  modules,
-  (list) => {
+  [modules, editions, () => route.query.edition],
+  ([list, editionList, editionCode]) => {
+    const preset = modulesForEdition(typeof editionCode === 'string' ? editionCode : undefined)
+    if (preset.length > 0) {
+      selected.value = new Set(preset.filter((code) => list.some((mod) => mod.code === code)))
+      return
+    }
     if (selected.value.size === 0 && list.length > 0) {
-      selected.value = new Set(list.map((m) => m.code))
+      const pro = editionList.find((edition) => edition.code === 'pro')
+      const fallback = pro?.modules?.length ? pro.modules : list.map((mod) => mod.code)
+      selected.value = new Set(fallback.filter((code) => list.some((mod) => mod.code === code)))
     }
   },
   { immediate: true }
 )
 
 const toggle = (code: string) => {
+  if (activeEdition.value) {
+    return
+  }
   const next = new Set(selected.value)
   if (next.has(code)) {
     next.delete(code)
@@ -91,11 +117,30 @@ const toggle = (code: string) => {
   selected.value = next
 }
 
+const activeEdition = computed(() => {
+  const code = route.query.edition
+  if (typeof code !== 'string') {
+    return null
+  }
+  return editions.value.find((edition) => edition.code === code) ?? null
+})
+
+const visibleModules = computed(() => {
+  if (activeEdition.value) {
+    return modules.value.filter((mod) => activeEdition.value!.modules.includes(mod.code))
+  }
+  return modules.value
+})
+
 const totalCents = computed(() => {
+  const seatCount = Math.max(1, seats.value)
+  if (activeEdition.value) {
+    return activeEdition.value.unitAmount * seatCount
+  }
   const unit = modules.value
     .filter((m) => selected.value.has(m.code))
     .reduce((sum, m) => sum + m.unitAmount, 0)
-  return unit * Math.max(1, seats.value)
+  return unit * seatCount
 })
 
 const formatPrice = (cents: number) =>
@@ -133,6 +178,32 @@ const onSubmit = async () => {
   margin: 0 0 var(--kore-space-md);
   font-size: var(--kore-text-h3);
   font-weight: 600;
+}
+
+.edition-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--kore-space-sm);
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border-radius: var(--kore-radius-md);
+  background: rgba(201, 162, 39, 0.1);
+  border: 1px solid rgba(201, 162, 39, 0.25);
+  font-weight: 600;
+}
+
+.edition-banner__price {
+  font-size: var(--kore-text-small);
+  color: var(--kore-brand-gold);
+}
+
+.module-item__included {
+  font-size: var(--kore-text-caption);
+  font-weight: 600;
+  color: var(--kore-success);
+  white-space: nowrap;
 }
 
 .module-list { margin: 0; padding: 0; list-style: none; }

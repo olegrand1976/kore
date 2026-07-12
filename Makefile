@@ -38,7 +38,7 @@ help:
 	@echo "  make up-front     Rebuild et redémarre uniquement le frontend (alias: front)"
 	@echo "  make down         Arrête et supprime les conteneurs"
 	@echo "  make migrate      Applique les migrations (service one-shot)"
-	@echo "  make seed         Seed dev (tenant + admin ADM_admin)"
+	@echo "  make seed         Seed demo complet (tenant, org, CRA, congés, TMA, budget…)"
 	@echo "  make ready        Vérifie /health et /ready"
 	@echo "  make smoke        Smoke test API complet"
 	@echo "  make logs         Logs API (suivi)"
@@ -93,11 +93,11 @@ migrate: env
 	$(COMPOSE) run --rm --build --no-deps migrate
 	@echo "→ migrations appliquées"
 
-## Seed dev idempotent (tenant demo + admin)
+## Seed demo idempotent (tous modules)
 seed: env
 	$(COMPOSE) up -d db redis
-	$(COMPOSE) run --rm --no-deps api seed
-	@echo "→ seed appliqué (ADM_admin / Admin123!)"
+	$(COMPOSE) run --rm --build --no-deps api seed
+	@echo "→ seed appliqué — voir internal/seed/constants.go pour les comptes"
 
 ## Logs API
 logs:

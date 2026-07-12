@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { currentMonthKey, useCraStatus } from '../composables/useCraStatus'
-import { parsePricingModules } from '../composables/usePricingCatalog'
+import { minEditionPrice, parsePricingEditions, parsePricingModules } from '../composables/usePricingCatalog'
 import { ALL_MODULES, useEntitlements } from '../composables/useEntitlements'
 import { fetchWithRefresh } from '../composables/useApiFetch'
 
@@ -117,6 +117,40 @@ describe('parsePricingModules', () => {
     expect(modules).toHaveLength(1)
     expect(modules[0]?.code).toBe('cra')
     expect(modules[0]?.unitAmount).toBe(1200)
+  })
+})
+
+describe('parsePricingEditions', () => {
+  it('reads editions from data.catalog.editions', () => {
+    const editions = parsePricingEditions({
+      data: {
+        catalog: {
+          editions: [
+            {
+              code: 'starter',
+              name: 'Starter',
+              description: 'Entry',
+              unitAmount: 1200,
+              modules: ['cra', 'conges']
+            },
+            {
+              code: 'pro',
+              name: 'Pro',
+              description: 'ESN',
+              unitAmount: 2500,
+              modules: ['cra', 'tma'],
+              highlight: true
+            }
+          ]
+        }
+      }
+    })
+    expect(editions).toHaveLength(2)
+    expect(editions[0]?.code).toBe('starter')
+    expect(editions[1]?.highlight).toBe(true)
+    expect(minEditionPrice({
+      data: { catalog: { editions: [{ code: 'starter', unitAmount: 1200, modules: [] }] } }
+    })).toBe(1200)
   })
 })
 

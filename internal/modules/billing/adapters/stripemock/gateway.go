@@ -89,6 +89,42 @@ func (g *Gateway) ListPrices(_ context.Context) (domain.PricingCatalog, error) {
 	return domain.PricingCatalog{
 		Currency:  "EUR",
 		TrialDays: g.TrialDays,
+		Editions: []domain.EditionPrice{
+			{
+				Code:        "starter",
+				Name:        "Starter",
+				Description: "CRA, congés et budget UO",
+				UnitAmount:  1200,
+				Interval:    "month",
+				Modules:     []domain.ModuleCode{domain.ModuleOrg, domain.ModuleCRA, domain.ModuleConges, domain.ModuleBudget},
+			},
+			{
+				Code:        "pro",
+				Name:        "Pro",
+				Description: "TMA, workflow et pilotage facturation",
+				UnitAmount:  2500,
+				Interval:    "month",
+				Modules:     []domain.ModuleCode{domain.ModuleOrg, domain.ModuleCRA, domain.ModuleConges, domain.ModuleBudget, domain.ModuleTMA, domain.ModuleWorkflow},
+				Highlight:   true,
+			},
+			{
+				Code:        "enterprise",
+				Name:        "Enterprise",
+				Description: "SSII, API, connecteurs et SLA",
+				UnitAmount:  4900,
+				Interval:    "month",
+				Modules: []domain.ModuleCode{
+					domain.ModuleOrg,
+					domain.ModuleCRA,
+					domain.ModuleConges,
+					domain.ModuleBudget,
+					domain.ModuleTMA,
+					domain.ModuleWorkflow,
+					domain.ModuleNotifications,
+					domain.ModuleBilling,
+				},
+			},
+		},
 		Modules: []domain.ModulePrice{
 			{Code: domain.ModuleOrg, Name: "Organisation", Description: "Identité, tenant, RBAC", PriceID: "price_mock_org", UnitAmount: 1500, Interval: "month"},
 			{Code: domain.ModuleCRA, Name: "CRA", Description: "Compte-rendu d'activité", PriceID: "price_mock_cra", UnitAmount: 1200, Interval: "month"},
@@ -96,6 +132,8 @@ func (g *Gateway) ListPrices(_ context.Context) (domain.PricingCatalog, error) {
 			{Code: domain.ModuleBudget, Name: "Budget UO", Description: "Suivi budgétaire", PriceID: "price_mock_budget", UnitAmount: 1000, Interval: "month"},
 			{Code: domain.ModuleTMA, Name: "TMA", Description: "Maintenance applicative", PriceID: "price_mock_tma", UnitAmount: 1800, Interval: "month"},
 			{Code: domain.ModuleWorkflow, Name: "Workflow", Description: "Moteur de validation", PriceID: "price_mock_workflow", UnitAmount: 900, Interval: "month"},
+			{Code: domain.ModuleNotifications, Name: "Notifications", Description: "Règles et journal d'envoi", PriceID: "price_mock_notifications", UnitAmount: 600, Interval: "month"},
+			{Code: domain.ModuleBilling, Name: "Facturation", Description: "E-facturation et abonnement", PriceID: "price_mock_billing", UnitAmount: 1200, Interval: "month"},
 		},
 	}, nil
 }

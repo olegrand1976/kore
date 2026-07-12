@@ -18,7 +18,7 @@
   "brand": {
     "name": "Kore",
     "tagline": "MVP live · Early access 2026",
-    "hero_title": "Le PSA modulaire qui pilote votre ESN de bout en bout",
+    "hero_title": "La plateforme modulaire qui pilote votre activité IT de bout en bout — ESN, DSI, prestation",
     "hero_subtitle": "CRA, TMA, budget UO : une seule donnée, du consultant à la facture. E-facturation sept. 2026 intégrée.",
     "cta_pricing": "Voir les tarifs",
     "cta_book": "Réserver une démo"
@@ -218,9 +218,9 @@
     "workflow_subtitle": "Saisie → pilotage → facturation.",
     "modules_title": "Composez votre suite",
     "modules_subtitle": "6 modules MVP. Ajoutez au fil de l'eau.",
-    "pricing_teaser_badge": "Transparent",
-    "pricing_teaser_title": "Par module, par poste",
-    "pricing_teaser_subtitle": "Mensuel. Résiliable. Grille publique.",
+    "pricing_teaser_badge": "3 éditions",
+    "pricing_teaser_title": "Starter, Pro ou Enterprise",
+    "pricing_teaser_subtitle": "Forfaits premium par poste — du CRA seul au déploiement ESN complet.",
     "pricing_from": "Dès",
     "pricing_per_seat": "/ poste / mois",
     "pricing_cta": "Voir la grille",
@@ -244,12 +244,61 @@
   },
   "pricing": {
     "title": "Tarifs",
-    "subtitle": "Abonnement mensuel par module et par poste — activez uniquement ce dont vous avez besoin",
+    "subtitle": "3 éditions premium par poste — choisissez le périmètre adapté à votre ESN",
     "per_seat": "/ poste / mois",
-    "cta": "Discuter de votre projet"
+    "annual_hint": "Remise annuelle −15 %",
+    "featured_badge": "Recommandé",
+    "included": "Inclus",
+    "note": "Prix publics HT. Facturation mensuelle ou annuelle. Modules à la carte disponibles sur demande pour les éditions Enterprise.",
+    "cta_title": "Besoin d'un cadrage sur mesure ?",
+    "cta_text": "Démo 30 min pour dimensionner l'édition et le nombre de postes.",
+    "editions": {
+      "starter": {
+        "eyebrow": "Entrée",
+        "title": "Starter",
+        "desc": "Time & attendance pour PME et équipes en croissance.",
+        "cta": "Choisir Starter",
+        "features": [
+          "CRA et validation hebdomadaire",
+          "Congés et soldes d'absence",
+          "Budget UO et alertes de dépassement",
+          "Organisation multi-tenant incluse"
+        ]
+      },
+      "pro": {
+        "eyebrow": "ESN / DSI",
+        "title": "Pro",
+        "desc": "Pilotage opérationnel et préparation facturation.",
+        "cta": "Choisir Pro",
+        "features": [
+          "Tout Starter",
+          "TMA et suivi des releases",
+          "Workflow de validation",
+          "Tableaux de bord marge et occupation"
+        ]
+      },
+      "enterprise": {
+        "eyebrow": "Multi-agences",
+        "title": "Enterprise",
+        "desc": "Suite complète, conformité et intégrations avancées.",
+        "cta": "Choisir Enterprise",
+        "features": [
+          "Tout Pro",
+          "Notifications et e-facturation EN 16931",
+          "SSO/SCIM, API et connecteurs (PDP, compta)",
+          "SLA et support prioritaire"
+        ]
+      }
+    }
   },
   "modules_page": {
     "title": "Modules Kore",
     "subtitle": "Suite modulaire — activez uniquement ce dont vous avez besoin"
+  },
+  "theme": {
+    "switch_light": "Mode clair",
+    "switch_dark": "Mode sombre",
+    "aria_light": "Activer le mode clair",
+    "aria_dark": "Activer le mode sombre"
   }
 }

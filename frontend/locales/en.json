@@ -18,7 +18,7 @@
   "brand": {
     "name": "Kore",
     "tagline": "MVP live · Early access 2026",
-    "hero_title": "The modular PSA that runs your consultancy end to end",
+    "hero_title": "The modular platform that runs your IT operations end to end — consultancies, IT departments & services",
     "hero_subtitle": "Timesheets, TMA, UO budgets — one data flow from consultant to invoice. Sept. 2026 e-invoicing built in.",
     "cta_pricing": "View pricing",
     "cta_book": "Book a demo"
@@ -218,9 +218,9 @@
     "workflow_subtitle": "Entry → steering → billing.",
     "modules_title": "Build your suite",
     "modules_subtitle": "6 MVP modules. Add as you grow.",
-    "pricing_teaser_badge": "Transparent",
-    "pricing_teaser_title": "Per module, per seat",
-    "pricing_teaser_subtitle": "Monthly. Cancellable. Public pricing.",
+    "pricing_teaser_badge": "3 editions",
+    "pricing_teaser_title": "Starter, Pro or Enterprise",
+    "pricing_teaser_subtitle": "Premium per-seat bundles — from timesheets to full ESN rollout.",
     "pricing_from": "From",
     "pricing_per_seat": "/ seat / month",
     "pricing_cta": "View pricing",
@@ -244,12 +244,61 @@
   },
   "pricing": {
     "title": "Pricing",
-    "subtitle": "Monthly subscription per module and per seat — enable only what you need",
+    "subtitle": "3 premium per-seat editions — pick the scope that fits your consultancy",
     "per_seat": "/ seat / month",
-    "cta": "Discuss your project"
+    "annual_hint": "15% off with annual billing",
+    "featured_badge": "Recommended",
+    "included": "Included",
+    "note": "Public list prices ex. VAT. Monthly or annual billing. À la carte modules available on request for Enterprise.",
+    "cta_title": "Need a tailored rollout plan?",
+    "cta_text": "Book a 30-min demo to size the edition and seat count.",
+    "editions": {
+      "starter": {
+        "eyebrow": "Entry",
+        "title": "Starter",
+        "desc": "Time & attendance for SMBs and growing teams.",
+        "cta": "Choose Starter",
+        "features": [
+          "Timesheets and weekly validation",
+          "Leave management and balances",
+          "UO budgets with overrun alerts",
+          "Multi-tenant organisation included"
+        ]
+      },
+      "pro": {
+        "eyebrow": "ESN / IT dept",
+        "title": "Pro",
+        "desc": "Operational steering and billing readiness.",
+        "cta": "Choose Pro",
+        "features": [
+          "Everything in Starter",
+          "TMA and release tracking",
+          "Approval workflows",
+          "Margin and utilisation dashboards"
+        ]
+      },
+      "enterprise": {
+        "eyebrow": "Multi-site",
+        "title": "Enterprise",
+        "desc": "Full suite, compliance and advanced integrations.",
+        "cta": "Choose Enterprise",
+        "features": [
+          "Everything in Pro",
+          "Notifications and EN 16931 e-invoicing",
+          "SSO/SCIM, API and connectors (PDP, ERP)",
+          "SLA and priority support"
+        ]
+      }
+    }
   },
   "modules_page": {
     "title": "Kore modules",
     "subtitle": "Modular suite — enable only what you need"
+  },
+  "theme": {
+    "switch_light": "Light mode",
+    "switch_dark": "Dark mode",
+    "aria_light": "Switch to light mode",
+    "aria_dark": "Switch to dark mode"
   }
 }

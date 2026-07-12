@@ -24,8 +24,8 @@
           </div>
         </div>
         <div class="topbar__actions">
-          <ThemeToggle />
-          <button type="button" class="chip-btn" @click="toggleLocale">{{ locale === 'fr' ? 'EN' : 'FR' }}</button>
+          <ThemeToggle variant="chip" />
+          <button type="button" class="chip-btn" aria-label="Language" @click="toggleLocale">{{ locale === 'fr' ? 'EN' : 'FR' }}</button>
           <AppButton variant="ghost" size="sm" class="topbar__logout" @click="logout">{{ $t('nav.logout') }}</AppButton>
         </div>
       </header>
@@ -49,6 +49,10 @@
         <AppIcon :name="item.icon" />
         {{ item.label }}
       </NuxtLink>
+      <button type="button" class="drawer-link drawer-link--btn" @click="onToggleTheme">
+        <AppIcon :name="theme === 'dark' ? 'light_mode' : 'dark_mode'" />
+        {{ theme === 'dark' ? $t('theme.switch_light') : $t('theme.switch_dark') }}
+      </button>
       <button type="button" class="drawer-link drawer-link--btn" @click="logout">
         <AppIcon name="logout" />
         {{ $t('nav.logout') }}
@@ -59,6 +63,7 @@
 
 <script setup lang="ts">
 const { locale, setLocale, t } = useI18n()
+const { theme, toggleTheme } = useTheme()
 const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin } = useAuth()
@@ -70,6 +75,8 @@ onMounted(async () => {
 })
 
 const toggleLocale = () => setLocale(locale.value === 'fr' ? 'en' : 'fr')
+
+const onToggleTheme = () => toggleTheme()
 
 type NavItem = {
   to: string

@@ -31,7 +31,7 @@ import (
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
-	orgseed "github.com/kore/kore/internal/modules/org/seed"
+	"github.com/kore/kore/internal/seed"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
 	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
@@ -64,7 +64,7 @@ type Application struct {
 	redisCache *cache.RedisCache
 	router     *httpx.Router
 	migrator   *db.MigrationRunner
-	seed       *orgseed.Seeder
+	seed       *seed.Runner
 	workerStop context.CancelFunc
 }
 
@@ -166,7 +166,22 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
 	})
 
-	seed := orgseed.NewSeeder(orgRepo, userService, cfg.DevSeedEnabled)
+	seedRunner := seed.NewRunner(seed.Dependencies{
+		Pool:          pool,
+		OrgRepo:       orgRepo,
+		Org:           orgService,
+		Users:         userService,
+		Clients:       clientService,
+		Billing:       billingRepo,
+		Workflow:      wfService,
+		CRA:           craService,
+		Leaves:        congesService,
+		Budget:        budgetService,
+		TMA:           tmaService,
+		Notifications: notifService,
+		Public:        publicService,
+		PublicSlots:   publicRepo,
+	})
 
 	app := &Application{
 		cfg:        cfg,
@@ -176,7 +191,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		redisCache: redisCache,
 		router:     router,
 		migrator:   migrator,
-		seed:       seed,
+		seed:       seedRunner,
 	}
 	app.startNotificationWorker(notifService)
 	return app, nil
