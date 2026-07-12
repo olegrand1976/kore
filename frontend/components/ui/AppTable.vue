@@ -1,14 +1,20 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   columns: { key: string; label: string }[]
   rows: Record<string, unknown>[]
   rowKey?: string
+  loading?: boolean
+  emptyTitle?: string
 }>()
+
+const isEmpty = computed(() => !props.loading && props.rows.length === 0)
 </script>
 
 <template>
   <div class="app-table-wrap">
-    <table class="app-table">
+    <p v-if="loading" class="app-table__state">…</p>
+    <AppEmptyState v-else-if="isEmpty" icon="inbox" :title="emptyTitle || 'Aucune donnée'" />
+    <table v-else class="app-table">
       <thead>
         <tr>
           <th v-for="col in columns" :key="col.key">{{ col.label }}</th>
@@ -32,6 +38,14 @@ defineProps<{
   overflow-x: auto;
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-lg);
+}
+
+.app-table__state {
+  margin: 0;
+  padding: var(--kore-space-lg);
+  text-align: center;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
 }
 
 .app-table {

@@ -47,6 +47,31 @@ func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UU
 	`, tenant.UUID(), id))
 }
 
+func (r *Repository) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Budget, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, application_id, type,
+			planned_days, planned_uo, planned_amount,
+			consumed_days, consumed_uo, consumed_amount, currency
+		FROM budget.budgets
+		WHERE tenant_id = $1
+		ORDER BY created_at DESC
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.Budget
+	for rows.Next() {
+		b, err := r.scanBudget(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) GetByApplication(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID) (domain.Budget, error) {
 	return r.scanBudget(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, application_id, type,

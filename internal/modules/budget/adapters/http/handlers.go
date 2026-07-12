@@ -15,9 +15,10 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, budgets ports.BudgetService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
+func RegisterRoutes(r chi.Router, budgets ports.BudgetService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
+		pr.Get("/budgets", listBudgets(budgets, authorizer))
 		pr.Post("/budgets", createBudget(budgets, authorizer))
 		pr.Get("/budgets/{id}", getBudget(budgets))
 		pr.Post("/budgets/{id}/estimates", addEstimate(budgets, authorizer))
@@ -60,6 +61,22 @@ func createBudget(budgets ports.BudgetService, authorizer authx.Authorizer) http
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, b)
+	}
+}
+
+func listBudgets(budgets ports.BudgetService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "budget", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := budgets.List(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
 	}
 }
 

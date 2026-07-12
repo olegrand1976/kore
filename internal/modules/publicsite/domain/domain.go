@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	ErrConsentRequired   = errors.New("consent required")
-	ErrSlotAlreadyBooked = errors.New("slot already booked")
-	ErrSlotExpired       = errors.New("slot expired")
-	ErrSlotNotFound      = errors.New("slot not found")
+	ErrConsentRequired     = errors.New("consent required")
+	ErrSlotAlreadyBooked   = errors.New("slot already booked")
+	ErrSlotExpired         = errors.New("slot expired")
+	ErrSlotNotFound        = errors.New("slot not found")
 	ErrAppointmentNotFound = errors.New("appointment not found")
-	ErrLeadNotFound      = errors.New("lead not found")
+	ErrLeadNotFound        = errors.New("lead not found")
 )
 
 type LeadStatus string

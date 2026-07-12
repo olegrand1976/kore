@@ -17,10 +17,10 @@ type NotificationEvent struct {
 }
 
 type TransactionalMessage struct {
-	Subject     string
-	Body        string
-	Recipients  []string
-	Attachments []domain.Attachment
+	Subject       string
+	Body          string
+	Recipients    []string
+	Attachments   []domain.Attachment
 	SkipSignature bool
 }
 
@@ -43,6 +43,7 @@ type NotificationService interface {
 	ListRules(ctx context.Context, tenant kernel.TenantID) ([]domain.NotificationRule, error)
 	Publish(ctx context.Context, evt NotificationEvent) error
 	ListSent(ctx context.Context, filter SentFilter) ([]domain.NotificationMessage, error)
+	ProcessPending(ctx context.Context) (int, error)
 }
 
 type NotificationPublisher interface {
@@ -60,6 +61,7 @@ type NotificationRepository interface {
 	SaveMessage(ctx context.Context, m domain.NotificationMessage) error
 	ListMessages(ctx context.Context, filter SentFilter) ([]domain.NotificationMessage, error)
 	ListPending(ctx context.Context, tenant kernel.TenantID) ([]domain.NotificationMessage, error)
+	ListDue(ctx context.Context, now time.Time, limit int) ([]domain.NotificationMessage, error)
 }
 
 type EmailSender interface {

@@ -5,11 +5,22 @@
 
 ## 1. Authentification
 
+Kore supporte un **dual-mode** (et plus) selon le client :
+
+| Mode | Client | Mécanisme | Phase |
+| --- | --- | --- | --- |
+| Password | Nuxt (web) | `POST /api/v1/auth/login` → cookie httpOnly | MVP |
+| OIDC | Nuxt (web) | Authorization Code via [12-sso-federation.md](12-sso-federation.md) → cookie httpOnly | Phase 1 |
+| OIDC + PKCE | Flutter (mobile) | Authorization Code + PKCE → Bearer + secure storage | Phase 1bis |
+| API key | Partenaires | Header `X-Api-Key` (cf. [13-public-api-ecosystem.md](13-public-api-ecosystem.md)) | Phase 2 |
+
+### 1.1 Login mot de passe (MVP)
+
 - **JWT** signé côté Go (HS256 par défaut, clé `JWT_SIGNING_KEY` ; RS256 possible en cible).
 - Émission au login (`POST /api/v1/auth/login`) après vérification identifiants.
-- **Cookie httpOnly + Secure + SameSite=Lax** porté par le BFF Nuxt : le token n'est jamais exposé au JavaScript client (choix SSR/BFF, cf. 08-frontend-nuxt.md).
+- **Cookie httpOnly + Secure + SameSite=Lax** porté par le BFF Nuxt : le token n'est jamais exposé au JavaScript client (choix SSR/BFF, cf. [08-frontend-nuxt.md](08-frontend-nuxt.md)).
 - **Refresh token** rotatif (cookie httpOnly séparé) ; endpoint `POST /api/v1/auth/refresh`.
-- Déconnexion : invalidation côté serveur via **liste de révocation dans Redis** (clé `kore:{tenant}:auth:revoked:{jti}`, TTL = durée de vie résiduelle du token). Voir [10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md).
+- Déconnexion : invalidation côté serveur via **liste de révocation dans Redis** (clé `kore:{tenant}:auth:revoked:{jti}`, TTL = durée de vie résiduelle du token). Voir [10-cache-redis.md](10-cache-redis.md).
 - **Rate-limiting** (login, endpoints sensibles) : compteurs Redis à fenêtre glissante, préfixés `kore:{tenant}:ratelimit:...`.
 - Le service reste **stateless** (compatible autoscaling Cloud Run) : tout état de session partagé vit dans Redis, pas en mémoire locale.
 
@@ -27,6 +38,14 @@ sequenceDiagram
   API-->>BFF: Données
   BFF-->>U: HTML rendu (SSR)
 ```
+
+### 1.2 SSO OIDC (Phase 1)
+
+- Fédération enterprise via [12-sso-federation.md](12-sso-federation.md) : Azure AD, Google Workspace.
+- Après validation IdP (JWKS), l'API émet un **JWT Kore** identique (mêmes claims §2) — le pipeline RBAC/entitlement est inchangé.
+- Nuxt : le BFF reçoit le JWT et pose les cookies httpOnly (même flux post-auth que §1.1).
+- Flutter : reçoit access + refresh en JSON ; stocke en secure storage ; envoie `Authorization: Bearer` (pas de cookie).
+- Login password **conservé** pour Starter/Pro et comptes locaux non fédérés.
 
 ## 2. Contenu du JWT (claims)
 
@@ -106,9 +125,10 @@ type Authorizer interface {
 
 ## 7. Definition of Done (fondation auth-rbac)
 
-- [ ] Flux login/refresh/logout spécifiés (cookies httpOnly).
-- [ ] Matrice §3.3 traduite en table de permissions + middleware.
-- [ ] Isolation multi-tenant garantie par le token.
-- [ ] Révocation/rate-limiting via Redis (service stateless, compatible Cloud Run).
-- [ ] Contrôle d'entitlement (module souscrit) intégré au pipeline d'autorisation.
-- [ ] Plan de tests RBAC/sécurité couvrant la matrice, l'isolation et la révocation.
+- [x] Flux login/refresh/logout spécifiés (cookies httpOnly).
+- [x] Matrice §3.3 traduite en table de permissions + middleware.
+- [x] Isolation multi-tenant garantie par le token.
+- [x] Révocation/rate-limiting via Redis (service stateless, compatible Cloud Run).
+- [x] Contrôle d'entitlement (module souscrit) intégré au pipeline d'autorisation.
+- [x] Plan de tests RBAC/sécurité couvrant la matrice, l'isolation et la révocation.
+- [ ] Dual-mode OIDC + password documenté et testé (cf. [12-sso-federation.md](12-sso-federation.md), [ROADMAP Phase 1](../ROADMAP.md)).

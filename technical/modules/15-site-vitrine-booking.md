@@ -168,11 +168,11 @@ Couverture : domaine > 90 %, app > 80 %.
 
 ## 11. Definition of Done
 
-- [ ] Page racine publique (présentation, modules, tarifs) en SSR avec SEO.
-- [ ] Tarifs **dynamiques** depuis Stripe (module 14), cohérents avec le Checkout.
-- [ ] Tunnel hybride : self-service (Checkout) + réservation commerciale.
-- [ ] Capture de leads conforme RGPD (consentement + effacement).
-- [ ] Réservation : anti double-booking (contrainte DB + transaction), confirmation e-mail + `.ics`.
-- [ ] Sync Google Calendar optionnelle et désactivable.
-- [ ] Endpoints publics rate-limités (Redis) + anti-spam.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Page racine publique (présentation, modules, tarifs) en SSR avec SEO.
+- [x] Tarifs **dynamiques** depuis Stripe (module 14), cohérents avec le Checkout.
+- [x] Tunnel hybride : self-service (Checkout) + réservation commerciale.
+- [x] Capture de leads conforme RGPD (consentement + effacement).
+- [x] Réservation : anti double-booking (contrainte DB + transaction), confirmation e-mail + `.ics`.
+- [x] Sync Google Calendar optionnelle et désactivable.
+- [x] Endpoints publics rate-limités (Redis) + anti-spam.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

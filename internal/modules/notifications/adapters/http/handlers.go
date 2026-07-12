@@ -19,9 +19,10 @@ func RegisterRoutes(
 	svc ports.NotificationService,
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
+	entitlements authx.EntitlementReader,
 ) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/notification-rules", listRules(svc, authorizer))
 		pr.Post("/notification-rules", defineRule(svc, authorizer))
 		pr.Get("/notifications", listSent(svc, authorizer))

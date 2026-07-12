@@ -131,13 +131,9 @@ api: env
 test:
 	go test ./...
 
+## Tests d'intégration via testcontainers (Docker requis, Postgres éphémère auto-géré)
 test-integration:
-	docker compose -f deploy/docker-compose.test.yml up -d
-	@sleep 3
-	DATABASE_URL=postgres://kore:kore@localhost:5433/kore_test?sslmode=disable \
-	REDIS_ADDR=localhost:6380 \
 	go test -tags=integration ./internal/platform/... ./internal/modules/...
-	docker compose -f deploy/docker-compose.test.yml down
 
 lint:
 	golangci-lint run ./...

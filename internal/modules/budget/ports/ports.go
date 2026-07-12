@@ -20,10 +20,10 @@ type CreateBudgetCommand struct {
 }
 
 type EstimateCommand struct {
-	TenantID kernel.TenantID
-	BudgetID uuid.UUID
-	DemandID uuid.UUID
-	EffortUO float64
+	TenantID   kernel.TenantID
+	BudgetID   uuid.UUID
+	DemandID   uuid.UUID
+	EffortUO   float64
 	EffortDays float64
 }
 
@@ -63,6 +63,7 @@ type BudgetService interface {
 	AddQuote(ctx context.Context, cmd QuoteCommand) (domain.Quote, error)
 	RecomputeConsumption(ctx context.Context, tenant kernel.TenantID, budgetID uuid.UUID, period kernel.Period) (domain.ConsumptionTriple, error)
 	Get(ctx context.Context, tenant kernel.TenantID, budgetID uuid.UUID) (domain.Budget, error)
+	List(ctx context.Context, tenant kernel.TenantID) ([]domain.Budget, error)
 	Approve(ctx context.Context, cmd ApproveConsumptionCommand) error
 }
 
@@ -74,6 +75,7 @@ type BudgetReader interface {
 type BudgetRepository interface {
 	Save(ctx context.Context, b domain.Budget) error
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Budget, error)
+	List(ctx context.Context, tenant kernel.TenantID) ([]domain.Budget, error)
 	GetByApplication(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID) (domain.Budget, error)
 	FindDefaultByApplication(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID) (domain.Budget, error)
 	SaveEstimate(ctx context.Context, e domain.Estimate) error

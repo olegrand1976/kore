@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
@@ -25,14 +26,14 @@ import (
 	craapp "github.com/kore/kore/internal/modules/cra/app"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
 	notifpostgres "github.com/kore/kore/internal/modules/notifications/adapters/postgres"
-	notifapp "github.com/kore/kore/internal/modules/notifications/app"
 	notifsmtp "github.com/kore/kore/internal/modules/notifications/adapters/smtp"
+	notifapp "github.com/kore/kore/internal/modules/notifications/app"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
 	orgseed "github.com/kore/kore/internal/modules/org/seed"
-	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
+	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
 	tmacra "github.com/kore/kore/internal/modules/tma/adapters/cra"
@@ -64,6 +65,7 @@ type Application struct {
 	router     *httpx.Router
 	migrator   *db.MigrationRunner
 	seed       *orgseed.Seeder
+	workerStop context.CancelFunc
 }
 
 func New(ctx context.Context, cfg config.Config) (*Application, error) {
@@ -153,20 +155,20 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	})
 
 	router.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir)
-		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer)
-		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer)
-		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer)
-		congeshttp.RegisterRoutes(r, congesService, tokenIssuer, authorizer)
-		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer)
-		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer)
-		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService)
+		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
+		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
+		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)
+		congeshttp.RegisterRoutes(r, congesService, tokenIssuer, authorizer, billingService)
+		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer, billingService)
+		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService)
+		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
 	})
 
 	seed := orgseed.NewSeeder(orgRepo, userService, cfg.DevSeedEnabled)
 
-	return &Application{
+	app := &Application{
 		cfg:        cfg,
 		log:        log,
 		pool:       pool,
@@ -175,7 +177,15 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		router:     router,
 		migrator:   migrator,
 		seed:       seed,
-	}, nil
+	}
+	app.startNotificationWorker(notifService)
+	return app, nil
+}
+
+func (a *Application) startNotificationWorker(notifService *notifapp.Service) {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.workerStop = cancel
+	notifapp.StartWorker(ctx, notifService, a.log, 60*time.Second)
 }
 
 func (a *Application) Migrate(ctx context.Context) error {
@@ -191,6 +201,9 @@ func (a *Application) Handler() http.Handler {
 }
 
 func (a *Application) Close() {
+	if a.workerStop != nil {
+		a.workerStop()
+	}
 	if a.redisCache != nil {
 		_ = a.redisCache.Close()
 	}

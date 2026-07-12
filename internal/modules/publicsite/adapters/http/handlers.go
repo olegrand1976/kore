@@ -136,12 +136,12 @@ func listSlots(svc ports.PublicSiteService) http.HandlerFunc {
 func bookAppointment(svc ports.PublicSiteService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			LeadID       uuid.UUID              `json:"leadId"`
-			CommercialID uuid.UUID              `json:"commercialId"`
-			SlotID       uuid.UUID              `json:"slotId"`
-			Channel      domain.MeetingChannel  `json:"channel"`
-			Email        string                 `json:"email"`
-			Name         string                 `json:"name"`
+			LeadID       uuid.UUID             `json:"leadId"`
+			CommercialID uuid.UUID             `json:"commercialId"`
+			SlotID       uuid.UUID             `json:"slotId"`
+			Channel      domain.MeetingChannel `json:"channel"`
+			Email        string                `json:"email"`
+			Name         string                `json:"name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")

@@ -47,6 +47,9 @@ func (s *Seeder) Run(ctx context.Context) error {
 			TenantID:      tenantID,
 			RaisonSociale: "Kore Demo SAS",
 			Devise:        "EUR",
+			Adresse:       "1 rue de la Démo, 75001 Paris",
+			Siret:         "12345678901234",
+			URLTenant:     "demo.kore.local",
 		})
 		if err != nil {
 			return err

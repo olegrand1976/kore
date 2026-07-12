@@ -19,8 +19,8 @@ type RequestLeaveCommand struct {
 }
 
 type DecideLeaveCommand struct {
-	TenantID kernel.TenantID
-	ID       uuid.UUID
+	TenantID  kernel.TenantID
+	ID        uuid.UUID
 	DecidedBy uuid.UUID
 }
 

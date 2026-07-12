@@ -9,7 +9,7 @@ import (
 
 // BrandedRenderer renders charted HTML documents for CRA exports.
 type BrandedRenderer struct {
-	html *HTMLRenderer
+	html  *HTMLRenderer
 	brand CRABrandData
 }
 

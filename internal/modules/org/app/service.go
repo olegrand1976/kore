@@ -281,10 +281,10 @@ func (h *argon2Hasher) Verify(hash, plain string) bool {
 func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 	return map[string]map[authx.Module]map[authx.Action]bool{
 		string(domain.ProfileAdmin): {
-			"org":  {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"cra":  {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"tma":  {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"billing": {authx.ActionRead: true, authx.ActionWrite: true},
+			"org":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
+			"cra":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
+			"tma":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
+			"billing":       {authx.ActionRead: true, authx.ActionWrite: true},
 			"notifications": {authx.ActionRead: true, authx.ActionWrite: true},
 		},
 		string(domain.ProfileCollaborateur): {

@@ -124,6 +124,14 @@ Couverture : application/agrégation > 80 %.
 | Routes BFF | `server/api/gantt`, `server/api/planning`, `server/api/dashboards/*`, `server/api/reports/*`, `server/api/stats/*` |
 | Permissions UI | Vues filtrées selon profil (RBAC §3.3 colonnes Planning/Reporting) |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | État audit 07/2026 |
+| --- | --- | --- |
+| **Phase 3** | Module 12 + remplacement KPIs statiques `dashboard/index.vue` (valeurs `6`, `2` en dur) | Non démarré |
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
 ## 11. Definition of Done
 
 - [ ] Gantt, planning 60j, dashboards, reporting TMA, stats CA disponibles en lecture.

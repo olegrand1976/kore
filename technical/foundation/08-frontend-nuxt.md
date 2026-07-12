@@ -1,6 +1,14 @@
 # 08 — Frontend Nuxt 3 (SSR + BFF)
 
-> Fondation transverse. Conventions frontend réutilisées par chaque brique (section « Frontend Nuxt » des fiches modules).
+> Fondation transverse. Conventions frontend **web** réutilisées par chaque brique (section « Frontend Nuxt » des fiches modules).
+> **Mobile** : application Flutter distincte — cf. [14-flutter-mobile-client.md](14-flutter-mobile-client.md). **Pas de PWA** : le mobile commercial passe par Flutter.
+
+## 0. Périmètre Nuxt vs Flutter
+
+| Surface | Technologie | Auth |
+| --- | --- | --- |
+| Marketing, tunnel de vente, app web métier | **Nuxt 3** (ce document) | Cookie httpOnly via BFF |
+| App mobile consultants (CRA, congés) | **Flutter** (`mobile/`) | OIDC PKCE + Bearer ([12-sso-federation.md](12-sso-federation.md)) |
 
 ## 1. Approche
 

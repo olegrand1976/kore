@@ -14,9 +14,9 @@ import (
 	"github.com/kore/kore/internal/platform/httpx"
 )
 
-func RegisterRoutes(r chi.Router, leaves ports.LeaveService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
+func RegisterRoutes(r chi.Router, leaves ports.LeaveService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/leave-requests", listLeaveRequests(leaves))
 		pr.Post("/leave-requests", createLeaveRequest(leaves, authorizer))
 		pr.Post("/leave-requests/{id}/approve", approveLeaveRequest(leaves, authorizer))

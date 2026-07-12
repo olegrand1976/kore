@@ -7,10 +7,31 @@
 
 **Monolithe modulaire** en **Clean / Hexagonal Architecture** (ports & adapters).
 
-- Un seul binaire déployable (`cmd/kore-api`), un seul frontend Nuxt.
+- Un seul binaire déployable (`cmd/kore-api`), un frontend web Nuxt, un **client mobile Flutter** ([14-flutter-mobile-client.md](14-flutter-mobile-client.md)).
 - Chaque module métier/transverse est un package Go isolé sous `internal/modules/<module>`, avec des frontières explicites.
 - La communication inter-modules passe **uniquement par les ports** (interfaces) exposés, jamais par accès direct aux structures internes ou aux tables d'un autre module.
-- PostgreSQL : **un schéma par module** (`org`, `cra`, `tma`, ...) pour matérialiser les frontières au niveau données.
+- PostgreSQL : **un schéma par module** (`org`, `cra`, `tma`, `integrations`, ...) pour matérialiser les frontières au niveau données.
+
+### Clients applicatifs
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    Nuxt["frontend/ — Nuxt 3 BFF cookie httpOnly"]
+    Flutter["mobile/ — Flutter OIDC PKCE Bearer"]
+    Partners["Partenaires — API key"]
+  end
+  API["cmd/kore-api — monolithe Go"]
+  Nuxt --> API
+  Flutter --> API
+  Partners --> API
+```
+
+| Client | Dossier | Auth | Fiche |
+| --- | --- | --- | --- |
+| Web app + marketing | `frontend/` | Cookie httpOnly (BFF) ou OIDC | [08-frontend-nuxt.md](08-frontend-nuxt.md) |
+| Mobile iOS/Android | `mobile/` | OIDC PKCE + Bearer | [14-flutter-mobile-client.md](14-flutter-mobile-client.md) |
+| Intégrations tierces | — | `X-Api-Key` | [13-public-api-ecosystem.md](13-public-api-ecosystem.md) |
 
 ### Pourquoi ce choix (vs microservices)
 
@@ -62,7 +83,7 @@ kore/
     kore-api/               -> main : wiring (composition root), lecture config, démarrage HTTP
   internal/
     modules/
-      <module>/
+      <module>/             -> ex. cra, tma, org, integrations (module 17)
         domain/             -> entités, value objects, invariants, erreurs métier
         ports/              -> interfaces inbound (use cases) + outbound (repositories, gateways)
         app/                -> services applicatifs (implémentent les use cases)
@@ -86,6 +107,7 @@ kore/
   api/
     openapi.yaml            -> contrat OpenAPI agrégé (cf. 05-api-conventions.md)
   frontend/                 -> application Nuxt 3 (cf. 08-frontend-nuxt.md)
+  mobile/                   -> application Flutter iOS/Android (cf. 14-flutter-mobile-client.md)
   deploy/                   -> docker-compose, Dockerfile (cf. 07-docker-devops.md)
   technical/                -> ces spécifications
 ```

@@ -129,9 +129,29 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/leave-requests/*`, `server/api/leave-balances` |
 | Permissions UI | Validation visible profils Responsable/Manager |
 
-## 11. Definition of Done
+## 10bis. Client Flutter (Phase 1bis)
 
-- [ ] Cycle demande/validation/refus opérationnel.
-- [ ] Pré-remplissage CRA sur jours futurs uniquement testé (RG-CONG-01).
-- [ ] Refus notifié et conservé visible (RG-CONG-02).
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+> Module [16-mobile-flutter.md](16-mobile-flutter.md). Le frontend Nuxt §10 reste la cible **web**.
+
+| Élément | Détail |
+| --- | --- |
+| Écrans | `/conges`, `/conges/new`, `/conges/balances`, `/conges/validation` |
+| Widgets | `LeaveRequestCard`, `LeaveRequestForm`, `LeaveDecisionSheet` |
+| Repository | `LeaveRepository` |
+| Endpoints | `POST/GET /leave-requests`, `POST .../approve|reject`, `GET /leave-balances` |
+
+## 11bis. Phase cible (roadmap)
+
+| Phase | Livrable | État audit 07/2026 |
+| --- | --- | --- |
+| **Phase 1** | UI Nuxt §10 + routes BFF `server/api/leave-requests/*` | API backend OK, **UI/BFF absents** |
+| **Phase 1bis** | Client Flutter §10bis | Non démarré |
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
+## 12. Definition of Done
+
+- [x] Cycle demande/validation/refus opérationnel.
+- [x] Pré-remplissage CRA sur jours futurs uniquement testé (RG-CONG-01).
+- [x] Refus notifié et conservé visible (RG-CONG-02).
+- [x] Endpoints documentés dans `api/openapi.yaml`.

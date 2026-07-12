@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/kore/kore/internal/modules/conges/ports"
-	craports "github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/internal/modules/cra/domain"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
 )
 
 type FeederAdapter struct {

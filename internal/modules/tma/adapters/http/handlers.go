@@ -14,9 +14,9 @@ import (
 	"github.com/kore/kore/internal/platform/httpx"
 )
 
-func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
+func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/demands", listDemands(tma))
 		pr.Post("/demands", createDemand(tma, authorizer))
 		pr.Post("/demands/{id}/validate-creation", validateCreation(tma, authorizer))

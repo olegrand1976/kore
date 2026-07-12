@@ -157,6 +157,17 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/invoices/*` (le webhook PDP reste côté API Go) |
 | Permissions UI | Écriture/validation profils Manager/Commercial (RBAC §3.3) |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | Échéance |
+| --- | --- | --- |
+| **Phase 2** | Implémentation module 09 + UI §10 | E-facturation FR **sept. 2026** |
+| **Phase 1** | Alignement marketing : locales landing → « roadmap 2026 » (pas « intégrée ») tant que M09 absent | Immédiat |
+
+> **Écart audit 07/2026** : `frontend/locales/fr.json` promet « E-facturation sept. 2026 intégrée » alors que le module n'existe pas dans `internal/modules/`. Corriger en Phase 1 ([ROADMAP.md](../ROADMAP.md)).
+
+Connecteur PDP : port `PDPGateway` ; adapter concret dans [17-integrations-hub.md](17-integrations-hub.md).
+
 ## 11. Definition of Done
 
 - [ ] Calcul virtuel SSII/TMA réel/forfait testé ; virtuelle hors statistiques (RG-FAC-01).

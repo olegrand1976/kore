@@ -6,10 +6,18 @@
           <AppIcon name="arrow_back" /> {{ $t('cra.back') }}
         </AppButton>
         <AppButton
+          v-if="isAdmin"
+          variant="secondary"
+          size="sm"
+          :disabled="!canEdit || saving"
+          @click="validateFinal"
+        >
+          {{ $t('cra.validate_final') }}
+        </AppButton>
+        <AppButton
           variant="primary"
           size="sm"
           :disabled="downloading || !canDownload"
-          :title="canDownload ? undefined : $t('cra.download_hint')"
           @click="downloadPdf"
         >
           <AppIcon name="download" /> {{ $t('cra.download') }}
@@ -17,7 +25,7 @@
       </template>
     </AppPageHeader>
 
-    <AppCard v-if="pending" padding="lg">
+    <AppCard v-if="loading" padding="lg">
       <p class="muted">{{ $t('cra.loading') }}</p>
     </AppCard>
 
@@ -28,28 +36,32 @@
     <div v-else-if="timesheet" class="cra-detail">
       <AppCard padding="lg" class="cra-detail__meta">
         <dl class="meta">
-          <div><dt>{{ $t('cra.period') }}</dt><dd>{{ formatMonth(String(timesheet.month)) }}</dd></div>
+          <div><dt>{{ $t('cra.period') }}</dt><dd>{{ formatMonth(timesheet.month) }}</dd></div>
           <div>
             <dt>{{ $t('cra.col_status') }}</dt>
-            <dd><AppBadge :variant="statusVariant(String(timesheet.status))">{{ statusLabel(String(timesheet.status)) }}</AppBadge></dd>
+            <dd><AppBadge :variant="statusVariant(timesheet.status)">{{ statusLabel(timesheet.status) }}</AppBadge></dd>
           </div>
-          <div><dt>{{ $t('cra.weeks') }}</dt><dd>{{ timesheet.weeks?.length ?? 0 }}</dd></div>
         </dl>
       </AppCard>
 
-      <AppCard padding="lg" class="cra-detail__commercial">
-        <h3 class="section-title">{{ $t('cra.commercial_title') }}</h3>
-        <p class="section-hint">{{ $t('cra.commercial_hint') }}</p>
-        <form class="commercial-form" @submit.prevent="saveCommercial">
-          <AppInput id="client" v-model="commercial.client" :label="$t('cra.client')" />
-          <AppInput id="mission" v-model="commercial.mission" :label="$t('cra.mission')" />
-          <AppButton variant="primary" size="sm" type="submit" :disabled="savingCommercial">
-            {{ $t('cra.save_commercial') }}
-          </AppButton>
-        </form>
-        <p v-if="commercialMsg" class="flash" :class="{ 'flash--error': commercialError }" role="status">{{ commercialMsg }}</p>
-        <p v-if="!canDownload" class="hint">{{ $t('cra.download_hint') }}</p>
-      </AppCard>
+      <TimesheetGrid
+        :weeks="selectedWeeks"
+        :month="timesheet.month"
+        :can-edit="canEdit"
+        :saving="saving"
+        @save="onSaveWeek"
+        @submit="onSubmitWeek"
+      />
+
+      <CommercialInfoForm
+        :client="commercial.client"
+        :mission="commercial.mission"
+        :disabled="!canEdit"
+        :saving="savingCommercial"
+        :message="commercialMsg"
+        :is-error="commercialError"
+        @submit="saveCommercial"
+      />
     </div>
 
     <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
@@ -62,10 +74,12 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
+const { isAdmin } = useAuth()
 const id = computed(() => String(route.params.id))
 
-const { data, pending, error, refresh } = await useFetch(() => `/api/cra/timesheets/${id.value}`)
-const timesheet = computed(() => (data.value as any)?.data ?? data.value)
+const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal } = useCra(id)
+
+await load(id.value)
 
 const commercial = reactive({ client: '', mission: '' })
 const savingCommercial = ref(false)
@@ -84,7 +98,7 @@ const canDownload = computed(() => Boolean(commercial.client.trim() && commercia
 
 const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
-  return `${t('cra.title')} — ${formatMonth(String(timesheet.value.month))}`
+  return `${t('cra.title')} — ${formatMonth(timesheet.value.month)}`
 })
 
 const formatMonth = (raw: string) => {
@@ -92,6 +106,14 @@ const formatMonth = (raw: string) => {
   return new Date(y, m - 1, 1).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'fr-FR', {
     month: 'long', year: 'numeric'
   })
+}
+
+const onSaveWeek = async (weekNumber: number, lines: Parameters<typeof saveWeek>[1]) => {
+  await saveWeek(weekNumber, lines)
+}
+
+const onSubmitWeek = async (weekNumber: number) => {
+  await submitWeek(weekNumber)
 }
 
 const saveCommercial = async () => {
@@ -104,7 +126,7 @@ const saveCommercial = async () => {
       body: { client: commercial.client, mission: commercial.mission }
     })
     commercialMsg.value = t('cra.commercial_saved')
-    await refresh()
+    await load()
   } catch {
     commercialMsg.value = t('cra.download_error')
     commercialError.value = true
@@ -152,17 +174,6 @@ const downloadPdf = async () => {
   gap: var(--kore-space-md);
 }
 
-@media (max-width: 480px) {
-  .meta div {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .commercial-form {
-    max-width: none;
-  }
-}
-
 .meta dt {
   margin: 0;
   font-size: var(--kore-text-small);
@@ -171,37 +182,7 @@ const downloadPdf = async () => {
 
 .meta dd { margin: 0; font-weight: 600; }
 
-.section-title {
-  margin: 0 0 var(--kore-space-xs);
-  font-size: var(--kore-text-h3);
-}
-
-.section-hint {
-  margin: 0 0 var(--kore-space-lg);
-  font-size: var(--kore-text-small);
-  color: var(--kore-text-muted);
-}
-
-.commercial-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--kore-space-md);
-  max-width: 420px;
-}
-
-.hint {
-  margin: var(--kore-space-md) 0 0;
-  font-size: var(--kore-text-caption);
-  color: var(--kore-text-muted);
-}
-
 .muted { color: var(--kore-text-muted); }
 
-.flash {
-  margin-top: var(--kore-space-md);
-  font-size: var(--kore-text-small);
-  color: var(--kore-success);
-}
-
-.flash--error { color: var(--kore-error); }
+.flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
 </style>

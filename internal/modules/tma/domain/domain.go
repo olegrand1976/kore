@@ -57,24 +57,24 @@ type AnalysisDossier struct {
 }
 
 type XmlExportRow struct {
-	DemandID      uuid.UUID
-	ApplicationID uuid.UUID
-	Type          string
-	Subject       string
-	Status        string
-	AuthorID      uuid.UUID
-	AssigneeID    *uuid.UUID
-	CreatedAt     time.Time
-	ResolvedAt    *time.Time
-	EffortDays    float64
-	EffortUO      float64
-	Amount        int64
-	ReleaseLabel  string
-	DeliveryCode  string
-	WorkflowState string
-	Visible       bool
+	DemandID          uuid.UUID
+	ApplicationID     uuid.UUID
+	Type              string
+	Subject           string
+	Status            string
+	AuthorID          uuid.UUID
+	AssigneeID        *uuid.UUID
+	CreatedAt         time.Time
+	ResolvedAt        *time.Time
+	EffortDays        float64
+	EffortUO          float64
+	Amount            int64
+	ReleaseLabel      string
+	DeliveryCode      string
+	WorkflowState     string
+	Visible           bool
 	ConsumptionActive bool
-	Comment       string
+	Comment           string
 }
 
 func NewDemand(tenant kernel.TenantID, appID, authorID uuid.UUID, subject string, requiresChefGate bool) Demand {

@@ -17,14 +17,14 @@ import (
 type ErrorCode string
 
 const (
-	ErrCodeUnauthorized     ErrorCode = "UNAUTHORIZED"
-	ErrCodeForbidden        ErrorCode = "FORBIDDEN"
-	ErrCodeNotFound         ErrorCode = "NOT_FOUND"
-	ErrCodeValidation       ErrorCode = "VALIDATION_ERROR"
-	ErrCodeConflict         ErrorCode = "CONFLICT"
-	ErrCodePaymentRequired  ErrorCode = "PAYMENT_REQUIRED"
-	ErrCodeTooManyRequests  ErrorCode = "TOO_MANY_REQUESTS"
-	ErrCodeInternal         ErrorCode = "INTERNAL_ERROR"
+	ErrCodeUnauthorized    ErrorCode = "UNAUTHORIZED"
+	ErrCodeForbidden       ErrorCode = "FORBIDDEN"
+	ErrCodeNotFound        ErrorCode = "NOT_FOUND"
+	ErrCodeValidation      ErrorCode = "VALIDATION_ERROR"
+	ErrCodeConflict        ErrorCode = "CONFLICT"
+	ErrCodePaymentRequired ErrorCode = "PAYMENT_REQUIRED"
+	ErrCodeTooManyRequests ErrorCode = "TOO_MANY_REQUESTS"
+	ErrCodeInternal        ErrorCode = "INTERNAL_ERROR"
 )
 
 type APIError struct {
@@ -109,6 +109,14 @@ func (r *Router) MountHealth(pool *db.Pool, pingRedis func(r *http.Request) erro
 		}
 		WriteData(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
+}
+
+func AuthStack(issuer *authx.TokenIssuer, entitlements authx.EntitlementReader) func(http.Handler) http.Handler {
+	auth := AuthMiddleware(issuer)
+	ent := EntitlementMiddleware(entitlements)
+	return func(next http.Handler) http.Handler {
+		return auth(ent(next))
+	}
 }
 
 func AuthMiddleware(issuer *authx.TokenIssuer) func(http.Handler) http.Handler {

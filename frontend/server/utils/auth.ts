@@ -1,3 +1,55 @@
+type AuthTokenPayload = {
+  accessToken?: string
+  refreshToken?: string
+  AccessToken?: string
+  RefreshToken?: string
+}
+
+export function extractAuthTokens(data: AuthTokenPayload | undefined) {
+  if (!data) {
+    return { accessToken: undefined, refreshToken: undefined }
+  }
+  return {
+    accessToken: data.accessToken ?? data.AccessToken,
+    refreshToken: data.refreshToken ?? data.RefreshToken
+  }
+}
+
+function shouldUseSecureCookies(event: import('h3').H3Event): boolean {
+  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto')
+  if (forwardedProto === 'https') {
+    return true
+  }
+  const host = getRequestHeader(event, 'host') ?? ''
+  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
+    return false
+  }
+  return process.env.NODE_ENV === 'production'
+}
+
+export function setAuthCookies(
+  event: import('h3').H3Event,
+  tokens: { accessToken?: string; refreshToken?: string }
+) {
+  const secure = shouldUseSecureCookies(event)
+  if (tokens.accessToken) {
+    setCookie(event, 'kore_access_token', tokens.accessToken, {
+      httpOnly: true,
+      secure,
+      sameSite: 'lax',
+      path: '/'
+    })
+  }
+  if (tokens.refreshToken) {
+    setCookie(event, 'kore_refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure,
+      sameSite: 'lax',
+      path: '/'
+    })
+  }
+}
+
 export function apiAuthHeaders(event: Parameters<typeof defineEventHandler>[0] extends never ? never : import('h3').H3Event): Record<string, string> {
   const token = getCookie(event, 'kore_access_token')
   if (!token) {

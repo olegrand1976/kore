@@ -10,12 +10,12 @@ import (
 )
 
 type CaptureLeadCommand struct {
-	Email    string
-	Company  string
-	Size     string
-	Need     string
+	Email     string
+	Company   string
+	Size      string
+	Need      string
 	UTMSource string
-	Consent  bool
+	Consent   bool
 }
 
 type SlotFilter struct {
@@ -34,8 +34,8 @@ type BookCommand struct {
 }
 
 type RescheduleCommand struct {
-	Token      string
-	NewSlotID  uuid.UUID
+	Token     string
+	NewSlotID uuid.UUID
 }
 
 type TransactionalAttachment struct {

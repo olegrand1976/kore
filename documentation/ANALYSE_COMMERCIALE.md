@@ -1,7 +1,7 @@
 # Analyse Commerciale et Marketing — Kore
 
 > **Document** : Analyse Commerciale & Go-to-Market (GTM)
-> **Produit** : Kore (reprise et modernisation de B-Hive, Bee Software)
+> **Produit** : Kore (reprise fonctionnelle de B-Hive, implémentation greenfield Go + Nuxt 3)
 > **Angle** : vente SaaS B2B — repositionnement 2026
 > **Statut** : Brouillon v1.0 — en attente de validation direction
 > **Date** : 12/07/2026
@@ -13,7 +13,7 @@
 
 - [§0 Cadre du document](#0-cadre-du-document)
 - [§1 Synthèse exécutive](#1-synthese-executive)
-- [§2 Diagnostic de l'offre legacy](#2-diagnostic-de-loffre-legacy)
+- [§2 Diagnostic de l'offre legacy (B-Hive historique)](#2-diagnostic-de-loffre-legacy-b-hive-historique)
 - [§3 Recatégorisation marché](#3-recategorisation-marche)
 - [§4 ICP et personas d'achat](#4-icp-et-personas-dachat)
 - [§5 Proposition de valeur (ROI)](#5-proposition-de-valeur-roi)
@@ -50,6 +50,7 @@ Direction générale, direction commerciale, marketing, product management.
 | Version | Date | Auteur | Statut | Résumé |
 | --- | --- | --- | --- | --- |
 | 1.0 | 12/07/2026 | Équipe Kore | Brouillon | Analyse commerciale et marketing complète §0–§14 |
+| 1.1 | 12/07/2026 | Équipe Kore | Brouillon | §2bis stack greenfield actée ; risques réalignés (plus de dette PHP/Flash/Flex) |
 
 ---
 
@@ -70,17 +71,34 @@ Direction générale, direction commerciale, marketing, product management.
 
 ---
 
-## §2 Diagnostic de l'offre legacy
+## §2 Diagnostic de l'offre legacy (B-Hive historique)
 
-| Atout durable | Handicap 2026 |
+> **Périmètre** : analyse de l'ancien produit **B-Hive** (2008–2013, stack PHP/Flash/Flex). Ce diagnostic **ne décrit pas** la plateforme Kore actuelle — voir §2bis.
+
+| Atout durable (héritage fonctionnel) | Handicap de l'offre B-Hive en 2026 |
 | --- | --- |
 | **Unification CRA-centrée** (temps = source unique de vérité) | Stack obsolète (PHP/Flash/Flex), pas de mobile |
 | Workflows configurables **sans dev** | Aucune intégration (compta, SIRH, SSO, calendrier) |
-| Multi-tenant, bilingue, dématérialisation | Pas d'API/webhooks -> non « embeddable » |
+| Multi-tenant, bilingue, dématérialisation | Pas d'API/webhooks → non « embeddable » |
 | Facturation auto depuis le temps réel | UX datée ; « évolutions gratuites » non soutenable |
 | Couverture métier large (TMA + ESN + support + RH) | Positionnement « GMA/helpdesk » flou vs catégories actuelles |
 
-**Lecture** : le socle fonctionnel (unification, config sans dev, facturation issue du temps) reste un actif différenciant. Les handicaps sont surtout **techniques et de positionnement**, donc adressables par une modernisation ciblée plutôt que par une refonte fonctionnelle.
+**Lecture** : le socle **fonctionnel** (unification, config sans dev, facturation issue du temps) reste un actif différenciant à transposer dans Kore. Les handicaps listés ci-dessus concernent l'**ancien produit commercialisé**, pas le code du dépôt Kore.
+
+### §2bis Direction technique Kore (état actuel)
+
+La modernisation technique est une **réécriture greenfield** — aucun socle PHP/Flash/Flex n'est embarqué ni masqué dans l'application.
+
+| Couche | Technologie retenue | Référence |
+| --- | --- | --- |
+| API & logique métier | **Go** (chi, pgx, golang-migrate) — monolithe modulaire hexagonal | [`technical/foundation/01-architecture.md`](../technical/foundation/01-architecture.md) |
+| Persistance | **PostgreSQL** (schéma par module) | [`technical/foundation/03-database.md`](../technical/foundation/03-database.md) |
+| Cache & sessions | **Redis** | [`technical/foundation/10-cache-redis.md`](../technical/foundation/10-cache-redis.md) |
+| Frontend | **Nuxt 3** (Vue 3, SSR + BFF Nitro) | [`technical/foundation/08-frontend-nuxt.md`](../technical/foundation/08-frontend-nuxt.md) |
+| Paiements SaaS | **Stripe** | [`technical/foundation/11-payments-stripe.md`](../technical/foundation/11-payments-stripe.md) |
+| Déploiement | **Docker** (dev), **GCP** Cloud Run / Cloud SQL / Memorystore (prod) | [`technical/foundation/09-gcp-infrastructure.md`](../technical/foundation/09-gcp-infrastructure.md) |
+
+**Écarts produit restants** (sur la nouvelle stack, cf. §7 table stakes) : application mobile native, API publique + webhooks, connecteurs compta/SIRH/SSO — à prioriser dans la roadmap, indépendamment de la dette B-Hive.
 
 ---
 
@@ -122,7 +140,7 @@ quadrantChart
 | **Economic buyer** — DG / DAF | Décision budget | Marge, cash, DSO, conformité | Coût, intégration compta |
 | **Champion** — Directeur d'agence / Resp. delivery / Resource manager | Prescripteur, pilote | Staffing, capacity, visibilité prestations | Conduite du changement |
 | **Utilisateurs** — Consultants, managers, commerciaux | Adoption quotidienne | Rapidité CRA, mobile, simplicité | UX, temps de saisie |
-| **Blocages** — IT / DSI | Veto technique | SSO, RGPD, hébergement UE, API | Sécurité, dette legacy |
+| **Blocages** — IT / DSI | Veto technique | SSO, RGPD, hébergement UE, API | Sécurité, écarts intégrations/API |
 
 **Implication commerciale** : le deal se gagne sur le **champion delivery** (valeur opérationnelle) mais se sécurise auprès du **DAF** (ROI, conformité) et de **l'IT** (SSO/RGPD/API).
 
@@ -149,11 +167,11 @@ Messages orientés résultats (à décliner par persona en §12) :
 | Config workflow sans dev | Fort (héritage B-Hive) | Moyen | Moyen/Fort | Faible |
 | Interop e-invoicing (PDP/Peppol) | **Différenciateur** (natif, multi-PDP) | Variable | Faible | N/A |
 | RGPD / hébergement UE | Fort | Fort | Variable | Fort |
-| Mobile | À construire | Fort | Fort | Fort |
-| API / écosystème | À construire | Fort | Fort | Moyen |
+| Mobile | En cours (web responsive Nuxt 3 ; app native à venir) | Fort | Fort | Fort |
+| API / écosystème | En cours (OpenAPI interne ; API publique à ouvrir) | Fort | Fort | Moyen |
 | Prix | Compétitif | Élevé | Moyen | Faible |
 
-**Lecture** : Kore ne gagnera pas sur mobile/API à court terme (rattrapage nécessaire), mais peut gagner sur **unification + config sans dev + interopérabilité e-invoicing** — un cumul que peu d'acteurs proposent.
+**Lecture** : la stack greenfield (Go + Nuxt 3) est en place ; le rattrapage porte sur les **livrables produit** mobile natif et API publique (cf. §7), pas sur une migration technique depuis Flex/Flash. Kore peut gagner sur **unification + config sans dev + interopérabilité e-invoicing** — un cumul que peu d'acteurs proposent.
 
 ---
 
@@ -307,10 +325,10 @@ flowchart LR
 
 ### Risques
 
-- Dette technique legacy (stack PHP/Flash/Flex).
-- Dépendance au modèle mono-tenant URL.
+- **Écarts produit vs table stakes** : mobile natif, API publique/webhooks et connecteurs (compta, SIRH, SSO) pas encore au niveau marché — le socle technique greenfield (Go/Nuxt 3/PostgreSQL/Redis) est acté et en cours d'implémentation.
+- Dépendance au modèle mono-tenant URL (héritage fonctionnel B-Hive à trancher, cf. spec §17 D2).
 - Absence d'intégrations = *deal breakers* IT/DAF.
-- Textes de conformité nationaux encore mouvants (BE non finalisé) -> concevoir un **moteur de règles paramétrable par pays** plutôt qu'un codage en dur.
+- Textes de conformité nationaux encore mouvants (BE non finalisé) → concevoir un **moteur de règles paramétrable par pays** plutôt qu'un codage en dur.
 
 ### Quick wins (6 mois)
 

@@ -13,9 +13,9 @@ import (
 	"github.com/kore/kore/internal/platform/httpx"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.WorkflowService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
+func RegisterRoutes(r chi.Router, svc ports.WorkflowService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Post("/workflows", defineWorkflow(svc, authorizer))
 		pr.Get("/workflows/{code}", getDefinition(svc, authorizer))
 		pr.Get("/workflow-instances/{id}", getInstance(svc))

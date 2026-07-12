@@ -18,8 +18,8 @@ func TestEffectiveEffort_QuoteOverridesEstimate(t *testing.T) {
 
 func TestBudget_IsOverrun(t *testing.T) {
 	b := domain.Budget{
-		Planned: domain.ConsumptionTriple{Days: 10, UO: 100, Amount: 10000},
-		Consumed: domain.ConsumptionTriple{Days: 11, UO: 50, Amount: 5000},
+		Planned:   domain.ConsumptionTriple{Days: 10, UO: 100, Amount: 10000},
+		Consumed:  domain.ConsumptionTriple{Days: 11, UO: 50, Amount: 5000},
 		Remaining: domain.ConsumptionTriple{Days: -1, UO: 50, Amount: 5000},
 	}
 	assert.True(t, b.IsOverrun())

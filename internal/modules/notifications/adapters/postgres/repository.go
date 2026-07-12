@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -79,9 +80,17 @@ func (r *Repository) SaveMessage(ctx context.Context, m domain.NotificationMessa
 	}
 	_, err = r.pool.Exec(ctx, `
 		INSERT INTO notifications.messages (
-			id, tenant_id, rule_code, recipients, subject, body, status, attempts, sent_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, m.ID, m.TenantID.UUID(), nullIfEmpty(m.RuleCode), recipients, m.Subject, m.Body, string(m.Status), m.Attempts, m.SentAt)
+			id, tenant_id, rule_code, recipients, subject, body, status, attempts, sent_at, scheduled_for
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (id) DO UPDATE SET
+			recipients = EXCLUDED.recipients,
+			subject = EXCLUDED.subject,
+			body = EXCLUDED.body,
+			status = EXCLUDED.status,
+			attempts = EXCLUDED.attempts,
+			sent_at = EXCLUDED.sent_at,
+			scheduled_for = EXCLUDED.scheduled_for
+	`, m.ID, m.TenantID.UUID(), nullIfEmpty(m.RuleCode), recipients, m.Subject, m.Body, string(m.Status), m.Attempts, m.SentAt, m.ScheduledFor)
 	return err
 }
 
@@ -92,7 +101,7 @@ func (r *Repository) ListMessages(ctx context.Context, filter ports.SentFilter) 
 	}
 
 	query := `
-		SELECT id, tenant_id, rule_code, recipients, subject, body, status, attempts, sent_at
+		SELECT id, tenant_id, rule_code, recipients, subject, body, status, attempts, sent_at, scheduled_for
 		FROM notifications.messages
 		WHERE tenant_id = $1
 	`
@@ -131,6 +140,33 @@ func (r *Repository) ListPending(ctx context.Context, tenant kernel.TenantID) ([
 		Status:   &status,
 		Limit:    500,
 	})
+}
+
+func (r *Repository) ListDue(ctx context.Context, now time.Time, limit int) ([]domain.NotificationMessage, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, rule_code, recipients, subject, body, status, attempts, sent_at, scheduled_for
+		FROM notifications.messages
+		WHERE status = $1 AND (scheduled_for IS NULL OR scheduled_for <= $2)
+		ORDER BY created_at ASC
+		LIMIT $3
+	`, string(domain.MessageStatusPending), now.UTC(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.NotificationMessage
+	for rows.Next() {
+		msg, err := scanMessageRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, msg)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repository) scanRule(row pgx.Row) (domain.NotificationRule, error) {
@@ -182,7 +218,7 @@ func scanMessageRow(row scannable) (domain.NotificationMessage, error) {
 	var status string
 	err := row.Scan(
 		&msg.ID, &tenantID, &ruleCode, &recipientsJSON, &msg.Subject, &msg.Body,
-		&status, &msg.Attempts, &msg.SentAt,
+		&status, &msg.Attempts, &msg.SentAt, &msg.ScheduledFor,
 	)
 	if err != nil {
 		return domain.NotificationMessage{}, err

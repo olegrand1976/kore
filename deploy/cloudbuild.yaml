@@ -1,0 +1,34 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/Dockerfile.api
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/kore/kore-api:${SHORT_SHA}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/Dockerfile.frontend
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/kore/kore-frontend:${SHORT_SHA}
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/kore/kore-api:${SHORT_SHA}
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/kore/kore-frontend:${SHORT_SHA}
+
+substitutions:
+  _REGION: europe-west1
+
+options:
+  logging: CLOUD_LOGGING_ONLY

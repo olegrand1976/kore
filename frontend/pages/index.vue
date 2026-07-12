@@ -209,7 +209,7 @@ const previewModules = computed(() => {
 })
 
 const minPrice = computed(() => {
-  const modules = (pricingData.value as { data?: { modules?: ModuleItem[] } })?.data?.modules ?? []
+  const modules = parsePricingModules(pricingData.value)
   if (modules.length === 0) {
     return null
   }

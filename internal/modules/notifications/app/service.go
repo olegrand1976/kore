@@ -24,12 +24,29 @@ func NewService(
 	repo ports.NotificationRepository,
 	sender ports.EmailSender,
 	resolver ports.RecipientResolver,
+	opts ...Option,
 ) *Service {
-	return &Service{
+	s := &Service{
 		repo:     repo,
 		sender:   sender,
 		resolver: resolver,
 		clock:    realClock{},
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+// Option configures the Service (used for tests to inject a fake clock).
+type Option func(*Service)
+
+// WithClock overrides the clock used for scheduling and timestamps.
+func WithClock(clock ports.Clock) Option {
+	return func(s *Service) {
+		if clock != nil {
+			s.clock = clock
+		}
 	}
 }
 
@@ -93,6 +110,8 @@ func (s *Service) Publish(ctx context.Context, evt ports.NotificationEvent) erro
 		return s.dispatch(ctx, &msg)
 	}
 
+	scheduledFor := domain.NextRun(rule.Frequency, s.clock.Now())
+	msg.ScheduledFor = &scheduledFor
 	return s.repo.SaveMessage(ctx, msg)
 }
 
@@ -122,6 +141,22 @@ func (s *Service) ListSent(ctx context.Context, filter ports.SentFilter) ([]doma
 		filter.Limit = 100
 	}
 	return s.repo.ListMessages(ctx, filter)
+}
+
+func (s *Service) ProcessPending(ctx context.Context) (int, error) {
+	pending, err := s.repo.ListDue(ctx, s.clock.Now(), 50)
+	if err != nil {
+		return 0, err
+	}
+	sent := 0
+	for i := range pending {
+		msg := pending[i]
+		if err := s.dispatch(ctx, &msg); err != nil {
+			continue
+		}
+		sent++
+	}
+	return sent, nil
 }
 
 func (s *Service) resolveRecipients(ctx context.Context, tenant kernel.TenantID, policy domain.RecipientPolicy) ([]string, error) {

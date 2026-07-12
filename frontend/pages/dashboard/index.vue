@@ -11,7 +11,7 @@
     <div class="dashboard-grid">
       <AppCard padding="lg" hoverable class="kpi-card">
         <div class="feature-card__icon"><AppIcon name="extension" /></div>
-        <p class="kpi-card__value">6</p>
+        <p class="kpi-card__value">{{ activeModulesCount }}</p>
         <p class="kpi-card__label">{{ $t('dashboard.modules_active') }}</p>
       </AppCard>
       <AppCard padding="lg" hoverable class="kpi-card">
@@ -29,7 +29,23 @@
 </template>
 
 <script setup lang="ts">
+import { ALL_MODULES } from '~/composables/useEntitlements'
+
 definePageMeta({ layout: 'default' })
+
+const { modules, loaded, fetchEntitlements } = useEntitlements()
+
+await fetchEntitlements()
+
+const activeModulesCount = computed(() => {
+  if (!loaded.value) {
+    return ALL_MODULES.length
+  }
+  if (modules.value.length === 0) {
+    return 0
+  }
+  return modules.value.length
+})
 </script>
 
 <style scoped>

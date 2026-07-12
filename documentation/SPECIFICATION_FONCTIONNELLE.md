@@ -1,7 +1,7 @@
 # Spécification Fonctionnelle — Kore / Beehive
 
 > **Document** : Spécification Fonctionnelle Détaillée (SFD)
-> **Produit** : Kore (reprise fonctionnelle de B-Hive par Bee Software)
+> **Produit** : Kore (reprise fonctionnelle de B-Hive — implémentation greenfield Go + Nuxt 3)
 > **Statut** : Brouillon v1.0 — en attente de validation métier
 > **Date** : 12/07/2026
 
@@ -81,11 +81,13 @@ Le présent document constitue la **Spécification Fonctionnelle Détaillée (SF
 
 ### §1.1 Contexte
 
-Le dépôt Kore contient **42 fichiers documentaires** issus du commit initial, synthétisant le produit **B-Hive** : plateforme SaaS de **Gestion de Maintenance Applicative (GMA)** développée par Bee Software entre 2008 et 2013.
+Le dépôt Kore contient **42 fichiers documentaires** issus du commit initial, synthétisant le produit **B-Hive** : plateforme SaaS de **Gestion de Maintenance Applicative (GMA)** développée par Bee Software entre 2008 et 2013 (stack historique PHP/Flash/Flex).
 
 - **Reprendre** l'ensemble des capacités fonctionnelles documentées
 - **Moderniser** les flux obsolètes (facturation interne → préparation PDP ; conformité ETT UE)
 - **Repositionner** l'offre sur le marché PSA/ESN 2026
+
+**Direction technique actée** : réécriture **greenfield** — API **Go**, frontend **Nuxt 3**, **PostgreSQL**, **Redis** (cf. [`technical/README.md`](../technical/README.md) et [`technical/foundation/02-stack-conventions.md`](../technical/foundation/02-stack-conventions.md)). Aucun code legacy B-Hive n'est présent dans ce dépôt.
 
 ### §1.2 Objectifs du document
 
@@ -2331,11 +2333,11 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 
 ## Annexe — Hors périmètre
 
-- Stack technique cible (Symfony legacy vs greenfield)
+- Détails d'implémentation technique → voir [`technical/`](../technical/) (stack actée : Go + Nuxt 3 + PostgreSQL + Redis)
 - Schéma de base de données SQL
-- API REST / webhooks / SSO (mentionnés en décisions ouvertes uniquement)
+- API REST publique / webhooks / SSO (roadmap produit, cf. §17 D4)
 - Maquettes UI / wireframes
-- Plan de migration données clients B-Hive
+- Plan de migration données clients B-Hive (commercial, cf. §17 D3)
 - Émission et archivage probant des factures électroniques (délégué PDP/PA)
 - e-reporting administratif (délégué PDP/PA)
 

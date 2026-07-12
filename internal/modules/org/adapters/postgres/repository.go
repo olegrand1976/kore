@@ -45,7 +45,7 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		INSERT INTO org.societes (id, tenant_id, raison_sociale, logo, devise, adresse, siret, url_tenant)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise,
-		nullString(s.Adresse), nullString(s.Siret), nullString(s.URLTenant))
+		s.Adresse, s.Siret, s.URLTenant)
 	return err
 }
 
@@ -55,7 +55,7 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
-		nullString(s.Adresse), nullString(s.Siret), nullString(s.URLTenant))
+		s.Adresse, s.Siret, s.URLTenant)
 	return err
 }
 

@@ -1,5 +1,6 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
+  components: [{ path: '~/components', pathPrefix: false }],
   modules: ['@pinia/nuxt', '@nuxt/fonts', '@nuxtjs/i18n'],
   fonts: {
     families: [

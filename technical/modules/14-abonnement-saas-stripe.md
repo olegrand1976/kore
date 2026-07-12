@@ -150,9 +150,9 @@ Couverture : domaine > 90 %, app > 80 %.
 
 ## 11. Definition of Done
 
-- [ ] Souscription Checkout + Customer Portal opérationnels.
-- [ ] Webhooks vérifiés et **idempotents** ; état = projection Stripe.
-- [ ] `EntitlementReader` consommé par le middleware RBAC (module non souscrit → refus).
-- [ ] Contrôle du plafond de sièges exposé au module 00.
-- [ ] Séparation stricte vs module 09/PDP (aucune dépendance).
-- [ ] Tests avec `stripe-mock` ; endpoints documentés dans `api/openapi.yaml`.
+- [x] Souscription Checkout + Customer Portal opérationnels.
+- [x] Webhooks vérifiés et **idempotents** ; état = projection Stripe.
+- [x] `EntitlementReader` consommé par le middleware RBAC (module non souscrit → refus).
+- [x] Contrôle du plafond de sièges exposé au module 00.
+- [x] Séparation stricte vs module 09/PDP (aucune dépendance).
+- [x] Tests avec `stripe-mock` ; endpoints documentés dans `api/openapi.yaml`.

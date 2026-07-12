@@ -60,10 +60,23 @@ Mapping : les erreurs sentinelles `domain` sont traduites en `code`+HTTP par un 
 
 ## 5. Conventions transverses
 
+### Pipeline d'authentification (ordre d'évaluation)
+
+1. **Signature webhook** (`webhooks/stripe`, `webhooks/pdp`) — hors JWT/API key.
+2. **Routes publiques** (`/api/v1/public/*`) — rate-limit IP uniquement.
+3. **API key** (`X-Api-Key`) — scope + rate-limit tenant ([13-public-api-ecosystem.md](13-public-api-ecosystem.md)).
+4. **JWT** (cookie via BFF ou `Authorization: Bearer`) — refresh si expiré.
+5. **Entitlement** (module souscrit, module 14).
+6. **RBAC** (profil × module × action).
+
+Erreurs auth : `401 INVALID_CREDENTIALS`, `401 INVALID_API_KEY`, `401 TOKEN_EXPIRED`, `403 INSUFFICIENT_SCOPE`.
+
+### Autres conventions
+
 - En-tête `Idempotency-Key` accepté sur les POST d'action sensibles (préparation facture).
 - Dates en ISO 8601 UTC.
-- Toutes les routes (sauf `auth/*`, `webhooks/*`, `public/*`, `health`) passent par les middleware : auth JWT -> résolution tenant -> **entitlement (module souscrit, cf. 04/11)** -> RBAC -> handler. Les webhooks (`webhooks/stripe`, `webhooks/pdp`) sont authentifiés par **signature**, hors JWT.
-- Les routes **publiques** (`/api/v1/public/*`, cf. [module 15](/home/olivier/ll-it-sc/projets/kore/technical/modules/15-site-vitrine-booking.md)) sont **non authentifiées** mais protégées par **rate-limiting Redis** + anti-spam ; elles ne portent ni JWT ni tenant applicatif.
+- Toutes les routes métier passent par le pipeline ci-dessus (sauf `auth/*` login public, `health`, `ready`).
+- Les routes **publiques** (`/api/v1/public/*`, cf. [module 15](../modules/15-site-vitrine-booking.md)) sont **non authentifiées** mais protégées par **rate-limiting Redis** + anti-spam ; elles ne portent ni JWT ni tenant applicatif.
 - `GET /health` (liveness) et `GET /ready` (readiness DB) non authentifiés.
 
 ## 6. Documentation
@@ -73,7 +86,8 @@ Mapping : les erreurs sentinelles `domain` sont traduites en `code`+HTTP par un 
 
 ## 7. Definition of Done (fondation API)
 
-- [ ] Enveloppe d'erreur et codes HTTP actés.
-- [ ] Conventions pagination/tri/filtre définies.
-- [ ] Pipeline de middleware ordonné (auth -> tenant -> rbac).
-- [ ] Squelette `api/openapi.yaml` initialisé.
+- [x] Enveloppe d'erreur et codes HTTP actés.
+- [x] Conventions pagination/tri/filtre définies.
+- [x] Pipeline de middleware ordonné (auth -> tenant -> rbac).
+- [x] Squelette `api/openapi.yaml` initialisé.
+- [ ] Middleware API key et webhooks sortants (cf. [13-public-api-ecosystem.md](13-public-api-ecosystem.md), [ROADMAP Phase 2](../ROADMAP.md)).

@@ -3,8 +3,8 @@ package notifications
 import (
 	"context"
 
-	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/internal/modules/conges/ports"
+	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 )
 
 type PublisherAdapter struct {

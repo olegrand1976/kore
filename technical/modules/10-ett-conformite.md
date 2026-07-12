@@ -151,6 +151,16 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/worktime/*` |
 | Permissions UI | Pointage : salarié ETT ; export/audit : RH/Admin |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | Échéance |
+| --- | --- | --- |
+| **Phase 3** | Module 10 complet + pointage Flutter ([16-mobile-flutter.md](16-mobile-flutter.md)) | Belgique **01/2027** |
+
+Canal pointage mobile privilégié : **Flutter** (spec §17 D8). Web et badge/API en complément.
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
 ## 11. Definition of Done
 
 - [ ] Pointage multi-canal (web/mobile/badge/a-posteriori tracé) opérationnel.

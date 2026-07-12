@@ -56,9 +56,9 @@ type ModuleEntitlement struct {
 }
 
 type PricingCatalog struct {
-	Currency string        `json:"currency"`
-	Modules  []ModulePrice `json:"modules"`
-	TrialDays int          `json:"trialDays"`
+	Currency  string        `json:"currency"`
+	Modules   []ModulePrice `json:"modules"`
+	TrialDays int           `json:"trialDays"`
 }
 
 type ModulePrice struct {

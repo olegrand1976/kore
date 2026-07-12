@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	ErrCRAAlreadyValidated   = errors.New("cra already validated")
+	ErrCRAAlreadyValidated    = errors.New("cra already validated")
 	ErrCommercialInfoRequired = errors.New("commercial info required")
-	ErrDayCapacityExceeded   = errors.New("day capacity exceeded")
-	ErrCRAConflictAbsence    = errors.New("cra conflict absence")
-	ErrTimesheetNotFound     = errors.New("timesheet not found")
-	ErrWeekNotFound          = errors.New("week not found")
+	ErrDayCapacityExceeded    = errors.New("day capacity exceeded")
+	ErrCRAConflictAbsence     = errors.New("cra conflict absence")
+	ErrTimesheetNotFound      = errors.New("timesheet not found")
+	ErrWeekNotFound           = errors.New("week not found")
 )
 
 const DefaultDayCapacityMinutes = 480
@@ -31,7 +31,7 @@ const (
 type LineOrigin string
 
 const (
-	OriginManual LineOrigin = "manual"
+	OriginManual  LineOrigin = "manual"
 	OriginPrefill LineOrigin = "prefill"
 )
 
@@ -61,14 +61,14 @@ type SourceRef struct {
 }
 
 type TimeLine struct {
-	ID           uuid.UUID
-	TenantID     kernel.TenantID
-	WeekEntryID  uuid.UUID
-	Source       SourceRef
-	Day          time.Time
-	Duration     kernel.Duration
-	Comment      string
-	Origin       LineOrigin
+	ID          uuid.UUID
+	TenantID    kernel.TenantID
+	WeekEntryID uuid.UUID
+	Source      SourceRef
+	Day         time.Time
+	Duration    kernel.Duration
+	Comment     string
+	Origin      LineOrigin
 }
 
 type WeekEntry struct {

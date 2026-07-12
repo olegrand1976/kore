@@ -18,14 +18,14 @@ import (
 const pricingCacheTTL = 5 * time.Minute
 
 type Service struct {
-	repo            ports.BookingRepository
-	leads           ports.LeadRepository
-	pricing         ports.PricingReader
-	notifier        ports.TransactionalNotifier
-	cache           cache.Cache
-	keys            cache.KeyBuilder
-	publishableKey  string
-	clock           ports.Clock
+	repo           ports.BookingRepository
+	leads          ports.LeadRepository
+	pricing        ports.PricingReader
+	notifier       ports.TransactionalNotifier
+	cache          cache.Cache
+	keys           cache.KeyBuilder
+	publishableKey string
+	clock          ports.Clock
 }
 
 type Repository interface {

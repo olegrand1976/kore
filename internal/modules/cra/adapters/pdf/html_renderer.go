@@ -15,15 +15,15 @@ import (
 var craTemplateHTML string
 
 type CRABrandData struct {
-	CompanyName   string
-	CompanyLogo   string
-	CompanyAddr   string
-	UserID        string
-	Month         string
-	Status        string
-	GeneratedAt   string
+	CompanyName    string
+	CompanyLogo    string
+	CompanyAddr    string
+	UserID         string
+	Month          string
+	Status         string
+	GeneratedAt    string
 	ShowKoreFooter bool
-	Lines         []CRALine
+	Lines          []CRALine
 }
 
 type CRALine struct {

@@ -29,7 +29,10 @@
           <AppButton variant="ghost" size="sm" class="topbar__logout" @click="logout">{{ $t('nav.logout') }}</AppButton>
         </div>
       </header>
-      <main class="main"><slot /></main>
+      <main class="main">
+        <p v-if="isPastDue" class="past-due" role="alert">{{ $t('billing.past_due_banner') }}</p>
+        <slot />
+      </main>
     </div>
 
     <AppBottomNav :items="bottomNavItems" />
@@ -59,23 +62,41 @@ const { locale, setLocale, t } = useI18n()
 const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin } = useAuth()
+const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
 const drawerOpen = ref(false)
 
 onMounted(async () => {
-  await Promise.all([fetchBranding(), fetchSession()])
+  await Promise.all([fetchBranding(), fetchSession(), fetchEntitlements()])
 })
 
 const toggleLocale = () => setLocale(locale.value === 'fr' ? 'en' : 'fr')
 
-const allNavItems = computed(() => [
-  { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard'), adminOnly: false },
-  { to: '/cra', icon: 'schedule', label: t('nav.cra'), adminOnly: false },
+type NavItem = {
+  to: string
+  icon: string
+  label: string
+  adminOnly?: boolean
+  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
+}
+
+const allNavItems = computed<NavItem[]>(() => [
+  { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
+  { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
+  { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges' },
+  { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
+  { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },
+  { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
+  { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
   { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
   { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true }
 ])
 
 const navItems = computed(() =>
-  allNavItems.value.filter(item => !item.adminOnly || isAdmin.value)
+  allNavItems.value.filter((item) => {
+    if (item.adminOnly && !isAdmin.value) return false
+    if (item.module && !hasModule(item.module)) return false
+    return true
+  })
 )
 
 const bottomNavItems = computed(() => navItems.value.slice(0, 4))
@@ -226,6 +247,15 @@ const logout = async () => {
   flex: 1;
   padding: var(--kore-space-xl);
   max-width: 1200px;
+}
+
+.past-due {
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border-radius: var(--kore-radius-md);
+  background: rgba(220, 53, 69, 0.12);
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
 }
 
 .drawer-title {

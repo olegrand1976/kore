@@ -158,14 +158,25 @@ Couverture : domaine > 90 %, app > 80 %.
 | Composables | `useCra()` (chargement, sauvegarde, soumission, PDF) |
 | Store Pinia | `cra` (CRA courant, statut, dirty state) |
 | Routes BFF | `server/api/timesheets/*` |
-| Permissions UI | Validation manager visible profil Responsable ; grille masquée profil Utilisateur (RBAC §3.3) |
+| Permissions UI | Validation visible profils Responsable ; grille masquée profil Utilisateur (RBAC §3.3) |
+
+## 10bis. Client Flutter (Phase 1bis)
+
+> Module [16-mobile-flutter.md](16-mobile-flutter.md). Fondation [14-flutter-mobile-client.md](../foundation/14-flutter-mobile-client.md).
+
+| Élément | Détail |
+| --- | --- |
+| Écrans | `/cra`, `/cra/:month`, validation manager |
+| Widgets | `TimesheetGrid`, `WeekStatusBadge`, `KoreScaffold` |
+| Repository | `CraRepository` → endpoints §6 |
+| Endpoints | `GET/PUT /timesheets`, `POST .../submit`, `POST .../validate` |
 
 ## 11. Definition of Done
 
-- [ ] CRA mensuel CRUD + validation prévisionnelle/définitive opérationnels.
-- [ ] Pré-remplissage non destructif garanti et testé (RG-CRA-01).
-- [ ] PDF bloqué sans infos commerciales (RG-CRA-02) testé.
-- [ ] Port `CRAReader` exposé et consommé par Budget/Facturation/Reporting.
-- [ ] Ports `CRAFeeder` (alimentation) et `CRAFutureCleaner` (purge jours futurs) disponibles pour les modules d'activité (SSII, etc.).
-- [ ] Critères d'acceptation PR-08.2 couverts par des tests nommés.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] CRA mensuel CRUD + validation prévisionnelle/définitive opérationnels.
+- [x] Pré-remplissage non destructif garanti et testé (RG-CRA-01).
+- [x] PDF bloqué sans infos commerciales (RG-CRA-02) testé.
+- [x] Port `CRAReader` exposé et consommé par Budget/Facturation/Reporting.
+- [x] Ports `CRAFeeder` (alimentation) et `CRAFutureCleaner` (purge jours futurs) disponibles pour les modules d'activité (SSII, etc.).
+- [x] Critères d'acceptation PR-08.2 couverts par des tests nommés.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

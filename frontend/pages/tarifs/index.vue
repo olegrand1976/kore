@@ -31,7 +31,10 @@
         <h2 class="cta-band__title">{{ $t('pricing.cta') }}</h2>
         <p class="cta-band__text">{{ $t('pricing.subtitle') }}</p>
       </div>
-      <PublicButton variant="primary" to="/reserver">{{ $t('brand.cta_book') }}</PublicButton>
+      <div class="cta-actions">
+        <PublicButton variant="primary" to="/billing/checkout">{{ $t('billing.checkout') }}</PublicButton>
+        <PublicButton variant="secondary" to="/reserver">{{ $t('brand.cta_book') }}</PublicButton>
+      </div>
     </section>
   </div>
 </template>
@@ -43,10 +46,7 @@ const { data } = await useFetch('/api/public/pricing')
 
 type ModulePrice = { code: string; name: string; description: string; unitAmount: number }
 
-const modules = computed(() => {
-  const catalog = (data.value as { data?: { modules?: ModulePrice[] } })?.data
-  return catalog?.modules ?? []
-})
+const modules = computed(() => parsePricingModules(data.value))
 
 const formatPrice = (cents: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cents / 100)

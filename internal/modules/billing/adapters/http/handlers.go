@@ -14,9 +14,9 @@ import (
 	"github.com/kore/kore/internal/platform/httpx"
 )
 
-func RegisterRoutes(r chi.Router, svc *app.Service, tokens *authx.TokenIssuer, authorizer authx.Authorizer, webhookSecret string) {
+func RegisterRoutes(r chi.Router, svc *app.Service, tokens *authx.TokenIssuer, authorizer authx.Authorizer, webhookSecret string, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Post("/billing/checkout-session", checkoutSession(svc, authorizer))
 		pr.Post("/billing/portal-session", portalSession(svc, authorizer))
 		pr.Get("/billing/subscription", getSubscription(svc, authorizer))

@@ -2,6 +2,16 @@
 
 > Fondation transverse. Définit les briques techniques et les conventions communes à tous les modules.
 
+## 0. Contexte : legacy B-Hive vs stack Kore
+
+| | B-Hive historique (2008–2013) | Kore (dépôt actuel) |
+| --- | --- | --- |
+| Rôle | Référence **fonctionnelle** (42 docs sources) | Application **greenfield** en production de développement |
+| Stack | PHP / Flash / Flex | **Go + PostgreSQL + Redis + Nuxt 3** |
+| Code dans ce dépôt | Aucun | `cmd/kore-api/`, `internal/modules/`, `frontend/` |
+
+La modernisation n'est **pas** un masquage ou une surcouche de l'ancienne interface Flex/Flash : c'est une réécriture complète. Les sources B-Hive alimentent la spec fonctionnelle ; la stack ci-dessous est la **décision technique actée**.
+
 ## 1. Stack retenue
 
 | Couche | Technologie | Rôle |
@@ -15,12 +25,14 @@
 | Cache | **Redis** (`redis/go-redis/v9`) — **Memorystore partagé** en prod | Cache-aside, sessions/révocation ([10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md)) |
 | Paiements | **Stripe** (`stripe-go`) | Abonnements SaaS ([11-payments-stripe.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/11-payments-stripe.md)) |
 | Cloud | **GCP** : Cloud Run, Cloud SQL, Memorystore, Secret Manager, Artifact Registry, Cloud Build | Déploiement ([09-gcp-infrastructure.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/09-gcp-infrastructure.md)) |
-| Frontend | **Nuxt 3** (Vue 3, Nitro) | SSR + BFF (server routes) |
-| État frontend | **Pinia** | Store par module |
+| Frontend web | **Nuxt 3** (Vue 3, Nitro) | SSR + BFF (server routes) |
+| Mobile | **Flutter 3.x** (Dart) | App iOS/Android ([14-flutter-mobile-client.md](14-flutter-mobile-client.md)) |
+| État frontend web | **Pinia** | Store par module |
 | Icônes | **Google Fonts — Material Symbols** | Iconographie ([08-frontend-nuxt.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/08-frontend-nuxt.md)) |
 | Conteneurisation | **Docker** + Docker Compose | Dev et tests locaux |
 | Tests Go | `testing` + `testify` + `testcontainers-go` | Unitaire + intégration (PostgreSQL, Redis) |
-| Tests front | `vitest` + `@vue/test-utils` | Composants et composables |
+| Tests front web | `vitest` + `@vue/test-utils` | Composants et composables Nuxt |
+| Tests mobile | `flutter_test` + `mockito` | Widgets et repositories Flutter |
 | Mocks Go | `mockery` (ou mocks manuels) | Doublure des ports |
 | Paiements (test) | **`stripe-mock`** | Tests d'intégration Stripe |
 | Contrat API | **OpenAPI 3.1** | Source de vérité des endpoints |

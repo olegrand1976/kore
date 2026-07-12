@@ -140,10 +140,18 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/budgets/*` |
 | Permissions UI | Écriture/validation profils Chef d'équipe/Responsable |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | État audit 07/2026 |
+| --- | --- | --- |
+| **Phase 1** | UI Nuxt §10 + BFF `server/api/budgets/*` | Backend OK, **UI absente** |
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
 ## 11. Definition of Done
 
-- [ ] Budgets, estimations, devis opérationnels ; devis prime (testé).
-- [ ] Consommation Jour/UO/Euro calculée depuis `CRAReader`.
-- [ ] `BudgetReader.HasDefaultBudget` exposé (RG-BUD-01) pour la brique TMA.
-- [ ] Alerte de dépassement publiée.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Budgets, estimations, devis opérationnels ; devis prime (testé).
+- [x] Consommation Jour/UO/Euro calculée depuis `CRAReader`.
+- [x] `BudgetReader.HasDefaultBudget` exposé (RG-BUD-01) pour la brique TMA.
+- [x] Alerte de dépassement publiée.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

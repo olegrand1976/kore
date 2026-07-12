@@ -34,21 +34,21 @@ type State struct {
 }
 
 type Transition struct {
-	From           StateCode
-	To             StateCode
-	Action         ActionCode
-	Guard          string
+	From            StateCode
+	To              StateCode
+	Action          ActionCode
+	Guard           string
 	DocumentTrigger *Trigger
-	AllowedRoles   []string
+	AllowedRoles    []string
 }
 
 type WorkflowDefinition struct {
-	ID         uuid.UUID
-	TenantID   kernel.TenantID
-	Code       string
-	EntityType string
-	Version    int
-	States     []State
+	ID          uuid.UUID
+	TenantID    kernel.TenantID
+	Code        string
+	EntityType  string
+	Version     int
+	States      []State
 	Transitions []Transition
 }
 

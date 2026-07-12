@@ -136,9 +136,9 @@ Couverture : domaine > 90 %, app > 80 %.
 
 ## 11. Definition of Done
 
-- [ ] Matrice §12.3 configurable et appliquée (tests par déclencheur).
-- [ ] Envoi SMTP + PDF joint ; MailHog en dev.
-- [ ] Fréquences planifiées (immédiat/matinal/lundi/vendredi/dernier lundi) testées avec `Clock`.
-- [ ] File + retry sur échec d'envoi.
-- [ ] Façade `NotificationPublisher` consommée par les autres briques.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Matrice §12.3 configurable et appliquée (tests par déclencheur).
+- [x] Envoi SMTP + PDF joint ; MailHog en dev.
+- [x] Fréquences planifiées (immédiat/matinal/lundi/vendredi/dernier lundi) testées avec `Clock`.
+- [x] File + retry sur échec d'envoi.
+- [x] Façade `NotificationPublisher` consommée par les autres briques.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

@@ -14,12 +14,12 @@ import (
 const consumptionCacheTTL = 5 * time.Minute
 
 type service struct {
-	repo      ports.BudgetRepository
-	cra       ports.CRAReader
-	alerts    ports.BudgetAlertPublisher
-	appCache  cache.Cache
-	keys      cache.KeyBuilder
-	clock     ports.Clock
+	repo     ports.BudgetRepository
+	cra      ports.CRAReader
+	alerts   ports.BudgetAlertPublisher
+	appCache cache.Cache
+	keys     cache.KeyBuilder
+	clock    ports.Clock
 }
 
 func NewService(repo ports.BudgetRepository, cra ports.CRAReader, opts ...Option) ports.BudgetService {
@@ -145,6 +145,10 @@ func (s *service) RecomputeConsumption(ctx context.Context, tenant kernel.Tenant
 
 func (s *service) Get(ctx context.Context, tenant kernel.TenantID, budgetID uuid.UUID) (domain.Budget, error) {
 	return s.repo.Get(ctx, tenant, budgetID)
+}
+
+func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Budget, error) {
+	return s.repo.List(ctx, tenant)
 }
 
 func (s *service) Approve(ctx context.Context, cmd ports.ApproveConsumptionCommand) error {

@@ -18,9 +18,9 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
+func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/timesheets/recent", listTimesheets(svc, authorizer))
 		pr.Get("/timesheets", getTimesheet(svc, authorizer))
 		pr.Get("/timesheets/{id}", getTimesheetByID(svc, authorizer))

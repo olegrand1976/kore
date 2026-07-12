@@ -9,11 +9,11 @@ import (
 )
 
 type CheckoutCommand struct {
-	TenantID     kernel.TenantID
-	Modules      []domain.ModuleCode
-	Seats        int
-	SuccessURL   string
-	CancelURL    string
+	TenantID      kernel.TenantID
+	Modules       []domain.ModuleCode
+	Seats         int
+	SuccessURL    string
+	CancelURL     string
 	CustomerEmail string
 }
 
@@ -26,9 +26,9 @@ type CheckoutRequest struct {
 	CancelURL     string
 	CustomerEmail string
 	// Stripe Checkout branding (module 14)
-	PrimaryColor     string // #c9a227 Kore gold
-	BackgroundColor  string // #1a1f2e dark / #f8f9fb light
-	LogoURL          string // public Kore horizontal logo URL
+	PrimaryColor    string // #c9a227 Kore gold
+	BackgroundColor string // #1a1f2e dark / #f8f9fb light
+	LogoURL         string // public Kore horizontal logo URL
 }
 
 type SubscriptionRepository interface {

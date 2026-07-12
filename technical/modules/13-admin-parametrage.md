@@ -134,6 +134,15 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/admin/*`, `server/api/me/profile`, `server/api/users/*/cv` |
 | Permissions UI | Sections admin réservées profil Administrateur ; fiche personnelle accessible à chacun |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | État audit 07/2026 |
+| --- | --- | --- |
+| **Phase 2** | UI no-code workflows (`admin/workflows`) — tenir promesse « config sans dev » | Moteur 01 OK, **UI admin absente** |
+| **Phase 2** | Admin intégrations (`admin/integrations`) via [17-integrations-hub.md](17-integrations-hub.md) | Non démarré |
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
 ## 11. Definition of Done
 
 - [ ] Paramétrage rubriques/types/états/modèles opérationnel.

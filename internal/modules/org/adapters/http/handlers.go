@@ -26,13 +26,14 @@ func RegisterRoutes(
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
 	uploadsDir string,
+	entitlements authx.EntitlementReader,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/refresh", refreshHandler(tokens))
 	r.Post("/auth/logout", logoutHandler())
 
 	r.Group(func(pr chi.Router) {
-		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/societes", listSocietes(org))
 		pr.Post("/societes", createSociete(org, authorizer))
 		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer, uploadsDir))
@@ -239,10 +240,10 @@ func createUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		var req struct {
-			Login    string          `json:"login"`
-			Password string          `json:"password"`
-			Profile  domain.Profile  `json:"profil"`
-			EquipeID *uuid.UUID      `json:"equipeId"`
+			Login    string         `json:"login"`
+			Password string         `json:"password"`
+			Profile  domain.Profile `json:"profil"`
+			EquipeID *uuid.UUID     `json:"equipeId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")

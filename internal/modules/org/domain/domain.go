@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	ErrInvalidLogin           = errors.New("invalid login format")
-	ErrLoginAlreadyExists     = errors.New("login already exists")
-	ErrInvalidCredentials     = errors.New("invalid credentials")
-	ErrAccountExpired         = errors.New("account expired")
+	ErrInvalidLogin              = errors.New("invalid login format")
+	ErrLoginAlreadyExists        = errors.New("login already exists")
+	ErrInvalidCredentials        = errors.New("invalid credentials")
+	ErrAccountExpired            = errors.New("account expired")
 	ErrServiceWithoutResponsible = errors.New("service without responsible")
-	ErrSeatLimitReached       = errors.New("seat limit reached")
+	ErrSeatLimitReached          = errors.New("seat limit reached")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)

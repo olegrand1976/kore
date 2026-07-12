@@ -3,9 +3,9 @@ package cra
 import (
 	"context"
 
-	"github.com/kore/kore/internal/modules/tma/ports"
-	craports "github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/internal/modules/cra/domain"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
+	"github.com/kore/kore/internal/modules/tma/ports"
 )
 
 type FeederAdapter struct {

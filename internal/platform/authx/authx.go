@@ -16,8 +16,8 @@ import (
 type Profile string
 
 const (
-	ProfileAdmin        Profile = "Administrateur"
-	ProfileUtilisateur  Profile = "Utilisateur"
+	ProfileAdmin         Profile = "Administrateur"
+	ProfileUtilisateur   Profile = "Utilisateur"
 	ProfileCollaborateur Profile = "Collaborateur"
 )
 

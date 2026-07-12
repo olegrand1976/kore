@@ -44,21 +44,21 @@ type Budget struct {
 }
 
 type Estimate struct {
-	ID        uuid.UUID
-	TenantID  kernel.TenantID
-	BudgetID  uuid.UUID
-	DemandID  uuid.UUID
-	Effort    Effort
+	ID         uuid.UUID
+	TenantID   kernel.TenantID
+	BudgetID   uuid.UUID
+	DemandID   uuid.UUID
+	Effort     Effort
 	Superseded bool
 }
 
 type Quote struct {
-	ID                  uuid.UUID
-	TenantID            kernel.TenantID
-	BudgetID            uuid.UUID
-	DemandID            uuid.UUID
-	Amount              int64
-	Effort              Effort
+	ID                   uuid.UUID
+	TenantID             kernel.TenantID
+	BudgetID             uuid.UUID
+	DemandID             uuid.UUID
+	Amount               int64
+	Effort               Effort
 	SupersedesEstimateID *uuid.UUID
 }
 

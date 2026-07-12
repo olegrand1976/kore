@@ -11,7 +11,7 @@
 
 ## 2. Périmètre de la brique et dépendances
 
-**Inclus** : hiérarchie Société→Site→Service→Application→Équipe→Utilisateur ; comptes et authentification ; profils et permissions RBAC ; référentiel Client ; multi-tenant.
+**Inclus** : hiérarchie Société→Site→Service→Application→Équipe→Utilisateur ; comptes et authentification ; profils et permissions RBAC ; référentiel Client ; multi-tenant ; **configuration IdP SSO** par tenant (Phase 1, cf. [12-sso-federation.md](../foundation/12-sso-federation.md)).
 
 **Hors brique** : workflow (01), CRA (02), logique métier des modules consommateurs.
 
@@ -84,6 +84,16 @@ type PasswordHasher interface {
 type TokenIssuer interface { // implémenté par platform/authx
     Issue(identity Identity) (access string, refresh string, err error)
 }
+
+type IdentityProviderRepository interface {
+    Save(ctx context.Context, idp IdentityProvider) error
+    FindByTenant(ctx context.Context, tenant TenantID) ([]IdentityProvider, error)
+}
+
+type UserIdentityRepository interface {
+    Link(ctx context.Context, link UserIdentityLink) error
+    FindBySubject(ctx context.Context, tenant TenantID, idpID IdPID, subject string) (UserIdentityLink, error)
+}
 ```
 
 ## 5. Adapters
@@ -99,6 +109,10 @@ type TokenIssuer interface { // implémenté par platform/authx
 | POST | `/api/v1/auth/login` | public | Authentification, pose cookies (via BFF) |
 | POST | `/api/v1/auth/refresh` | public (refresh cookie) | Renouvellement token |
 | POST | `/api/v1/auth/logout` | authentifié | Invalidation session |
+| GET | `/api/v1/auth/oidc/authorize` | public | Redirection SSO (Phase 1) |
+| POST | `/api/v1/auth/oidc/callback` | public | Callback OIDC → JWT Kore |
+| GET | `/api/v1/admin/identity-providers` | Admin (L) | Liste IdP du tenant |
+| PUT | `/api/v1/admin/identity-providers/{id}` | Admin (E) | Configurer IdP (Enterprise) |
 | POST | `/api/v1/societes` | Admin (E) | Créer société |
 | POST | `/api/v1/sites` | Admin (E) | Créer site |
 | POST | `/api/v1/services` | Admin (E) | Créer service (responsable requis) |
@@ -122,6 +136,8 @@ Erreurs clés : `409 LOGIN_ALREADY_EXISTS`, `422 INVALID_LOGIN_FORMAT`, `422 SER
 | `org.users` | `id`, `tenant_id`, `equipe_id`, `login`, `password_hash`, `profil`, `langue`, `cra_requis`, `type_compte`, `salarie_ett`, `date_activation`, `date_expiration` |
 | `org.clients` | `id`, `tenant_id`, `raison_sociale`, `tva`, `contacts` |
 | `authx.permissions` | `profile`, `module`, `action` (seed matrice §3.3) |
+| `org.identity_providers` | `id`, `tenant_id`, `issuer`, `client_id`, `jwks_uri`, `scopes`, `enabled` (Phase 1) |
+| `org.user_identities` | `id`, `tenant_id`, `user_id`, `idp_id`, `subject`, `email` (Phase 1) |
 
 Contraintes : `UNIQUE (tenant_id, login)`, `CHECK` format login, index `(tenant_id, ...)`.
 
@@ -167,11 +183,25 @@ Couverture cible : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/auth/*`, `server/api/organisation/*`, `server/api/users/*`, `server/api/clients/*` |
 | Permissions UI | Menu admin visible profil Administrateur ; clients visibles Resp./Commercial |
 
-## 11. Definition of Done
+## 11bis. SSO / Fédération d'identité (Phase 1)
 
-- [ ] Hiérarchie org CRUD complète et testée.
-- [ ] Auth login/refresh/logout via cookies httpOnly opérationnelle.
-- [ ] Matrice RBAC §3.3 chargée et appliquée par middleware.
-- [ ] Isolation multi-tenant vérifiée par test d'intégration.
-- [ ] RG-ORG-01/02, RG-SEC-01/02 couvertes par des tests nommés.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+> Détail technique : [12-sso-federation.md](../foundation/12-sso-federation.md). Gate : [ROADMAP §Phase 1](../ROADMAP.md).
+
+| Élément | Détail |
+| --- | --- |
+| Admin UI | `admin/identity-providers` — configurer Azure AD / Google (Enterprise) |
+| BFF | `server/api/auth/oidc/*` — proxy authorize/callback |
+| Liaison | Rattachement compte `XXX_nom` existant ou création JIT (si sièges disponibles) |
+
+- [ ] IdP configurable par tenant Administrateur.
+- [ ] Liaison JIT testée ; refus si plafond sièges (module 14).
+
+## 12. Definition of Done
+
+- [x] Hiérarchie org CRUD complète et testée.
+- [x] Auth login/refresh/logout via cookies httpOnly opérationnelle.
+- [x] Matrice RBAC §3.3 chargée et appliquée par middleware.
+- [x] Isolation multi-tenant vérifiée par test d'intégration.
+- [x] RG-ORG-01/02, RG-SEC-01/02 couvertes par des tests nommés.
+- [x] Endpoints documentés dans `api/openapi.yaml`.
+- [ ] SSO OIDC : admin IdP + liaison utilisateur (Phase 1, cf. §11bis).

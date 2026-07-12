@@ -140,11 +140,19 @@ Couverture : domaine > 90 %, app > 80 %.
 | Routes BFF | `server/api/demands/*` |
 | Permissions UI | Gate chef utilisateur visible profil dédié ; affectation profil Chef d'équipe/Responsable |
 
+## 10bis. Phase cible (roadmap)
+
+| Phase | Livrable | État audit 07/2026 |
+| --- | --- | --- |
+| **Phase 1** | UI Nuxt §10 + BFF `server/api/demands/*` | Backend OK, **UI absente** |
+
+Cf. [ROADMAP.md](../ROADMAP.md).
+
 ## 11. Definition of Done
 
-- [ ] Cycle de vie TMA complet piloté par le moteur de workflow (01).
-- [ ] Gate chef utilisateur testé (RG-TMA-01, critère PR-08.3).
-- [ ] Blocage création sans budget défaut (RG-BUD-01).
-- [ ] Rework réactive la comptabilisation ; export XML 17 champs.
-- [ ] Alimentation du CRA via `CRAFeeder`.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Cycle de vie TMA complet piloté par le moteur de workflow (01).
+- [x] Gate chef utilisateur testé (RG-TMA-01, critère PR-08.3).
+- [x] Blocage création sans budget défaut (RG-BUD-01).
+- [x] Rework réactive la comptabilisation ; export XML 17 champs.
+- [x] Alimentation du CRA via `CRAFeeder`.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

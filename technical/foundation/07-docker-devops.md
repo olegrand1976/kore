@@ -90,9 +90,9 @@ Le déploiement cloud (Cloud Build, Artifact Registry, Cloud Run, Secret Manager
 
 ## 8. Definition of Done (fondation docker/devops)
 
-- [ ] `docker-compose.yml` dev fonctionnel (api + frontend + db + **redis** + migrate + mailhog + **stripe-mock**).
-- [ ] `docker-compose.test.yml` (ou profil test) pour l'environnement de test local isolé.
-- [ ] Dockerfile multi-stage Go et Nuxt.
-- [ ] `.env.example` documenté (DB, Redis, Stripe).
-- [ ] Pipeline CI/CD défini avec gates lint/test/couverture + déploiement GCP.
-- [ ] Readiness vérifie DB **et** Redis.
+- [x] `docker-compose.yml` dev fonctionnel (api + frontend + db + **redis** + migrate + mailhog + **stripe-mock**).
+- [x] `docker-compose.test.yml` (ou profil test) pour l'environnement de test local isolé.
+- [x] Dockerfile multi-stage Go et Nuxt.
+- [x] `.env.example` documenté (DB, Redis, Stripe).
+- [x] Pipeline CI/CD défini avec gates lint/test/couverture + déploiement GCP.
+- [x] Readiness vérifie DB **et** Redis.
