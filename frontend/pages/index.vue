@@ -27,50 +27,15 @@
     </section>
 
     <PublicSection
-      :eyebrow="$t('landing.readiness_eyebrow')"
-      :title="$t('landing.readiness_title')"
-      :subtitle="$t('landing.readiness_subtitle')"
-      centered
-      variant="elevated"
-    >
-      <ul class="readiness-list">
-        <li v-for="item in readinessItems" :key="item.title" class="readiness-item">
-          <span class="readiness-item__badge" :class="`readiness-item__badge--${item.status}`">
-            {{ readinessStatusLabel(item.status) }}
-          </span>
-          <div>
-            <h3 class="readiness-item__title">{{ item.title }}</h3>
-            <p class="readiness-item__desc">{{ item.desc }}</p>
-          </div>
-        </li>
-      </ul>
-    </PublicSection>
-
-    <PublicSection
-      :eyebrow="$t('landing.problem_eyebrow')"
-      :title="$t('landing.problem_title')"
-      :subtitle="$t('landing.problem_subtitle')"
-      centered
-    >
-      <div class="card-grid card-grid--3">
-        <PublicCard v-for="item in problems" :key="item.icon" hoverable padding="lg" class="feature-card">
-          <div class="feature-card__icon feature-card__icon--warn"><AppIcon :name="item.icon" /></div>
-          <h3 class="feature-card__title">{{ item.title }}</h3>
-          <p class="feature-card__desc">{{ item.desc }}</p>
-        </PublicCard>
-      </div>
-    </PublicSection>
-
-    <PublicSection
-      :title="$t('landing.value_title')"
-      :subtitle="$t('landing.value_subtitle')"
+      :eyebrow="$t('landing.args_eyebrow')"
+      :title="$t('landing.args_title')"
+      :subtitle="$t('landing.args_subtitle')"
       centered
       variant="elevated"
     >
       <div class="card-grid card-grid--3">
-        <PublicCard v-for="item in valueProps" :key="item.icon" hoverable padding="lg" class="feature-card value-card">
-          <span class="value-card__metric">{{ item.metric }}</span>
-          <div class="feature-card__icon"><AppIcon :name="item.icon" /></div>
+        <PublicCard v-for="item in argItems" :key="item.icon" hoverable padding="lg" class="feature-card arg-card">
+          <div class="feature-card__icon" :class="`feature-card__icon--${item.tone}`"><AppIcon :name="item.icon" /></div>
           <h3 class="feature-card__title">{{ item.title }}</h3>
           <p class="feature-card__desc">{{ item.desc }}</p>
         </PublicCard>
@@ -83,7 +48,7 @@
       :subtitle="$t('landing.workflow_subtitle')"
       centered
     >
-      <figure class="landing-diagram">
+      <figure class="landing-diagram landing-diagram--solo">
         <img
           src="/brand/schema-workflow.svg"
           :alt="$t('landing.diagram_workflow_alt')"
@@ -94,14 +59,6 @@
           class="landing-diagram__img"
         />
       </figure>
-      <ol class="workflow-steps">
-        <li v-for="(step, index) in workflowSteps" :key="step.icon" class="workflow-step">
-          <div class="workflow-step__badge">{{ index + 1 }}</div>
-          <div class="feature-card__icon"><AppIcon :name="step.icon" /></div>
-          <h3 class="feature-card__title">{{ step.title }}</h3>
-          <p class="feature-card__desc">{{ step.desc }}</p>
-        </li>
-      </ol>
     </PublicSection>
 
     <PublicSection
@@ -111,7 +68,7 @@
       centered
       variant="elevated"
     >
-      <figure class="landing-diagram landing-diagram--architecture">
+      <figure class="landing-diagram landing-diagram--architecture landing-diagram--solo">
         <img
           src="/brand/schema-architecture.svg"
           :alt="$t('landing.diagram_architecture_alt')"
@@ -132,33 +89,8 @@
       <PublicButton variant="primary" to="/reserver">{{ $t('brand.cta_book') }}</PublicButton>
     </section>
 
-    <PublicSection
-      :eyebrow="$t('landing.audiences_eyebrow')"
-      :title="$t('landing.audiences_title')"
-      centered
-    >
-      <div class="card-grid card-grid--2">
-        <PublicCard
-          v-for="audience in audiences"
-          :key="audience.icon"
-          hoverable
-          padding="lg"
-          class="feature-card audience-card"
-        >
-          <div class="feature-card__icon"><AppIcon :name="audience.icon" /></div>
-          <h3 class="feature-card__title">{{ audience.title }}</h3>
-          <p class="feature-card__desc">{{ audience.desc }}</p>
-          <ul class="audience-card__bullets">
-            <li v-for="bullet in audience.bullets" :key="bullet">
-              <AppIcon name="check_circle" /> {{ bullet }}
-            </li>
-          </ul>
-        </PublicCard>
-      </div>
-    </PublicSection>
-
     <PublicSection :title="$t('pillars.title')" centered>
-      <figure class="landing-diagram landing-diagram--pillars">
+      <figure class="landing-diagram landing-diagram--pillars landing-diagram--solo">
         <img
           src="/brand/schema-pillars.svg"
           :alt="$t('landing.diagram_pillars_alt')"
@@ -169,13 +101,6 @@
           class="landing-diagram__img"
         />
       </figure>
-      <div class="card-grid card-grid--3">
-        <PublicCard v-for="pillar in pillars" :key="pillar.icon" hoverable padding="lg" class="feature-card">
-          <div class="feature-card__icon"><AppIcon :name="pillar.icon" /></div>
-          <h3 class="feature-card__title">{{ pillar.title }}</h3>
-          <p class="feature-card__desc">{{ pillar.desc }}</p>
-        </PublicCard>
-      </div>
     </PublicSection>
 
     <PublicSection
@@ -227,24 +152,6 @@
       </div>
     </PublicSection>
 
-    <section class="early-access" aria-labelledby="early-access-title">
-      <div class="early-access__header">
-        <span class="page-hero__eyebrow">{{ $t('landing.readiness_eyebrow') }}</span>
-        <h2 id="early-access-title" class="early-access__title">{{ $t('landing.early_title') }}</h2>
-        <p class="early-access__subtitle">{{ $t('landing.early_subtitle') }}</p>
-      </div>
-      <div class="card-grid card-grid--3">
-        <PublicCard v-for="item in earlyBenefits" :key="item.icon" hoverable padding="lg" class="feature-card">
-          <div class="feature-card__icon"><AppIcon :name="item.icon" /></div>
-          <h3 class="feature-card__title">{{ item.title }}</h3>
-          <p class="feature-card__desc">{{ item.desc }}</p>
-        </PublicCard>
-      </div>
-      <div class="early-access__cta">
-        <PublicButton variant="primary" to="/reserver">{{ $t('landing.early_cta') }}</PublicButton>
-      </div>
-    </section>
-
     <section class="trust-bar" aria-label="Conformité">
       <div class="trust-bar__logo">
         <KoreLogo variant="emblem" size="lg" tone="color" :alt="$t('brand.name')" />
@@ -289,7 +196,7 @@
 definePageMeta({ layout: 'public' })
 
 type ModuleItem = { code: string; name: string; description: string; unitAmount?: number }
-type ReadinessStatus = 'live' | 'building' | 'planned'
+type ArgTone = 'blue' | 'gold' | 'success'
 
 const { t, locale } = useI18n()
 
@@ -298,7 +205,7 @@ const { data: pricingData } = await useFetch('/api/public/pricing')
 
 const previewModules = computed(() => {
   const list = (modulesData.value as { data?: ModuleItem[] })?.data ?? []
-  return list.slice(0, 4)
+  return list.slice(0, 3)
 })
 
 const minPrice = computed(() => {
@@ -333,95 +240,16 @@ const outcomeStats = computed(() => [
   { value: t('landing.stats_outcome_3_value'), label: t('landing.stats_outcome_3_label') }
 ])
 
-const problems = computed(() => [
-  { icon: 'link_off', title: t('landing.problem_1_title'), desc: t('landing.problem_1_desc') },
-  { icon: 'monitoring', title: t('landing.problem_2_title'), desc: t('landing.problem_2_desc') },
-  { icon: 'gavel', title: t('landing.problem_3_title'), desc: t('landing.problem_3_desc') }
-])
-
-const valueProps = computed(() => [
-  {
-    icon: 'schedule',
-    metric: t('landing.value_1_metric'),
-    title: t('landing.value_1_title'),
-    desc: t('landing.value_1_desc')
-  },
-  {
-    icon: 'trending_up',
-    metric: t('landing.value_2_metric'),
-    title: t('landing.value_2_title'),
-    desc: t('landing.value_2_desc')
-  },
-  {
-    icon: 'verified',
-    metric: t('landing.value_3_metric'),
-    title: t('landing.value_3_title'),
-    desc: t('landing.value_3_desc')
-  }
-])
-
-const workflowSteps = computed(() => [
-  { icon: 'edit_calendar', title: t('landing.workflow_step_1_title'), desc: t('landing.workflow_step_1_desc') },
-  { icon: 'support_agent', title: t('landing.workflow_step_2_title'), desc: t('landing.workflow_step_2_desc') },
-  { icon: 'receipt_long', title: t('landing.workflow_step_3_title'), desc: t('landing.workflow_step_3_desc') }
-])
-
-const pillars = computed(() => [
-  { icon: 'support_agent', title: t('pillars.tma'), desc: t('pillars.tma_desc') },
-  { icon: 'schedule', title: t('pillars.timesheet'), desc: t('pillars.timesheet_desc') },
-  { icon: 'account_balance', title: t('pillars.budget'), desc: t('pillars.budget_desc') }
-])
-
-const audiences = computed(() => [
-  {
-    icon: 'groups',
-    title: t('landing.audience_esn_title'),
-    desc: t('landing.audience_esn_desc'),
-    bullets: [t('landing.audience_esn_bullet_1'), t('landing.audience_esn_bullet_2'), t('landing.audience_esn_bullet_3')]
-  },
-  {
-    icon: 'domain',
-    title: t('landing.audience_dsi_title'),
-    desc: t('landing.audience_dsi_desc'),
-    bullets: [t('landing.audience_dsi_bullet_1'), t('landing.audience_dsi_bullet_2'), t('landing.audience_dsi_bullet_3')]
-  }
-])
-
-const readinessStatusLabel = (status: ReadinessStatus) => {
-  switch (status) {
-    case 'live':
-      return t('landing.readiness_live')
-    case 'building':
-      return t('landing.readiness_building')
-    case 'planned':
-      return t('landing.readiness_planned')
-    default: {
-      const _exhaustive: never = status
-      return _exhaustive
-    }
-  }
-}
-
-const readinessItems = computed(() => [
-  { status: 'live' as ReadinessStatus, title: t('landing.readiness_1_title'), desc: t('landing.readiness_1_desc') },
-  { status: 'live' as ReadinessStatus, title: t('landing.readiness_2_title'), desc: t('landing.readiness_2_desc') },
-  { status: 'live' as ReadinessStatus, title: t('landing.readiness_3_title'), desc: t('landing.readiness_3_desc') },
-  { status: 'building' as ReadinessStatus, title: t('landing.readiness_4_title'), desc: t('landing.readiness_4_desc') },
-  { status: 'planned' as ReadinessStatus, title: t('landing.readiness_5_title'), desc: t('landing.readiness_5_desc') }
-])
-
-const earlyBenefits = computed(() => [
-  { icon: 'edit_note', title: t('landing.early_1_title'), desc: t('landing.early_1_desc') },
-  { icon: 'handshake', title: t('landing.early_2_title'), desc: t('landing.early_2_desc') },
-  { icon: 'layers', title: t('landing.early_3_title'), desc: t('landing.early_3_desc') }
+const argItems = computed(() => [
+  { icon: 'link_off', tone: 'blue' as ArgTone, title: t('landing.args_1_title'), desc: t('landing.args_1_desc') },
+  { icon: 'trending_up', tone: 'gold' as ArgTone, title: t('landing.args_2_title'), desc: t('landing.args_2_desc') },
+  { icon: 'verified', tone: 'success' as ArgTone, title: t('landing.args_3_title'), desc: t('landing.args_3_desc') }
 ])
 
 const faqItems = computed(() => [
   { q: t('landing.faq_1_q'), a: t('landing.faq_1_a') },
   { q: t('landing.faq_2_q'), a: t('landing.faq_2_a') },
-  { q: t('landing.faq_3_q'), a: t('landing.faq_3_a') },
-  { q: t('landing.faq_4_q'), a: t('landing.faq_4_a') },
-  { q: t('landing.faq_5_q'), a: t('landing.faq_5_a') }
+  { q: t('landing.faq_3_q'), a: t('landing.faq_3_a') }
 ])
 
 const showStickyCta = ref(false)
@@ -500,10 +328,33 @@ onMounted(() => {
   height: auto;
 }
 
+.landing-diagram--solo {
+  margin-bottom: 0;
+}
+
 .landing-diagram--architecture,
 .landing-diagram--pillars {
   max-width: 800px;
   margin-inline: auto;
+}
+
+.arg-card .feature-card__desc {
+  margin: 0;
+}
+
+.feature-card__icon--blue {
+  background: rgba(43, 108, 176, 0.12);
+  color: var(--kore-brand-blue);
+}
+
+.feature-card__icon--gold {
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--kore-brand-gold);
+}
+
+.feature-card__icon--success {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--kore-success);
 }
 
 .landing-hero__logo,
