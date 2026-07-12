@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" role="img" aria-label="Kore">
+  <g transform="translate(0, -8) scale(0.75)">
+    <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" fill="#1e3a5f" stroke="#c9a227" stroke-width="2"/>
+    <path d="M22 18 L22 46 L28 46 L28 32 L38 46 L46 46 L34 30 L44 18 L36 18 L28 28 L28 18 Z" fill="#c9a227"/>
+  </g>
+  <text x="58" y="32" font-family="DM Sans, system-ui, sans-serif" font-size="28" font-weight="700" letter-spacing="0.08em" fill="#1e3a5f">KORE</text>
+</svg>

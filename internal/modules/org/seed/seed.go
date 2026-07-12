@@ -37,6 +37,22 @@ func (s *Seeder) Run(ctx context.Context) error {
 		return err
 	}
 	tenantID := kernel.NewTenantID(devTenantID)
+	societes, err := s.repo.ListSocietes(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	if len(societes) == 0 {
+		err = s.repo.SaveSociete(ctx, domain.Societe{
+			ID:            uuid.New(),
+			TenantID:      tenantID,
+			RaisonSociale: "Kore Demo SAS",
+			Devise:        "EUR",
+		})
+		if err != nil {
+			return err
+		}
+		log.Println("dev seed: demo societe created")
+	}
 	exists, err := s.repo.ExistsLogin(ctx, tenantID, devAdminLogin)
 	if err != nil {
 		return err

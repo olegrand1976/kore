@@ -3,7 +3,9 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -12,6 +14,7 @@ import (
 	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/internal/platform/uploads"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -22,6 +25,7 @@ func RegisterRoutes(
 	clients ports.ClientService,
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
+	uploadsDir string,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/refresh", refreshHandler(tokens))
@@ -31,9 +35,12 @@ func RegisterRoutes(
 		pr.Use(httpx.AuthMiddleware(tokens))
 		pr.Get("/societes", listSocietes(org))
 		pr.Post("/societes", createSociete(org, authorizer))
+		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer, uploadsDir))
+		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
 		pr.Post("/applications", createApplication(org, authorizer))
+		pr.Get("/users", listUsers(users, authorizer))
 		pr.Post("/users", createUser(users, authorizer))
 		pr.Get("/clients", listClients(clients))
 		pr.Post("/clients", createClient(clients, authorizer))
@@ -303,6 +310,113 @@ func createClient(clients ports.ClientService, authorizer authx.Authorizer) http
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, c)
+	}
+}
+
+func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Authorizer, uploadsDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		societeID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid societe id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		if err := r.ParseMultipartForm(512 << 10); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid multipart form")
+			return
+		}
+		cmd := ports.UpdateSocieteBrandingCommand{
+			TenantID:      identity.TenantID,
+			SocieteID:     societeID,
+			RaisonSociale: r.FormValue("raisonSociale"),
+			Adresse:       r.FormValue("adresse"),
+			Siret:         r.FormValue("siret"),
+			URLTenant:     r.FormValue("urlTenant"),
+		}
+		if file, header, err := r.FormFile("logo"); err == nil {
+			defer file.Close()
+			if err := uploads.ValidateLogoFilename(header.Filename); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			logoURL, err := uploads.Store(uploadsDir, identity.TenantID.UUID(), societeID, header.Filename, file)
+			if err != nil {
+				writeUploadError(w, err)
+				return
+			}
+			cmd.Logo = logoURL
+		}
+		societe, err := org.UpdateSocieteBranding(r.Context(), cmd)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, societe)
+	}
+}
+
+func serveTenantLogo(uploadsDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := authx.FromContext(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "unauthorized")
+			return
+		}
+		tenantID, err := uuid.Parse(chi.URLParam(r, "tenantId"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid tenant id")
+			return
+		}
+		if identity.TenantID.UUID() != tenantID {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		path, ok := uploads.Path(uploadsDir, tenantID)
+		if !ok {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "logo not found")
+			return
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "logo not found")
+			return
+		}
+		defer f.Close()
+		w.Header().Set("Content-Type", uploads.ContentTypeForExt(path))
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, f)
+	}
+}
+
+func writeUploadError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, uploads.ErrInvalidLogo),
+		errors.Is(err, uploads.ErrLogoTooLarge),
+		errors.Is(err, uploads.ErrUnsupportedExt):
+		httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+	}
+}
+
+func listUsers(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := users.ListUsers(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
 	}
 }
 

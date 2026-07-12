@@ -60,7 +60,9 @@ type OrganizationRepository interface {
 	SaveTenant(ctx context.Context, tenant domain.Tenant) error
 	GetTenant(ctx context.Context, id kernel.TenantID) (domain.Tenant, error)
 	SaveSociete(ctx context.Context, s domain.Societe) error
+	UpdateSociete(ctx context.Context, s domain.Societe) error
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
+	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	SaveSite(ctx context.Context, s domain.Site) error
 	SaveService(ctx context.Context, s domain.Service) error
 	SaveApplication(ctx context.Context, a domain.Application) error
@@ -69,6 +71,7 @@ type OrganizationRepository interface {
 	FindUserByLoginGlobal(ctx context.Context, login string) (domain.User, error)
 	ExistsLogin(ctx context.Context, tenant kernel.TenantID, login string) (bool, error)
 	CountActiveUsers(ctx context.Context, tenant kernel.TenantID) (int, error)
+	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error)
 	SaveClient(ctx context.Context, c domain.Client) error
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
@@ -89,17 +92,37 @@ type EntitlementReader interface {
 	GetSeatLimit(ctx context.Context, tenantID kernel.TenantID) (int, error)
 }
 
+type UpdateSocieteBrandingCommand struct {
+	TenantID      kernel.TenantID
+	SocieteID     uuid.UUID
+	RaisonSociale string
+	Logo          string
+	Adresse       string
+	Siret         string
+	URLTenant     string
+}
+
 type OrganizationService interface {
 	CreateSociete(ctx context.Context, cmd CreateSocieteCommand) (domain.Societe, error)
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
+	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
+	UpdateSocieteBranding(ctx context.Context, cmd UpdateSocieteBrandingCommand) (domain.Societe, error)
+}
+
+type UserSummary struct {
+	ID      uuid.UUID `json:"id"`
+	Login   string    `json:"login"`
+	Profile string    `json:"profil"`
+	Active  bool      `json:"active"`
 }
 
 type UserService interface {
 	CreateUser(ctx context.Context, cmd CreateUserCommand) (domain.User, error)
 	Authenticate(ctx context.Context, login, password string) (AuthResult, error)
+	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]UserSummary, error)
 }
 
 type ClientService interface {

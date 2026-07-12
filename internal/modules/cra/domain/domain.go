@@ -81,15 +81,15 @@ type WeekEntry struct {
 }
 
 type Timesheet struct {
-	ID              uuid.UUID
-	TenantID        kernel.TenantID
-	UserID          uuid.UUID
-	Month           Month
-	Status          TimesheetStatus
-	CommercialInfo  CommercialInfo
-	Weeks           []WeekEntry
-	ValidatedAt     *time.Time
-	ValidatedBy     *uuid.UUID
+	ID             uuid.UUID       `json:"id"`
+	TenantID       kernel.TenantID `json:"tenantId"`
+	UserID         uuid.UUID       `json:"userId"`
+	Month          Month           `json:"month"`
+	Status         TimesheetStatus `json:"status"`
+	CommercialInfo CommercialInfo  `json:"commercialInfo"`
+	Weeks          []WeekEntry     `json:"weeks"`
+	ValidatedAt    *time.Time      `json:"validatedAt,omitempty"`
+	ValidatedBy    *uuid.UUID      `json:"validatedBy,omitempty"`
 }
 
 func (ts Timesheet) IsFinal() bool {

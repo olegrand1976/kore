@@ -1,0 +1,82 @@
+/**
+ * Kore design tokens — see documentation/CHARTE_GRAPHIQUE.md
+ * Brand colors are theme-invariant; semantic tokens switch per data-theme.
+ */
+
+:root {
+  /* Brand (invariant) */
+  --kore-brand-blue: #2b6cb0;
+  --kore-brand-blue-light: #3b82f6;
+  --kore-brand-navy: #1e3a5f;
+  --kore-brand-gold: #c9a227;
+  --kore-brand-gold-light: #e8c547;
+  --kore-brand-gold-dark: #a68520;
+
+  /* Typography scale */
+  --kore-font: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --kore-text-display: 3rem;
+  --kore-text-h1: 2.25rem;
+  --kore-text-h2: 1.75rem;
+  --kore-text-h3: 1.25rem;
+  --kore-text-body: 1rem;
+  --kore-text-small: 0.875rem;
+  --kore-text-caption: 0.75rem;
+
+  /* Spacing */
+  --kore-space-xs: 0.25rem;
+  --kore-space-sm: 0.5rem;
+  --kore-space-md: 1rem;
+  --kore-space-lg: 1.5rem;
+  --kore-space-xl: 2rem;
+  --kore-space-2xl: 4rem;
+
+  /* Radius */
+  --kore-radius-sm: 0.375rem;
+  --kore-radius-md: 0.5rem;
+  --kore-radius-lg: 0.75rem;
+  --kore-radius-full: 9999px;
+
+  --kore-container-max: 1200px;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --kore-bg: #1a1f2e;
+  --kore-bg-elevated: #252b3b;
+  --kore-bg-subtle: #1e2433;
+  --kore-border: #3d4559;
+  --kore-text: #e8eaed;
+  --kore-text-muted: #9ca3af;
+  --kore-text-inverse: #1a1f2e;
+  --kore-link: #60a5fa;
+  --kore-focus-ring: #c9a227;
+  --kore-error: #f87171;
+  --kore-success: #4ade80;
+
+  --kore-hero-gradient: linear-gradient(180deg, #1a1f2e 0%, #252b3b 100%);
+  --kore-gold-glow: 0 0 24px rgba(201, 162, 39, 0.25);
+  --kore-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --kore-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --kore-bg: #f8f9fb;
+  --kore-bg-elevated: #ffffff;
+  --kore-bg-subtle: #f1f3f6;
+  --kore-border: #e2e6ed;
+  --kore-text: #1a1f2e;
+  --kore-text-muted: #6b7280;
+  --kore-text-inverse: #ffffff;
+  --kore-link: #2b6cb0;
+  --kore-focus-ring: #2b6cb0;
+  --kore-error: #dc2626;
+  --kore-success: #16a34a;
+
+  --kore-hero-gradient: linear-gradient(180deg, #f8f9fb 0%, #eef1f6 100%);
+  --kore-gold-glow: 0 0 16px rgba(201, 162, 39, 0.15);
+  --kore-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --kore-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

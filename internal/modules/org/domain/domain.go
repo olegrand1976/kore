@@ -61,10 +61,14 @@ type User struct {
 }
 
 type Societe struct {
-	ID            uuid.UUID
-	TenantID      kernel.TenantID
-	RaisonSociale string
-	Devise        string
+	ID            uuid.UUID       `json:"id"`
+	TenantID      kernel.TenantID `json:"tenantId"`
+	RaisonSociale string          `json:"raisonSociale"`
+	Logo          string          `json:"logo,omitempty"`
+	Devise        string          `json:"devise"`
+	Adresse       string          `json:"adresse,omitempty"`
+	Siret         string          `json:"siret,omitempty"`
+	URLTenant     string          `json:"urlTenant,omitempty"`
 }
 
 type Site struct {

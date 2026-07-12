@@ -1,0 +1,31 @@
+---
+description: Frontend Nuxt — Vue, charte, BFF, i18n, responsive
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend Kore
+
+## Composants charte
+
+| Surface | Composants |
+|---------|------------|
+| Public | `PublicButton`, `PublicCard`, `PublicInput`, `PublicSection`, `PublicPageHero`, `KoreLogo` |
+| App | `AppButton`, `AppCard`, `AppInput`, `AppTable`, `AppBadge`, `AppPageHeader`, `TenantLogo` |
+| Mobile | `MobileDrawer`, `AppBottomNav` |
+
+## Layouts
+
+- `layouts/public.vue` — landing, login, tarifs (drawer mobile)
+- `layouts/default.vue` — app authentifiée (sidebar desktop, bottom nav + drawer mobile)
+
+## Responsive (obligatoire)
+
+- Breakpoints : mobile ≤768px, desktop ≥900px
+- `AppPageHeader` stack vertical ≤640px
+- CTAs pleine largeur mobile
+- Safe area : `env(safe-area-inset-bottom)` sur bottom nav
+
+## Logo
+
+Variant `hero` = PNG source (`/brand/kore-logo-hero.png`).

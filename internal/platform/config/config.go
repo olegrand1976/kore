@@ -28,6 +28,7 @@ type Config struct {
 	StripePublishableKey  string
 	BillingTrialDays      int
 	DevSeedEnabled        bool
+	UploadsDir            string
 }
 
 func Load() (Config, error) {
@@ -52,6 +53,7 @@ func Load() (Config, error) {
 		StripePublishableKey:  envOr("STRIPE_PUBLISHABLE_KEY", "pk_test_mock"),
 		BillingTrialDays:      envInt("BILLING_TRIAL_DAYS", 14),
 		DevSeedEnabled:        envBool("DEV_SEED_ENABLED", true),
+		UploadsDir:            envOr("UPLOADS_DIR", "./uploads"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

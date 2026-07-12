@@ -76,6 +76,36 @@ func (s *organizationService) ListSocietes(ctx context.Context, tenant kernel.Te
 	return s.repo.ListSocietes(ctx, tenant)
 }
 
+func (s *organizationService) GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error) {
+	return s.repo.GetSociete(ctx, tenant, id)
+}
+
+func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd ports.UpdateSocieteBrandingCommand) (domain.Societe, error) {
+	societe, err := s.repo.GetSociete(ctx, cmd.TenantID, cmd.SocieteID)
+	if err != nil {
+		return domain.Societe{}, err
+	}
+	if cmd.RaisonSociale != "" {
+		societe.RaisonSociale = cmd.RaisonSociale
+	}
+	if cmd.Logo != "" {
+		societe.Logo = cmd.Logo
+	}
+	if cmd.Adresse != "" {
+		societe.Adresse = cmd.Adresse
+	}
+	if cmd.Siret != "" {
+		societe.Siret = cmd.Siret
+	}
+	if cmd.URLTenant != "" {
+		societe.URLTenant = cmd.URLTenant
+	}
+	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
+		return domain.Societe{}, err
+	}
+	return societe, nil
+}
+
 type userService struct {
 	repo        ports.OrganizationRepository
 	hasher      ports.PasswordHasher
@@ -177,6 +207,23 @@ func (s *userService) Authenticate(ctx context.Context, login, password string) 
 		TenantID:     user.TenantID,
 		Profile:      user.Profile,
 	}, nil
+}
+
+func (s *userService) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]ports.UserSummary, error) {
+	users, err := s.repo.ListUsers(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ports.UserSummary, 0, len(users))
+	for _, u := range users {
+		out = append(out, ports.UserSummary{
+			ID:      u.ID,
+			Login:   string(u.Login),
+			Profile: string(u.Profile),
+			Active:  u.Active,
+		})
+	}
+	return out, nil
 }
 
 type clientService struct {

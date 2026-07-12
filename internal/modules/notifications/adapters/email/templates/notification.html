@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fb; }
+    .wrap { max-width: 600px; margin: 0 auto; background: #ffffff; }
+    .header { background: #1e3a5f; padding: 20px 24px; }
+    .header span { color: #c9a227; font-size: 18px; font-weight: bold; letter-spacing: 0.08em; }
+    .body { padding: 24px; color: #1a1f2e; font-size: 14px; line-height: 1.6; }
+    .badge { display: inline-block; margin-bottom: 12px; padding: 4px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #c9a227; background: rgba(201,162,39,0.12); border-radius: 999px; }
+    .footer { padding: 16px 24px; border-top: 1px solid #e2e6ed; font-size: 12px; color: #6b7280; }
+    .kore { color: #c9a227; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header"><span>KORE</span></div>
+    <div class="body">
+      <div class="badge">{{SUBJECT}}</div>
+      {{BODY}}
+    </div>
+    <div class="footer">
+      Cordialement,<br />{{COMPANY}}<br />{{URL}}<br /><br />
+      <span class="kore">Kore</span> — TMA • Timesheet • Budgeting
+    </div>
+  </div>
+</body>
+</html>

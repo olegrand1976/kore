@@ -20,6 +20,7 @@ import (
 	congesworkflow "github.com/kore/kore/internal/modules/conges/adapters/workflow"
 	congesapp "github.com/kore/kore/internal/modules/conges/app"
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
+	crapdf "github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
 	craapp "github.com/kore/kore/internal/modules/cra/app"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
@@ -110,7 +111,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
 	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
-	craService := craapp.NewService(craRepo, appCache, keyBuilder)
+	craService := craapp.NewService(craRepo, appCache, keyBuilder).
+		WithPDFRenderer(crapdf.NewTenantRenderer(orgService))
 	congesService := congesapp.NewService(
 		congesRepo,
 		congescra.NewFeederAdapter(craService),
@@ -151,7 +153,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	})
 
 	router.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer)
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer)

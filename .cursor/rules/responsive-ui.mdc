@@ -1,0 +1,16 @@
+---
+description: Checklist responsive mobile obligatoire pour écrans UI
+globs: frontend/**/*.vue,frontend/assets/css/**
+alwaysApply: false
+---
+
+# Responsive mobile Kore
+
+À chaque écran UI :
+
+- [ ] Nav mobile : `MobileDrawer` (public) ou `AppBottomNav` + drawer (app)
+- [ ] `AppPageHeader` empilé ≤640px
+- [ ] Grilles 1 colonne mobile
+- [ ] CTAs pleine largeur
+- [ ] Safe area bottom nav
+- [ ] Test 320px et 768px

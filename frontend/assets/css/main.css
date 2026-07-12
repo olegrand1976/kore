@@ -1,7 +1,95 @@
-* { box-sizing: border-box; }
+@import './tokens.css';
+@import './pages.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #111827;
-  background: #f9fafb;
+  font-family: var(--kore-font);
+  font-size: var(--kore-text-body);
+  color: var(--kore-text);
+  background: var(--kore-bg);
+  line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+a {
+  color: var(--kore-link);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--kore-focus-ring);
+  outline-offset: 2px;
+}
+
+h1 {
+  font-size: var(--kore-text-h1);
+  font-weight: 700;
+  margin: 0 0 var(--kore-space-md);
+}
+
+h2 {
+  font-size: var(--kore-text-h2);
+  font-weight: 600;
+  margin: 0 0 var(--kore-space-md);
+}
+
+h3 {
+  font-size: var(--kore-text-h3);
+  font-weight: 600;
+  margin: 0 0 var(--kore-space-sm);
+}
+
+p {
+  margin: 0 0 var(--kore-space-md);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Material Symbols — required for AppIcon rendering */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* NuxtLink buttons must beat global anchor styles */
+a.pub-btn {
+  text-decoration: none;
+}
+
+a.pub-btn--primary {
+  color: var(--kore-text-inverse);
+}
+
+a.pub-btn--secondary {
+  color: var(--kore-brand-gold);
+}
+
+a.pub-btn--ghost {
+  color: var(--kore-text-muted);
 }

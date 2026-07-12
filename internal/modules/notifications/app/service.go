@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/notifications/adapters/email"
 	"github.com/kore/kore/internal/modules/notifications/domain"
 	"github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/pkg/kernel"
@@ -132,10 +133,15 @@ func (s *Service) resolveRecipients(ctx context.Context, tenant kernel.TenantID,
 
 func (s *Service) dispatch(ctx context.Context, msg *domain.NotificationMessage) error {
 	msg.Attempts++
+	htmlBody := email.RenderNotification(msg.Body, "Kore", "https://kore.app")
+	if msg.Subject != "" && msg.RuleCode == "" {
+		htmlBody = email.RenderTransactional(msg.Subject, msg.Body, "Kore", "https://kore.app")
+	}
 	err := s.sender.Send(ctx, ports.Email{
 		To:          msg.Recipients,
 		Subject:     msg.Subject,
 		Body:        msg.Body,
+		HTMLBody:    htmlBody,
 		Attachments: msg.Attachments,
 	})
 	now := s.clock.Now().UTC()

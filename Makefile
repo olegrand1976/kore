@@ -25,7 +25,7 @@ KORE_REDIS_PORT    ?= 6381
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env up up-infra down migrate seed logs ps restart ready smoke \
+.PHONY: help env up up-infra up-front front down migrate seed logs ps restart ready smoke \
         build api test test-integration lint sqlc frontend-dev frontend-install
 
 ## Affiche les cibles disponibles
@@ -35,6 +35,7 @@ help:
 	@echo "  make env          Copie .env.example → .env si absent"
 	@echo "  make up           Démarre la stack complète (infra + migrate + api + frontend)"
 	@echo "  make up-infra     Démarre uniquement db, redis, mailhog, stripe-mock"
+	@echo "  make up-front     Rebuild et redémarre uniquement le frontend (alias: front)"
 	@echo "  make down         Arrête et supprime les conteneurs"
 	@echo "  make migrate      Applique les migrations (service one-shot)"
 	@echo "  make seed         Seed dev (tenant + admin ADM_admin)"
@@ -75,6 +76,12 @@ up-infra: env
 	$(COMPOSE) up -d db redis mailhog stripe-mock
 	@echo "Infra prête. DATABASE_URL=postgres://kore:kore@localhost:$(KORE_DB_PORT)/kore?sslmode=disable"
 	@echo "Puis : make migrate && make seed && HTTP_ADDR=:8081 make api"
+
+## Rebuild et redémarre uniquement le service frontend (sans toucher api/infra)
+up-front front: env
+	$(COMPOSE) up --build --force-recreate -d --no-deps frontend
+	@echo ""
+	@echo "Frontend regénéré : http://localhost:$(KORE_FRONTEND_PORT)"
 
 ## Arrête la stack
 down:

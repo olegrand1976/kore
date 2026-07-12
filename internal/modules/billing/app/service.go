@@ -99,13 +99,16 @@ func (s *Service) StartCheckout(ctx context.Context, cmd ports.CheckoutCommand) 
 		seats = 1
 	}
 	return s.gateway.CreateCheckoutSession(ctx, ports.CheckoutRequest{
-		TenantID:      cmd.TenantID,
-		CustomerID:    customerID,
-		Modules:       cmd.Modules,
-		Seats:         seats,
-		SuccessURL:    cmd.SuccessURL,
-		CancelURL:     cmd.CancelURL,
-		CustomerEmail: cmd.CustomerEmail,
+		TenantID:        cmd.TenantID,
+		CustomerID:      customerID,
+		Modules:         cmd.Modules,
+		Seats:           seats,
+		SuccessURL:      cmd.SuccessURL,
+		CancelURL:       cmd.CancelURL,
+		CustomerEmail:   cmd.CustomerEmail,
+		PrimaryColor:    "#c9a227",
+		BackgroundColor: "#1a1f2e",
+		LogoURL:         "/brand/kore-logo-horizontal.svg",
 	})
 }
 

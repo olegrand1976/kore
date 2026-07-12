@@ -13,8 +13,10 @@ defineProps<{ name: string; label?: string }>()
 
 <style scoped>
 .app-icon {
+  font-family: 'Material Symbols Outlined', sans-serif;
   font-size: 1.25rem;
   vertical-align: middle;
   line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 </style>

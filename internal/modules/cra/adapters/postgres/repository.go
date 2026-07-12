@@ -178,6 +178,50 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 	return ts, weekRows.Err()
 }
 
+func (r *Repository) ListByUser(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, limit int) ([]domain.Timesheet, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id FROM cra.timesheets
+		WHERE tenant_id = $1 AND user_id = $2
+		ORDER BY month DESC
+		LIMIT $3
+	`, tenant.UUID(), userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanTimesheetIDs(ctx, tenant, rows)
+}
+
+func (r *Repository) ListByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.Timesheet, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id FROM cra.timesheets
+		WHERE tenant_id = $1
+		ORDER BY month DESC
+		LIMIT $2
+	`, tenant.UUID(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanTimesheetIDs(ctx, tenant, rows)
+}
+
+func (r *Repository) scanTimesheetIDs(ctx context.Context, tenant kernel.TenantID, rows pgx.Rows) ([]domain.Timesheet, error) {
+	var out []domain.Timesheet
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ts, err := r.GetByID(ctx, tenant, id)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ts)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) FindConsumption(ctx context.Context, tenant kernel.TenantID, appID ports.ApplicationID, period kernel.Period) ([]domain.Consumption, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT t.user_id, tl.source_type, tl.source_id, tl.day, tl.duration

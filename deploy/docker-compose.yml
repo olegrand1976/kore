@@ -63,6 +63,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    volumes:
+      - kore_uploads:/data/uploads
 
   frontend:
     build:
@@ -78,3 +80,4 @@ services:
 
 volumes:
   pgdata:
+  kore_uploads:

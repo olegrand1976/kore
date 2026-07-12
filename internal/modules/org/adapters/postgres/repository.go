@@ -42,15 +42,37 @@ func (r *Repository) GetTenant(ctx context.Context, id kernel.TenantID) (domain.
 
 func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.societes (id, tenant_id, raison_sociale, devise)
-		VALUES ($1, $2, $3, $4)
-	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, s.Devise)
+		INSERT INTO org.societes (id, tenant_id, raison_sociale, logo, devise, adresse, siret, url_tenant)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise,
+		nullString(s.Adresse), nullString(s.Siret), nullString(s.URLTenant))
 	return err
+}
+
+func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE org.societes
+		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7
+		WHERE tenant_id = $1 AND id = $2
+	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
+		nullString(s.Adresse), nullString(s.Siret), nullString(s.URLTenant))
+	return err
+}
+
+func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise,
+		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
+		FROM org.societes WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), id)
+	return scanSociete(row)
 }
 
 func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, raison_sociale, devise FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
+		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise,
+		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
+		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
 	`, tenant.UUID())
 	if err != nil {
 		return nil, err
@@ -58,15 +80,51 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 	defer rows.Close()
 	var out []domain.Societe
 	for rows.Next() {
-		var s domain.Societe
-		var tenantID uuid.UUID
-		if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &s.Devise); err != nil {
+		s, err := scanSocieteRow(rows)
+		if err != nil {
 			return nil, err
 		}
-		s.TenantID = kernel.NewTenantID(tenantID)
 		out = append(out, s)
 	}
 	return out, rows.Err()
+}
+
+func scanSociete(row pgx.Row) (domain.Societe, error) {
+	var s domain.Societe
+	var tenantID uuid.UUID
+	var logo, adresse, siret, urlTenant string
+	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &adresse, &siret, &urlTenant)
+	if err != nil {
+		return domain.Societe{}, err
+	}
+	s.TenantID = kernel.NewTenantID(tenantID)
+	s.Logo = logo
+	s.Adresse = adresse
+	s.Siret = siret
+	s.URLTenant = urlTenant
+	return s, nil
+}
+
+func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
+	var s domain.Societe
+	var tenantID uuid.UUID
+	var logo, adresse, siret, urlTenant string
+	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &adresse, &siret, &urlTenant); err != nil {
+		return domain.Societe{}, err
+	}
+	s.TenantID = kernel.NewTenantID(tenantID)
+	s.Logo = logo
+	s.Adresse = adresse
+	s.Siret = siret
+	s.URLTenant = urlTenant
+	return s, nil
+}
+
+func nullString(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
 }
 
 func (r *Repository) SaveSite(ctx context.Context, s domain.Site) error {
@@ -124,6 +182,26 @@ func (r *Repository) CountActiveUsers(ctx context.Context, tenant kernel.TenantI
 	var count int
 	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM org.users WHERE tenant_id = $1 AND active = TRUE`, tenant.UUID()).Scan(&count)
 	return count, err
+}
+
+func (r *Repository) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active
+		FROM org.users WHERE tenant_id = $1 ORDER BY login
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.User
+	for rows.Next() {
+		u, err := r.scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repository) SaveClient(ctx context.Context, c domain.Client) error {

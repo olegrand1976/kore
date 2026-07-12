@@ -25,6 +25,10 @@ type CheckoutRequest struct {
 	SuccessURL    string
 	CancelURL     string
 	CustomerEmail string
+	// Stripe Checkout branding (module 14)
+	PrimaryColor     string // #c9a227 Kore gold
+	BackgroundColor  string // #1a1f2e dark / #f8f9fb light
+	LogoURL          string // public Kore horizontal logo URL
 }
 
 type SubscriptionRepository interface {

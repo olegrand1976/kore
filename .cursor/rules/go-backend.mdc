@@ -1,0 +1,29 @@
+---
+description: Backend Go — modules hexagonaux, auth, migrations
+globs: internal/**/*.go,cmd/**/*.go
+alwaysApply: false
+---
+
+# Backend Kore (Go)
+
+## Architecture module
+
+```
+internal/modules/{name}/
+  domain/ ports/ app/ adapters/{http,postgres}/
+```
+
+## Auth
+
+JWT `authx` — claims `sub`, `tenant_id`, `profile`. RBAC : `authorizer.Can(ctx, module, action)`.
+
+## CRA statuts
+
+`Brouillon`, `ValidéSemaine`, `Définitif` — mapper frontend via `useCraStatus`.
+
+## Commandes
+
+```bash
+go build ./cmd/kore-api/
+make migrate && make test
+```

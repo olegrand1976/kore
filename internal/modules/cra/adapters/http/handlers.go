@@ -1,8 +1,10 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,7 +21,9 @@ import (
 func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthMiddleware(tokens))
+		pr.Get("/timesheets/recent", listTimesheets(svc, authorizer))
 		pr.Get("/timesheets", getTimesheet(svc, authorizer))
+		pr.Get("/timesheets/{id}", getTimesheetByID(svc, authorizer))
 		pr.Put("/timesheets/{id}/weeks/{week}", saveWeek(svc, authorizer))
 		pr.Post("/timesheets/{id}/weeks/{week}/submit", submitWeek(svc, authorizer))
 		pr.Put("/timesheets/{id}/commercial-info", completeCommercialInfo(svc, authorizer))
@@ -161,6 +165,61 @@ func completeCommercialInfo(svc ports.CRAService, authorizer authx.Authorizer) h
 	}
 }
 
+func getTimesheetByID(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		ts, err := svc.GetByID(r.Context(), identity.TenantID, id)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		if !canAccessTimesheet(r.Context(), authorizer, identity, ts) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, ts)
+	}
+}
+
+func listTimesheets(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		limit := 12
+		if raw := r.URL.Query().Get("limit"); raw != "" {
+			if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 48 {
+				limit = n
+			}
+		}
+		identity, _ := authx.FromContext(r.Context())
+		managerView := authorizer.Can(r.Context(), "cra", authx.ActionValidate)
+		items, err := svc.ListTimesheets(r.Context(), identity.TenantID, identity.UserID, managerView, limit)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func canAccessTimesheet(ctx context.Context, authorizer authx.Authorizer, identity authx.Identity, ts domain.Timesheet) bool {
+	if authorizer.Can(ctx, "cra", authx.ActionValidate) {
+		return true
+	}
+	return ts.UserID == identity.UserID
+}
+
 func generatePDF(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "cra", authx.ActionWrite) {
@@ -173,12 +232,24 @@ func generatePDF(svc ports.CRAService, authorizer authx.Authorizer) http.Handler
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
+		ts, err := svc.GetByID(r.Context(), identity.TenantID, id)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		if !canAccessTimesheet(r.Context(), authorizer, identity, ts) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
 		doc, err := svc.GeneratePDF(r.Context(), identity.TenantID, id)
 		if err != nil {
 			writeCRAError(w, err)
 			return
 		}
-		httpx.WriteData(w, http.StatusOK, doc)
+		w.Header().Set("Content-Type", doc.MimeType)
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, doc.Filename))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(doc.Content)
 	}
 }
 

@@ -1,0 +1,33 @@
+---
+description: Contexte projet Kore — stack, ports, conventions globales
+alwaysApply: true
+---
+
+# Kore — contexte agent
+
+Monolithe Go + Nuxt 3 (PSA/ESN modulaire : CRA, TMA, congés, budget, billing).
+
+## Structure
+
+- `cmd/kore-api/` — point d'entrée API
+- `internal/modules/{org,cra,tma,...}/` — modules hexagonaux Go
+- `frontend/` — Nuxt 3, BFF dans `frontend/server/api/`
+- `documentation/CHARTE_GRAPHIQUE.md` — charte visuelle
+
+## Dev local
+
+```bash
+make up   # ports : frontend 3001, API 8081
+```
+
+Seed admin : `ADM_admin` / `Admin123!`
+
+## Règles impératives
+
+- Répondre en **français** à l'utilisateur
+- Imports en tête de fichier (pas d'inline imports)
+- Switch TypeScript exhaustif avec `never` en default
+- Diff minimal : ne pas réécrire des fichiers entiers
+- **Mobile** : toute page UI doit fonctionner ≤768px (drawer + bottom nav app)
+- **i18n** : clés dans `frontend/locales/fr.json` et `en.json`
+- **Charte** : variables `--kore-*` uniquement, composants `Public*` / `App*`

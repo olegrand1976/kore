@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -33,9 +34,20 @@ func New(webhookSecret string, trialDays int) *Gateway {
 
 func (g *Gateway) CreateCheckoutSession(_ context.Context, req ports.CheckoutRequest) (domain.CheckoutSession, error) {
 	id := "cs_mock_" + uuid.NewString()
-	url := fmt.Sprintf("%s/v1/checkout/sessions/%s/mock_redirect?tenant=%s&seats=%d",
-		g.BaseURL, id, req.TenantID.String(), req.Seats)
-	return domain.CheckoutSession{ID: id, URL: url}, nil
+	q := url.Values{}
+	q.Set("tenant", req.TenantID.String())
+	q.Set("seats", fmt.Sprintf("%d", req.Seats))
+	if req.PrimaryColor != "" {
+		q.Set("primary_color", req.PrimaryColor)
+	}
+	if req.BackgroundColor != "" {
+		q.Set("background_color", req.BackgroundColor)
+	}
+	if req.LogoURL != "" {
+		q.Set("logo_url", req.LogoURL)
+	}
+	checkoutURL := fmt.Sprintf("%s/v1/checkout/sessions/%s/mock_redirect?%s", g.BaseURL, id, q.Encode())
+	return domain.CheckoutSession{ID: id, URL: checkoutURL}, nil
 }
 
 func (g *Gateway) CreatePortalSession(_ context.Context, customerID, returnURL string) (domain.PortalSession, error) {

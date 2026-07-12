@@ -69,6 +69,20 @@ func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userI
 	return ts, nil
 }
 
+func (s *Service) GetByID(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) (domain.Timesheet, error) {
+	return s.repo.GetByID(ctx, tenant, id)
+}
+
+func (s *Service) ListTimesheets(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, managerView bool, limit int) ([]domain.Timesheet, error) {
+	if limit <= 0 {
+		limit = 12
+	}
+	if managerView {
+		return s.repo.ListByTenant(ctx, tenant, limit)
+	}
+	return s.repo.ListByUser(ctx, tenant, userID, limit)
+}
+
 func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (domain.Timesheet, error) {
 	ts, err := s.repo.GetByID(ctx, cmd.TenantID, cmd.TimesheetID)
 	if err != nil {
