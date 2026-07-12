@@ -2,7 +2,7 @@
   <div class="layout-public">
     <header class="header">
       <NuxtLink to="/" class="header__brand">
-        <KoreLogo variant="horizontal" size="sm" alt="Kore" />
+        <KoreLogo variant="horizontal" size="sm" tone="auto" alt="Kore" />
       </NuxtLink>
       <nav class="header__nav" aria-label="Navigation principale">
         <NuxtLink to="/modules">{{ $t('nav.modules') }}</NuxtLink>

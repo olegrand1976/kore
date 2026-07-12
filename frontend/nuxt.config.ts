@@ -37,6 +37,7 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/brand/kore-emblem.svg' },
         { rel: 'apple-touch-icon', href: '/brand/kore-emblem.svg' },
         {
           rel: 'stylesheet',

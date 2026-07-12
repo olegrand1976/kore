@@ -11,6 +11,7 @@
     "users": "Users"
   },
   "brand": {
+    "name": "Kore",
     "tagline": "MVP rolling out · Early access open",
     "hero_title": "Run your consultancy from timesheet to invoice",
     "hero_subtitle": "Kore unifies timesheets, TMA and UO budgets in one SaaS suite. We're opening the first deployments — co-build the PSA your consultancy or IT department needs.",
@@ -220,7 +221,13 @@
     "early_3_desc": "Start with timesheets or org, add TMA and budget when you're ready.",
     "early_cta": "Book my founding slot",
     "mid_cta_title": "See the fit? Let's move.",
-    "mid_cta_text": "A 30-minute demo is enough to validate fit for your consultancy or IT department context."
+    "mid_cta_text": "A 30-minute demo is enough to validate fit for your consultancy or IT department context.",
+    "diagram_workflow_alt": "Kore flow diagram: timesheets, TMA/UO, compliant billing",
+    "diagram_architecture_eyebrow": "Architecture",
+    "diagram_architecture_title": "A modular platform, one central hub",
+    "diagram_architecture_subtitle": "Enable only the modules you need — they share the same data, branding and compliance.",
+    "diagram_architecture_alt": "Kore modular architecture diagram with central hub and connected modules",
+    "diagram_pillars_alt": "Kore three pillars diagram: TMA, timesheets and UO budget"
   },
   "pricing": {
     "title": "Pricing",

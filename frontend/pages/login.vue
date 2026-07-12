@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-page__panel login-page__panel--brand">
-      <KoreLogo variant="horizontal" size="md" />
+      <KoreLogo variant="horizontal" size="md" tone="auto" alt="Kore" />
       <p class="login-page__baseline">{{ $t('brand.tagline') }}</p>
       <ul class="login-page__features">
         <li><AppIcon name="check_circle" /> CRA, TMA & Budget unifiés</li>

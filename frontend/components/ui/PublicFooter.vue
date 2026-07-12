@@ -6,7 +6,7 @@ const year = new Date().getFullYear()
   <footer class="pub-footer">
     <div class="pub-footer__inner">
       <div class="pub-footer__brand">
-        <KoreLogo variant="wordmark" size="sm" />
+        <KoreLogo variant="horizontal" size="sm" tone="auto" :alt="$t('brand.name')" />
         <p class="pub-footer__tagline">{{ $t('brand.tagline') }}</p>
       </div>
       <nav class="pub-footer__nav" aria-label="Navigation">

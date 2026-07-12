@@ -11,6 +11,7 @@
     "users": "Utilisateurs"
   },
   "brand": {
+    "name": "Kore",
     "tagline": "MVP en déploiement · Early access ouvert",
     "hero_title": "Pilotez votre activité ESN de la saisie à la facturation",
     "hero_subtitle": "Kore unifie CRA, TMA et budget UO dans une suite SaaS. Nous ouvrons les premiers déploiements — co-construisez le PSA dont votre ESN ou DSI a besoin.",
@@ -220,7 +221,13 @@
     "early_3_desc": "Commencez par le CRA ou l'org, ajoutez TMA et budget quand vous êtes prêts.",
     "early_cta": "Réserver mon créneau fondateur",
     "mid_cta_title": "Vous voyez le fit ? Passons à l'action.",
-    "mid_cta_text": "Une démo de 30 min suffit pour valider l'adéquation avec votre contexte ESN ou DSI."
+    "mid_cta_text": "Une démo de 30 min suffit pour valider l'adéquation avec votre contexte ESN ou DSI.",
+    "diagram_workflow_alt": "Schéma du flux Kore : CRA, TMA/UO, facturation conforme",
+    "diagram_architecture_eyebrow": "Architecture",
+    "diagram_architecture_title": "Une plateforme modulaire, un hub central",
+    "diagram_architecture_subtitle": "Activez les modules dont vous avez besoin — ils partagent la même donnée, le même branding et la même conformité.",
+    "diagram_architecture_alt": "Schéma architecture modulaire Kore avec hub central et modules connectés",
+    "diagram_pillars_alt": "Schéma des trois piliers Kore : TMA, CRA et Budget UO"
   },
   "pricing": {
     "title": "Tarifs",

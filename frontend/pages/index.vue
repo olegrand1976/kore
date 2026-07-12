@@ -2,8 +2,11 @@
   <div class="landing">
     <section class="landing-hero" aria-labelledby="landing-title">
       <div class="landing-hero__glow" aria-hidden="true" />
+      <div class="landing-hero__watermark" aria-hidden="true">
+        <KoreLogo variant="emblem" size="xl" tone="auto" alt="" />
+      </div>
       <div class="landing-hero__logo">
-        <KoreLogo variant="hero" size="xl" alt="Kore — TMA, Timesheet, Budgeting" />
+        <KoreLogo variant="hero" size="xl" show-tagline :alt="$t('brand.name')" />
       </div>
       <div class="landing-hero__content">
         <span class="page-hero__eyebrow">{{ $t('brand.tagline') }}</span>
@@ -80,6 +83,17 @@
       :subtitle="$t('landing.workflow_subtitle')"
       centered
     >
+      <figure class="landing-diagram">
+        <img
+          src="/brand/schema-workflow.svg"
+          :alt="$t('landing.diagram_workflow_alt')"
+          width="900"
+          height="220"
+          loading="lazy"
+          decoding="async"
+          class="landing-diagram__img"
+        />
+      </figure>
       <ol class="workflow-steps">
         <li v-for="(step, index) in workflowSteps" :key="step.icon" class="workflow-step">
           <div class="workflow-step__badge">{{ index + 1 }}</div>
@@ -88,6 +102,26 @@
           <p class="feature-card__desc">{{ step.desc }}</p>
         </li>
       </ol>
+    </PublicSection>
+
+    <PublicSection
+      :eyebrow="$t('landing.diagram_architecture_eyebrow')"
+      :title="$t('landing.diagram_architecture_title')"
+      :subtitle="$t('landing.diagram_architecture_subtitle')"
+      centered
+      variant="elevated"
+    >
+      <figure class="landing-diagram landing-diagram--architecture">
+        <img
+          src="/brand/schema-architecture.svg"
+          :alt="$t('landing.diagram_architecture_alt')"
+          width="700"
+          height="420"
+          loading="lazy"
+          decoding="async"
+          class="landing-diagram__img"
+        />
+      </figure>
     </PublicSection>
 
     <section class="mid-cta" aria-labelledby="mid-cta-title">
@@ -124,6 +158,17 @@
     </PublicSection>
 
     <PublicSection :title="$t('pillars.title')" centered>
+      <figure class="landing-diagram landing-diagram--pillars">
+        <img
+          src="/brand/schema-pillars.svg"
+          :alt="$t('landing.diagram_pillars_alt')"
+          width="800"
+          height="260"
+          loading="lazy"
+          decoding="async"
+          class="landing-diagram__img"
+        />
+      </figure>
       <div class="card-grid card-grid--3">
         <PublicCard v-for="pillar in pillars" :key="pillar.icon" hoverable padding="lg" class="feature-card">
           <div class="feature-card__icon"><AppIcon :name="pillar.icon" /></div>
@@ -201,6 +246,9 @@
     </section>
 
     <section class="trust-bar" aria-label="Conformité">
+      <div class="trust-bar__logo">
+        <KoreLogo variant="emblem" size="lg" tone="color" :alt="$t('brand.name')" />
+      </div>
       <div class="trust-bar__icon"><AppIcon name="verified_user" /></div>
       <div>
         <p class="trust-bar__title">{{ $t('compliance.title') }}</p>
@@ -209,6 +257,9 @@
     </section>
 
     <section class="cta-band cta-band--final">
+      <div class="cta-band__brand">
+        <KoreLogo variant="emblem" size="md" tone="color" :alt="$t('brand.name')" />
+      </div>
       <div>
         <h2 class="cta-band__title">{{ $t('landing.cta_title') }}</h2>
         <p class="cta-band__text">{{ $t('landing.cta_text') }}</p>
@@ -420,6 +471,41 @@ onMounted(() => {
   pointer-events: none;
 }
 
+.landing-hero__watermark {
+  position: absolute;
+  right: -2rem;
+  bottom: -2rem;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-hero__watermark :deep(.kore-logo__img) {
+  width: min(280px, 40vw) !important;
+}
+
+.landing-diagram {
+  margin: 0 0 var(--kore-space-xl);
+  padding: 0;
+  border-radius: var(--kore-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--kore-border);
+  background: var(--kore-bg-subtle);
+  box-shadow: var(--kore-shadow-sm);
+}
+
+.landing-diagram__img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.landing-diagram--architecture,
+.landing-diagram--pillars {
+  max-width: 800px;
+  margin-inline: auto;
+}
+
 .landing-hero__logo,
 .landing-hero__content {
   position: relative;
@@ -450,11 +536,17 @@ onMounted(() => {
 }
 
 .landing-hero__subtitle {
-  margin: 0 0 var(--kore-space-xl);
+  margin: 0 auto var(--kore-space-xl);
   max-width: 540px;
   color: var(--kore-text-muted);
   line-height: 1.65;
   font-size: var(--kore-text-body);
+}
+
+@media (min-width: 900px) {
+  .landing-hero__subtitle {
+    margin: 0 0 var(--kore-space-xl);
+  }
 }
 
 .landing-hero__actions {
@@ -851,6 +943,17 @@ onMounted(() => {
   border-left: 4px solid var(--kore-brand-gold);
 }
 
+.trust-bar__logo {
+  flex-shrink: 0;
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .trust-bar__logo {
+    display: block;
+  }
+}
+
 .trust-bar__icon {
   display: flex;
   align-items: center;
@@ -883,6 +986,13 @@ onMounted(() => {
 .cta-band--final {
   border: 1px solid var(--kore-brand-gold);
   box-shadow: var(--kore-gold-glow);
+}
+
+.cta-band__brand {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cta-band__guarantee {

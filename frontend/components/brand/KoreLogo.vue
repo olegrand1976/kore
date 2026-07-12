@@ -40,20 +40,30 @@ const heroSizeMap: Record<LogoSize, string> = {
   xl: 'min(420px, 88vw)'
 }
 
+const isDark = computed(() => theme.value === 'dark')
+
 const src = computed(() => {
   if (props.variant === 'hero') {
     return '/brand/kore-logo-hero.png'
   }
-  if (props.variant === 'emblem' && props.tone === 'auto') {
-    return theme.value === 'dark'
+
+  if (props.variant === 'emblem') {
+    if (props.tone === 'light') return '/brand/kore-emblem-mono-light.svg'
+    if (props.tone === 'dark') return '/brand/kore-emblem-mono-dark.svg'
+    if (props.tone === 'color') return '/brand/kore-emblem.svg'
+    return isDark.value
       ? '/brand/kore-emblem-mono-light.svg'
       : '/brand/kore-emblem-mono-dark.svg'
   }
-  if (props.variant === 'emblem' && props.tone === 'light') {
-    return '/brand/kore-emblem-mono-light.svg'
-  }
-  if (props.variant === 'emblem' && props.tone === 'dark') {
-    return '/brand/kore-emblem-mono-dark.svg'
+
+  if (props.tone === 'auto') {
+    const themed: Partial<Record<Exclude<LogoVariant, 'hero' | 'emblem'>, string>> = {
+      full: isDark.value ? '/brand/kore-logo-full-dark.svg' : '/brand/kore-logo-full.svg',
+      horizontal: isDark.value ? '/brand/kore-logo-horizontal-dark.svg' : '/brand/kore-logo-horizontal.svg',
+      wordmark: isDark.value ? '/brand/kore-wordmark-dark.svg' : '/brand/kore-wordmark.svg'
+    }
+    const themedSrc = themed[props.variant as Exclude<LogoVariant, 'hero' | 'emblem'>]
+    if (themedSrc) return themedSrc
   }
 
   const files: Record<Exclude<LogoVariant, 'hero'>, string> = {
