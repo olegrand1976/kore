@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	aicra "github.com/kore/kore/internal/modules/ai/adapters/cra"
 	aiconges "github.com/kore/kore/internal/modules/ai/adapters/conges"
+	aicra "github.com/kore/kore/internal/modules/ai/adapters/cra"
 	aihttp "github.com/kore/kore/internal/modules/ai/adapters/http"
 	aipostgres "github.com/kore/kore/internal/modules/ai/adapters/postgres"
 	aistub "github.com/kore/kore/internal/modules/ai/adapters/stub"
@@ -24,8 +24,8 @@ import (
 	budgetapp "github.com/kore/kore/internal/modules/budget/app"
 	congescra "github.com/kore/kore/internal/modules/conges/adapters/cra"
 	congeshttp "github.com/kore/kore/internal/modules/conges/adapters/http"
-	congesorg "github.com/kore/kore/internal/modules/conges/adapters/org"
 	congesnotif "github.com/kore/kore/internal/modules/conges/adapters/notifications"
+	congesorg "github.com/kore/kore/internal/modules/conges/adapters/org"
 	congespostgres "github.com/kore/kore/internal/modules/conges/adapters/postgres"
 	congesworkflow "github.com/kore/kore/internal/modules/conges/adapters/workflow"
 	congesapp "github.com/kore/kore/internal/modules/conges/app"
@@ -40,7 +40,6 @@ import (
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
-	"github.com/kore/kore/internal/seed"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
 	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
@@ -61,6 +60,7 @@ import (
 	"github.com/kore/kore/internal/platform/db"
 	"github.com/kore/kore/internal/platform/httpx"
 	"github.com/kore/kore/internal/platform/logging"
+	"github.com/kore/kore/internal/seed"
 )
 
 //go:embed openapi.yaml

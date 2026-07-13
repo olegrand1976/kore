@@ -1,11 +1,11 @@
 package app
 
 import (
+	"github.com/kore/kore/internal/modules/ai"
 	"github.com/kore/kore/internal/modules/billing"
 	"github.com/kore/kore/internal/modules/budget"
 	"github.com/kore/kore/internal/modules/conges"
 	"github.com/kore/kore/internal/modules/cra"
-	"github.com/kore/kore/internal/modules/ai"
 	"github.com/kore/kore/internal/modules/notifications"
 	"github.com/kore/kore/internal/modules/org"
 	"github.com/kore/kore/internal/modules/publicsite"

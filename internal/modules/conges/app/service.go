@@ -11,12 +11,12 @@ import (
 )
 
 type service struct {
-	repo         ports.LeaveRepository
-	typeConfigs  ports.LeaveTypeConfigService
-	cra          ports.CRAFeeder
-	workflow     ports.WorkflowService
-	notifier     ports.NotificationPublisher
-	clock        ports.Clock
+	repo        ports.LeaveRepository
+	typeConfigs ports.LeaveTypeConfigService
+	cra         ports.CRAFeeder
+	workflow    ports.WorkflowService
+	notifier    ports.NotificationPublisher
+	clock       ports.Clock
 }
 
 func NewService(

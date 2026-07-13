@@ -16,16 +16,16 @@ var (
 )
 
 type LeaveTypeConfig struct {
-	ID             uuid.UUID       `json:"id"`
-	TenantID       kernel.TenantID `json:"tenantId"`
-	SocieteID      uuid.UUID       `json:"societeId"`
-	Code           string          `json:"code"`
-	Label          string          `json:"label"`
-	TracksBalance  bool            `json:"tracksBalance"`
-	Active         bool            `json:"active"`
-	SortOrder      int             `json:"sortOrder"`
-	CreatedAt      time.Time       `json:"createdAt"`
-	UpdatedAt      time.Time       `json:"updatedAt"`
+	ID            uuid.UUID       `json:"id"`
+	TenantID      kernel.TenantID `json:"tenantId"`
+	SocieteID     uuid.UUID       `json:"societeId"`
+	Code          string          `json:"code"`
+	Label         string          `json:"label"`
+	TracksBalance bool            `json:"tracksBalance"`
+	Active        bool            `json:"active"`
+	SortOrder     int             `json:"sortOrder"`
+	CreatedAt     time.Time       `json:"createdAt"`
+	UpdatedAt     time.Time       `json:"updatedAt"`
 }
 
 type LeaveTypeTemplate struct {
