@@ -91,6 +91,25 @@ Organisation, identité, RBAC.
 | `name` | TEXT | NOT NULL |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
+### `org.access_tokens`
+
+Tokens à usage unique pour **invitation** et **récupération d’organisation** (liens envoyés par email).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `token_hash` | TEXT | PK (hash SHA-256 hex du token) |
+| `tenant_id` | UUID | NOT NULL |
+| `email` | TEXT | NOT NULL |
+| `kind` | TEXT | NOT NULL (`invite` / `discovery`) |
+| `expires_at` | TIMESTAMPTZ | NOT NULL |
+| `used_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+Index :
+
+- `access_tokens_tenant_email_kind_idx (tenant_id, email, kind)`
+- `access_tokens_expires_at_idx (expires_at)`
+
 ### `org.societes`
 
 | Colonne | Type | Contraintes |

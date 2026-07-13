@@ -704,4 +704,54 @@ func (r *Repository) FindUserByEmail(ctx context.Context, tenant kernel.TenantID
 	`, tenant.UUID(), email))
 }
 
+func (r *Repository) FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT tenant_id
+		FROM org.users
+		WHERE lower(email) = lower($1) AND deleted_at IS NULL
+	`, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]kernel.TenantID, 0, 1)
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, kernel.NewTenantID(id))
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) SaveAccessToken(ctx context.Context, tokenHash string, tenant kernel.TenantID, email, kind string, expiresAt time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO org.access_tokens (token_hash, tenant_id, email, kind, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+	`, tokenHash, tenant.UUID(), email, kind, expiresAt)
+	return err
+}
+
+func (r *Repository) ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (ports.AccessTokenRow, bool, error) {
+	var row ports.AccessTokenRow
+	var tenantID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		UPDATE org.access_tokens
+		SET used_at = $2
+		WHERE token_hash = $1
+		  AND used_at IS NULL
+		  AND expires_at > $2
+		RETURNING token_hash, tenant_id, email, kind, expires_at, used_at, created_at
+	`, tokenHash, now).Scan(&row.TokenHash, &tenantID, &row.Email, &row.Kind, &row.ExpiresAt, &row.UsedAt, &row.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ports.AccessTokenRow{}, false, nil
+		}
+		return ports.AccessTokenRow{}, false, err
+	}
+	row.TenantID = kernel.NewTenantID(tenantID)
+	return row, true, nil
+}
+
 var _ ports.OrganizationRepository = (*Repository)(nil)

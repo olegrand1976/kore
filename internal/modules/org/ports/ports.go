@@ -114,6 +114,19 @@ type OrganizationRepository interface {
 	LinkUserIdentity(ctx context.Context, link domain.UserIdentityLink) error
 	FindUserIdentityBySubject(ctx context.Context, tenant kernel.TenantID, idpID uuid.UUID, subject string) (domain.UserIdentityLink, error)
 	FindUserByEmail(ctx context.Context, tenant kernel.TenantID, email string) (domain.User, error)
+	FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error)
+	SaveAccessToken(ctx context.Context, tokenHash string, tenant kernel.TenantID, email, kind string, expiresAt time.Time) error
+	ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (AccessTokenRow, bool, error)
+}
+
+type AccessTokenRow struct {
+	TenantID   kernel.TenantID
+	Email      string
+	Kind       string
+	ExpiresAt  time.Time
+	UsedAt     *time.Time
+	CreatedAt  time.Time
+	TokenHash  string
 }
 
 type PasswordHasher interface {
@@ -203,6 +216,21 @@ type ClientService interface {
 	CreateClient(ctx context.Context, cmd CreateClientCommand) (domain.Client, error)
 	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
+}
+
+type TenantAccessResolveResult struct {
+	TenantID kernel.TenantID `json:"tenantId"`
+	Kind     string          `json:"kind"`
+}
+
+type TenantAccessService interface {
+	RequestTenantDiscovery(ctx context.Context, email string, baseLoginURL string) error
+	CreateInvitation(ctx context.Context, tenant kernel.TenantID, email string, baseLoginURL string) error
+	Resolve(ctx context.Context, token string) (TenantAccessResolveResult, error)
+}
+
+type TransactionalEmailSender interface {
+	SendTenantAccessEmail(ctx context.Context, to string, subject string, body string) error
 }
 
 type TenantUsageSummary struct {

@@ -23,6 +23,10 @@ var (
 	ErrInvalidIDPToken           = errors.New("invalid idp token")
 	ErrIdentityAlreadyLinked     = errors.New("identity already linked")
 	ErrOIDCStateInvalid          = errors.New("invalid oidc state")
+	ErrAccessTokenInvalid        = errors.New("invalid access token")
+	ErrAccessTokenExpired        = errors.New("expired access token")
+	ErrAccessTokenUsed           = errors.New("used access token")
+	ErrInvalidEmail              = errors.New("invalid email")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)

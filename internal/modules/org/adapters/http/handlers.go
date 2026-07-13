@@ -24,6 +24,7 @@ func RegisterRoutes(
 	org ports.OrganizationService,
 	users ports.UserService,
 	clients ports.ClientService,
+	tenantAccess ports.TenantAccessService,
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
 	uploadsDir string,
@@ -33,6 +34,9 @@ func RegisterRoutes(
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/refresh", refreshHandler(users))
 	r.Post("/auth/logout", logoutHandler())
+	r.Post("/auth/tenant-discovery/request", tenantDiscoveryRequestHandler(tenantAccess))
+	r.Get("/auth/tenant-discovery/resolve", tenantDiscoveryResolveHandler(tenantAccess))
+	r.Get("/public/invitations/resolve", invitationResolveHandler(tenantAccess))
 
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
@@ -57,6 +61,8 @@ func RegisterRoutes(
 		pr.Get("/clients", listClients(clients))
 		pr.Get("/clients/{id}", getClient(clients, authorizer))
 		pr.Post("/clients", createClient(clients, authorizer))
+
+		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
 	})
 }
 

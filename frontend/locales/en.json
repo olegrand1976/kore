@@ -64,11 +64,15 @@
   "login": {
     "title": "Sign in",
     "subtitle": "Access your Kore workspace",
+    "email": "Email",
     "password": "Password",
     "submit": "Sign in",
     "error": "Sign in failed",
     "sso": "SSO sign in",
-    "sso_tenant": "Tenant ID (UUID)"
+    "sso_tenant": "Tenant ID (UUID)",
+    "find_org": "Find my organization",
+    "send_link": "Send me a link",
+    "discovery_sent": "If this email is known, a link has been sent."
   },
   "release_notes": {
     "open": "Open what's new",

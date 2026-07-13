@@ -21,6 +21,16 @@
         <p class="login-card__divider">{{ $t('login.sso') }}</p>
         <PublicInput id="tenant" v-model="tenantId" :label="$t('login.sso_tenant')" />
         <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ $t('login.sso') }}</PublicButton>
+        <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
+          {{ $t('login.find_org') }}
+        </button>
+        <div v-if="showDiscovery" class="login-card__discovery">
+          <PublicInput id="discover-email" v-model="discoverEmail" type="email" :label="$t('login.email')" />
+          <PublicButton variant="ghost" class="login-card__submit" @click="requestDiscovery">
+            {{ $t('login.send_link') }}
+          </PublicButton>
+          <p v-if="discoveryInfo" class="login-card__info" role="status">{{ discoveryInfo }}</p>
+        </div>
       </div>
       <p v-if="error" class="login-card__error" role="alert">{{ error }}</p>
     </PublicCard>
@@ -36,6 +46,9 @@ const password = ref('Admin123!')
 const tenantId = ref('00000000-0000-4000-8000-000000000001')
 const ssoEnabled = ref(true)
 const error = ref('')
+const showDiscovery = ref(false)
+const discoverEmail = ref('')
+const discoveryInfo = ref('')
 
 const submit = async () => {
   error.value = ''
@@ -88,8 +101,43 @@ const startSSO = async () => {
   }
 }
 
+const requestDiscovery = async () => {
+  error.value = ''
+  discoveryInfo.value = ''
+  try {
+    await $fetch('/api/auth/tenant-discovery/request', { method: 'POST', body: { email: discoverEmail.value } })
+    discoveryInfo.value = t('login.discovery_sent')
+  } catch (e: unknown) {
+    const err = e as { data?: { error?: { message?: string } } }
+    error.value = err?.data?.error?.message || t('login.error')
+  }
+}
+
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
+  const inviteToken = params.get('invite')
+  const discoverToken = params.get('discover')
+  if (inviteToken) {
+    try {
+      const res = await $fetch<{ data?: { tenantId?: string } }>('/api/public/invitations/resolve', {
+        query: { token: inviteToken }
+      })
+      const resolved = res?.data?.tenantId
+      if (resolved) tenantId.value = resolved
+    } catch (e: unknown) {
+      // ignore
+    }
+  } else if (discoverToken) {
+    try {
+      const res = await $fetch<{ data?: { tenantId?: string } }>('/api/auth/tenant-discovery/resolve', {
+        query: { token: discoverToken }
+      })
+      const resolved = res?.data?.tenantId
+      if (resolved) tenantId.value = resolved
+    } catch (e: unknown) {
+      // ignore
+    }
+  }
   const code = params.get('code')
   const state = params.get('state')
   if (!code || !state) return
@@ -205,5 +253,28 @@ form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
   text-align: center;
   background: rgba(248, 113, 113, 0.08);
   border-radius: var(--kore-radius-md);
+}
+
+.login-card__link {
+  border: 0;
+  background: transparent;
+  padding: var(--kore-space-sm) 0 0;
+  font: inherit;
+  color: var(--kore-link);
+  text-align: left;
+  cursor: pointer;
+}
+
+.login-card__discovery {
+  margin-top: var(--kore-space-md);
+  display: grid;
+  gap: var(--kore-space-sm);
+}
+
+.login-card__info {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+  text-align: center;
 }
 </style>

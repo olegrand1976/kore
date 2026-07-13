@@ -64,11 +64,15 @@
   "login": {
     "title": "Connexion",
     "subtitle": "Accédez à votre espace Kore",
+    "email": "Email",
     "password": "Mot de passe",
     "submit": "Se connecter",
     "error": "Échec de connexion",
     "sso": "Connexion SSO",
-    "sso_tenant": "Identifiant tenant (UUID)"
+    "sso_tenant": "Identifiant tenant (UUID)",
+    "find_org": "Trouver mon organisation",
+    "send_link": "M’envoyer un lien",
+    "discovery_sent": "Si cet email est connu, un lien a été envoyé."
   },
   "release_notes": {
     "open": "Ouvrir les nouveautés",

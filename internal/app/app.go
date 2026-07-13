@@ -51,6 +51,7 @@ import (
 	notifpostgres "github.com/kore/kore/internal/modules/notifications/adapters/postgres"
 	notifsmtp "github.com/kore/kore/internal/modules/notifications/adapters/smtp"
 	notifapp "github.com/kore/kore/internal/modules/notifications/app"
+	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
@@ -99,6 +100,19 @@ type Application struct {
 	migrator   *db.MigrationRunner
 	seed       *seed.Runner
 	workerStop context.CancelFunc
+}
+
+type tenantAccessEmailAdapter struct {
+	notifier notifports.TransactionalNotifier
+}
+
+func (a tenantAccessEmailAdapter) SendTenantAccessEmail(ctx context.Context, to string, subject string, body string) error {
+	return a.notifier.NotifyTransactional(ctx, notifports.TransactionalMessage{
+		Recipients:    []string{to},
+		Subject:       subject,
+		Body:          body,
+		SkipSignature: true,
+	})
 }
 
 func New(ctx context.Context, cfg config.Config) (*Application, error) {
@@ -154,6 +168,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
 	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
+	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewTenantRenderer(orgService))
@@ -228,7 +243,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	router.Route("/api/v1", func(r chi.Router) {
 		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
 		idpService := orgapp.NewIdentityProviderService(orgRepo)
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
