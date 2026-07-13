@@ -410,6 +410,27 @@
     "attach_pdf": "Joindre un PDF",
     "created": "Règle créée",
     "saved": "Règle mise à jour",
+    "howto": {
+      "title": "Comment ça marche ?",
+      "item_code": "Le code identifie la règle (unique) : utilisez un slug stable (ex. \"leave-requested\").",
+      "item_trigger": "Le déclencheur correspond à un événement métier (ex. \"tma.demand.created\").",
+      "item_frequency": "La fréquence définit quand les notifications sont envoyées (immédiat ou en batch).",
+      "item_template": "Le modèle est le contenu du message envoyé (texte)."
+    },
+    "tooltip": {
+      "code": "Identifiant unique de la règle (slug stable).",
+      "trigger": "Nom de l'événement qui déclenche l'envoi.",
+      "frequency": "Quand envoyer : immédiat ou planifié.",
+      "template": "Contenu du message (texte) envoyé aux destinataires.",
+      "attach_pdf": "Ajoute une version PDF en pièce jointe (si disponible)."
+    },
+    "hint": {
+      "code": "Exemples : \"leave-requested\", \"tma-demand-created\". Évitez les espaces et majuscules.",
+      "trigger": "Exemple : \"tma.demand.created\". Doit correspondre à un déclencheur supporté côté API.",
+      "frequency": "Immédiat : envoi au fil de l’eau. Les autres options regroupent et envoient à heure fixe.",
+      "template": "Rédigez le message tel qu’il apparaîtra dans la notification.",
+      "attach_pdf": "Active l’ajout d’une pièce jointe PDF lors de l’envoi."
+    },
     "frequency": {
       "immediate": "Immédiat",
       "morning": "Chaque matin (8h)",

@@ -410,6 +410,27 @@
     "attach_pdf": "Attach PDF",
     "created": "Rule created",
     "saved": "Rule updated",
+    "howto": {
+      "title": "How it works",
+      "item_code": "The code identifies the rule (unique): use a stable slug (e.g. \"leave-requested\").",
+      "item_trigger": "The trigger is a business event name (e.g. \"tma.demand.created\").",
+      "item_frequency": "Frequency defines when notifications are sent (immediate or batched).",
+      "item_template": "Template is the message content that will be sent (text)."
+    },
+    "tooltip": {
+      "code": "Unique rule identifier (stable slug).",
+      "trigger": "Event name that triggers the send.",
+      "frequency": "When to send: immediate or scheduled.",
+      "template": "Message content (text) sent to recipients.",
+      "attach_pdf": "Adds a PDF version as an attachment (if available)."
+    },
+    "hint": {
+      "code": "Examples: \"leave-requested\", \"tma-demand-created\". Avoid spaces and uppercase letters.",
+      "trigger": "Example: \"tma.demand.created\". Must match a trigger supported by the API.",
+      "frequency": "Immediate sends right away. Other options batch and send at a fixed time.",
+      "template": "Write the message as it should appear in the notification.",
+      "attach_pdf": "Enables adding a PDF attachment when sending."
+    },
     "frequency": {
       "immediate": "Immediate",
       "morning": "Every morning (8am)",

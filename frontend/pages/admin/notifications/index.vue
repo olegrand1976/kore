@@ -32,31 +32,64 @@
       <h3 class="section-title">
         {{ editingCode ? $t('notifications.edit_title') : $t('notifications.add_title') }}
       </h3>
+      <div class="settings-howto" role="note">
+        <p class="settings-howto__title">{{ $t('notifications.howto.title') }}</p>
+        <ul class="settings-howto__list">
+          <li>{{ $t('notifications.howto.item_code') }}</li>
+          <li>{{ $t('notifications.howto.item_trigger') }}</li>
+          <li>{{ $t('notifications.howto.item_frequency') }}</li>
+          <li>{{ $t('notifications.howto.item_template') }}</li>
+        </ul>
+      </div>
       <form class="settings-form__grid" @submit.prevent="save">
         <AppInput
           id="rule-code"
           v-model="form.code"
           :label="$t('notifications.col_code')"
+          :tooltip="$t('notifications.tooltip.code')"
           :disabled="!!editingCode"
           required
         />
-        <AppInput id="rule-trigger" v-model="form.trigger" :label="$t('notifications.col_trigger')" required />
+        <p class="settings-hint settings-hint--tight">
+          {{ $t('notifications.hint.code') }}
+        </p>
+        <AppInput
+          id="rule-trigger"
+          v-model="form.trigger"
+          :label="$t('notifications.col_trigger')"
+          :tooltip="$t('notifications.tooltip.trigger')"
+          required
+        />
+        <p class="settings-hint settings-hint--tight">
+          {{ $t('notifications.hint.trigger') }}
+        </p>
         <div class="settings-field">
           <label for="rule-frequency">{{ $t('notifications.col_frequency') }}</label>
-          <select id="rule-frequency" v-model="form.frequency" required>
+          <select id="rule-frequency" v-model="form.frequency" :title="$t('notifications.tooltip.frequency')" required>
             <option v-for="f in frequencies" :key="f" :value="f">
               {{ frequencyLabel(f) }}
             </option>
           </select>
+          <p class="settings-hint">{{ $t('notifications.hint.frequency') }}</p>
         </div>
         <div class="settings-field settings-field--full">
           <label for="rule-template">{{ $t('notifications.col_template') }}</label>
-          <textarea id="rule-template" v-model="form.template" rows="4" required />
+          <textarea
+            id="rule-template"
+            v-model="form.template"
+            :title="$t('notifications.tooltip.template')"
+            rows="4"
+            required
+          />
+          <p class="settings-hint">{{ $t('notifications.hint.template') }}</p>
         </div>
-        <label class="settings-toggle">
+        <label class="settings-toggle" :title="$t('notifications.tooltip.attach_pdf')">
           <input v-model="form.attachPdf" type="checkbox" />
           {{ $t('notifications.attach_pdf') }}
         </label>
+        <p class="settings-hint settings-hint--tight">
+          {{ $t('notifications.hint.attach_pdf') }}
+        </p>
         <div class="settings-form__actions">
           <AppButton variant="ghost" size="sm" type="button" @click="closeForm">
             {{ $t('common.cancel') }}
@@ -259,6 +292,39 @@ const save = async () => {
   display: grid;
   gap: var(--kore-space-md);
   max-width: var(--kore-form-wide-max);
+}
+
+.settings-howto {
+  margin: 0 0 var(--kore-space-lg);
+  padding: var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg-elevated);
+  max-width: var(--kore-form-wide-max);
+}
+
+.settings-howto__title {
+  margin: 0 0 var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  font-weight: 600;
+}
+
+.settings-howto__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+}
+
+.settings-hint {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+  line-height: 1.35;
+}
+
+.settings-hint--tight {
+  margin-top: calc(var(--kore-space-md) * -1);
 }
 
 .settings-field {
