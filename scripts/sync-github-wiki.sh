@@ -10,14 +10,12 @@ if [[ -z "${TOKEN}" ]]; then
   exit 1
 fi
 SOURCE_SHA="${GITHUB_SHA:-local}"
-WIKI_URL="https://x-access-token:${TOKEN}@github.com/${REPO}.wiki.git"
+WIKI_GIT_URL="${WIKI_GIT_URL:-https://github.com/${REPO}.wiki.git}"
+WIKI_URL="https://x-access-token:${TOKEN}@${WIKI_GIT_URL#https://}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
-
-git config --global user.name "github-actions[bot]"
-git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 echo "Cloning wiki repository for ${REPO}..."
 if git clone "${WIKI_URL}" "${WORK_DIR}/wiki" 2>/dev/null; then
@@ -31,6 +29,9 @@ fi
 
 WIKI="${WORK_DIR}/wiki"
 cd "${WIKI}"
+
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 # Remove previously synced trees (keep .git only).
 find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +

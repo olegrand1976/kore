@@ -90,6 +90,7 @@ jobs:
       - name: Sync documentation to project wiki
         env:
           WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+          WIKI_GIT_URL: https://github.com/${{ github.repository }}.wiki.git
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
