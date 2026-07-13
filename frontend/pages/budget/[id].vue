@@ -57,7 +57,13 @@
         <h3 class="subsection-title">{{ $t('budget.estimate_title') }}</h3>
         <form class="form" @submit.prevent="submitEstimate">
           <label class="field-label" for="est-demand">{{ $t('budget.form_demand') }}</label>
-          <select id="est-demand" v-model="estimateForm.demandId" class="field-select" required>
+          <select
+            id="est-demand"
+            v-model="estimateForm.demandId"
+            class="field-select"
+            required
+            :title="$t('budget.tooltip_demand')"
+          >
             <option value="" disabled>{{ $t('budget.form_demand_empty') }}</option>
             <option v-for="d in tmaOptions" :key="d.id" :value="d.id">{{ d.label }}</option>
           </select>
@@ -77,15 +83,35 @@
             </AppButton>
           </div>
           <p v-if="estimateRationale" class="ai-hint">{{ estimateRationale }}</p>
-          <AppInput id="est-days" v-model="estimateForm.effortDays" type="number" step="0.5" :label="$t('budget.form_effort_days')" />
-          <AppInput id="est-uo" v-model="estimateForm.effortUO" type="number" step="0.5" :label="$t('budget.form_effort_uo')" />
+          <AppInput
+            id="est-days"
+            v-model="estimateForm.effortDays"
+            type="number"
+            step="0.5"
+            :label="$t('budget.form_effort_days')"
+            :tooltip="$t('budget.tooltip_effort_days')"
+          />
+          <AppInput
+            id="est-uo"
+            v-model="estimateForm.effortUO"
+            type="number"
+            step="0.5"
+            :label="$t('budget.form_effort_uo')"
+            :tooltip="$t('budget.tooltip_effort_uo')"
+          />
           <AppButton variant="primary" size="sm" type="submit" :disabled="busy">{{ $t('budget.estimate_submit') }}</AppButton>
         </form>
 
         <h3 class="subsection-title">{{ $t('budget.quote_title') }}</h3>
         <form class="form" @submit.prevent="submitQuote">
           <label class="field-label" for="quote-demand">{{ $t('budget.form_demand') }}</label>
-          <select id="quote-demand" v-model="quoteForm.demandId" class="field-select" required>
+          <select
+            id="quote-demand"
+            v-model="quoteForm.demandId"
+            class="field-select"
+            required
+            :title="$t('budget.tooltip_demand')"
+          >
             <option value="" disabled>{{ $t('budget.form_demand_empty') }}</option>
             <option v-for="d in tmaOptions" :key="`q-${d.id}`" :value="d.id">{{ d.label }}</option>
           </select>
@@ -98,9 +124,31 @@
           >
             {{ $t('budget.view_demand') }}
           </AppButton>
-          <AppInput id="quote-amount" v-model="quoteForm.amountEur" type="number" step="0.01" min="0" :label="$t('budget.form_amount_eur')" />
-          <AppInput id="quote-days" v-model="quoteForm.effortDays" type="number" step="0.5" :label="$t('budget.form_effort_days')" />
-          <AppInput id="quote-uo" v-model="quoteForm.effortUO" type="number" step="0.5" :label="$t('budget.form_effort_uo')" />
+          <AppInput
+            id="quote-amount"
+            v-model="quoteForm.amountEur"
+            type="number"
+            step="0.01"
+            min="0"
+            :label="$t('budget.form_amount_eur')"
+            :tooltip="$t('budget.tooltip_amount_eur')"
+          />
+          <AppInput
+            id="quote-days"
+            v-model="quoteForm.effortDays"
+            type="number"
+            step="0.5"
+            :label="$t('budget.form_effort_days')"
+            :tooltip="$t('budget.tooltip_effort_days')"
+          />
+          <AppInput
+            id="quote-uo"
+            v-model="quoteForm.effortUO"
+            type="number"
+            step="0.5"
+            :label="$t('budget.form_effort_uo')"
+            :tooltip="$t('budget.tooltip_effort_uo')"
+          />
           <AppButton variant="secondary" size="sm" type="submit" :disabled="busy">{{ $t('budget.quote_submit') }}</AppButton>
         </form>
       </AppCard>

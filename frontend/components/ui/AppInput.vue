@@ -8,6 +8,10 @@ defineProps<{
   error?: string
   id?: string
   list?: string
+  tooltip?: string
+  min?: string | number
+  max?: string | number
+  step?: string | number
 }>()
 
 defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -25,6 +29,10 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
       :placeholder="placeholder"
       :required="required"
       :list="list"
+      :min="min"
+      :max="max"
+      :step="step"
+      :title="tooltip || undefined"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
     <p v-if="error" class="app-input__error" role="alert">{{ error }}</p>
