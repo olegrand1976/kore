@@ -93,11 +93,20 @@ func (s *TenantAccessService) Resolve(ctx context.Context, token string) (ports.
 		return ports.TenantAccessResolveResult{}, domain.ErrAccessTokenInvalid
 	}
 	tokenHash := hashToken(token)
-	row, ok, err := s.repo.ConsumeAccessToken(ctx, tokenHash, s.clock())
+	now := s.clock()
+	row, ok, err := s.repo.ConsumeAccessToken(ctx, tokenHash, now)
 	if err != nil {
 		return ports.TenantAccessResolveResult{}, err
 	}
 	if !ok {
+		if row.TokenHash != "" {
+			if row.UsedAt != nil {
+				return ports.TenantAccessResolveResult{}, domain.ErrAccessTokenUsed
+			}
+			if !row.ExpiresAt.After(now) {
+				return ports.TenantAccessResolveResult{}, domain.ErrAccessTokenExpired
+			}
+		}
 		return ports.TenantAccessResolveResult{}, domain.ErrAccessTokenInvalid
 	}
 	return ports.TenantAccessResolveResult{TenantID: row.TenantID, Kind: row.Kind}, nil

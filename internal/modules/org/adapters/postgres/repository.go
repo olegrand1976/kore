@@ -746,7 +746,22 @@ func (r *Repository) ConsumeAccessToken(ctx context.Context, tokenHash string, n
 	`, tokenHash, now).Scan(&row.TokenHash, &tenantID, &row.Email, &row.Kind, &row.ExpiresAt, &row.UsedAt, &row.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ports.AccessTokenRow{}, false, nil
+			// Try to load the row to distinguish invalid / used / expired.
+			var out ports.AccessTokenRow
+			var tID uuid.UUID
+			selErr := r.pool.QueryRow(ctx, `
+				SELECT token_hash, tenant_id, email, kind, expires_at, used_at, created_at
+				FROM org.access_tokens
+				WHERE token_hash = $1
+			`, tokenHash).Scan(&out.TokenHash, &tID, &out.Email, &out.Kind, &out.ExpiresAt, &out.UsedAt, &out.CreatedAt)
+			if selErr != nil {
+				if errors.Is(selErr, pgx.ErrNoRows) {
+					return ports.AccessTokenRow{}, false, nil
+				}
+				return ports.AccessTokenRow{}, false, selErr
+			}
+			out.TenantID = kernel.NewTenantID(tID)
+			return out, false, nil
 		}
 		return ports.AccessTokenRow{}, false, err
 	}

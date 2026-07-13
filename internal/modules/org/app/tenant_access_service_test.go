@@ -45,7 +45,7 @@ func (r *fakeTenantAccessRepo) ConsumeAccessToken(ctx context.Context, tokenHash
 		return ports.AccessTokenRow{}, false, nil
 	}
 	if row.UsedAt != nil || !row.ExpiresAt.After(now) {
-		return ports.AccessTokenRow{}, false, nil
+		return row, false, nil
 	}
 	used := now
 	row.UsedAt = &used
@@ -92,14 +92,35 @@ func TestTenantAccessService_Resolve_IsSingleUse(t *testing.T) {
 
 	// Second resolve should be invalid (single use).
 	_, err = svc.Resolve(context.Background(), token)
-	require.ErrorIs(t, err, domain.ErrAccessTokenInvalid)
+	require.ErrorIs(t, err, domain.ErrAccessTokenUsed)
 
 	// Control: direct consume should also reject.
 	row, ok, err := repo.ConsumeAccessToken(context.Background(), tokenHash, now)
 	require.NoError(t, err)
 	require.False(t, ok)
-	require.Equal(t, ports.AccessTokenRow{}, row)
+	require.NotEmpty(t, row.TokenHash)
 
 	require.Len(t, mailer.sentTo, 0)
+}
+
+func TestTenantAccessService_Resolve_ExpiredToken(t *testing.T) {
+	repo := &fakeTenantAccessRepo{
+		tenantsByEmail: map[string][]kernel.TenantID{},
+		tokens:         map[string]ports.AccessTokenRow{},
+	}
+	mailer := &fakeMailer{}
+	svc := NewTenantAccessService(repo, mailer)
+	now := time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC)
+	svc.clock = func() time.Time { return now }
+
+	tenant := kernel.NewTenantID(uuid.MustParse("00000000-0000-4000-8000-000000000001"))
+	token, tokenHash, err := newToken()
+	require.NoError(t, err)
+
+	expiredAt := now.Add(-1 * time.Minute)
+	require.NoError(t, repo.SaveAccessToken(context.Background(), tokenHash, tenant, "user@example.com", string(AccessTokenKindDiscovery), expiredAt))
+
+	_, err = svc.Resolve(context.Background(), token)
+	require.ErrorIs(t, err, domain.ErrAccessTokenExpired)
 }
 
