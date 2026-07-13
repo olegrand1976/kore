@@ -92,6 +92,9 @@ type OrganizationRepository interface {
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)
+	GetReleaseNotesPreferences(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ReleaseNotesPreferences, error)
+	SetReleaseNotesAutoShow(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, enabled bool) error
+	SetLastSeenVersion(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, version string) error
 	UpdateUser(ctx context.Context, u domain.User) error
 	SoftDeleteUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error
 	FindUserByLogin(ctx context.Context, tenant kernel.TenantID, login string) (domain.User, error)
@@ -177,6 +180,11 @@ type UserDetail struct {
 	DateExpiration *string    `json:"dateExpiration,omitempty"`
 }
 
+type ReleaseNotesPreferences struct {
+	LastSeenVersion *string `json:"lastSeenVersion"`
+	AutoShowEnabled bool    `json:"autoShowEnabled"`
+}
+
 type UserService interface {
 	CreateUser(ctx context.Context, cmd CreateUserCommand) (domain.User, error)
 	Authenticate(ctx context.Context, login, password string) (AuthResult, error)
@@ -186,6 +194,9 @@ type UserService interface {
 	UpdateUser(ctx context.Context, cmd UpdateUserCommand) (UserSummary, error)
 	DeactivateUser(ctx context.Context, cmd DeleteUserCommand) error
 	DeleteUser(ctx context.Context, cmd DeleteUserCommand) error
+	GetReleaseNotesPreferences(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ReleaseNotesPreferences, error)
+	SetReleaseNotesAutoShow(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, enabled bool) error
+	MarkReleaseNotesSeen(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, version string) error
 }
 
 type ClientService interface {

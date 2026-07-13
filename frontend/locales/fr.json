@@ -70,6 +70,20 @@
     "sso": "Connexion SSO",
     "sso_tenant": "Identifiant tenant (UUID)"
   },
+  "release_notes": {
+    "open": "Ouvrir les nouveautés",
+    "title": "Quoi de neuf",
+    "month": "Mois",
+    "auto_show": "Afficher automatiquement à la connexion",
+    "list_aria": "Nouveautés (commits)",
+    "empty": "Aucune nouveauté à afficher.",
+    "empty_month": "Aucun commit pour ce mois.",
+    "open_commit": "Ouvrir",
+    "refresh": "Rafraîchir",
+    "mark_seen": "Marquer comme vu",
+    "current_version": "Version courante : {version}",
+    "last_seen_version": "Dernière vue : {version}"
+  },
   "idp": {
     "title": "Fournisseurs d'identité",
     "subtitle": "Configurer Google (OIDC) — compte Gmail ou Google Workspace",

@@ -1,0 +1,105 @@
+name: Release (SemVer tag)
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine last SemVer tag
+        id: last
+        run: |
+          set -euo pipefail
+          last_tag="$(git tag --list 'v*' --sort=-v:refname | head -n 1 || true)"
+          if [ -z "${last_tag}" ]; then
+            last_tag="v0.0.0"
+          fi
+          echo "tag=${last_tag}" >> "$GITHUB_OUTPUT"
+          echo "Last tag: ${last_tag}"
+
+      - name: Collect commits since last tag
+        id: commits
+        run: |
+          set -euo pipefail
+          last="${{ steps.last.outputs.tag }}"
+          if [ "${last}" = "v0.0.0" ]; then
+            range="HEAD"
+          else
+            range="${last}..HEAD"
+          fi
+          commits="$(git log --no-merges --pretty=format:'- %s' ${range} || true)"
+          if [ -z "${commits}" ]; then
+            echo "empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "empty=false" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "text<<'EOF'"
+            echo "${commits}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Stop if no new commits
+        if: steps.commits.outputs.empty == 'true'
+        run: echo "No commits since last tag. Skipping."
+
+      - uses: actions/setup-node@v4
+        if: steps.commits.outputs.empty != 'true'
+        with:
+          node-version: '22'
+
+      - name: Decide bump (AI + fallback)
+        if: steps.commits.outputs.empty != 'true'
+        id: bump
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: |
+          set -euo pipefail
+          current="${{ steps.last.outputs.tag }}"
+          current="${current#v}"
+          json="$(node scripts/ai-semver-bump.mjs --current "${current}" --commits "${{ steps.commits.outputs.text }}")"
+          echo "${json}" > bump.json
+          next_tag="$(node -e "const j=require('./bump.json'); process.stdout.write(j.nextTag)")"
+          echo "next_tag=${next_tag}" >> "$GITHUB_OUTPUT"
+          echo "Bump decision: ${next_tag}"
+
+      - name: Create tag
+        if: steps.commits.outputs.empty != 'true'
+        run: |
+          set -euo pipefail
+          tag="${{ steps.bump.outputs.next_tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${tag}"
+          git push origin "${tag}"
+
+      - name: Create GitHub Release
+        if: steps.commits.outputs.empty != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.next_tag }}
+          body: |
+            Automated release.
+
+            SemVer decision (AI + fallback): see `bump.json` in workflow logs.
+

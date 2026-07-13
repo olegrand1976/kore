@@ -349,6 +349,21 @@ func (s *userService) DeleteUser(ctx context.Context, cmd ports.DeleteUserComman
 	return nil
 }
 
+func (s *userService) GetReleaseNotesPreferences(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ports.ReleaseNotesPreferences, error) {
+	return s.repo.GetReleaseNotesPreferences(ctx, tenant, userID)
+}
+
+func (s *userService) SetReleaseNotesAutoShow(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, enabled bool) error {
+	return s.repo.SetReleaseNotesAutoShow(ctx, tenant, userID, enabled)
+}
+
+func (s *userService) MarkReleaseNotesSeen(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, version string) error {
+	if strings.TrimSpace(version) == "" {
+		return fmt.Errorf("version is required")
+	}
+	return s.repo.SetLastSeenVersion(ctx, tenant, userID, version)
+}
+
 func userToSummary(u domain.User) ports.UserSummary {
 	return ports.UserSummary{
 		ID:      u.ID,

@@ -29,6 +29,27 @@ make up          # stack Docker
 - **Auth app** : cookie httpOnly `kore_access_token`, session `/api/auth/session`, middleware `auth.global.ts`
 - **RBAC nav** : admin = `profile === 'Administrateur'`, middleware `admin.ts`
 
+## Release notes & versioning (conventions produit)
+
+### Modale “Quoi de neuf” à la connexion
+
+- **But** : afficher une modale après connexion avec les changements du projet, **commits groupés par mois** (select).
+- **Source** : GitHub API **côté serveur** (BFF Nitro dans `frontend/server/api/**`) — ne jamais exposer de token GitHub au client.
+- **Affichage** :
+  - auto à la connexion si `last_seen_version != current_version` et si l’utilisateur n’a pas désactivé l’auto-affichage
+  - bouton dans la topbar (layout app) pour ouvrir la modale manuellement.
+- **Persistance** : préférences **par utilisateur** côté backend (DB) :
+  - `release_notes_auto_show` (bool)
+  - `last_seen_version` (texte/SemVer)
+
+### Versioning automatique (CI)
+
+- **Portée** : tags git SemVer **uniquement** (pas de bump `package.json`/`go.mod`).
+- **Décision major/minor/patch** :
+  - en GitHub Actions via **évaluation IA (OpenAI)** sur les commits depuis le dernier tag
+  - prévoir un **fallback déterministe** si l’IA échoue (ex: Conventional Commits).
+- **Sorties** : création du tag `vX.Y.Z` (et éventuellement GitHub Release + notes).
+
 ## Checklist avant PR UI
 
 1. Mobile ≤768px : nav drawer + bottom bar app, pas de sidebar seule

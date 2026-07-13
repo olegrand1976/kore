@@ -47,6 +47,9 @@ func RegisterRoutes(
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
+		pr.Get("/users/me/release-notes", getReleaseNotesPreferences(users))
+		pr.Post("/users/me/release-notes/auto-show", setReleaseNotesAutoShow(users))
+		pr.Post("/users/me/release-notes/seen", markReleaseNotesSeen(users))
 		pr.Post("/users", createUser(users, authorizer))
 		pr.Put("/users/{id}", updateUser(users, authorizer))
 		pr.Patch("/users/{id}/deactivate", deactivateUser(users, authorizer))
@@ -623,6 +626,54 @@ func deleteUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
+	}
+}
+
+func getReleaseNotesPreferences(users ports.UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		prefs, err := users.GetReleaseNotesPreferences(r.Context(), identity.TenantID, identity.UserID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, prefs)
+	}
+}
+
+func setReleaseNotesAutoShow(users ports.UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if err := users.SetReleaseNotesAutoShow(r.Context(), identity.TenantID, identity.UserID, req.Enabled); err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]any{"status": "ok"})
+	}
+}
+
+func markReleaseNotesSeen(users ports.UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		var req struct {
+			Version string `json:"version"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if err := users.MarkReleaseNotesSeen(r.Context(), identity.TenantID, identity.UserID, req.Version); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]any{"status": "ok"})
 	}
 }
 

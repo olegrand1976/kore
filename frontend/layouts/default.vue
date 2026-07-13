@@ -31,6 +31,14 @@
         <div class="topbar__actions">
           <ThemeToggle variant="chip" />
           <button type="button" class="chip-btn" aria-label="Language" @click="toggleLocale">{{ locale === 'fr' ? 'EN' : 'FR' }}</button>
+          <button
+            type="button"
+            class="chip-btn"
+            :aria-label="$t('release_notes.open')"
+            @click="openReleaseNotes()"
+          >
+            <AppIcon name="new_releases" />
+          </button>
           <AppButton variant="ghost" size="sm" class="topbar__logout" @click="logout">{{ $t('nav.logout') }}</AppButton>
         </div>
       </header>
@@ -39,6 +47,19 @@
         <slot />
       </main>
     </div>
+
+    <AppReleaseNotesModal
+      v-model:open="releaseNotesOpen"
+      v-model:selectedMonthKey="releaseNotesSelectedMonthKey"
+      :months="releaseNotesMonths"
+      :loading="releaseNotesLoading"
+      :current-version="releaseNotesMeta?.currentVersion"
+      :last-seen-version="releaseNotesMeta?.lastSeenVersion"
+      :auto-show-enabled="releaseNotesAutoShowEnabled"
+      @update:autoShowEnabled="onUpdateReleaseNotesAutoShow"
+      @refresh="refreshReleaseNotes"
+      @markSeen="markReleaseNotesSeen"
+    />
 
     <AppBottomNav :items="bottomNavItems" />
 
@@ -74,15 +95,103 @@ const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
+const { apiFetch } = useApiFetch()
 const drawerOpen = ref(false)
 
 onMounted(async () => {
   await Promise.all([fetchBranding(), fetchSession(), fetchEntitlements()])
+  await maybeAutoOpenReleaseNotes()
 })
 
 const toggleLocale = () => setLocale(locale.value === 'fr' ? 'en' : 'fr')
 
 const onToggleTheme = () => toggleTheme()
+
+type ReleaseNotesMeta = {
+  currentVersion: string
+  lastSeenVersion: string | null
+  autoShowEnabled: boolean
+}
+
+type ReleaseNotesMonth = {
+  key: string
+  label: string
+  items: Array<{
+    sha: string
+    shortSha: string
+    message: string
+    authorName?: string
+    date: string
+    htmlUrl?: string
+  }>
+}
+
+const releaseNotesOpen = ref(false)
+const releaseNotesLoading = ref(false)
+const releaseNotesMeta = ref<ReleaseNotesMeta | null>(null)
+const releaseNotesMonths = ref<ReleaseNotesMonth[]>([])
+const releaseNotesSelectedMonthKey = ref('')
+const releaseNotesAutoShowEnabled = ref(true)
+
+const fetchReleaseNotesMeta = async () => {
+  releaseNotesMeta.value = await apiFetch<ReleaseNotesMeta>('/api/release-notes/meta')
+  releaseNotesAutoShowEnabled.value = releaseNotesMeta.value.autoShowEnabled
+}
+
+const fetchReleaseNotesCommits = async () => {
+  const res = await apiFetch<{ months: ReleaseNotesMonth[]; defaultMonthKey: string }>('/api/release-notes/commits')
+  releaseNotesMonths.value = res.months
+  releaseNotesSelectedMonthKey.value = res.defaultMonthKey
+}
+
+const refreshReleaseNotes = async () => {
+  releaseNotesLoading.value = true
+  try {
+    await fetchReleaseNotesMeta()
+    await fetchReleaseNotesCommits()
+  } finally {
+    releaseNotesLoading.value = false
+  }
+}
+
+const openReleaseNotes = async () => {
+  releaseNotesOpen.value = true
+  if (releaseNotesMonths.value.length > 0) return
+  await refreshReleaseNotes()
+}
+
+const maybeAutoOpenReleaseNotes = async () => {
+  try {
+    await fetchReleaseNotesMeta()
+    const meta = releaseNotesMeta.value
+    if (!meta) return
+    if (!meta.autoShowEnabled) return
+    if (meta.lastSeenVersion === meta.currentVersion) return
+    await openReleaseNotes()
+  } catch {
+    // silent: release notes should never block app boot
+  }
+}
+
+const onUpdateReleaseNotesAutoShow = async (enabled: boolean) => {
+  releaseNotesAutoShowEnabled.value = enabled
+  try {
+    await apiFetch('/api/release-notes/auto-show', { method: 'POST', body: { enabled } })
+  } catch {
+    // best effort
+  }
+}
+
+const markReleaseNotesSeen = async () => {
+  try {
+    await apiFetch('/api/release-notes/mark-seen', { method: 'POST' })
+    if (releaseNotesMeta.value) {
+      releaseNotesMeta.value.lastSeenVersion = releaseNotesMeta.value.currentVersion
+    }
+  } finally {
+    releaseNotesOpen.value = false
+  }
+}
 
 type NavItem = {
   to: string

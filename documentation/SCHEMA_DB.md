@@ -178,6 +178,8 @@ Organisation, identité, RBAC.
 | `date_activation` | DATE | NOT NULL, DEFAULT CURRENT_DATE |
 | `date_expiration` | DATE | |
 | `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `release_notes_auto_show` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `last_seen_version` | TEXT | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`

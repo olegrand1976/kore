@@ -282,6 +282,54 @@ func (r *Repository) FindUserDetailByID(ctx context.Context, tenant kernel.Tenan
 	return detail, nil
 }
 
+func (r *Repository) GetReleaseNotesPreferences(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ports.ReleaseNotesPreferences, error) {
+	var prefs ports.ReleaseNotesPreferences
+	var lastSeen *string
+	err := r.pool.QueryRow(ctx, `
+		SELECT last_seen_version, COALESCE(release_notes_auto_show, TRUE)
+		FROM org.users
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), userID).Scan(&lastSeen, &prefs.AutoShowEnabled)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ports.ReleaseNotesPreferences{}, fmt.Errorf("user not found: %w", err)
+		}
+		return ports.ReleaseNotesPreferences{}, err
+	}
+	prefs.LastSeenVersion = lastSeen
+	return prefs, nil
+}
+
+func (r *Repository) SetReleaseNotesAutoShow(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, enabled bool) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users
+		SET release_notes_auto_show = $3
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), userID, enabled)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+	}
+	return nil
+}
+
+func (r *Repository) SetLastSeenVersion(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, version string) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users
+		SET last_seen_version = $3
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), userID, version)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+	}
+	return nil
+}
+
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE org.users

@@ -70,6 +70,20 @@
     "sso": "SSO sign in",
     "sso_tenant": "Tenant ID (UUID)"
   },
+  "release_notes": {
+    "open": "Open what's new",
+    "title": "What's new",
+    "month": "Month",
+    "auto_show": "Show automatically at sign in",
+    "list_aria": "What's new (commits)",
+    "empty": "Nothing new to show.",
+    "empty_month": "No commits for this month.",
+    "open_commit": "Open",
+    "refresh": "Refresh",
+    "mark_seen": "Mark as seen",
+    "current_version": "Current version: {version}",
+    "last_seen_version": "Last seen: {version}"
+  },
   "idp": {
     "title": "Identity providers",
     "subtitle": "Configure Google (OIDC) — Gmail or Google Workspace account",
