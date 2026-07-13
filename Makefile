@@ -210,3 +210,8 @@ gcp-domain:
 gcp-smoke:
 	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
 	bash infra/gcp/smoke-test.sh
+
+## SSO Google : applique client_id/secret (.env.oidc) local + GCP
+setup-oidc-google:
+	chmod +x scripts/setup-google-oidc.sh infra/gcp/apply-oidc-config.sh
+	bash scripts/setup-google-oidc.sh

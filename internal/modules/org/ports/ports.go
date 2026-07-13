@@ -87,8 +87,11 @@ type OrganizationRepository interface {
 	SaveSite(ctx context.Context, s domain.Site) error
 	SaveService(ctx context.Context, s domain.Service) error
 	SaveApplication(ctx context.Context, a domain.Application) error
+	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
+	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)
 	UpdateUser(ctx context.Context, u domain.User) error
 	SoftDeleteUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error
 	FindUserByLogin(ctx context.Context, tenant kernel.TenantID, login string) (domain.User, error)
@@ -97,6 +100,7 @@ type OrganizationRepository interface {
 	CountActiveUsers(ctx context.Context, tenant kernel.TenantID) (int, error)
 	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error)
 	SaveClient(ctx context.Context, c domain.Client) error
+	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
@@ -139,6 +143,8 @@ type OrganizationService interface {
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
+	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	UpdateSocieteBranding(ctx context.Context, cmd UpdateSocieteBrandingCommand) (domain.Societe, error)
@@ -147,8 +153,28 @@ type OrganizationService interface {
 type UserSummary struct {
 	ID      uuid.UUID `json:"id"`
 	Login   string    `json:"login"`
+	Prenom  string    `json:"prenom"`
+	Nom     string    `json:"nom"`
 	Profile string    `json:"profil"`
 	Active  bool      `json:"active"`
+}
+
+type UserDetail struct {
+	ID             uuid.UUID  `json:"id"`
+	Login          string     `json:"login"`
+	Prenom         string     `json:"prenom"`
+	Nom            string     `json:"nom"`
+	Email          string     `json:"email,omitempty"`
+	Profile        string     `json:"profil"`
+	Active         bool       `json:"active"`
+	Langue         string     `json:"langue"`
+	TypeCompte     string     `json:"typeCompte"`
+	CraRequis      bool       `json:"craRequis"`
+	SalarieETT     bool       `json:"salarieETT"`
+	EquipeID       *uuid.UUID `json:"equipeId,omitempty"`
+	EquipeLibelle  string     `json:"equipeLibelle,omitempty"`
+	DateActivation string     `json:"dateActivation"`
+	DateExpiration *string    `json:"dateExpiration,omitempty"`
 }
 
 type UserService interface {
@@ -156,6 +182,7 @@ type UserService interface {
 	Authenticate(ctx context.Context, login, password string) (AuthResult, error)
 	RefreshSession(ctx context.Context, refreshToken string) (authx.TokenPair, error)
 	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]UserSummary, error)
+	GetUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)
 	UpdateUser(ctx context.Context, cmd UpdateUserCommand) (UserSummary, error)
 	DeactivateUser(ctx context.Context, cmd DeleteUserCommand) error
 	DeleteUser(ctx context.Context, cmd DeleteUserCommand) error
@@ -163,6 +190,7 @@ type UserService interface {
 
 type ClientService interface {
 	CreateClient(ctx context.Context, cmd CreateClientCommand) (domain.Client, error)
+	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 }
 

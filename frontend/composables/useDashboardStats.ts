@@ -11,6 +11,7 @@ import {
 } from '~/composables/useKpiMetrics'
 import { currentMonthKey } from '~/composables/useCraStatus'
 import type { BudgetItem } from '~/composables/useBudget'
+import type { OrgApplication } from '~/composables/useApplications'
 import type { LeaveRequest } from '~/composables/useLeave'
 import type { TmaDemand } from '~/composables/useTma'
 import type { ModuleCode } from '~/composables/useEntitlements'
@@ -69,12 +70,17 @@ export function useDashboardStats() {
   const { list: listLeaves } = useLeave()
   const { list: listTma } = useTma()
   const { list: listBudgets, pickId: pickBudgetId } = useBudget()
+  const { list: listApplications, appById, pickAppLabel } = useApplications()
+  const { budgetTypeLabel, pickApplicationId } = useBudgetDisplay()
   const { locale, t } = useI18n()
 
   const tmaStatusLabel = (status: string) => t(`dashboard.charts.status.tma.${status}`, status)
   const leaveStatusLabel = (status: string) => t(`dashboard.charts.status.leave.${status}`, status)
-  const budgetLabel = (b: BudgetItem) => {
-    const type = b.type ?? b.Type ?? 'budget'
+  const budgetLabel = (b: BudgetItem, apps: Map<string, OrgApplication>) => {
+    const appId = pickApplicationId(b)
+    const appLabel = pickAppLabel(apps.get(appId))
+    if (appLabel) return appLabel
+    const type = budgetTypeLabel(b.type ?? b.Type ?? 'budget')
     const id = pickBudgetId(b)
     return id ? `${type} · ${id.slice(0, 8)}` : type
   }
@@ -131,12 +137,13 @@ export function useDashboardStats() {
 
     if (hasModule('budget')) {
       tasks.push(
-        listBudgets()
-          .then((items) => {
+        Promise.all([listBudgets(), listApplications()])
+          .then(([items, applications]) => {
+            const apps = appById(applications)
             const m = budgetMetrics(items)
             stats.budgetOverrun = m.overrun
             stats.budgetConsumptionPct = consumptionPct(m.consumedDays, m.plannedDays, false)
-            charts.budgetConsumption = budgetConsumptionSeries(items as BudgetItem[], budgetLabel)
+            charts.budgetConsumption = budgetConsumptionSeries(items as BudgetItem[], (b) => budgetLabel(b, apps))
           })
           .catch(() => {
             errors.budget = true

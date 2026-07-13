@@ -96,9 +96,13 @@ type TimesheetSummary struct {
 	ID             uuid.UUID       `json:"id"`
 	UserID         uuid.UUID       `json:"userId"`
 	UserLogin      string          `json:"userLogin"`
+	UserPrenom     string          `json:"userPrenom"`
+	UserNom        string          `json:"userNom"`
 	Month          Month           `json:"month"`
 	Status         TimesheetStatus `json:"status"`
 	CommercialInfo CommercialInfo  `json:"commercialInfo"`
+	ClientID       *uuid.UUID      `json:"clientId,omitempty"`
+	MissionID      *uuid.UUID      `json:"missionId,omitempty"`
 	TotalMinutes   int             `json:"totalMinutes"`
 	WeeksSubmitted int             `json:"weeksSubmitted"`
 	UpdatedAt      time.Time       `json:"updatedAt"`

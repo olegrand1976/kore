@@ -61,6 +61,8 @@ type User struct {
 	TenantID     kernel.TenantID
 	EquipeID     *uuid.UUID
 	Login        Login
+	Prenom       string
+	Nom          string
 	Email        string
 	PasswordHash string
 	Profile      Profile
@@ -119,18 +121,31 @@ type Service struct {
 }
 
 type Application struct {
-	ID        uuid.UUID
-	TenantID  kernel.TenantID
-	ServiceID uuid.UUID
-	Libelle   string
+	ID               uuid.UUID       `json:"id"`
+	TenantID         kernel.TenantID `json:"tenantId"`
+	ServiceID        uuid.UUID       `json:"serviceId"`
+	Libelle          string          `json:"libelle"`
+	Proprietaire     string          `json:"proprietaire,omitempty"`
+	ModeFacturation  string          `json:"modeFacturation,omitempty"`
+	UOActivee        bool            `json:"uoActivee"`
+}
+
+type ClientContact struct {
+	Nom       string `json:"nom"`
+	Prenom    string `json:"prenom"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Telephone string `json:"telephone"`
 }
 
 type Client struct {
-	ID            uuid.UUID
-	TenantID      kernel.TenantID
-	RaisonSociale string
-	TVA           string
-	Archived      bool
+	ID            uuid.UUID       `json:"id"`
+	TenantID      kernel.TenantID `json:"tenantId"`
+	RaisonSociale string          `json:"raisonSociale"`
+	TVA           string          `json:"tva"`
+	Contacts      []ClientContact `json:"contacts"`
+	Archived      bool            `json:"archived"`
+	CreatedAt     time.Time       `json:"createdAt"`
 }
 
 type Tenant struct {

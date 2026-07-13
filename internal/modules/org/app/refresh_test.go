@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/org/domain"
+	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/pkg/kernel"
 )
@@ -31,9 +32,18 @@ func (r refreshUserRepo) GetSociete(context.Context, kernel.TenantID, uuid.UUID)
 func (r refreshUserRepo) SaveSite(context.Context, domain.Site) error { return nil }
 func (r refreshUserRepo) SaveService(context.Context, domain.Service) error { return nil }
 func (r refreshUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
+func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
+	return nil, nil
+}
+func (r refreshUserRepo) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
+	return domain.Application{}, domain.ErrUserNotFound
+}
 func (r refreshUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {
 	return r.user, r.err
+}
+func (r refreshUserRepo) FindUserDetailByID(context.Context, kernel.TenantID, uuid.UUID) (ports.UserDetail, error) {
+	return ports.UserDetail{}, domain.ErrUserNotFound
 }
 func (r refreshUserRepo) UpdateUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) SoftDeleteUser(context.Context, kernel.TenantID, uuid.UUID, time.Time) error {
@@ -57,6 +67,9 @@ func (r refreshUserRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.U
 func (r refreshUserRepo) SaveClient(context.Context, domain.Client) error { return nil }
 func (r refreshUserRepo) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
+}
+func (r refreshUserRepo) GetClient(context.Context, kernel.TenantID, uuid.UUID) (domain.Client, error) {
+	return domain.Client{}, domain.ErrUserNotFound
 }
 func (r refreshUserRepo) GetPermissions(context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error) {
 	return nil, nil

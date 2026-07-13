@@ -4,7 +4,7 @@
     <AppCard padding="lg">
       <form class="idp-form" @submit.prevent="save">
         <AppInput id="idp-name" v-model="form.name" :label="$t('idp.name')" required />
-        <AppInput id="idp-issuer" v-model="form.issuer" :label="$t('idp.issuer')" placeholder="https://login.microsoftonline.com/..." required />
+        <AppInput id="idp-issuer" v-model="form.issuer" :label="$t('idp.issuer')" placeholder="https://accounts.google.com" required />
         <AppInput id="idp-client-id" v-model="form.clientId" :label="$t('idp.client_id')" required />
         <AppInput id="idp-client-secret" v-model="form.clientSecret" type="password" :label="$t('idp.client_secret')" />
         <AppInput id="idp-jwks" v-model="form.jwksUri" :label="$t('idp.jwks_uri')" />
@@ -29,11 +29,11 @@ const message = ref('')
 const idpId = ref(crypto.randomUUID())
 
 const form = reactive({
-  name: 'Azure AD',
-  issuer: '',
+  name: 'Google',
+  issuer: 'https://accounts.google.com',
   clientId: '',
   clientSecret: '',
-  jwksUri: '',
+  jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
   scopes: 'openid profile email',
   defaultProfile: 'Collaborateur',
   enabled: false

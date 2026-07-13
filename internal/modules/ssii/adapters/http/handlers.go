@@ -25,12 +25,14 @@ func RegisterRoutes(r chi.Router, svc ports.SSIIService, tokens *authx.TokenIssu
 
 func listMissions(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "ssii", authx.ActionRead) {
+		canRead := authorizer.Can(r.Context(), "ssii", authx.ActionRead)
+		canReadCra := authorizer.Can(r.Context(), "cra", authx.ActionRead)
+		if !canRead && !canReadCra {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		items, err := svc.List(r.Context(), identity.TenantID)
+		items, err := svc.ListSummaries(r.Context(), identity.TenantID)
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
@@ -79,7 +81,9 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 
 func getMission(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "ssii", authx.ActionRead) {
+		canRead := authorizer.Can(r.Context(), "ssii", authx.ActionRead)
+		canReadCra := authorizer.Can(r.Context(), "cra", authx.ActionRead)
+		if !canRead && !canReadCra {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
@@ -89,7 +93,7 @@ func getMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Handler
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		m, err := svc.Get(r.Context(), identity.TenantID, id)
+		m, err := svc.GetDetail(r.Context(), identity.TenantID, id)
 		if err != nil {
 			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 			return

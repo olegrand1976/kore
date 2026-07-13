@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -166,12 +167,77 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 	return err
 }
 
+func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, service_id, libelle,
+		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE)
+		FROM org.applications
+		WHERE tenant_id = $1
+		ORDER BY libelle
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.Application
+	for rows.Next() {
+		app, err := scanApplicationRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, app)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, service_id, libelle,
+		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE)
+		FROM org.applications
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), id)
+	return scanApplication(row)
+}
+
+func scanApplication(row pgx.Row) (domain.Application, error) {
+	var app domain.Application
+	var tenantID uuid.UUID
+	var proprietaire, modeFacturation string
+	if err := row.Scan(
+		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
+		&proprietaire, &modeFacturation, &app.UOActivee,
+	); err != nil {
+		return domain.Application{}, err
+	}
+	app.TenantID = kernel.NewTenantID(tenantID)
+	app.Proprietaire = proprietaire
+	app.ModeFacturation = modeFacturation
+	return app, nil
+}
+
+func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
+	var app domain.Application
+	var tenantID uuid.UUID
+	var proprietaire, modeFacturation string
+	if err := rows.Scan(
+		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
+		&proprietaire, &modeFacturation, &app.UOActivee,
+	); err != nil {
+		return domain.Application{}, err
+	}
+	app.TenantID = kernel.NewTenantID(tenantID)
+	app.Proprietaire = proprietaire
+	app.ModeFacturation = modeFacturation
+	return app, nil
+}
+
 func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO org.users (
-			id, tenant_id, equipe_id, login, email, password_hash, profil, date_activation, date_expiration, active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), nullString(u.Email), u.PasswordHash, string(u.Profile),
+			id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), u.Prenom, u.Nom, nullString(u.Email), u.PasswordHash, string(u.Profile),
 		u.Period.Activation, u.Period.Expiration, u.Active)
 	return err
 }
@@ -183,12 +249,45 @@ func (r *Repository) FindUserByID(ctx context.Context, tenant kernel.TenantID, i
 	`, tenant.UUID(), id))
 }
 
+func (r *Repository) FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (ports.UserDetail, error) {
+	var detail ports.UserDetail
+	var profile string
+	var expiration *time.Time
+	var activation time.Time
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			u.id, u.login, u.prenom, u.nom, COALESCE(u.email, ''), u.profil, u.active,
+			u.langue, u.type_compte, u.cra_requis, u.salarie_ett,
+			u.equipe_id, COALESCE(e.libelle, ''), u.date_activation, u.date_expiration
+		FROM org.users u
+		LEFT JOIN org.equipes e ON e.id = u.equipe_id
+		WHERE u.tenant_id = $1 AND u.id = $2 AND u.deleted_at IS NULL
+	`, tenant.UUID(), id).Scan(
+		&detail.ID, &detail.Login, &detail.Prenom, &detail.Nom, &detail.Email, &profile, &detail.Active,
+		&detail.Langue, &detail.TypeCompte, &detail.CraRequis, &detail.SalarieETT,
+		&detail.EquipeID, &detail.EquipeLibelle, &activation, &expiration,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ports.UserDetail{}, fmt.Errorf("user not found: %w", err)
+		}
+		return ports.UserDetail{}, err
+	}
+	detail.Profile = profile
+	detail.DateActivation = activation.Format("2006-01-02")
+	if expiration != nil {
+		formatted := expiration.Format("2006-01-02")
+		detail.DateExpiration = &formatted
+	}
+	return detail, nil
+}
+
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE org.users
-		SET profil = $3, password_hash = $4, active = $5
+		SET profil = $3, password_hash = $4, active = $5, email = $6
 		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
-	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active)
+	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active, nullString(u.Email))
 	if err != nil {
 		return err
 	}
@@ -270,9 +369,31 @@ func (r *Repository) SaveClient(ctx context.Context, c domain.Client) error {
 	return err
 }
 
+func (r *Repository) GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error) {
+	var c domain.Client
+	var tenantID uuid.UUID
+	var contacts []byte
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at
+		FROM org.clients WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
+	`, tenant.UUID(), id).Scan(&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Client{}, fmt.Errorf("client not found: %w", err)
+		}
+		return domain.Client{}, err
+	}
+	c.TenantID = kernel.NewTenantID(tenantID)
+	if len(contacts) > 0 {
+		_ = json.Unmarshal(contacts, &c.Contacts)
+	}
+	return c, nil
+}
+
 func (r *Repository) ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, raison_sociale, tva, archived FROM org.clients WHERE tenant_id = $1 AND archived = FALSE
+		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at
+		FROM org.clients WHERE tenant_id = $1 AND archived = FALSE
 	`, tenant.UUID())
 	if err != nil {
 		return nil, err
@@ -282,10 +403,14 @@ func (r *Repository) ListClients(ctx context.Context, tenant kernel.TenantID) ([
 	for rows.Next() {
 		var c domain.Client
 		var tenantID uuid.UUID
-		if err := rows.Scan(&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &c.Archived); err != nil {
+		var contacts []byte
+		if err := rows.Scan(&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		c.TenantID = kernel.NewTenantID(tenantID)
+		if len(contacts) > 0 {
+			_ = json.Unmarshal(contacts, &c.Contacts)
+		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -367,7 +492,7 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var profile string
 	var email *string
 	var expiration *time.Time
-	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &email, &u.PasswordHash, &profile,
+	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &u.Prenom, &u.Nom, &email, &u.PasswordHash, &profile,
 		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -385,7 +510,7 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	return u, nil
 }
 
-const userSelectCols = `id, tenant_id, equipe_id, login, email, password_hash, profil, date_activation, date_expiration, active, deleted_at`
+const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, deleted_at`
 
 func (r *Repository) SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error {
 	_, err := r.pool.Exec(ctx, `

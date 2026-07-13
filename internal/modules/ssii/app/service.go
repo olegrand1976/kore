@@ -21,8 +21,44 @@ func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Mi
 	return s.repo.ListMissions(ctx, tenant)
 }
 
+func (s *service) ListSummaries(ctx context.Context, tenant kernel.TenantID) ([]ports.MissionSummary, error) {
+	return s.repo.ListMissionSummaries(ctx, tenant)
+}
+
 func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error) {
 	return s.repo.GetMission(ctx, tenant, id)
+}
+
+func (s *service) GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (ports.MissionDetail, error) {
+	m, err := s.repo.GetMission(ctx, tenant, id)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	clientName, err := s.repo.GetClientName(ctx, tenant, m.ClientID)
+	if err != nil {
+		clientName = ""
+	}
+	collaborators, err := s.repo.ListMissionCollaborators(ctx, tenant, m.ID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if collaborators == nil {
+		collaborators = []ports.MissionCollaborator{}
+	}
+	return ports.MissionDetail{
+		ID:            m.ID,
+		ClientID:      m.ClientID,
+		ClientName:    clientName,
+		Status:        string(m.Status),
+		StartDate:     m.StartDate,
+		EndDate:       m.EndDate,
+		TJMAmount:     m.TJMAmount,
+		Currency:      m.Currency,
+		Technologies:  m.Technologies,
+		ClientContact: m.ClientContact,
+		CreatedAt:     m.CreatedAt,
+		Collaborators: collaborators,
+	}, nil
 }
 
 func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (domain.Mission, error) {

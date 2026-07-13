@@ -13,6 +13,7 @@ import (
 const (
 	devTenantName = "Kore Demo"
 	devAdminLogin = "ADM_admin"
+	devAdminEmail = "lalouviere.it.sc@gmail.com"
 	devAdminPass  = "Admin123!"
 )
 
@@ -61,7 +62,10 @@ func (s *Seeder) Run(ctx context.Context) error {
 		return err
 	}
 	if exists {
-		log.Println("dev seed: admin already exists, skipping user creation")
+		if err := s.ensureAdminEmail(ctx, tenantID); err != nil {
+			return err
+		}
+		log.Println("dev seed: admin already exists, email ensured")
 		return nil
 	}
 	_, err = s.users.CreateUser(ctx, ports.CreateUserCommand{
@@ -73,6 +77,18 @@ func (s *Seeder) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := s.ensureAdminEmail(ctx, tenantID); err != nil {
+		return err
+	}
 	log.Printf("dev seed: tenant %s admin %s created", devTenantID, devAdminLogin)
 	return nil
+}
+
+func (s *Seeder) ensureAdminEmail(ctx context.Context, tenantID kernel.TenantID) error {
+	user, err := s.repo.FindUserByLogin(ctx, tenantID, devAdminLogin)
+	if err != nil {
+		return err
+	}
+	user.Email = devAdminEmail
+	return s.repo.UpdateUser(ctx, user)
 }

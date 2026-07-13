@@ -11,6 +11,7 @@ coverage.html
 .env.local
 .env.gemini
 .env.gcp
+.env.oidc
 
 # Node / Nuxt
 frontend/node_modules/

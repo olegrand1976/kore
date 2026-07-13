@@ -53,8 +53,8 @@ export function useBudget() {
     return $fetch(`/api/budget/budgets/${budgetId}/quotes`, { method: 'POST', body: payload })
   }
 
-  const recompute = async (budgetId: string) => {
-    return $fetch(`/api/budget/budgets/${budgetId}/recompute`, { method: 'POST' })
+  const recompute = async (budgetId: string, period: { start: string; end: string }) => {
+    return $fetch(`/api/budget/budgets/${budgetId}/recompute`, { method: 'POST', body: period })
   }
 
   const pickId = (b: BudgetItem) => b.id ?? b.ID ?? ''

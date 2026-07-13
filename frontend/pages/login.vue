@@ -33,7 +33,7 @@ definePageMeta({ layout: 'public' })
 const { t } = useI18n()
 const login = ref('ADM_admin')
 const password = ref('Admin123!')
-const tenantId = ref('')
+const tenantId = ref('00000000-0000-4000-8000-000000000001')
 const ssoEnabled = ref(true)
 const error = ref('')
 

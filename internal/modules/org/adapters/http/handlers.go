@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -42,12 +43,16 @@ func RegisterRoutes(
 		pr.Post("/sites", createSite(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
 		pr.Post("/applications", createApplication(org, authorizer))
+		pr.Get("/applications", listApplications(org, authorizer))
+		pr.Get("/applications/{id}", getApplication(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
+		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Post("/users", createUser(users, authorizer))
 		pr.Put("/users/{id}", updateUser(users, authorizer))
 		pr.Patch("/users/{id}/deactivate", deactivateUser(users, authorizer))
 		pr.Delete("/users/{id}", deleteUser(users, authorizer))
 		pr.Get("/clients", listClients(clients))
+		pr.Get("/clients/{id}", getClient(clients, authorizer))
 		pr.Post("/clients", createClient(clients, authorizer))
 	})
 }
@@ -247,6 +252,50 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 	}
 }
 
+func canReadApplications(ctx context.Context, authorizer authx.Authorizer) bool {
+	return authorizer.Can(ctx, "org", authx.ActionRead) ||
+		authorizer.Can(ctx, "budget", authx.ActionRead) ||
+		authorizer.Can(ctx, "tma", authx.ActionRead) ||
+		authorizer.Can(ctx, "cra", authx.ActionRead)
+}
+
+func listApplications(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !canReadApplications(r.Context(), authorizer) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := org.ListApplications(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func getApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !canReadApplications(r.Context(), authorizer) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		appID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := org.GetApplication(r.Context(), identity.TenantID, appID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "application not found")
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
+	}
+}
+
 func createUser(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
@@ -297,6 +346,29 @@ func listClients(clients ports.ClientService) http.HandlerFunc {
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func getClient(clients ports.ClientService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) &&
+			!authorizer.Can(r.Context(), "cra", authx.ActionRead) &&
+			!authorizer.Can(r.Context(), "ssii", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		clientID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid client id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := clients.GetClient(r.Context(), identity.TenantID, clientID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "client not found")
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
 	}
 }
 
@@ -423,7 +495,8 @@ func listUsers(users ports.UserService, authorizer authx.Authorizer) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		canRead := authorizer.Can(r.Context(), "org", authx.ActionRead)
 		canValidateConges := authorizer.Can(r.Context(), "conges", authx.ActionValidate)
-		if !canRead && !canValidateConges {
+		canValidateCra := authorizer.Can(r.Context(), "cra", authx.ActionValidate)
+		if !canRead && !canValidateConges && !canValidateCra {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
@@ -434,6 +507,35 @@ func listUsers(users ports.UserService, authorizer authx.Authorizer) http.Handle
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func getUser(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		canRead := authorizer.Can(r.Context(), "org", authx.ActionRead)
+		canValidateConges := authorizer.Can(r.Context(), "conges", authx.ActionValidate)
+		canValidateCra := authorizer.Can(r.Context(), "cra", authx.ActionValidate)
+		canReadCra := authorizer.Can(r.Context(), "cra", authx.ActionRead)
+		if !canRead && !canValidateConges && !canValidateCra && !canReadCra {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		userID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid user id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := users.GetUser(r.Context(), identity.TenantID, userID)
+		if err != nil {
+			if errors.Is(err, domain.ErrUserNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
 	}
 }
 

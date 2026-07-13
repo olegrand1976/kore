@@ -6,7 +6,13 @@ const (
 	TenantName = "Kore Demo"
 
 	AdminLogin      = "ADM_admin"
+	AdminEmail      = "lalouviere.it.sc@gmail.com"
 	AdminPassword   = "Admin123!"
+
+	GoogleIdPName  = "Google"
+	GoogleIssuer   = "https://accounts.google.com"
+	GoogleJWKSURI  = "https://www.googleapis.com/oauth2/v3/certs"
+	GoogleScopes   = "openid profile email"
 	ManagerLogin    = "MGR_manager"
 	ManagerPassword = "Manager123!"
 	CollabLogin     = "COL_collab"
@@ -43,4 +49,5 @@ var (
 	DemoEquipeID  = uuid.MustParse("00000000-0000-4000-8000-000000000014")
 	DemoApp2ID    = uuid.MustParse("00000000-0000-4000-8000-000000000015")
 	DemoEquipe2ID = uuid.MustParse("00000000-0000-4000-8000-000000000016")
+	DemoGoogleIdPID = uuid.MustParse("00000000-0000-4000-8000-000000000020")
 )

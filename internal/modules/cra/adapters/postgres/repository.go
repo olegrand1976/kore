@@ -207,23 +207,9 @@ func (r *Repository) ListByTenant(ctx context.Context, tenant kernel.TenantID, l
 }
 
 func (r *Repository) ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, limit int) ([]domain.TimesheetSummary, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT
-			t.id,
-			t.user_id,
-			u.login,
-			t.month,
-			t.status,
-			t.commercial_info,
-			t.updated_at,
-			COALESCE(SUM(tl.duration), 0) AS total_minutes,
-			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted
-		FROM cra.timesheets t
-		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
-		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
-		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
 		WHERE t.tenant_id = $1 AND t.user_id = $2
-		GROUP BY t.id, u.login
+		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY t.month DESC, u.login ASC
 		LIMIT $3
 	`, tenant.UUID(), userID, limit)
@@ -235,23 +221,9 @@ func (r *Repository) ListSummariesByUser(ctx context.Context, tenant kernel.Tena
 }
 
 func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error) {
-	rows, err := r.pool.Query(ctx, `
-		SELECT
-			t.id,
-			t.user_id,
-			u.login,
-			t.month,
-			t.status,
-			t.commercial_info,
-			t.updated_at,
-			COALESCE(SUM(tl.duration), 0) AS total_minutes,
-			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted
-		FROM cra.timesheets t
-		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
-		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
-		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
 		WHERE t.tenant_id = $1
-		GROUP BY t.id, u.login
+		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY t.month DESC, u.login ASC
 		LIMIT $2
 	`, tenant.UUID(), limit)
@@ -262,6 +234,41 @@ func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.Te
 	return scanTimesheetSummaries(rows)
 }
 
+const timesheetSummarySelect = `
+		SELECT
+			t.id,
+			t.user_id,
+			u.login,
+			u.prenom,
+			u.nom,
+			t.month,
+			t.status,
+			t.commercial_info,
+			t.updated_at,
+			COALESCE(SUM(tl.duration), 0) AS total_minutes,
+			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
+			(
+				SELECT c.id FROM org.clients c
+				WHERE c.tenant_id = t.tenant_id
+				  AND c.raison_sociale = (t.commercial_info->>'client')
+				  AND NOT c.archived
+				LIMIT 1
+			) AS client_id,
+			(
+				SELECT m.id FROM ssii.missions m
+				INNER JOIN ssii.mission_collaborators mc ON mc.mission_id = m.id AND mc.user_id = t.user_id
+				INNER JOIN org.clients c ON c.id = m.client_id
+				  AND c.raison_sociale = (t.commercial_info->>'client')
+				WHERE m.tenant_id = t.tenant_id
+				ORDER BY m.created_at DESC
+				LIMIT 1
+			) AS mission_id
+		FROM cra.timesheets t
+		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
+		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+`
+
 func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 	var out []domain.TimesheetSummary
 	for rows.Next() {
@@ -269,16 +276,22 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 		var month string
 		var status string
 		var commercial []byte
+		var clientID *uuid.UUID
+		var missionID *uuid.UUID
 		if err := rows.Scan(
 			&summary.ID,
 			&summary.UserID,
 			&summary.UserLogin,
+			&summary.UserPrenom,
+			&summary.UserNom,
 			&month,
 			&status,
 			&commercial,
 			&summary.UpdatedAt,
 			&summary.TotalMinutes,
 			&summary.WeeksSubmitted,
+			&clientID,
+			&missionID,
 		); err != nil {
 			return nil, err
 		}
@@ -287,6 +300,8 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 		if len(commercial) > 0 {
 			_ = json.Unmarshal(commercial, &summary.CommercialInfo)
 		}
+		summary.ClientID = clientID
+		summary.MissionID = missionID
 		out = append(out, summary)
 	}
 	return out, rows.Err()

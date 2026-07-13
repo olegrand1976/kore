@@ -166,6 +166,8 @@ Organisation, identité, RBAC.
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `equipe_id` | UUID | → `org.equipes(id)` |
 | `login` | TEXT | NOT NULL |
+| `prenom` | TEXT | NOT NULL, DEFAULT `''` |
+| `nom` | TEXT | NOT NULL, DEFAULT `''` |
 | `email` | TEXT | |
 | `password_hash` | TEXT | NOT NULL |
 | `profil` | TEXT | NOT NULL |

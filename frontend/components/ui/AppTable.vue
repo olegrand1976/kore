@@ -12,6 +12,7 @@ const props = defineProps<{
   rowKey?: string
   loading?: boolean
   emptyTitle?: string
+  emptyDescription?: string
 }>()
 
 const isEmpty = computed(() => !props.loading && props.rows.length === 0)
@@ -31,7 +32,7 @@ function cellClass(col: TableColumn) {
 <template>
   <div class="app-table-wrap">
     <p v-if="loading" class="app-table__state">…</p>
-    <AppEmptyState v-else-if="isEmpty" icon="inbox" :title="emptyTitle || 'Aucune donnée'" />
+    <AppEmptyState v-else-if="isEmpty" icon="inbox" :title="emptyTitle || 'Aucune donnée'" :description="emptyDescription" />
     <table v-else class="app-table">
       <thead>
         <tr>

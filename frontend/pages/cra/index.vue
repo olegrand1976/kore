@@ -58,12 +58,46 @@
         <template #cell-month="{ value }">
           <span class="cra-month">{{ formatMonth(String(value)) }}</span>
         </template>
-        <template #cell-userLogin="{ value }">
-          <span class="cra-user">{{ formatUserLogin(String(value)) }}</span>
+        <template #cell-user="{ row }">
+          <NuxtLink
+            v-if="row.userId"
+            :to="`/collaborateurs/${row.userId}`"
+            class="cra-link"
+          >
+            {{ row.userDisplay }}
+          </NuxtLink>
+          <span v-else class="cra-user">{{ row.userDisplay }}</span>
         </template>
-        <template #cell-context="{ row }">
-          <span class="cra-context" :class="{ 'cra-context--empty': !row.context }">
-            {{ row.context || $t('cra.context_empty') }}
+        <template #cell-client="{ row }">
+          <NuxtLink
+            v-if="row.clientId && row.client"
+            :to="`/clients/${row.clientId}`"
+            class="cra-link cra-link--truncate"
+          >
+            {{ row.client }}
+          </NuxtLink>
+          <span
+            v-else
+            class="cra-context"
+            :class="{ 'cra-context--empty': !row.client }"
+          >
+            {{ row.client || $t('cra.context_empty') }}
+          </span>
+        </template>
+        <template #cell-mission="{ row }">
+          <NuxtLink
+            v-if="row.missionId && row.mission"
+            :to="`/missions/${row.missionId}`"
+            class="cra-link cra-link--truncate"
+          >
+            {{ row.mission }}
+          </NuxtLink>
+          <span
+            v-else
+            class="cra-context"
+            :class="{ 'cra-context--empty': !row.mission }"
+          >
+            {{ row.mission || $t('cra.context_empty') }}
           </span>
         </template>
         <template #cell-hours="{ value }">
@@ -93,6 +127,7 @@
 
 <script setup lang="ts">
 import { countCraByStatus } from '~/composables/useKpiMetrics'
+import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default' })
 
@@ -100,9 +135,13 @@ type CraSummary = {
   id: string
   userId?: string
   userLogin?: string
+  userPrenom?: string
+  userNom?: string
   month: string
   status: string
   commercialInfo?: { client?: string; mission?: string }
+  clientId?: string
+  missionId?: string
   totalMinutes?: number
   weeksSubmitted?: number
   updatedAt?: string
@@ -124,9 +163,13 @@ const rawItems = computed((): CraSummary[] => {
     id: String(ts.id ?? ''),
     userId: ts.userId ? String(ts.userId) : undefined,
     userLogin: ts.userLogin ? String(ts.userLogin) : undefined,
+    userPrenom: ts.userPrenom ? String(ts.userPrenom) : undefined,
+    userNom: ts.userNom ? String(ts.userNom) : undefined,
     month: String(ts.month ?? ''),
     status: String(ts.status ?? ''),
     commercialInfo: (ts.commercialInfo as CraSummary['commercialInfo']) ?? undefined,
+    clientId: ts.clientId ? String(ts.clientId) : undefined,
+    missionId: ts.missionId ? String(ts.missionId) : undefined,
     totalMinutes: Number(ts.totalMinutes ?? 0),
     weeksSubmitted: Number(ts.weeksSubmitted ?? 0),
     updatedAt: ts.updatedAt ? String(ts.updatedAt) : undefined
@@ -136,10 +179,11 @@ const rawItems = computed((): CraSummary[] => {
 const columns = computed(() => {
   const cols = [{ key: 'month', label: t('cra.col_period') }]
   if (canValidateCra.value) {
-    cols.push({ key: 'userLogin', label: t('cra.col_user') })
+    cols.push({ key: 'user', label: t('cra.col_user') })
   }
   cols.push(
-    { key: 'context', label: t('cra.col_context') },
+    { key: 'client', label: t('cra.col_client') },
+    { key: 'mission', label: t('cra.col_mission') },
     { key: 'hours', label: t('cra.col_hours') },
     { key: 'status', label: t('cra.col_status') },
     { key: 'updatedAt', label: t('cra.col_updated') },
@@ -152,8 +196,12 @@ const rows = computed(() =>
   rawItems.value.map((ts) => ({
     id: ts.id,
     month: ts.month,
-    userLogin: ts.userLogin ?? '—',
-    context: formatContext(ts.commercialInfo),
+    userId: ts.userId ?? '',
+    userDisplay: formatUserDisplayName(ts.userPrenom, ts.userNom, ts.userLogin),
+    client: ts.commercialInfo?.client ?? '',
+    mission: ts.commercialInfo?.mission ?? '',
+    clientId: ts.clientId ?? '',
+    missionId: ts.missionId ?? '',
     hours: ts.totalMinutes ?? 0,
     status: ts.status,
     updatedAt: ts.updatedAt ?? '',
@@ -186,18 +234,6 @@ const formatMonth = (raw: string) => {
     month: 'long',
     year: 'numeric'
   })
-}
-
-const formatUserLogin = (login: string) => {
-  if (!login || login === '—') return '—'
-  const idx = login.indexOf('_')
-  return idx >= 0 ? login.slice(idx + 1) : login
-}
-
-const formatContext = (info?: { client?: string; mission?: string }) => {
-  if (!info) return ''
-  const parts = [info.client, info.mission].filter(Boolean)
-  return parts.join(' / ')
 }
 
 const formatHours = (minutes: number) => {
@@ -249,6 +285,25 @@ const openCurrentMonth = async () => {
   color: var(--kore-text);
 }
 
+.cra-link {
+  font-weight: 500;
+  color: var(--kore-brand-blue);
+  text-decoration: none;
+}
+
+.cra-link:hover {
+  text-decoration: underline;
+}
+
+.cra-link--truncate {
+  max-width: 14rem;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
 .cra-context {
   color: var(--kore-text);
   max-width: 14rem;
@@ -285,6 +340,7 @@ const openCurrentMonth = async () => {
 .flash--error { color: var(--kore-error); }
 
 @media (max-width: 768px) {
+  .cra-link--truncate,
   .cra-context {
     max-width: 8rem;
   }

@@ -1,6 +1,5 @@
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
-  const body = await readBody(event)
   const headers = apiAuthHeaders(event)
-  return $fetch(`${apiBase()}/api/v1/budgets/${id}/recompute`, { method: 'POST', headers, body })
+  return $fetch(`${apiBase()}/api/v1/clients/${id}`, { headers })
 })

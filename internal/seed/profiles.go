@@ -34,7 +34,47 @@ func (r *Runner) enrichUserProfiles(ctx context.Context, tenant kernel.TenantID)
 			return err
 		}
 	}
+	if err := r.patchUserNames(ctx, tenant); err != nil {
+		return err
+	}
 	log.Println("seed: métadonnées utilisateurs (type, langue, CRA) enrichies pour tous les profils")
+	return nil
+}
+
+func demoUserNameSpecs() map[string][2]string {
+	return map[string][2]string{
+		AdminLogin:       {"Admin", "Kore"},
+		ManagerLogin:     {"Sophie", "Bernard"},
+		CommercialLogin:  {"Marc", "Leclerc"},
+		CollabLogin:      {"Jean", "Dupont"},
+		Collab2Login:     {"Luc", "Martin"},
+		PrestaLogin:      {"Alex", "Renard"},
+		ClientUserLogin:  {"Paul", "Contact"},
+		ChefDevLogin:     {"Thomas", "Chevalier"},
+		Collab3Login:     {"Emma", "Leroy"},
+		CollabQALogin:    {"Julie", "Moreau"},
+		CollabIntegLogin: {"Nicolas", "Petit"},
+		Presta2Login:     {"Karim", "Benali"},
+		Presta3Login:     {"Laura", "Garcia"},
+		PrestaIntegLogin: {"David", "Roux"},
+		ClientMOALogin:   {"Marie", "Dupont"},
+		ClientDSILogin:   {"Anna", "Schmidt"},
+		ClientPMOLogin:   {"Paul", "Martin"},
+		Commercial2Login: {"Claire", "Durand"},
+		Commercial3Login: {"Hugo", "Fabre"},
+	}
+}
+
+func (r *Runner) patchUserNames(ctx context.Context, tenant kernel.TenantID) error {
+	for login, names := range demoUserNameSpecs() {
+		if _, err := r.deps.Pool.Exec(ctx, `
+			UPDATE org.users SET prenom = $3, nom = $4
+			WHERE tenant_id = $1 AND login = $2 AND deleted_at IS NULL
+		`, tenant.UUID(), login, names[0], names[1]); err != nil {
+			return err
+		}
+	}
+	log.Println("seed: noms et prénoms utilisateurs renseignés")
 	return nil
 }
 

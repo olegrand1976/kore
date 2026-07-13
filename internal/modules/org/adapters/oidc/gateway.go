@@ -58,12 +58,7 @@ func S256Challenge(verifier string) string {
 }
 
 func BuildAuthorizeURL(issuer, clientID, redirectURI, scopes, state, codeChallenge string) (string, error) {
-	base := strings.TrimRight(issuer, "/")
-	candidates := []string{
-		base + "/oauth2/v2.0/authorize",
-		base + "/authorize",
-		base + "/protocol/openid-connect/auth",
-	}
+	candidates := authorizeURLs(issuer)
 	var lastErr error
 	for _, candidate := range candidates {
 		u, err := url.Parse(candidate)
@@ -86,16 +81,13 @@ func BuildAuthorizeURL(issuer, clientID, redirectURI, scopes, state, codeChallen
 }
 
 func (g *Gateway) ExchangeCode(ctx context.Context, issuer, clientID, clientSecret, redirectURI, code, codeVerifier string) (TokenResponse, error) {
-	base := strings.TrimRight(issuer, "/")
-	candidates := []string{
-		base + "/oauth2/v2.0/token",
-		base + "/token",
-		base + "/protocol/openid-connect/token",
-	}
+	candidates := tokenURLs(issuer)
 	body := url.Values{}
 	body.Set("grant_type", "authorization_code")
 	body.Set("client_id", clientID)
-	body.Set("client_secret", clientSecret)
+	if clientSecret != "" {
+		body.Set("client_secret", clientSecret)
+	}
 	body.Set("code", code)
 	body.Set("redirect_uri", redirectURI)
 	if codeVerifier != "" {

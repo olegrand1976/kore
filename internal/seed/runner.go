@@ -3,6 +3,8 @@ package seed
 import (
 	"context"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,6 +95,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := r.ensureGoogleIdentityProvider(ctx, tenant); err != nil {
+		return err
+	}
 	if err := r.seedBudgetData(ctx, tenant, oc); err != nil {
 		return err
 	}
@@ -149,6 +154,9 @@ func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContex
 
 	admin, err := r.ensureUser(ctx, tenant, AdminLogin, AdminPassword, orgdomain.ProfileAdmin, nil)
 	if err != nil {
+		return oc, err
+	}
+	if err := r.ensureAdminEmail(ctx, tenant); err != nil {
 		return oc, err
 	}
 	oc.adminID = admin.ID
@@ -255,6 +263,54 @@ func (r *Runner) ensureUser(
 		Profile:  profile,
 		EquipeID: equipeID,
 	})
+}
+
+func (r *Runner) ensureAdminEmail(ctx context.Context, tenant kernel.TenantID) error {
+	_, err := r.deps.Pool.Exec(ctx, `
+		UPDATE org.users SET email = $1
+		WHERE tenant_id = $2 AND login = $3 AND deleted_at IS NULL
+	`, AdminEmail, tenant.UUID(), AdminLogin)
+	return err
+}
+
+func (r *Runner) ensureGoogleIdentityProvider(ctx context.Context, tenant kernel.TenantID) error {
+	clientID := strings.TrimSpace(os.Getenv("OIDC_GOOGLE_CLIENT_ID"))
+	clientSecret := strings.TrimSpace(os.Getenv("OIDC_GOOGLE_CLIENT_SECRET"))
+
+	existing, err := r.deps.OrgRepo.GetIdentityProvider(ctx, tenant)
+	idp := orgdomain.IdentityProvider{
+		ID:             DemoGoogleIdPID,
+		TenantID:       tenant,
+		Name:           GoogleIdPName,
+		Issuer:         GoogleIssuer,
+		ClientID:       clientID,
+		ClientSecret:   clientSecret,
+		JWKSURI:        GoogleJWKSURI,
+		Scopes:         GoogleScopes,
+		DefaultProfile: orgdomain.ProfileCollaborateur,
+		Enabled:        clientID != "" && clientSecret != "",
+	}
+	if err == nil && existing.ID != uuid.Nil {
+		idp.ID = existing.ID
+		if clientID == "" {
+			idp.ClientID = existing.ClientID
+		}
+		if clientSecret == "" {
+			idp.ClientSecret = existing.ClientSecret
+		}
+	}
+	if idp.ClientID != "" && idp.ClientSecret != "" {
+		idp.Enabled = true
+	}
+	if err := r.deps.OrgRepo.SaveIdentityProvider(ctx, idp); err != nil {
+		return err
+	}
+	if idp.Enabled {
+		log.Printf("seed: Google OIDC activé (client_id=%s)", idp.ClientID)
+	} else {
+		log.Println("seed: Google OIDC configuré (désactivé — renseignez OIDC_GOOGLE_CLIENT_ID/SECRET)")
+	}
+	return nil
 }
 
 func (r *Runner) ensureSociete(ctx context.Context, tenant kernel.TenantID) error {

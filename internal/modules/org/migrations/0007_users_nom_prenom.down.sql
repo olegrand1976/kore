@@ -1,0 +1,3 @@
+ALTER TABLE org.users
+    DROP COLUMN IF EXISTS prenom,
+    DROP COLUMN IF EXISTS nom;

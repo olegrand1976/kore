@@ -35,6 +35,12 @@ func (s *oidcRepoStub) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (
 func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error { return nil }
 func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error { return nil }
 func (s *oidcRepoStub) SaveApplication(context.Context, domain.Application) error { return nil }
+func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
+	return nil, nil
+}
+func (s *oidcRepoStub) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
+	return domain.Application{}, domain.ErrUserNotFound
+}
 func (s *oidcRepoStub) SaveUser(_ context.Context, u domain.User) error {
 	if s.users == nil {
 		s.users = map[uuid.UUID]domain.User{}
@@ -48,6 +54,9 @@ func (s *oidcRepoStub) FindUserByID(_ context.Context, _ kernel.TenantID, id uui
 		return domain.User{}, domain.ErrUserNotFound
 	}
 	return u, nil
+}
+func (s *oidcRepoStub) FindUserDetailByID(context.Context, kernel.TenantID, uuid.UUID) (ports.UserDetail, error) {
+	return ports.UserDetail{}, domain.ErrUserNotFound
 }
 func (s *oidcRepoStub) UpdateUser(context.Context, domain.User) error { return nil }
 func (s *oidcRepoStub) SoftDeleteUser(context.Context, kernel.TenantID, uuid.UUID, time.Time) error {
@@ -71,6 +80,9 @@ func (s *oidcRepoStub) ListUsers(context.Context, kernel.TenantID) ([]domain.Use
 func (s *oidcRepoStub) SaveClient(context.Context, domain.Client) error { return nil }
 func (s *oidcRepoStub) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
+}
+func (s *oidcRepoStub) GetClient(context.Context, kernel.TenantID, uuid.UUID) (domain.Client, error) {
+	return domain.Client{}, domain.ErrUserNotFound
 }
 func (s *oidcRepoStub) GetPermissions(context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error) {
 	return nil, nil

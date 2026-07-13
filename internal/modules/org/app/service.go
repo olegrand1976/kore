@@ -86,6 +86,14 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 	return app, s.repo.SaveApplication(ctx, app)
 }
 
+func (s *organizationService) ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error) {
+	return s.repo.ListApplications(ctx, tenant)
+}
+
+func (s *organizationService) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
+	return s.repo.GetApplication(ctx, tenant, id)
+}
+
 func (s *organizationService) ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error) {
 	return s.repo.ListSocietes(ctx, tenant)
 }
@@ -265,6 +273,14 @@ func (s *userService) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]
 	return out, nil
 }
 
+func (s *userService) GetUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (ports.UserDetail, error) {
+	detail, err := s.repo.FindUserDetailByID(ctx, tenant, id)
+	if err != nil {
+		return ports.UserDetail{}, domain.ErrUserNotFound
+	}
+	return detail, nil
+}
+
 func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserCommand) (ports.UserSummary, error) {
 	user, err := s.repo.FindUserByID(ctx, cmd.TenantID, cmd.UserID)
 	if err != nil {
@@ -337,6 +353,8 @@ func userToSummary(u domain.User) ports.UserSummary {
 	return ports.UserSummary{
 		ID:      u.ID,
 		Login:   string(u.Login),
+		Prenom:  u.Prenom,
+		Nom:     u.Nom,
 		Profile: string(u.Profile),
 		Active:  u.Active,
 	}
@@ -362,6 +380,10 @@ func (s *clientService) CreateClient(ctx context.Context, cmd ports.CreateClient
 
 func (s *clientService) ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error) {
 	return s.repo.ListClients(ctx, tenant)
+}
+
+func (s *clientService) GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error) {
+	return s.repo.GetClient(ctx, tenant, id)
 }
 
 type argon2Hasher struct{}

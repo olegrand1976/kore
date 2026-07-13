@@ -83,4 +83,62 @@ func (r *Repository) scanMission(row pgx.Row) (domain.Mission, error) {
 	return m, nil
 }
 
+func (r *Repository) ListMissionSummaries(ctx context.Context, tenant kernel.TenantID) ([]ports.MissionSummary, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT m.id, m.client_id, COALESCE(c.raison_sociale, ''), m.status,
+			m.start_date, m.end_date, m.tjm_amount, m.currency
+		FROM ssii.missions m
+		LEFT JOIN org.clients c ON c.id = m.client_id AND c.tenant_id = m.tenant_id
+		WHERE m.tenant_id = $1
+		ORDER BY m.created_at DESC
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.MissionSummary
+	for rows.Next() {
+		var s ports.MissionSummary
+		var status string
+		if err := rows.Scan(&s.ID, &s.ClientID, &s.ClientName, &status, &s.StartDate, &s.EndDate, &s.TJMAmount, &s.Currency); err != nil {
+			return nil, err
+		}
+		s.Status = status
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) ListMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]ports.MissionCollaborator, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id, u.login, u.prenom, u.nom
+		FROM ssii.mission_collaborators mc
+		JOIN org.users u ON u.id = mc.user_id AND u.deleted_at IS NULL
+		WHERE mc.tenant_id = $1 AND mc.mission_id = $2
+		ORDER BY u.nom, u.prenom
+	`, tenant.UUID(), missionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.MissionCollaborator
+	for rows.Next() {
+		var c ports.MissionCollaborator
+		if err := rows.Scan(&c.UserID, &c.Login, &c.Prenom, &c.Nom); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error) {
+	var name string
+	err := r.pool.QueryRow(ctx, `
+		SELECT raison_sociale FROM org.clients
+		WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
+	`, tenant.UUID(), clientID).Scan(&name)
+	return name, err
+}
+
 var _ ports.SSIIRepository = (*Repository)(nil)
