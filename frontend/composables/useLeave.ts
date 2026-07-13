@@ -75,10 +75,8 @@ export function pickSortOrder(cfg: LeaveTypeConfig) {
   return cfg.sortOrder ?? cfg.SortOrder ?? 0
 }
 
-const leaveTypesState = useState<LeaveTypeConfig[]>('leave-type-configs', () => [])
-
 export function useLeaveTypeConfigs() {
-  const types = leaveTypesState
+  const types = useState<LeaveTypeConfig[]>('leave-type-configs', () => [])
 
   const fetchMine = async () => {
     const res = await $fetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs/mine')
@@ -151,7 +149,7 @@ function pickDecidedAt(item: LeaveRequest) {
 }
 
 function pickUserId(item: LeaveRequest) {
-  return item.userId ?? item.UserID ?? ''
+  return String(item.userId ?? item.UserID ?? '')
 }
 
 export function formatLeaveUserLogin(login: string) {

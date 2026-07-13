@@ -11,6 +11,9 @@
         :loading="pending"
         :empty-title="$t('conges.validation_empty')"
       >
+        <template #cell-requester="{ value }">
+          <span class="requester">{{ value }}</span>
+        </template>
         <template #cell-actions="{ row }">
           <div class="actions">
             <AppButton variant="ghost" size="sm" type="button" @click="toggleContext(row.id)">
@@ -35,6 +38,8 @@
 </template>
 
 <script setup lang="ts">
+import type { LeaveRequest } from '~/composables/useLeave'
+
 const { t } = useI18n()
 const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()
@@ -49,27 +54,44 @@ await fetchMine()
 
 type OrgUser = { id?: string; ID?: string; login?: string; Login?: string }
 
-const userLoginById = ref<Record<string, string>>({})
+type ValidationPayload = {
+  items: LeaveRequest[]
+  logins: Record<string, string>
+}
 
-if (canValidateConges.value) {
+function normalizeUserId(id: string) {
+  return id.trim().toLowerCase()
+}
+
+function buildLoginMap(users: OrgUser[]) {
+  const map: Record<string, string> = {}
+  for (const user of users) {
+    const id = user.id ?? user.ID
+    const login = user.login ?? user.Login
+    if (id && login) map[normalizeUserId(id)] = login
+  }
+  return map
+}
+
+async function loadValidationData(): Promise<ValidationPayload> {
+  const items = pendingFn(await list())
+  if (!canValidateConges.value) {
+    return { items, logins: {} }
+  }
   try {
     const res = await $fetch<{ data?: OrgUser[] }>('/api/org/users')
-    const map: Record<string, string> = {}
-    for (const user of res?.data ?? []) {
-      const id = user.id ?? user.ID
-      const login = user.login ?? user.Login
-      if (id && login) map[id] = login
-    }
-    userLoginById.value = map
+    return { items, logins: buildLoginMap(res?.data ?? []) }
   } catch {
-    userLoginById.value = {}
+    return { items, logins: {} }
   }
 }
 
-const resolveRequester = (item: Parameters<typeof pickUserId>[0]) => {
-  const userId = pickUserId(item)
+const { data, pending, refresh } = await useAsyncData('leave-validation', loadValidationData)
+
+const resolveRequester = (item: LeaveRequest, logins: Record<string, string>) => {
+  const userId = normalizeUserId(pickUserId(item))
   if (!userId) return '—'
-  const login = userLoginById.value[userId]
+  const login = logins[userId]
   return login ? formatLeaveUserLogin(login) : userId.slice(0, 8)
 }
 
@@ -93,12 +115,6 @@ const toggleContext = async (leaveId: string) => {
 }
 
 const errorMsg = ref('')
-
-const { data, pending, refresh } = await useAsyncData('leave-validation', async () => {
-  const items = await list()
-  return pendingFn(items)
-})
-
 const busyId = ref('')
 
 const columns = computed(() => [
@@ -110,16 +126,19 @@ const columns = computed(() => [
   { key: 'actions', label: '' }
 ])
 
-const rows = computed(() =>
-  (data.value ?? []).map((item) => ({
+const rows = computed(() => {
+  const payload = data.value
+  const items = payload?.items ?? []
+  const logins = payload?.logins ?? {}
+  return items.map((item) => ({
     id: pickId(item),
-    requester: resolveRequester(item),
+    requester: resolveRequester(item, logins),
     type: typeLabel(pickType(item)),
     from: pickFrom(item),
     to: pickTo(item),
     motif: pickMotif(item) || '—'
   }))
-)
+})
 
 const decide = async (id: string, action: 'approve' | 'reject') => {
   busyId.value = id
@@ -137,6 +156,12 @@ const decide = async (id: string, action: 'approve' | 'reject') => {
 </script>
 
 <style scoped>
+.requester {
+  font-weight: 500;
+  color: var(--kore-text);
+  white-space: nowrap;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
