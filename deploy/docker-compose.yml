@@ -70,8 +70,13 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.frontend
+      args:
+        NUXT_PUBLIC_SHOW_MAILHOG_HINT: "true"
+        NUXT_PUBLIC_MAILHOG_UI_URL: http://localhost:8025
     environment:
       NUXT_PUBLIC_API_BASE: http://api:8080
+      NUXT_PUBLIC_MAILHOG_UI_URL: http://localhost:8025
+      NUXT_PUBLIC_SHOW_MAILHOG_HINT: "true"
     ports:
       - "${KORE_FRONTEND_PORT:-3001}:3000"
     depends_on:

@@ -46,7 +46,9 @@ export default defineNuxtConfig({
     apiBase: process.env.NUXT_API_BASE || 'http://localhost:8080',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8080',
-      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock'
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock',
+      mailhogUiUrl: process.env.NUXT_PUBLIC_MAILHOG_UI_URL || 'http://localhost:8025',
+      showMailhogHint: process.env.NUXT_PUBLIC_SHOW_MAILHOG_HINT === 'true'
     }
   },
   css: ['~/assets/css/main.css'],

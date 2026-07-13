@@ -21,6 +21,7 @@ func RegisterOIDCRoutes(
 	authorizer authx.Authorizer,
 ) {
 	r.Get("/auth/oidc/authorize", oidcAuthorizeHandler(oidc))
+	r.Get("/auth/oidc/status", oidcStatusHandler(oidc))
 	r.Post("/auth/oidc/callback", oidcCallbackHandler(oidc))
 
 	r.Group(func(pr chi.Router) {
@@ -48,6 +49,23 @@ func oidcAuthorizeHandler(oidc ports.OIDCService) http.HandlerFunc {
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"authorizeUrl": url})
+	}
+}
+
+func oidcStatusHandler(oidc ports.OIDCService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tenantStr := r.URL.Query().Get("tenant")
+		tenantID, err := uuid.Parse(tenantStr)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid tenant")
+			return
+		}
+		status, err := oidc.Status(r.Context(), kernel.NewTenantID(tenantID))
+		if err != nil {
+			writeOIDCError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, status)
 	}
 }
 

@@ -15,7 +15,7 @@
         </button>
         <ThemeToggle />
         <button type="button" class="chip-btn" @click="toggleLocale">{{ locale === 'fr' ? 'EN' : 'FR' }}</button>
-        <PublicButton variant="primary" to="/login" class="header__login">{{ $t('nav.login') }}</PublicButton>
+        <PublicButton v-if="showLoginCta" variant="primary" to="/login" class="header__login">{{ $t('nav.login') }}</PublicButton>
       </div>
     </header>
     <main class="main"><slot /></main>
@@ -25,14 +25,17 @@
       <NuxtLink to="/modules" class="drawer-link" @click="drawerOpen = false">{{ $t('nav.modules') }}</NuxtLink>
       <NuxtLink to="/tarifs" class="drawer-link" @click="drawerOpen = false">{{ $t('nav.pricing') }}</NuxtLink>
       <NuxtLink to="/reserver" class="drawer-link" @click="drawerOpen = false">{{ $t('nav.book') }}</NuxtLink>
-      <NuxtLink to="/login" class="drawer-link" @click="drawerOpen = false">{{ $t('nav.login') }}</NuxtLink>
+      <NuxtLink v-if="showLoginCta" to="/login" class="drawer-link" @click="drawerOpen = false">{{ $t('nav.login') }}</NuxtLink>
     </MobileDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 const { locale, setLocale } = useI18n()
+const route = useRoute()
 const drawerOpen = ref(false)
+
+const showLoginCta = computed(() => route.path !== '/login')
 
 const toggleLocale = () => setLocale(locale.value === 'fr' ? 'en' : 'fr')
 

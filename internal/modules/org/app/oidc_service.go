@@ -88,6 +88,14 @@ func (s *oidcService) AuthorizeURL(ctx context.Context, cmd ports.OIDCAuthorizeC
 	return oidc.BuildAuthorizeURL(idp.Issuer, idp.ClientID, cmd.RedirectURI, scopes, state, cmd.CodeChallenge)
 }
 
+func (s *oidcService) Status(ctx context.Context, tenant kernel.TenantID) (ports.OIDCStatus, error) {
+	idp, err := s.repo.GetIdentityProvider(ctx, tenant)
+	if err != nil || !idp.Enabled {
+		return ports.OIDCStatus{Enabled: false}, nil
+	}
+	return ports.OIDCStatus{Enabled: true, ProviderName: idp.Name}, nil
+}
+
 func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallbackCommand) (ports.AuthResult, error) {
 	stateKey := s.keys.Key(cmd.TenantID, "org", "oidc-state", cmd.State)
 	var stored oidcStatePayload

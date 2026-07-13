@@ -329,6 +329,12 @@ type OIDCCallbackCommand struct {
 type OIDCService interface {
 	AuthorizeURL(ctx context.Context, cmd OIDCAuthorizeCommand) (string, error)
 	HandleCallback(ctx context.Context, cmd OIDCCallbackCommand) (AuthResult, error)
+	Status(ctx context.Context, tenant kernel.TenantID) (OIDCStatus, error)
+}
+
+type OIDCStatus struct {
+	Enabled      bool   `json:"enabled"`
+	ProviderName string `json:"providerName"`
 }
 
 type IdentityProviderService interface {

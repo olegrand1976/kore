@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -24,7 +25,9 @@ func tenantDiscoveryRequestHandler(svc ports.TenantAccessService) http.HandlerFu
 			return
 		}
 		base := baseLoginURL(r)
-		_ = svc.RequestTenantDiscovery(r.Context(), req.Email, base)
+		if err := svc.RequestTenantDiscovery(r.Context(), req.Email, base); err != nil {
+			log.Printf("tenant discovery email failed for %q: %v", req.Email, err)
+		}
 		httpx.WriteData(w, http.StatusOK, map[string]any{"sent": true})
 	}
 }

@@ -91,11 +91,18 @@
     "password": "Mot de passe",
     "submit": "Se connecter",
     "error": "Échec de connexion",
+    "identifier": "Identifiant",
+    "or_divider": "— ou —",
+    "sso_google": "Continuer avec Google",
+    "sso_continue": "Continuer avec {provider}",
+    "sso_continue_default": "Continuer avec votre compte professionnel",
+    "sso_unavailable": "Connexion SSO indisponible pour cette organisation",
     "sso": "Connexion SSO",
     "sso_tenant": "Identifiant tenant (UUID)",
     "find_org": "Trouver mon organisation",
     "send_link": "M’envoyer un lien",
-    "discovery_sent": "Si cet email est connu, un lien a été envoyé."
+    "discovery_sent": "Si cet email est connu, un lien a été envoyé.",
+    "discovery_dev_hint": "En local, les emails sont capturés par"
   },
   "release_notes": {
     "open": "Ouvrir les nouveautés",

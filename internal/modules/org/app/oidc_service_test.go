@@ -164,6 +164,25 @@ func TestOIDCAuthorizeRequiresEnabledIdP(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrSSONotEnabled)
 }
 
+func TestOIDCStatusRequiresEnabledIdP(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &oidcRepoStub{idp: domain.IdentityProvider{Enabled: false}}
+	svc := NewOIDCService(repo, authx.NewTokenIssuer("k", time.Hour, time.Hour), entitlementStub{limit: 10}, NewArgon2Hasher(), cache.NewInMemoryCache(), cache.NewKeyBuilder("kore"))
+	status, err := svc.Status(context.Background(), tenant)
+	require.NoError(t, err)
+	require.False(t, status.Enabled)
+}
+
+func TestOIDCStatusReturnsProviderName(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &oidcRepoStub{idp: domain.IdentityProvider{Enabled: true, Name: "Google"}}
+	svc := NewOIDCService(repo, authx.NewTokenIssuer("k", time.Hour, time.Hour), entitlementStub{limit: 10}, NewArgon2Hasher(), cache.NewInMemoryCache(), cache.NewKeyBuilder("kore"))
+	status, err := svc.Status(context.Background(), tenant)
+	require.NoError(t, err)
+	require.True(t, status.Enabled)
+	require.Equal(t, "Google", status.ProviderName)
+}
+
 func TestIdentityProviderConfigure(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	repo := &oidcRepoStub{}

@@ -258,13 +258,28 @@ const navItems = computed(() =>
 )
 
 const mainNavItems = computed(() =>
-  navItems.value.filter((item) => !['/admin/parametres', '/platform', '/billing/abonnement'].includes(item.to))
+  navItems.value.filter(
+    (item) =>
+      ![
+        '/compte',
+        '/admin/notifications',
+        '/admin/organisation',
+        '/admin/users',
+        '/admin/parametres',
+        '/platform',
+        '/billing/abonnement'
+      ].includes(item.to)
+  )
 )
 
 const settingsNavItems = computed(() => {
   const byTo = new Map(navItems.value.map((item) => [item.to, item]))
 
   return [
+    byTo.get('/compte'),
+    byTo.get('/admin/notifications'),
+    byTo.get('/admin/organisation'),
+    byTo.get('/admin/users'),
     byTo.get('/admin/parametres'),
     byTo.get('/platform'),
     byTo.get('/billing/abonnement')

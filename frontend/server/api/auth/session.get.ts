@@ -11,7 +11,19 @@ export default defineEventHandler((event) => {
 
   try {
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
-    const roles = Array.isArray(payload.roles) ? (payload.roles as string[]) : []
+    const roles = (() => {
+      const fromRoles = Array.isArray(payload.roles) ? (payload.roles as unknown[]) : []
+      const fromRole = typeof payload.role === 'string' ? [payload.role] : []
+      const fromRealmAccess = Array.isArray(payload?.realm_access?.roles) ? (payload.realm_access.roles as unknown[]) : []
+      const fromResourceAccess = Array.isArray(payload?.resource_access?.kore?.roles)
+        ? (payload.resource_access.kore.roles as unknown[])
+        : []
+
+      return [...fromRoles, ...fromRole, ...fromRealmAccess, ...fromResourceAccess].filter(
+        (r): r is string => typeof r === 'string' && r.length > 0
+      )
+    })()
+
     return {
       ok: true,
       profile: payload.profile as string | undefined,

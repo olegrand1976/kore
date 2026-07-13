@@ -13,24 +13,27 @@
       <h1>{{ $t('login.title') }}</h1>
       <p class="login-card__subtitle">{{ $t('login.subtitle') }}</p>
       <form @submit.prevent="submit">
-        <PublicInput id="login" v-model="login" :label="$t('nav.login')" placeholder="ADM_admin" required />
+        <PublicInput id="login" v-model="login" :label="$t('login.identifier')" placeholder="ADM_admin" required />
         <PublicInput id="password" v-model="password" type="password" :label="$t('login.password')" required />
         <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.submit') }}</PublicButton>
       </form>
-      <div v-if="ssoEnabled" class="login-card__sso">
-        <p class="login-card__divider">{{ $t('login.sso') }}</p>
-        <PublicInput id="tenant" v-model="tenantId" :label="$t('login.sso_tenant')" />
-        <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ $t('login.sso') }}</PublicButton>
-        <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
-          {{ $t('login.find_org') }}
-        </button>
-        <div v-if="showDiscovery" class="login-card__discovery">
-          <PublicInput id="discover-email" v-model="discoverEmail" type="email" :label="$t('login.email')" />
-          <PublicButton variant="ghost" class="login-card__submit" @click="requestDiscovery">
-            {{ $t('login.send_link') }}
-          </PublicButton>
-          <p v-if="discoveryInfo" class="login-card__info" role="status">{{ discoveryInfo }}</p>
-        </div>
+      <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
+        {{ $t('login.find_org') }}
+      </button>
+      <div v-if="showDiscovery" class="login-card__discovery">
+        <PublicInput id="discover-email" v-model="discoverEmail" type="email" :label="$t('login.email')" />
+        <PublicButton variant="ghost" class="login-card__submit" @click="requestDiscovery">
+          {{ $t('login.send_link') }}
+        </PublicButton>
+        <p v-if="discoveryInfo" class="login-card__info" role="status">{{ discoveryInfo }}</p>
+        <p v-if="discoveryInfo && showMailhogHint" class="login-card__info login-card__info--dev" role="note">
+          {{ $t('login.discovery_dev_hint') }}
+          <a :href="mailhogUiUrl" target="_blank" rel="noopener noreferrer" class="login-card__link-inline">MailHog</a>
+        </p>
+      </div>
+      <div v-if="showSso" class="login-card__sso">
+        <p class="login-card__divider" aria-hidden="true">{{ $t('login.or_divider') }}</p>
+        <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ ssoButtonLabel }}</PublicButton>
       </div>
       <p v-if="error" class="login-card__error" role="alert">{{ error }}</p>
     </PublicCard>
@@ -41,14 +44,44 @@
 definePageMeta({ layout: 'public' })
 
 const { t } = useI18n()
+const config = useRuntimeConfig()
+const mailhogUiUrl = config.public.mailhogUiUrl as string
+const showMailhogHint = config.public.showMailhogHint as boolean
 const login = ref('ADM_admin')
 const password = ref('Admin123!')
-const tenantId = ref('00000000-0000-4000-8000-000000000001')
-const ssoEnabled = ref(true)
+const tenantId = ref('')
+const showSso = ref(false)
+const ssoProviderName = ref('')
 const error = ref('')
 const showDiscovery = ref(false)
 const discoverEmail = ref('')
 const discoveryInfo = ref('')
+
+const ssoButtonLabel = computed(() => {
+  if (ssoProviderName.value) {
+    return t('login.sso_continue', { provider: ssoProviderName.value })
+  }
+  return t('login.sso_continue_default')
+})
+
+async function checkSsoAvailability(tenant: string) {
+  try {
+    const res = await $fetch<{ data?: { enabled?: boolean; providerName?: string } }>('/api/auth/oidc/status', {
+      query: { tenant }
+    })
+    const enabled = Boolean(res?.data?.enabled)
+    showSso.value = enabled
+    ssoProviderName.value = res?.data?.providerName?.trim() ?? ''
+  } catch {
+    showSso.value = false
+    ssoProviderName.value = ''
+  }
+}
+
+async function resolveTenant(tenant: string) {
+  tenantId.value = tenant
+  await checkSsoAvailability(tenant)
+}
 
 const submit = async () => {
   error.value = ''
@@ -76,7 +109,7 @@ async function sha256Base64Url(input: string): Promise<string> {
 const startSSO = async () => {
   error.value = ''
   if (!tenantId.value) {
-    error.value = t('login.sso_tenant')
+    error.value = t('login.sso_unavailable')
     return
   }
   try {
@@ -123,7 +156,7 @@ onMounted(async () => {
         query: { token: inviteToken }
       })
       const resolved = res?.data?.tenantId
-      if (resolved) tenantId.value = resolved
+      if (resolved) await resolveTenant(resolved)
     } catch (e: unknown) {
       // ignore
     }
@@ -133,7 +166,7 @@ onMounted(async () => {
         query: { token: discoverToken }
       })
       const resolved = res?.data?.tenantId
-      if (resolved) tenantId.value = resolved
+      if (resolved) await resolveTenant(resolved)
     } catch (e: unknown) {
       // ignore
     }
@@ -258,11 +291,26 @@ form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
 .login-card__link {
   border: 0;
   background: transparent;
-  padding: var(--kore-space-sm) 0 0;
+  padding: var(--kore-space-md) 0 0;
   font: inherit;
   color: var(--kore-link);
-  text-align: left;
+  text-align: center;
+  width: 100%;
   cursor: pointer;
+}
+
+.login-card__sso {
+  margin-top: var(--kore-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+}
+
+.login-card__divider {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+  text-align: center;
 }
 
 .login-card__discovery {
@@ -276,5 +324,14 @@ form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
   color: var(--kore-text-muted);
   font-size: var(--kore-text-small);
   text-align: center;
+}
+
+.login-card__info--dev {
+  color: var(--kore-brand-gold);
+}
+
+.login-card__link-inline {
+  color: var(--kore-link);
+  font-weight: 500;
 }
 </style>
