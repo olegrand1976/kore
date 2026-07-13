@@ -120,13 +120,13 @@ type OrganizationRepository interface {
 }
 
 type AccessTokenRow struct {
-	TenantID   kernel.TenantID
-	Email      string
-	Kind       string
-	ExpiresAt  time.Time
-	UsedAt     *time.Time
-	CreatedAt  time.Time
-	TokenHash  string
+	TenantID  kernel.TenantID
+	Email     string
+	Kind      string
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	CreatedAt time.Time
+	TokenHash string
 }
 
 type PasswordHasher interface {
@@ -221,6 +221,12 @@ type ClientService interface {
 type TenantAccessResolveResult struct {
 	TenantID kernel.TenantID `json:"tenantId"`
 	Kind     string          `json:"kind"`
+}
+
+type TenantAccessRepository interface {
+	FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error)
+	SaveAccessToken(ctx context.Context, tokenHash string, tenant kernel.TenantID, email, kind string, expiresAt time.Time) error
+	ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (AccessTokenRow, bool, error)
 }
 
 type TenantAccessService interface {

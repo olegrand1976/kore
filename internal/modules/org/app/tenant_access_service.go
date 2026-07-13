@@ -19,17 +19,17 @@ import (
 type AccessTokenKind string
 
 const (
-	AccessTokenKindInvite   AccessTokenKind = "invite"
+	AccessTokenKindInvite    AccessTokenKind = "invite"
 	AccessTokenKindDiscovery AccessTokenKind = "discovery"
 )
 
 type TenantAccessService struct {
-	repo   ports.OrganizationRepository
+	repo   ports.TenantAccessRepository
 	mailer ports.TransactionalEmailSender
 	clock  func() time.Time
 }
 
-func NewTenantAccessService(repo ports.OrganizationRepository, mailer ports.TransactionalEmailSender) *TenantAccessService {
+func NewTenantAccessService(repo ports.TenantAccessRepository, mailer ports.TransactionalEmailSender) *TenantAccessService {
 	return &TenantAccessService{
 		repo:   repo,
 		mailer: mailer,
@@ -148,4 +148,3 @@ func withQuery(baseLoginURL string, key string, value string) (string, error) {
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
-

@@ -185,6 +185,63 @@ paths:
       responses:
         "200":
           description: Tokens émis
+  /auth/tenant-discovery/request:
+    post:
+      summary: Demander un lien pour retrouver son organisation (tenant)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string }
+      responses:
+        "200":
+          description: OK
+  /auth/tenant-discovery/resolve:
+    get:
+      summary: Résoudre un token discovery → tenantId
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Résolu
+        "401":
+          description: Token invalide/expiré/utilisé
+  /public/invitations/resolve:
+    get:
+      summary: Résoudre un token d’invitation → tenantId
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Résolu
+        "401":
+          description: Token invalide/expiré/utilisé
+  /admin/invitations:
+    post:
+      summary: Envoyer une invitation (lien de connexion) par email
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string }
+      responses:
+        "200":
+          description: OK
   /admin/identity-providers:
     get:
       summary: Liste IdP du tenant

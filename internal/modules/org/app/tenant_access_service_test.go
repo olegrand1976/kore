@@ -123,4 +123,3 @@ func TestTenantAccessService_Resolve_ExpiredToken(t *testing.T) {
 	_, err = svc.Resolve(context.Background(), token)
 	require.ErrorIs(t, err, domain.ErrAccessTokenExpired)
 }
-
