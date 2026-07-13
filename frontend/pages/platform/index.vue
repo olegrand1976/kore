@@ -15,6 +15,40 @@
     </AppCard>
 
     <template v-else-if="overview">
+      <AppCard padding="lg" class="platform-page__llm">
+        <h3 class="platform-page__section-title">{{ $t('platform.llm.title') }}</h3>
+        <p class="platform-page__llm-desc">{{ $t('platform.llm.subtitle') }}</p>
+
+        <AppCard v-if="settingsPending" padding="md">
+          <p class="muted">{{ $t('platform.llm.loading') }}</p>
+        </AppCard>
+
+        <form v-else class="platform-page__llm-form" @submit.prevent="saveLlmSettings">
+          <AppInput
+            id="gemini-model"
+            v-model="geminiModel"
+            :label="$t('platform.llm.model_label')"
+            list="gemini-model-suggestions"
+            required
+          />
+          <p class="platform-page__llm-hint">{{ $t('platform.llm.model_hint') }}</p>
+          <datalist id="gemini-model-suggestions">
+            <option v-for="model in modelSuggestions" :key="model" :value="model" />
+          </datalist>
+          <p v-if="settingsSaveError" class="platform-page__llm-error" role="alert">
+            {{ $t('platform.llm.save_error') }}
+          </p>
+          <p v-if="settingsSaved" class="platform-page__llm-success" role="status">
+            {{ $t('platform.llm.save_success') }}
+          </p>
+          <div class="platform-page__llm-actions">
+            <AppButton type="submit" variant="primary" size="sm" :disabled="settingsSaving">
+              {{ settingsSaving ? $t('common.loading') : $t('common.save') }}
+            </AppButton>
+          </div>
+        </form>
+      </AppCard>
+
       <AppKpiGrid>
         <AppKpiCard
           icon="corporate_fare"
@@ -86,10 +120,45 @@ definePageMeta({
 
 const { t, locale } = useI18n()
 const { overview, pending, error, forbidden, fetchOverview } = usePlatformOverview()
+const {
+  settings,
+  pending: settingsPending,
+  saving: settingsSaving,
+  saveError: settingsSaveError,
+  fetchSettings,
+  saveSettings
+} = usePlatformSettings()
 
-onMounted(() => {
-  fetchOverview()
+const geminiModel = ref('')
+const settingsSaved = ref(false)
+
+const modelSuggestions = [
+  'gemini-3.5-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.5-pro'
+]
+
+onMounted(async () => {
+  await Promise.all([fetchOverview(), fetchSettings()])
+  if (settings.value?.geminiModel) {
+    geminiModel.value = settings.value.geminiModel
+  }
 })
+
+watch(settings, (value) => {
+  if (value?.geminiModel) {
+    geminiModel.value = value.geminiModel
+  }
+})
+
+async function saveLlmSettings() {
+  settingsSaved.value = false
+  const ok = await saveSettings(geminiModel.value.trim())
+  if (ok) {
+    settingsSaved.value = true
+  }
+}
 
 const seatsHint = computed(() => {
   const limit = overview.value?.summary.totalSeatLimit ?? 0
@@ -165,6 +234,45 @@ function formatDate(value: unknown): string {
   margin: 0 0 var(--kore-space-md);
   font-size: var(--kore-text-lg);
   font-weight: 600;
+}
+
+.platform-page__llm {
+  margin-bottom: var(--kore-space-md);
+}
+
+.platform-page__llm-desc {
+  margin: 0 0 var(--kore-space-md);
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-sm);
+}
+
+.platform-page__llm-form {
+  display: grid;
+  gap: var(--kore-space-md);
+  max-width: var(--kore-form-wide-max);
+}
+
+.platform-page__llm-hint {
+  margin: calc(-1 * var(--kore-space-sm)) 0 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-sm);
+}
+
+.platform-page__llm-actions {
+  display: flex;
+  gap: var(--kore-space-sm);
+}
+
+.platform-page__llm-error {
+  margin: 0;
+  color: var(--kore-danger);
+  font-size: var(--kore-text-sm);
+}
+
+.platform-page__llm-success {
+  margin: 0;
+  color: var(--kore-success);
+  font-size: var(--kore-text-sm);
 }
 
 .platform-page__table {

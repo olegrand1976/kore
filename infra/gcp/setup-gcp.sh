@@ -8,6 +8,17 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=lib/gcp-env.sh
 source "${SCRIPT_DIR}/lib/gcp-env.sh"
 
+if [[ -f "${REPO_ROOT}/.env.gemini" ]]; then
+  # shellcheck disable=SC1091
+  set -a && source "${REPO_ROOT}/.env.gemini" && set +a
+elif [[ -f "${REPO_ROOT}/.env.gcp" ]]; then
+  # shellcheck disable=SC1091
+  set -a && source "${REPO_ROOT}/.env.gcp" && set +a
+  if [[ -n "${GCP_API_KEY:-}" && -z "${GEMINI_API_KEY:-}" ]]; then
+    GEMINI_API_KEY="$GCP_API_KEY"
+  fi
+fi
+
 gcloud config set project "$GCP_PROJECT_ID" >/dev/null
 
 echo "=== Kore setup GCP — ${GCP_PROJECT_ID} ==="
@@ -114,13 +125,20 @@ else
   echo "  kore-jwt-signing-key existe"
 fi
 
-for stripe_secret in kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key; do
+for stripe_secret in kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key; do
   ensure_secret "$stripe_secret"
   if ! gcloud secrets versions list "$stripe_secret" --project="$GCP_PROJECT_ID" --limit=1 --format='value(name)' 2>/dev/null | grep -q .; then
     case "$stripe_secret" in
       kore-stripe-secret-key) add_secret_version "$stripe_secret" "sk_test_placeholder" ;;
       kore-stripe-webhook-secret) add_secret_version "$stripe_secret" "whsec_placeholder" ;;
       kore-stripe-publishable-key) add_secret_version "$stripe_secret" "pk_test_placeholder" ;;
+      kore-gemini-api-key)
+        if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+          add_secret_version "$stripe_secret" "$GEMINI_API_KEY"
+        else
+          echo "  ${stripe_secret} — renseignez via ./infra/gcp/apply-config.sh"
+        fi
+        ;;
     esac
     echo "→ ${stripe_secret} placeholder — remplacez par les vraies clés Stripe"
   else
@@ -130,7 +148,7 @@ done
 
 COMPUTE_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
 for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key kore-redis-url \
-  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key; do
+  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key; do
   if gcloud secrets describe "$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
     gcloud secrets add-iam-policy-binding "$secret" \
       --project="$GCP_PROJECT_ID" \

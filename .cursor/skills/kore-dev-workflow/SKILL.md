@@ -28,7 +28,15 @@ make up && make migrate && make seed
 4. Mobile : skill `kore-responsive-check`
 5. Build : `go build ./...` && `npm run build`
 
+## Migrations SQL
+
+1. Créer/altérer `internal/modules/<module>/migrations/*.up.sql`
+2. Enregistrer le module dans `internal/app/migrations.go` si nouveau
+3. **Mettre à jour `documentation/SCHEMA_DB.md`** (schéma, colonnes, ER, date)
+4. `make migrate && make test`
+
 ## Références
 
 - `.cursor/AGENTS.md`
 - `documentation/CHARTE_GRAPHIQUE.md`
+- `documentation/SCHEMA_DB.md`

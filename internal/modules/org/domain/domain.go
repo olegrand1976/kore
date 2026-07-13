@@ -18,6 +18,7 @@ var (
 	ErrSeatLimitReached          = errors.New("seat limit reached")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
+	ErrInvalidGeminiModel        = errors.New("invalid gemini model")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)

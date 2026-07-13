@@ -11,7 +11,6 @@ import (
 	aicra "github.com/kore/kore/internal/modules/ai/adapters/cra"
 	aihttp "github.com/kore/kore/internal/modules/ai/adapters/http"
 	aipostgres "github.com/kore/kore/internal/modules/ai/adapters/postgres"
-	aistub "github.com/kore/kore/internal/modules/ai/adapters/stub"
 	aitma "github.com/kore/kore/internal/modules/ai/adapters/tma"
 	aiworkflow "github.com/kore/kore/internal/modules/ai/adapters/workflow"
 	aiapp "github.com/kore/kore/internal/modules/ai/app"
@@ -117,7 +116,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	billingService := billingapp.NewService(billingRepo, cfg.BillingTrialDays)
 
 	orgService := orgapp.NewOrganizationService(orgRepo)
-	platformService := orgapp.NewPlatformService(orgRepo)
+	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins)
 	clientService := orgapp.NewClientService(orgRepo)
 
@@ -147,7 +146,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	aiRepo := aipostgres.NewRepository(pool)
 	aiService := aiapp.NewService(
 		aiRepo,
-		aistub.NewProvider(),
+		aiapp.NewLLMProvider(cfg, platformService),
 		aitma.NewReaderAdapter(tmaService),
 		aicra.NewReaderAdapter(craService),
 		aiconges.NewReaderAdapter(congesService),

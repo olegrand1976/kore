@@ -8,6 +8,7 @@
 | Provider | Env | Usage | Données |
 | --- | --- | --- | --- |
 | **stub** | `AI_LLM_PROVIDER=stub` | Dev, CI, démo sans clé API | Local uniquement |
+| **gemini** | `AI_LLM_PROVIDER=gemini` | Production cloud (Google Gemini) | Transfert selon région Google |
 | **openai** | `AI_LLM_PROVIDER=openai` | Production cloud | Transfert UE/US selon config |
 | **ollama** | `AI_LLM_PROVIDER=ollama` | Souveraineté, on-prem | Local |
 

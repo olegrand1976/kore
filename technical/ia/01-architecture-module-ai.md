@@ -106,17 +106,32 @@ Capability `ai_assist` via billing (add-on roadmap). En dev : activable via `ten
 
 | Variable | Défaut | Description |
 | --- | --- | --- |
-| `AI_LLM_PROVIDER` | `stub` | `stub`, `openai`, `ollama` |
+| `AI_LLM_PROVIDER` | `stub` | `stub`, `gemini`, `openai`, `ollama` |
+| `GEMINI_API_KEY` | — | Clé API Gemini (Google AI / Cloud) |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Modèle Gemini (surchargeable via admin plateforme) |
+| `PROMPT_GUARD_BLOCK` | `true` | Bloque les requêtes à risque d'injection indirecte de prompt |
 | `AI_OPENAI_API_KEY` | — | Clé API si provider openai |
 | `AI_OLLAMA_BASE_URL` | `http://localhost:11434` | Base Ollama |
 
-## 9. Tests
+## 9. Protection injection indirecte de prompt
+
+Toute requête vers le provider Gemini passe par `internal/modules/ai/app/promptguard` :
+
+- Détection de motifs d'injection (ignore instructions, jailbreak, forge de délimiteurs…)
+- Sanitisation (caractères de contrôle, redaction des marqueurs `KORE_UNTRUSTED_DATA`)
+- Encapsulation des données non fiables dans des blocs délimités par UUID
+- Durcissement du prompt système (règles non modifiables)
+- Blocage HTTP 422 si `PROMPT_GUARD_BLOCK=true` (défaut)
+
+Les capabilities métier doivent assembler les prompts via `promptguard.BuildSandboxedUserPrompt` ou `Service.llmComplete`.
+
+## 10. Tests
 
 - Unitaires : stub provider, logging, capability disabled
 - Intégration : handlers HTTP avec mock LLM
 - Pas d'appel réseau LLM en CI (stub uniquement)
 
-## 10. Definition of Done
+## 11. Definition of Done
 
 - [ ] Module câblé dans `internal/app/app.go`
 - [ ] Migrations `ai` schema appliquées

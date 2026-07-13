@@ -30,6 +30,7 @@ GITHUB_DEPLOY_SA="${GITHUB_DEPLOY_SA:-github-kore-deploy}"
 WIF_POOL_ID="${WIF_POOL_ID:-github-pool}"
 WIF_PROVIDER_ID="${WIF_PROVIDER_ID:-github-provider}"
 PROJECT_NUMBER="${PROJECT_NUMBER:-237481297060}"
+GEMINI_API_KEY_SECRET="${GEMINI_API_KEY_SECRET:-kore-gemini-api-key}"
 GCP_WORKLOAD_IDENTITY_PROVIDER="${GCP_WORKLOAD_IDENTITY_PROVIDER:-projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL_ID}/providers/${WIF_PROVIDER_ID}}"
 
 INFRA_ROOT="${INFRA_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)/infra}"

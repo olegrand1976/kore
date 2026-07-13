@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	ErrAIDisabled      = errors.New("ai assistance disabled for tenant")
-	ErrCapabilityOff   = errors.New("ai capability disabled")
-	ErrRequestNotFound = errors.New("ai request not found")
+	ErrAIDisabled             = errors.New("ai assistance disabled for tenant")
+	ErrCapabilityOff          = errors.New("ai capability disabled")
+	ErrRequestNotFound        = errors.New("ai request not found")
+	ErrPromptInjectionBlocked = errors.New("prompt injection blocked")
 )
 
 type RiskClass string

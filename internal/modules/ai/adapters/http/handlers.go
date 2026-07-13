@@ -40,6 +40,8 @@ func aiError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
 	case errors.Is(err, domain.ErrRequestNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+	case errors.Is(err, domain.ErrPromptInjectionBlocked):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}

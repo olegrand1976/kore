@@ -13,6 +13,7 @@ Monolithe Go + Nuxt 3 (PSA/ESN modulaire : CRA, TMA, congés, budget, billing).
 - `internal/modules/{org,cra,tma,...}/` — modules hexagonaux Go
 - `frontend/` — Nuxt 3, BFF dans `frontend/server/api/`
 - `documentation/CHARTE_GRAPHIQUE.md` — charte visuelle
+- `documentation/SCHEMA_DB.md` — schéma PostgreSQL actuel (tables, relations)
 
 ## Dev local
 
@@ -31,3 +32,4 @@ Seed admin : `ADM_admin` / `Admin123!`
 - **Mobile** : toute page UI doit fonctionner ≤768px (drawer + bottom nav app)
 - **i18n** : clés dans `frontend/locales/fr.json` et `en.json`
 - **Charte** : variables `--kore-*` uniquement, composants `Public*` / `App*`
+- **Schéma DB** : toute migration SQL (`internal/modules/*/migrations/`) implique la mise à jour de `documentation/SCHEMA_DB.md` dans la même PR (cf. règle `database-schema-doc`)

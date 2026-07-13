@@ -191,12 +191,30 @@ type PlatformOverview struct {
 	Tenants []TenantUsageSummary    `json:"tenants"`
 }
 
+const DefaultGeminiModel = "gemini-3.5-flash"
+
+type PlatformSettings struct {
+	GeminiModel string     `json:"geminiModel"`
+	LLMProvider string     `json:"llmProvider"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+}
+
+type UpdatePlatformSettingsCommand struct {
+	GeminiModel string
+	ActorUserID uuid.UUID
+}
+
 type PlatformRepository interface {
 	ListTenantsUsage(ctx context.Context) ([]TenantUsageSummary, error)
+	GetPlatformSettings(ctx context.Context) (PlatformSettings, error)
+	SavePlatformSettings(ctx context.Context, geminiModel string, updatedBy uuid.UUID, updatedAt time.Time) error
 }
 
 type PlatformService interface {
 	GetOverview(ctx context.Context) (PlatformOverview, error)
+	GetSettings(ctx context.Context) (PlatformSettings, error)
+	UpdateSettings(ctx context.Context, cmd UpdatePlatformSettingsCommand) (PlatformSettings, error)
+	CurrentGeminiModel(ctx context.Context) string
 }
 
 type Clock interface {

@@ -1,0 +1,28 @@
+---
+description: Tenir documentation/SCHEMA_DB.md à jour à chaque changement de migration SQL
+globs: internal/modules/**/migrations/**/*.sql,db/migrations/**,documentation/SCHEMA_DB.md
+alwaysApply: false
+---
+
+# Schéma DB — documentation à jour
+
+Référence : [`documentation/SCHEMA_DB.md`](../../documentation/SCHEMA_DB.md)
+
+## Quand mettre à jour
+
+Toute PR qui **ajoute, modifie ou supprime** un fichier dans `internal/modules/*/migrations/` doit aussi mettre à jour `documentation/SCHEMA_DB.md` dans la **même PR**.
+
+## Checklist agent (obligatoire)
+
+1. Lire les fichiers `.up.sql` impactés (source de vérité).
+2. Mettre à jour la section du schéma concerné (tables, colonnes, index, contraintes).
+3. Ajuster le diagramme ER Mermaid si une relation significative apparaît ou disparaît.
+4. Mettre à jour l'inventaire récapitulatif (nb tables par schéma).
+5. Mettre à jour la date « Dernière mise à jour doc » en en-tête du fichier.
+6. Si l'ordre des modules change : corriger `internal/app/migrations.go`, `db/migrations/README.md` et la table d'ordre dans `SCHEMA_DB.md`.
+
+## Ne pas oublier
+
+- FK inter-schémas explicites (ex. `conges.leave_type_configs.societe_id → org.societes`).
+- Migrations `.up.sql` uniquement pour décrire l'état cible (pas les `.down.sql`).
+- Le wiki GitHub est resynchronisé au deploy : pas d'étape manuelle wiki, mais le markdown repo doit être à jour avant merge sur `main`.

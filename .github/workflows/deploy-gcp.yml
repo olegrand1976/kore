@@ -73,3 +73,31 @@ jobs:
             echo "| API Cloud Run | ${API_URL} |"
             echo "| Frontend Cloud Run | ${FE_URL} |"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+  sync-wiki:
+    name: Sync GitHub Wiki
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync documentation to project wiki
+        env:
+          WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash scripts/sync-github-wiki.sh
+
+      - name: Summary
+        run: |
+          {
+            echo "### GitHub Wiki"
+            echo ""
+            echo "Documentation synchronisée : [Wiki du projet](https://github.com/${{ github.repository }}/wiki)"
+          } >> "${GITHUB_STEP_SUMMARY}"

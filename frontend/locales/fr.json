@@ -595,6 +595,15 @@
       "ai": "IA (30j)",
       "active": "Actif 30j",
       "last_activity": "Dernière activité"
+    },
+    "llm": {
+      "title": "Paramètres IA (Gemini)",
+      "subtitle": "Modèle LLM appliqué à tous les tenants. Ajustez selon coût, latence ou capacités.",
+      "loading": "Chargement des paramètres IA…",
+      "model_label": "Modèle Gemini",
+      "model_hint": "Ex. gemini-3.5-flash — pris en compte immédiatement sur les prochaines requêtes IA",
+      "save_success": "Modèle IA mis à jour",
+      "save_error": "Impossible d'enregistrer le modèle"
     }
   }
 }

@@ -21,6 +21,12 @@ JWT `authx` — claims `sub`, `tenant_id`, `profile`. RBAC : `authorizer.Can(ctx
 
 `Brouillon`, `ValidéSemaine`, `Définitif` — mapper frontend via `useCraStatus`.
 
+## Migrations & schéma DB
+
+- Fichiers : `internal/modules/<module>/migrations/NNNN_*.up.sql`
+- Ordre : `internal/app/migrations.go`
+- **Doc obligatoire** : mettre à jour `documentation/SCHEMA_DB.md` dans la même PR (tables, index, diagramme ER, date en-tête)
+
 ## Commandes
 
 ```bash

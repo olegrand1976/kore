@@ -748,4 +748,8 @@ Lors de l'ajout ou modification d'une migration :
 2. Ajuster le diagramme ER si une relation significative apparaît.
 3. Mettre à jour la date en en-tête.
 
+**Obligatoire dans la même PR** que la migration (règle Cursor `database-schema-doc`).
+
+Le wiki GitHub est resynchronisé automatiquement à chaque deploy sur `main` (`scripts/sync-github-wiki.sh`).
+
 Voir aussi : [03-database.md](../technical/foundation/03-database.md) (principes et conventions).

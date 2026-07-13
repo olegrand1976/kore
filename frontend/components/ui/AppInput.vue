@@ -7,6 +7,7 @@ defineProps<{
   required?: boolean
   error?: string
   id?: string
+  list?: string
 }>()
 
 defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -23,6 +24,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
       :value="modelValue"
       :placeholder="placeholder"
       :required="required"
+      :list="list"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
     <p v-if="error" class="app-input__error" role="alert">{{ error }}</p>

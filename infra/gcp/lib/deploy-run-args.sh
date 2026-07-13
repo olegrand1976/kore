@@ -44,6 +44,9 @@ BILLING_TRIAL_DAYS: "14"
 SMTP_HOST: "pro1.mail.ovh.net"
 SMTP_PORT: "587"
 SMTP_FROM: "Kore <noreply@ll-it-sc.be>"
+AI_LLM_PROVIDER: "gemini"
+GEMINI_MODEL: "gemini-3.5-flash"
+PROMPT_GUARD_BLOCK: "true"
 EOF
 }
 
@@ -59,12 +62,16 @@ EOF
 }
 
 kore_api_secrets() {
-  printf '%s' \
-    "DATABASE_URL=kore-database-url:latest" \
-    ",JWT_SIGNING_KEY=kore-jwt-signing-key:latest" \
-    ",STRIPE_SECRET_KEY=kore-stripe-secret-key:latest" \
-    ",STRIPE_WEBHOOK_SECRET=kore-stripe-webhook-secret:latest" \
-    ",STRIPE_PUBLISHABLE_KEY=kore-stripe-publishable-key:latest"
+  local secrets
+  secrets="DATABASE_URL=kore-database-url:latest"
+  secrets+=",JWT_SIGNING_KEY=kore-jwt-signing-key:latest"
+  secrets+=",STRIPE_SECRET_KEY=kore-stripe-secret-key:latest"
+  secrets+=",STRIPE_WEBHOOK_SECRET=kore-stripe-webhook-secret:latest"
+  secrets+=",STRIPE_PUBLISHABLE_KEY=kore-stripe-publishable-key:latest"
+  if kore_has_secret_version "$GEMINI_API_KEY_SECRET"; then
+    secrets+=",GEMINI_API_KEY=${GEMINI_API_KEY_SECRET}:latest"
+  fi
+  printf '%s' "$secrets"
 }
 
 kore_migrate_secrets() {

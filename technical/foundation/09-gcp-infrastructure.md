@@ -81,6 +81,7 @@ flowchart TB
 | `kore-redis-url` | `REDIS_ADDR` + `REDIS_DB` |
 | `REDIS_KEY_PREFIX` | `kore` (env) |
 | `kore-stripe-secret-key` / `kore-stripe-webhook-secret` | Stripe |
+| `kore-gemini-api-key` | `GEMINI_API_KEY` (Gemini IA, projet `237481297060`) |
 
 - Aucun secret dans l'image ou le dépôt. Montés comme variables d'environnement ou volumes par Cloud Run.
 

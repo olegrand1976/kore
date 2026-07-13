@@ -27,7 +27,7 @@ KORE_REDIS_PORT    ?= 6381
 
 .PHONY: help env up up-infra up-front front down migrate seed seed-reset logs ps restart ready smoke \
         build api test test-integration lint sqlc frontend-dev frontend-install \
-        gcp-setup gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-smoke gcp-domain gcp-github-deploy
+        gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-smoke gcp-domain gcp-github-deploy
 
 ## Affiche les cibles disponibles
 help:
@@ -50,6 +50,7 @@ help:
 	@echo ""
 	@echo "  GCP Premedica (premedica-prod-2025) :"
 	@echo "  make gcp-setup          Bootstrap DB, secrets, SA, Artifact Registry"
+	@echo "  make gcp-config         Publie la clé Gemini (Secret Manager) depuis .env.gemini"
 	@echo "  make gcp-github-deploy  Workload Identity Federation GitHub Actions"
 	@echo "  make gcp-deploy         Cloud Build → API + frontend"
 	@echo "  make gcp-deploy-jobs    Cloud Run Jobs (migrate, seed)"
@@ -171,6 +172,11 @@ GCP_PROJECT_ID ?= premedica-prod-2025
 gcp-setup:
 	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
 	bash infra/gcp/setup-gcp.sh
+
+## Applique la clé API Gemini (Secret Manager) depuis .env.gemini
+gcp-config:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/apply-config.sh
 
 ## WIF GitHub Actions → GCP
 gcp-github-deploy:

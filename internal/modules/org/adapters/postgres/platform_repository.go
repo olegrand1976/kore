@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/org/ports"
 )
 
@@ -107,6 +108,34 @@ func (r *Repository) ListTenantsUsage(ctx context.Context) ([]ports.TenantUsageS
 		return nil, err
 	}
 	return out, nil
+}
+
+func (r *Repository) GetPlatformSettings(ctx context.Context) (ports.PlatformSettings, error) {
+	var settings ports.PlatformSettings
+	var updatedAt time.Time
+	var updatedBy *uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT gemini_model, updated_at, updated_by
+		FROM org.platform_settings WHERE id = 1
+	`).Scan(&settings.GeminiModel, &updatedAt, &updatedBy)
+	if err != nil {
+		return ports.PlatformSettings{}, err
+	}
+	settings.LLMProvider = "gemini"
+	settings.UpdatedAt = &updatedAt
+	return settings, nil
+}
+
+func (r *Repository) SavePlatformSettings(ctx context.Context, geminiModel string, updatedBy uuid.UUID, updatedAt time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO org.platform_settings (id, gemini_model, updated_at, updated_by)
+		VALUES (1, $1, $2, $3)
+		ON CONFLICT (id) DO UPDATE SET
+			gemini_model = EXCLUDED.gemini_model,
+			updated_at = EXCLUDED.updated_at,
+			updated_by = EXCLUDED.updated_by
+	`, geminiModel, updatedAt, updatedBy)
+	return err
 }
 
 var _ ports.PlatformRepository = (*Repository)(nil)

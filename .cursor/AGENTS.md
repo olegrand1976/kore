@@ -37,6 +37,12 @@ make up          # stack Docker
 4. Tokens charte, pas de couleurs ad hoc
 5. `npm run build` + `go build ./...`
 
+## Checklist avant PR backend (migrations)
+
+1. Migration `.up.sql` + test d'intégration si pertinent
+2. **`documentation/SCHEMA_DB.md` à jour** (même PR que la migration)
+3. `go test ./...` + `make migrate`
+
 ## Skills projet (`.cursor/skills/`)
 
 - `kore-dev-workflow` — commandes, structure modules, BFF
@@ -52,3 +58,5 @@ make up          # stack Docker
 | Thème | `composables/useTheme.ts`, `tokens.css` |
 | CRA | `internal/modules/cra/`, `frontend/pages/cra/` |
 | Org/branding | `internal/modules/org/`, `frontend/pages/admin/organisation/` |
+| Schéma DB | `documentation/SCHEMA_DB.md`, `internal/modules/*/migrations/` |
+| Wiki GitHub | sync auto au deploy (`scripts/sync-github-wiki.sh`) |

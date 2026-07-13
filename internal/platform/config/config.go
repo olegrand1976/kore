@@ -32,6 +32,10 @@ type Config struct {
 	DevSeedEnabled       bool
 	UploadsDir           string
 	PlatformAdminLogins  []string
+	AILLMProvider        string
+	GeminiAPIKey         string
+	GeminiModel          string
+	PromptGuardBlock     bool
 }
 
 func Load() (Config, error) {
@@ -59,6 +63,10 @@ func Load() (Config, error) {
 		DevSeedEnabled:       envBool("DEV_SEED_ENABLED", true),
 		UploadsDir:           envOr("UPLOADS_DIR", "./uploads"),
 		PlatformAdminLogins:  envCSV("PLATFORM_ADMIN_LOGINS", "ADM_admin"),
+		AILLMProvider:        envOr("AI_LLM_PROVIDER", "stub"),
+		GeminiAPIKey:         envOr("GEMINI_API_KEY", ""),
+		GeminiModel:          envOr("GEMINI_MODEL", "gemini-3.5-flash"),
+		PromptGuardBlock:     envBool("PROMPT_GUARD_BLOCK", true),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

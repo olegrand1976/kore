@@ -38,7 +38,12 @@ make gcp-domain
 ## CI/CD
 
 - **CI** : `.github/workflows/ci.yml` (tests sur chaque PR)
-- **Deploy** : `.github/workflows/deploy-gcp.yml` (push `main` → Cloud Build → smoke)
+- **Deploy** : `.github/workflows/deploy-gcp.yml` (push `main` → Cloud Build → smoke → sync wiki GitHub)
+- **Wiki** : job `sync-wiki` — publie `documentation/`, `technical/` et `db/migrations/README.md` sur [le wiki du projet](https://github.com/olegrand1976/kore/wiki) via `scripts/sync-github-wiki.sh`
+
+Secret GitHub requis pour le wiki (le `GITHUB_TOKEN` ne peut pas pousser vers le dépôt `.wiki`) :
+
+- `WIKI_SYNC_TOKEN` — PAT classic avec scope `repo` (ou fine-grained : Contents read/write sur ce dépôt)
 
 Secrets GitHub (configurés via WIF, pas de clé JSON) :
 
