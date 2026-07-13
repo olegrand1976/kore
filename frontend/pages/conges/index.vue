@@ -1,6 +1,6 @@
 <template>
   <div>
-    <AppKpiGrid compact>
+    <AppKpiGrid compact class="conges-kpis">
       <AppKpiCard
         icon="list_alt"
         tone="gold"
@@ -306,6 +306,22 @@ const submitRequest = async () => {
 </script>
 
 <style scoped>
+.conges-kpis :deep(.kpi-card) {
+  height: 100%;
+}
+
+@media (min-width: 640px) {
+  .conges-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .conges-kpis {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
 .conges-overview {
   display: grid;
   gap: var(--kore-space-md);

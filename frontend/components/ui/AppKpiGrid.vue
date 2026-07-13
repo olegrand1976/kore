@@ -11,13 +11,13 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
 <style scoped>
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--kore-space-md);
   margin-bottom: var(--kore-space-lg);
 }
 
 .kpi-grid--compact {
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--kore-space-sm);
   margin-bottom: var(--kore-space-md);
 }
