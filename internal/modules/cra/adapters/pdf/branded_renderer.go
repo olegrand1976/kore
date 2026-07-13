@@ -14,7 +14,7 @@ type BrandedRenderer struct {
 }
 
 func NewBrandedRenderer(brand CRABrandData) ports.PDFRenderer {
-	if brand.ShowKoreFooter == false && brand.CompanyName == "" {
+	if !brand.ShowKoreFooter && brand.CompanyName == "" {
 		brand.ShowKoreFooter = true
 	}
 	return &BrandedRenderer{

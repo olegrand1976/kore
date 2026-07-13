@@ -185,10 +185,6 @@ func scanSlot(row pgx.Row) (domain.BookingSlot, error) {
 	return s, nil
 }
 
-type scannable interface {
-	Scan(dest ...any) error
-}
-
 var _ ports.LeadRepository = (*Repository)(nil)
 var _ ports.BookingRepository = (*Repository)(nil)
 

@@ -15,10 +15,9 @@ import (
 )
 
 type memRepo struct {
-	enabled   bool
-	capOn     bool
-	logs      []domain.RequestLog
-	tenantOn  bool
+	capOn    bool
+	logs     []domain.RequestLog
+	tenantOn bool
 }
 
 func (m *memRepo) IsCapabilityEnabled(_ context.Context, _ string) (bool, error) {

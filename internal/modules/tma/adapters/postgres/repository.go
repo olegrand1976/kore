@@ -61,7 +61,6 @@ func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter po
 	if filter.Status != nil {
 		query += fmt.Sprintf(" AND status = $%d", argPos)
 		args = append(args, string(*filter.Status))
-		argPos++
 	}
 	if filter.VisibleOnly {
 		query += " AND visible = TRUE"
