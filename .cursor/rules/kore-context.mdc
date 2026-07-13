@@ -23,6 +23,10 @@ make up   # ports : frontend 3001, API 8081
 
 Seed admin : `ADM_admin` / `Admin123!`
 
+## Documentation / Wiki
+
+- La documentation (`documentation/`, `technical/`, `db/migrations/README.md`) est synchronisée automatiquement vers le **GitHub Wiki** à chaque push sur `main` via `.github/workflows/wiki-sync.yml` (script `scripts/sync-github-wiki.sh`).
+
 ## Règles impératives
 
 - Répondre en **français** à l'utilisateur
