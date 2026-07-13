@@ -45,27 +45,46 @@
         <AppInput
           id="rule-code"
           v-model="form.code"
-          :label="$t('notifications.col_code')"
-          :tooltip="$t('notifications.tooltip.code')"
           :disabled="!!editingCode"
           required
-        />
+        >
+          <template #label>
+            <span class="settings-labelRow">
+              <span>{{ $t('notifications.col_code') }}</span>
+              <AppTooltip :button-label="$t('common.info')">
+                {{ $t('notifications.tooltip.code') }}
+              </AppTooltip>
+            </span>
+          </template>
+        </AppInput>
         <p class="settings-hint settings-hint--tight">
           {{ $t('notifications.hint.code') }}
         </p>
         <AppInput
           id="rule-trigger"
           v-model="form.trigger"
-          :label="$t('notifications.col_trigger')"
-          :tooltip="$t('notifications.tooltip.trigger')"
           required
-        />
+        >
+          <template #label>
+            <span class="settings-labelRow">
+              <span>{{ $t('notifications.col_trigger') }}</span>
+              <AppTooltip :button-label="$t('common.info')">
+                {{ $t('notifications.tooltip.trigger') }}
+              </AppTooltip>
+            </span>
+          </template>
+        </AppInput>
         <p class="settings-hint settings-hint--tight">
           {{ $t('notifications.hint.trigger') }}
         </p>
         <div class="settings-field">
-          <label for="rule-frequency">{{ $t('notifications.col_frequency') }}</label>
-          <select id="rule-frequency" v-model="form.frequency" :title="$t('notifications.tooltip.frequency')" required>
+          <label for="rule-frequency" class="settings-labelRow">
+            <span>{{ $t('notifications.col_frequency') }}</span>
+            <AppTooltip :button-label="$t('common.info')">
+              {{ $t('notifications.tooltip.frequency') }}
+            </AppTooltip>
+          </label>
+          <select id="rule-frequency" v-model="form.frequency" required>
             <option v-for="f in frequencies" :key="f" :value="f">
               {{ frequencyLabel(f) }}
             </option>
@@ -73,19 +92,28 @@
           <p class="settings-hint">{{ $t('notifications.hint.frequency') }}</p>
         </div>
         <div class="settings-field settings-field--full">
-          <label for="rule-template">{{ $t('notifications.col_template') }}</label>
+          <label for="rule-template" class="settings-labelRow">
+            <span>{{ $t('notifications.col_template') }}</span>
+            <AppTooltip :button-label="$t('common.info')">
+              {{ $t('notifications.tooltip.template') }}
+            </AppTooltip>
+          </label>
           <textarea
             id="rule-template"
             v-model="form.template"
-            :title="$t('notifications.tooltip.template')"
             rows="4"
             required
           />
           <p class="settings-hint">{{ $t('notifications.hint.template') }}</p>
         </div>
-        <label class="settings-toggle" :title="$t('notifications.tooltip.attach_pdf')">
+        <label class="settings-toggle">
           <input v-model="form.attachPdf" type="checkbox" />
-          {{ $t('notifications.attach_pdf') }}
+          <span class="settings-labelRow">
+            <span>{{ $t('notifications.attach_pdf') }}</span>
+            <AppTooltip :button-label="$t('common.info')">
+              {{ $t('notifications.tooltip.attach_pdf') }}
+            </AppTooltip>
+          </span>
         </label>
         <p class="settings-hint settings-hint--tight">
           {{ $t('notifications.hint.attach_pdf') }}
@@ -292,6 +320,17 @@ const save = async () => {
   display: grid;
   gap: var(--kore-space-md);
   max-width: var(--kore-form-wide-max);
+}
+
+.settings-labelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-labelRow :deep(.app-tooltip__button) {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 .settings-howto {

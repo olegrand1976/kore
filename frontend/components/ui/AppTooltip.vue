@@ -7,12 +7,10 @@ const props = defineProps<Props>()
 
 const isOpen = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
+const tooltipId = ref<string>('')
 
 let onDocPointerDown: ((e: PointerEvent) => void) | null = null
 let onDocKeyDown: ((e: KeyboardEvent) => void) | null = null
-
-let tooltipIdSeq = 0
-const tooltipId = `app-tooltip-${++tooltipIdSeq}`
 
 const close = () => {
   isOpen.value = false
@@ -23,6 +21,14 @@ const toggle = () => {
 }
 
 onMounted(() => {
+  if (!tooltipId.value) {
+    const uuid =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    tooltipId.value = `app-tooltip-${uuid}`
+  }
+
   onDocPointerDown = (e: PointerEvent) => {
     if (!isOpen.value) return
     const target = e.target as Node | null
@@ -52,14 +58,15 @@ onBeforeUnmount(() => {
       type="button"
       class="app-tooltip__button"
       :aria-expanded="isOpen"
-      :aria-controls="tooltipId"
+      :aria-controls="isOpen ? tooltipId : undefined"
+      :aria-describedby="isOpen ? tooltipId : undefined"
       :aria-label="props.buttonLabel || 'Info'"
       @click="toggle"
     >
       <span aria-hidden="true" class="app-tooltip__icon">i</span>
     </button>
     <span
-      v-if="isOpen"
+      v-if="isOpen && tooltipId"
       :id="tooltipId"
       class="app-tooltip__panel"
       role="tooltip"

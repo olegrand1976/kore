@@ -19,7 +19,9 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
 
 <template>
   <div class="app-input">
-    <label v-if="label" :for="id" class="app-input__label">{{ label }}</label>
+    <label v-if="label || $slots.label" :for="id" class="app-input__label">
+      <slot name="label">{{ label }}</slot>
+    </label>
     <input
       :id="id"
       class="app-input__field"
