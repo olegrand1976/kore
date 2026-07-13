@@ -93,6 +93,9 @@ WIKI_BRANCH="$(git branch --show-current)"
 if [[ -z "${WIKI_BRANCH}" ]]; then
   WIKI_BRANCH=master
 fi
-git push origin "HEAD:${WIKI_BRANCH}"
+if ! git push origin "HEAD:${WIKI_BRANCH}"; then
+  echo "Warning: wiki push failed (wiki disabled or token lacks wiki scope) — skipping." >&2
+  exit 0
+fi
 
 echo "Wiki synced successfully."
