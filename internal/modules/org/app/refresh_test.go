@@ -106,6 +106,16 @@ func (r refreshUserRepo) FindUserByEmail(context.Context, kernel.TenantID, strin
 	return domain.User{}, domain.ErrUserNotFound
 }
 
+func (r refreshUserRepo) FindTenantIDsByEmail(context.Context, string) ([]kernel.TenantID, error) {
+	return nil, nil
+}
+func (r refreshUserRepo) SaveAccessToken(context.Context, string, kernel.TenantID, string, string, time.Time) error {
+	return nil
+}
+func (r refreshUserRepo) ConsumeAccessToken(context.Context, string, time.Time) (ports.AccessTokenRow, bool, error) {
+	return ports.AccessTokenRow{}, false, nil
+}
+
 func TestRefreshSession_reappliesPlatformAdminRole(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	userID := uuid.New()

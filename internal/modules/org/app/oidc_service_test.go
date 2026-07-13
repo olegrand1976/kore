@@ -131,6 +131,16 @@ func (s *oidcRepoStub) FindUserByEmail(_ context.Context, _ kernel.TenantID, ema
 	return domain.User{}, domain.ErrUserNotFound
 }
 
+func (s *oidcRepoStub) FindTenantIDsByEmail(context.Context, string) ([]kernel.TenantID, error) {
+	return nil, nil
+}
+func (s *oidcRepoStub) SaveAccessToken(context.Context, string, kernel.TenantID, string, string, time.Time) error {
+	return nil
+}
+func (s *oidcRepoStub) ConsumeAccessToken(context.Context, string, time.Time) (ports.AccessTokenRow, bool, error) {
+	return ports.AccessTokenRow{}, false, nil
+}
+
 type entitlementStub struct {
 	limit int
 }
