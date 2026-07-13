@@ -1,0 +1,88 @@
+# Variables Cloud Run partagées (API, frontend, jobs). Source : infra/gcp/lib/gcp-env.sh
+# shellcheck shell=bash
+set -euo pipefail
+
+kore_resolve_redis_addr() {
+  local redis_url host port
+  redis_url="$(gcloud secrets versions access latest \
+    --secret=kore-redis-url --project="$GCP_PROJECT_ID" 2>/dev/null || true)"
+  if [[ -n "$redis_url" ]]; then
+    host="$(python3 -c "from urllib.parse import urlparse; u=urlparse('$redis_url'); print(u.hostname or '')")"
+    port="$(python3 -c "from urllib.parse import urlparse; u=urlparse('$redis_url'); print(u.port or 6379)")"
+    if [[ -n "$host" ]]; then
+      printf '%s:%s' "$host" "$port"
+      return 0
+    fi
+  fi
+  local vm_host
+  vm_host="$(gcloud secrets versions access latest \
+    --secret=premedica-redis-host --project="$GCP_PROJECT_ID" 2>/dev/null || true)"
+  if [[ -z "$vm_host" ]]; then
+    vm_host="$(gcloud compute instances describe "$REDIS_VM_NAME" \
+      --zone="$REDIS_VM_ZONE" --project="$GCP_PROJECT_ID" \
+      --format='value(networkInterfaces[0].networkIP)' 2>/dev/null || true)"
+  fi
+  printf '%s:6379' "${vm_host:-localhost}"
+}
+
+kore_write_api_env_file() {
+  local path="$1"
+  local redis_addr
+  redis_addr="$(kore_resolve_redis_addr)"
+  cat >"$path" <<EOF
+HTTP_ADDR: ":8080"
+LOG_LEVEL: "info"
+MIGRATE_ON_BOOT: "false"
+DEV_SEED_ENABLED: "false"
+REDIS_ADDR: "${redis_addr}"
+REDIS_DB: "${REDIS_DB}"
+REDIS_KEY_PREFIX: "${REDIS_KEY_PREFIX}"
+REDIS_TLS: "false"
+JWT_TTL: "15m"
+JWT_REFRESH_TTL: "168h"
+BILLING_TRIAL_DAYS: "14"
+SMTP_HOST: "pro1.mail.ovh.net"
+SMTP_PORT: "587"
+SMTP_FROM: "Kore <noreply@ll-it-sc.be>"
+EOF
+}
+
+kore_write_frontend_env_file() {
+  local path="$1"
+  local api_url="${2:-$(api_run_url)}"
+  local site_url="${3:-$PUBLIC_SITE_URL}"
+  cat >"$path" <<EOF
+NUXT_PUBLIC_API_BASE: "${api_url}"
+NUXT_API_BASE: "${api_url}"
+NUXT_PUBLIC_SITE_URL: "${site_url}"
+EOF
+}
+
+kore_api_secrets() {
+  printf '%s' \
+    "DATABASE_URL=kore-database-url:latest" \
+    ",JWT_SIGNING_KEY=kore-jwt-signing-key:latest" \
+    ",STRIPE_SECRET_KEY=kore-stripe-secret-key:latest" \
+    ",STRIPE_WEBHOOK_SECRET=kore-stripe-webhook-secret:latest" \
+    ",STRIPE_PUBLISHABLE_KEY=kore-stripe-publishable-key:latest"
+}
+
+kore_migrate_secrets() {
+  if gcloud secrets versions access latest \
+    --secret=kore-migrate-database-url --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+    printf '%s' "DATABASE_URL=kore-migrate-database-url:latest"
+    return
+  fi
+  echo "→ Job migrate : secret kore-migrate-database-url absent — fallback runtime" >&2
+  printf '%s' "DATABASE_URL=kore-database-url:latest"
+}
+
+kore_seed_secrets() {
+  printf '%s' "$(kore_api_secrets)"
+}
+
+kore_has_secret_version() {
+  local secret="$1"
+  gcloud secrets versions access latest \
+    --secret="$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1
+}

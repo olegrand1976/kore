@@ -5,6 +5,7 @@ import (
 
 	"github.com/kore/kore/internal/modules/org/app"
 	"github.com/kore/kore/internal/modules/org/domain"
+	"github.com/kore/kore/internal/platform/authx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,5 +19,26 @@ func TestArgon2HashVerify(t *testing.T) {
 
 func TestDefaultPermissionsAdmin(t *testing.T) {
 	perms := app.DefaultPermissions()
-	require.True(t, perms[string(domain.ProfileAdmin)]["org"]["E"])
+	require.True(t, perms[string(domain.ProfileAdmin)]["org"][authx.ActionWrite])
+	require.True(t, perms[string(domain.ProfileAdmin)]["conges"][authx.ActionValidate])
+	require.True(t, perms[string(domain.ProfileAdmin)]["budget"][authx.ActionRead])
+}
+
+func TestDefaultPermissionsResponsableCongesValidate(t *testing.T) {
+	perms := app.DefaultPermissions()
+	require.True(t, perms["Responsable de service"]["org"][authx.ActionRead])
+	require.True(t, perms["Responsable de service"]["conges"][authx.ActionValidate])
+	require.True(t, perms["Responsable de service"]["budget"][authx.ActionWrite])
+}
+
+func TestDefaultPermissionsChefEquipeOrgRead(t *testing.T) {
+	perms := app.DefaultPermissions()
+	require.True(t, perms["Chef d'équipe"]["org"][authx.ActionRead])
+	require.False(t, perms["Chef d'équipe"]["conges"][authx.ActionValidate])
+}
+
+func TestDefaultPermissionsCollaborateur(t *testing.T) {
+	perms := app.DefaultPermissions()
+	require.True(t, perms[string(domain.ProfileCollaborateur)]["conges"][authx.ActionWrite])
+	require.True(t, perms[string(domain.ProfileCollaborateur)]["tma"][authx.ActionWrite])
 }

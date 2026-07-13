@@ -8,7 +8,7 @@
 
 ```mermaid
 flowchart LR
-  MVP["MVP en cours"] --> P1["Phase 1 — Deal breakers"]
+  MVP["MVP validé"] --> P1["Phase 1 — Deal breakers"]
   P1 --> P1b["Phase 1bis — Mobile Flutter"]
   P1 --> P2["Phase 2 — Ecosysteme et conformite"]
   P1b --> P2
@@ -17,7 +17,7 @@ flowchart LR
 
 | Phase | Horizon indicatif | Gate commercial | Fondations / modules |
 | --- | --- | --- | --- |
-| **MVP** | En cours | Early access 2026 | 00–05, 11, 14, 15 |
+| **MVP** | Gate validée (07/2026) | Early access 2026 | 00–05, 11, 14, 15 |
 | **Phase 1** | Q3–Q4 2026 | Veto IT/DAF levé | F12, UI Nuxt 03/04/05 |
 | **Phase 1bis** | Q4 2026 – Q1 2027 | Table stake consultants (mobile) | F14, M16 |
 | **Phase 2** | 2026–2027 | Embeddabilité + e-invoicing sept. 2026 | F13, M17, M09, M13 |
@@ -29,13 +29,31 @@ flowchart LR
 
 **Périmètre** : modules **00 + 01 + 02 + 03 + 04 + 05 + 11 + 14 + 15** (cf. README §Périmètre MVP).
 
-**État actuel (audit 07/2026)** :
+**État actuel (gate validée 07/2026)** :
 - Backend : modules MVP câblés dans `internal/app/app.go`.
-- Frontend Nuxt : ~10 pages ; CRA et admin partiellement couverts ; **congés, TMA, budget sans UI ni BFF**.
+- Frontend Nuxt : CRA, congés/TMA/budget UI MVP, KPI dashboard, RBAC permissions (`usePermissions`), workflow TMA dynamique.
+- Correctifs gate : org read managers (assign TMA), UPSERT analyse, smoke étendu, wording e-facturation roadmap.
 - Mobile : responsive web uniquement ; **pas d'app Flutter**.
 - Intégrations : Stripe (abonnement SaaS) + SMTP ; **pas de SSO, API publique, connecteur compta**.
+- **Dette acceptée post-gate** : Gantt TMA, SSO (Phase 1).
 
-**Gate MVP** : Definition of Done de chaque fiche MVP cochée + tests passants (cf. README §gate).
+**Gate MVP** : validée — tests Go + smoke + build frontend OK (07/2026).
+
+---
+
+## IA transverse (post-MVP)
+
+> Spécifications : [`ia/README.md`](ia/README.md) — conformité IA Act UE, module `internal/modules/ai/`.
+
+| Vague | Horizon | Livrables |
+| --- | --- | --- |
+| **0** | Prérequis | Dossier `technical/ia/`, schéma `ai`, gouvernance tenant, `AppAiBadge` |
+| **1** | 4–6 sem. | TMA : brouillon analyse, classification, doublons |
+| **2** | 6–8 sem. | CRA prefill + anomalies factuelles, budget estimation, dashboard briefing |
+| **3** | 8–12 sem. | Congés manager context, workflow explain, chatbot publicsite (Art. 50) |
+| **4** | Phase 2+ | Capabilities M08/M09/M10, pgvector embeddings |
+
+**Gate IA Vague 1** : registre capabilities à jour, journalisation Art. 12, opt-in tenant, aucune capability interdite IA Act.
 
 ---
 
@@ -201,7 +219,7 @@ flowchart LR
 | Pas de mobile commercial | Oui | Phase 1bis (Flutter) |
 | Aucune intégration tiers | Oui | Phase 1 (SSO), Phase 2 (compta/API), Phase 3 (SIRH/calendrier) |
 | API non embeddable | Partiel | Phase 2 (F13 + M17) |
-| UX / profondeur produit | Partiel | Phase 1 (UI Nuxt), Phase 3 (dashboard) |
+| UX / profondeur produit | Partiel (03/04/05 UI MVP) | Phase 1 (complété web), Phase 3 (dashboard) |
 | E-invoicing promis en landing | Écart marketing | Phase 1 (correction), Phase 2 (M09) |
 | Workflows sans dev (UI) | Partiel (backend OK) | Phase 2 (M13) |
 | Multi-tenant | Oui (socle OK) | Finition continue |

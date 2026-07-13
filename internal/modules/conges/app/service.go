@@ -11,11 +11,12 @@ import (
 )
 
 type service struct {
-	repo     ports.LeaveRepository
-	cra      ports.CRAFeeder
-	workflow ports.WorkflowService
-	notifier ports.NotificationPublisher
-	clock    ports.Clock
+	repo         ports.LeaveRepository
+	typeConfigs  ports.LeaveTypeConfigService
+	cra          ports.CRAFeeder
+	workflow     ports.WorkflowService
+	notifier     ports.NotificationPublisher
+	clock        ports.Clock
 }
 
 func NewService(
@@ -46,6 +47,10 @@ func WithClock(clock ports.Clock) Option {
 	return func(s *service) { s.clock = clock }
 }
 
+func WithTypeConfigs(typeConfigs ports.LeaveTypeConfigService) Option {
+	return func(s *service) { s.typeConfigs = typeConfigs }
+}
+
 type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now() }
@@ -54,6 +59,11 @@ func (s *service) Request(ctx context.Context, cmd ports.RequestLeaveCommand) (d
 	period, err := kernel.NewDateRange(cmd.From, cmd.To)
 	if err != nil {
 		return domain.LeaveRequest{}, domain.ErrInvalidDateRange
+	}
+	if s.typeConfigs != nil {
+		if err := s.typeConfigs.ValidateTypeForUser(ctx, cmd.TenantID, cmd.UserID, string(cmd.Type)); err != nil {
+			return domain.LeaveRequest{}, err
+		}
 	}
 	req := domain.NewLeaveRequest(cmd.TenantID, cmd.UserID, cmd.Type, period, cmd.Motif)
 	if s.workflow != nil {

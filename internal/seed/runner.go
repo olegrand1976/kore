@@ -7,11 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	billingdomain "github.com/kore/kore/internal/modules/billing/domain"
-	budgetdomain "github.com/kore/kore/internal/modules/budget/domain"
 	budgetports "github.com/kore/kore/internal/modules/budget/ports"
-	congesdomain "github.com/kore/kore/internal/modules/conges/domain"
 	congesports "github.com/kore/kore/internal/modules/conges/ports"
-	cradomain "github.com/kore/kore/internal/modules/cra/domain"
 	craports "github.com/kore/kore/internal/modules/cra/ports"
 	notifdomain "github.com/kore/kore/internal/modules/notifications/domain"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
@@ -42,6 +39,7 @@ type Dependencies struct {
 	Workflow     wfports.WorkflowService
 	CRA          craports.CRAService
 	Leaves       congesports.LeaveService
+	LeaveTypes   congesports.LeaveTypeConfigService
 	Budget       budgetports.BudgetService
 	TMA          tmaports.TMAService
 	Notifications notifports.NotificationService
@@ -58,12 +56,25 @@ func NewRunner(deps Dependencies) *Runner {
 }
 
 type orgContext struct {
-	tenant      kernel.TenantID
-	adminID     uuid.UUID
-	managerID   uuid.UUID
-	collabID    uuid.UUID
+	tenant       kernel.TenantID
+	adminID      uuid.UUID
+	managerID    uuid.UUID
+	collabID     uuid.UUID
+	collab2ID    uuid.UUID
+	prestaID     uuid.UUID
+	clientUserID uuid.UUID
 	commercialID uuid.UUID
-	appID       uuid.UUID
+	chefEquipeID uuid.UUID
+	appID        uuid.UUID
+	app2ID       uuid.UUID
+	app3ID       uuid.UUID
+	equipeDataID uuid.UUID
+	equipeDevExtID uuid.UUID
+	usersByLogin map[string]uuid.UUID
+	collabIDs    []uuid.UUID
+	prestaIDs    []uuid.UUID
+	clientUserIDs []uuid.UUID
+	commercialIDs []uuid.UUID
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -78,29 +89,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	seeded, err := r.deps.OrgRepo.ExistsLogin(ctx, tenant, MarkerLogin)
-	if err != nil {
-		return err
-	}
-	if seeded {
-		log.Println("seed: jeu de données demo déjà présent, skip données métier")
-		return r.ensureNotificationRules(ctx, tenant)
-	}
-
 	oc, err := r.seedOrg(ctx, tenant)
 	if err != nil {
 		return err
 	}
-	if err := r.seedBudget(ctx, tenant, oc.appID); err != nil {
+	if err := r.seedBudgetData(ctx, tenant, oc); err != nil {
 		return err
 	}
-	if err := r.seedCRA(ctx, tenant, oc); err != nil {
+	if err := r.seedCRAData(ctx, tenant, oc); err != nil {
 		return err
 	}
-	if err := r.seedConges(ctx, tenant, oc); err != nil {
+	if err := r.seedCongesData(ctx, tenant, oc); err != nil {
 		return err
 	}
-	if err := r.seedTMA(ctx, tenant, oc); err != nil {
+	if err := r.seedTMAData(ctx, tenant, oc); err != nil {
+		return err
+	}
+	if err := r.enrichBudgetEstimates(ctx, tenant, oc); err != nil {
 		return err
 	}
 	if err := r.seedPublicsite(ctx, oc); err != nil {
@@ -109,7 +114,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err := r.ensureNotificationRules(ctx, tenant); err != nil {
 		return err
 	}
+	if err := r.seedExtendedTeamData(ctx, tenant, oc); err != nil {
+		return err
+	}
 
+	logDemoAccounts()
 	log.Println("seed: jeu de données demo complet appliqué")
 	return nil
 }
@@ -136,7 +145,7 @@ func (r *Runner) ensureTrial(ctx context.Context, tenant kernel.TenantID) error 
 }
 
 func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContext, error) {
-	oc := orgContext{tenant: tenant, appID: DemoAppID}
+	oc := orgContext{tenant: tenant, appID: DemoAppID, app2ID: DemoApp2ID}
 
 	admin, err := r.ensureUser(ctx, tenant, AdminLogin, AdminPassword, orgdomain.ProfileAdmin, nil)
 	if err != nil {
@@ -144,7 +153,7 @@ func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContex
 	}
 	oc.adminID = admin.ID
 
-	manager, err := r.ensureUser(ctx, tenant, ManagerLogin, ManagerPassword, orgdomain.Profile("Chef d'équipe"), nil)
+	manager, err := r.ensureUser(ctx, tenant, ManagerLogin, ManagerPassword, orgdomain.Profile("Responsable de service"), nil)
 	if err != nil {
 		return oc, err
 	}
@@ -159,6 +168,9 @@ func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContex
 	if err := r.ensureSociete(ctx, tenant); err != nil {
 		return oc, err
 	}
+	if err := r.deps.LeaveTypes.BootstrapDefaults(ctx, tenant, DemoSocieteID); err != nil {
+		return oc, err
+	}
 	if err := r.ensureSite(ctx, tenant); err != nil {
 		return oc, err
 	}
@@ -168,7 +180,13 @@ func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContex
 	if err := r.ensureApplication(ctx, tenant); err != nil {
 		return oc, err
 	}
+	if err := r.ensureApplication2(ctx, tenant); err != nil {
+		return oc, err
+	}
 	if err := r.ensureEquipe(ctx, tenant, oc.managerID); err != nil {
+		return oc, err
+	}
+	if err := r.ensureEquipe2(ctx, tenant, oc.managerID); err != nil {
 		return oc, err
 	}
 
@@ -178,11 +196,41 @@ func (r *Runner) seedOrg(ctx context.Context, tenant kernel.TenantID) (orgContex
 	}
 	oc.collabID = collab.ID
 
-	if err := r.ensureClient(ctx, tenant); err != nil {
+	collab2, err := r.ensureUser(ctx, tenant, Collab2Login, Collab2Password, orgdomain.ProfileCollaborateur, &DemoEquipeID)
+	if err != nil {
+		return oc, err
+	}
+	oc.collab2ID = collab2.ID
+
+	presta, err := r.ensureUser(ctx, tenant, PrestaLogin, PrestaPassword, orgdomain.ProfileCollaborateur, &DemoEquipe2ID)
+	if err != nil {
+		return oc, err
+	}
+	oc.prestaID = presta.ID
+
+	clientUser, err := r.ensureUser(ctx, tenant, ClientUserLogin, ClientUserPass, orgdomain.ProfileCollaborateur, nil)
+	if err != nil {
+		return oc, err
+	}
+	oc.clientUserID = clientUser.ID
+
+	if err := r.ensureClientNamed(ctx, tenant, DemoClientName, DemoClientTVA); err != nil {
+		return oc, err
+	}
+	if err := r.ensureClientNamed(ctx, tenant, DemoClient2Name, DemoClient2TVA); err != nil {
+		return oc, err
+	}
+	if err := r.enrichUserProfiles(ctx, tenant); err != nil {
+		return oc, err
+	}
+	if err := r.enrichOrgStructure(ctx, tenant, oc); err != nil {
+		return oc, err
+	}
+	if err := r.seedExtendedOrg(ctx, tenant, &oc); err != nil {
 		return oc, err
 	}
 
-	log.Println("seed: organisation demo créée")
+	log.Println("seed: organisation demo créée (19 comptes, 4 équipes, 3 missions, 3 clients)")
 	return oc, nil
 }
 
@@ -219,6 +267,7 @@ func (r *Runner) ensureSociete(ctx context.Context, tenant kernel.TenantID) erro
 		TenantID:      tenant,
 		RaisonSociale: DemoSocieteName,
 		Devise:        "EUR",
+		Pays:          "FR",
 		Adresse:       "1 rue de la Démo, 75001 Paris",
 		Siret:         "12345678901234",
 		URLTenant:     "demo.kore.local",
@@ -235,6 +284,7 @@ func (r *Runner) ensureSite(ctx context.Context, tenant kernel.TenantID) error {
 		TenantID:  tenant,
 		SocieteID: DemoSocieteID,
 		Libelle:   DemoSiteLabel,
+		Pays:      "FR",
 	})
 }
 
@@ -264,6 +314,19 @@ func (r *Runner) ensureApplication(ctx context.Context, tenant kernel.TenantID) 
 	})
 }
 
+func (r *Runner) ensureApplication2(ctx context.Context, tenant kernel.TenantID) error {
+	exists, err := r.rowExists(ctx, `SELECT EXISTS(SELECT 1 FROM org.applications WHERE id = $1)`, DemoApp2ID)
+	if err != nil || exists {
+		return err
+	}
+	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
+		ID:        DemoApp2ID,
+		TenantID:  tenant,
+		ServiceID: DemoServiceID,
+		Libelle:   DemoApp2Label,
+	})
+}
+
 func (r *Runner) ensureEquipe(ctx context.Context, tenant kernel.TenantID, managerID uuid.UUID) error {
 	exists, err := r.rowExists(ctx, `SELECT EXISTS(SELECT 1 FROM org.equipes WHERE id = $1)`, DemoEquipeID)
 	if err != nil || exists {
@@ -276,195 +339,34 @@ func (r *Runner) ensureEquipe(ctx context.Context, tenant kernel.TenantID, manag
 	return err
 }
 
-func (r *Runner) ensureClient(ctx context.Context, tenant kernel.TenantID) error {
+func (r *Runner) ensureEquipe2(ctx context.Context, tenant kernel.TenantID, managerID uuid.UUID) error {
+	exists, err := r.rowExists(ctx, `SELECT EXISTS(SELECT 1 FROM org.equipes WHERE id = $1)`, DemoEquipe2ID)
+	if err != nil || exists {
+		return err
+	}
+	_, err = r.deps.Pool.Exec(ctx, `
+		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, DemoEquipe2ID, tenant.UUID(), DemoApp2ID, DemoEquipe2Label, managerID)
+	return err
+}
+
+func (r *Runner) ensureClientNamed(ctx context.Context, tenant kernel.TenantID, name, tva string) error {
 	clients, err := r.deps.Clients.ListClients(ctx, tenant)
 	if err != nil {
 		return err
 	}
 	for _, c := range clients {
-		if c.RaisonSociale == DemoClientName {
+		if c.RaisonSociale == name {
 			return nil
 		}
 	}
 	_, err = r.deps.Clients.CreateClient(ctx, orgports.CreateClientCommand{
 		TenantID:      tenant,
-		RaisonSociale: DemoClientName,
-		TVA:           DemoClientTVA,
+		RaisonSociale: name,
+		TVA:           tva,
 	})
 	return err
-}
-
-func (r *Runner) seedBudget(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID) error {
-	budgets, err := r.deps.Budget.List(ctx, tenant)
-	if err != nil {
-		return err
-	}
-	for _, b := range budgets {
-		if b.ApplicationID == appID && b.Type == budgetdomain.BudgetTypeDefault {
-			return nil
-		}
-	}
-	_, err = r.deps.Budget.CreateBudget(ctx, budgetports.CreateBudgetCommand{
-		TenantID:      tenant,
-		ApplicationID: appID,
-		Type:          budgetdomain.BudgetTypeDefault,
-		PlannedDays:   120,
-		PlannedUO:     600,
-		PlannedAmount: 12000000,
-		Currency:      "EUR",
-	})
-	if err != nil {
-		return err
-	}
-	log.Println("seed: budget défaut créé")
-	return nil
-}
-
-func (r *Runner) seedCRA(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
-	now := time.Now().UTC()
-	month, err := cradomain.ParseMonth(now.Format("2006-01"))
-	if err != nil {
-		return err
-	}
-	ts, err := r.deps.CRA.GetOrCreate(ctx, tenant, oc.collabID, month)
-	if err != nil {
-		return err
-	}
-	if len(ts.Weeks) > 0 && len(ts.Weeks[0].Lines) > 0 {
-		return nil
-	}
-
-	day := time.Date(now.Year(), now.Month(), 3, 0, 0, 0, 0, time.UTC)
-	duration, err := kernel.NewDuration(420)
-	if err != nil {
-		return err
-	}
-	_, err = r.deps.CRA.SaveWeek(ctx, craports.SaveWeekCommand{
-		TenantID:    tenant,
-		TimesheetID: ts.ID,
-		WeekNumber:  1,
-		Lines: []cradomain.TimeLine{
-			{
-				Source:   cradomain.SourceRef{Type: "mission", ID: oc.appID.String()},
-				Day:      day,
-				Duration: duration,
-				Comment:  "Développement portail client",
-			},
-			{
-				Source:   cradomain.SourceRef{Type: "mission", ID: oc.appID.String()},
-				Day:      day.AddDate(0, 0, 1),
-				Duration: duration,
-				Comment:  "Atelier fonctionnel",
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if err := r.deps.CRA.CompleteCommercialInfo(ctx, craports.CommercialCommand{
-		TenantID:    tenant,
-		TimesheetID: ts.ID,
-		Info: cradomain.CommercialInfo{
-			Client:  DemoClientName,
-			Mission: DemoAppLabel,
-		},
-	}); err != nil {
-		return err
-	}
-	log.Println("seed: CRA collaborateur alimenté")
-	return nil
-}
-
-func (r *Runner) seedConges(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
-	if err := r.ensureLeaveBalance(ctx, tenant, oc.collabID); err != nil {
-		return err
-	}
-
-	requests, err := r.deps.Leaves.List(ctx, tenant, &oc.collabID, nil)
-	if err != nil {
-		return err
-	}
-	if len(requests) > 0 {
-		return nil
-	}
-
-	start := nextMonday(time.Now().UTC().AddDate(0, 0, 14))
-	end := start.AddDate(0, 0, 2)
-	_, err = r.deps.Leaves.Request(ctx, congesports.RequestLeaveCommand{
-		TenantID: tenant,
-		UserID:   oc.collabID,
-		Type:     congesdomain.LeaveTypeCongesPayes,
-		From:     start,
-		To:       end,
-		Motif:    "Congés été (demo)",
-	})
-	if err != nil {
-		return err
-	}
-	log.Println("seed: demande de congé demo créée")
-	return nil
-}
-
-func (r *Runner) ensureLeaveBalance(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) error {
-	_, err := r.deps.Pool.Exec(ctx, `
-		INSERT INTO conges.leave_balances (id, tenant_id, user_id, type, acquired, taken, remaining)
-		VALUES ($1, $2, $3, $4, 25, 3, 22)
-		ON CONFLICT (tenant_id, user_id, type) DO NOTHING
-	`, uuid.New(), tenant.UUID(), userID, string(congesdomain.LeaveTypeCongesPayes))
-	return err
-}
-
-func (r *Runner) seedTMA(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
-	demands, err := r.deps.TMA.List(ctx, tenant, tmaports.ExportFilter{})
-	if err != nil {
-		return err
-	}
-	if len(demands) > 0 {
-		return nil
-	}
-
-	open, err := r.deps.TMA.CreateDemand(ctx, tmaports.CreateDemandCommand{
-		TenantID:         tenant,
-		ApplicationID:    oc.appID,
-		AuthorID:         oc.collabID,
-		Subject:          "Erreur export PDF factures",
-		RequiresChefGate: false,
-	})
-	if err != nil {
-		return err
-	}
-
-	assigned, err := r.deps.TMA.CreateDemand(ctx, tmaports.CreateDemandCommand{
-		TenantID:         tenant,
-		ApplicationID:    oc.appID,
-		AuthorID:         oc.collabID,
-		Subject:          "Lenteur écran de saisie CRA",
-		RequiresChefGate: false,
-	})
-	if err != nil {
-		return err
-	}
-	if err := r.deps.TMA.Assign(ctx, tmaports.AssignCommand{
-		TenantID:   tenant,
-		ID:         assigned.ID,
-		AssigneeID: oc.collabID,
-		ActorID:    oc.managerID,
-	}); err != nil {
-		return err
-	}
-	if err := r.deps.TMA.AddAnalysis(ctx, tmaports.AnalysisCommand{
-		TenantID:     tenant,
-		DemandID:     assigned.ID,
-		Functional:   "Temps de rendu > 3s sur mobile",
-		Technical:    "Requêtes N+1 sur agrégation semaines",
-		Risks:        "Impact faible",
-		TestScenario: "Saisie 5 jours sur iPhone SE",
-	}); err != nil {
-		return err
-	}
-	_ = open
-	log.Println("seed: demandes TMA demo créées")
-	return nil
 }
 
 func (r *Runner) seedPublicsite(ctx context.Context, oc orgContext) error {
@@ -491,7 +393,7 @@ func (r *Runner) seedPublicsite(ctx context.Context, oc orgContext) error {
 				Email:     "demo@acme.test",
 				Company:   DemoClientName,
 				Size:      "50-200",
-				Need:      "PSA modulaire",
+				Need:      "Plateforme modulaire ESN/DSI",
 				UTMSource: "seed",
 				Consent:   true,
 			})

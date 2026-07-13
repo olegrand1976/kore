@@ -3,11 +3,21 @@ export type BottomNavItem = {
   to: string
   icon: string
   label: string
+  activePrefix?: string
 }
 
 defineProps<{
   items: BottomNavItem[]
 }>()
+
+const route = useRoute()
+
+const isActive = (item: BottomNavItem) => {
+  const prefix = item.activePrefix ?? item.to
+  if (route.path === item.to) return true
+  if (prefix !== '/' && route.path.startsWith(`${prefix}/`)) return true
+  return false
+}
 </script>
 
 <template>
@@ -17,6 +27,7 @@ defineProps<{
       :key="item.to"
       :to="item.to"
       class="bottom-nav__item"
+      :class="{ 'router-link-active': isActive(item) }"
     >
       <AppIcon :name="item.icon" />
       <span>{{ item.label }}</span>

@@ -92,6 +92,18 @@ type Timesheet struct {
 	ValidatedBy    *uuid.UUID      `json:"validatedBy,omitempty"`
 }
 
+type TimesheetSummary struct {
+	ID             uuid.UUID       `json:"id"`
+	UserID         uuid.UUID       `json:"userId"`
+	UserLogin      string          `json:"userLogin"`
+	Month          Month           `json:"month"`
+	Status         TimesheetStatus `json:"status"`
+	CommercialInfo CommercialInfo  `json:"commercialInfo"`
+	TotalMinutes   int             `json:"totalMinutes"`
+	WeeksSubmitted int             `json:"weeksSubmitted"`
+	UpdatedAt      time.Time       `json:"updatedAt"`
+}
+
 func (ts Timesheet) IsFinal() bool {
 	return ts.Status == StatusDefinitif
 }

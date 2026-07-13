@@ -49,6 +49,9 @@ curl -sf -X PUT "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks/
 curl -sf -X POST "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks/1/submit" \
   -H "Authorization: Bearer $TOKEN" >/dev/null
 
+# Budget (admin)
+curl -sf "http://localhost:${API_PORT}/api/v1/budgets" -H "Authorization: Bearer $TOKEN" >/dev/null
+
 # Billing checkout (stripe-mock)
 CHECKOUT=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/billing/checkout-session" \
   -H "Authorization: Bearer $TOKEN" \
@@ -60,5 +63,20 @@ test "$CHECKOUT_URL" != "null"
 
 # Public booking slots
 curl -sf "http://localhost:${API_PORT}/api/v1/public/booking/slots" >/dev/null
+
+# Congés: liste (admin)
+curl -sf "http://localhost:${API_PORT}/api/v1/leave-requests" \
+  -H "Authorization: Bearer $TOKEN" >/dev/null
+
+# Manager: TMA + liste utilisateurs (assign)
+MGR_LOGIN=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"login":"MGR_manager","password":"Manager123!"}')
+MGR_TOKEN=$(echo "$MGR_LOGIN" | jq -r '.data.AccessToken // .data.accessToken')
+test -n "$MGR_TOKEN"
+test "$MGR_TOKEN" != "null"
+
+curl -sf "http://localhost:${API_PORT}/api/v1/demands" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/users" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 
 echo "Smoke test OK"

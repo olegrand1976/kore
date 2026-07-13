@@ -11,24 +11,36 @@ const (
 	ManagerPassword = "Manager123!"
 	CollabLogin     = "COL_collab"
 	CollabPassword  = "Collab123!"
+	Collab2Login    = "COL_dev2"
+	Collab2Password = "Collab123!"
+	PrestaLogin     = "PRE_presta"
+	PrestaPassword  = "Presta123!"
+	ClientUserLogin = "CLI_contact"
+	ClientUserPass  = "Client123!"
 	CommercialLogin = "COM_commercial"
 	CommercialPass  = "Commercial123!"
 
-	DemoSocieteName    = "Kore Demo SAS"
-	DemoSiteLabel      = "Paris HQ"
-	DemoAppLabel       = "Portail Client ACME"
-	DemoEquipeLabel    = "Équipe Dev"
-	DemoClientName     = "ACME Corp"
-	DemoClientTVA      = "FR12345678901"
-	MarkerLogin        = CollabLogin
-	TrialSeats         = 50
+	DemoSocieteName = "Kore Demo SAS"
+	DemoSiteLabel   = "Paris HQ"
+	DemoAppLabel    = "Portail Client ACME"
+	DemoApp2Label   = "Refonte ERP Globex"
+	DemoEquipeLabel = "Équipe Dev"
+	DemoEquipe2Label = "Équipe TMA"
+	DemoClientName  = "ACME Corp"
+	DemoClientTVA   = "FR12345678901"
+	DemoClient2Name = "Globex Industries"
+	DemoClient2TVA  = "FR98765432109"
+	MarkerLogin     = CollabLogin
+	TrialSeats      = 50
 )
 
 var (
-	DemoTenantID = uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	DemoTenantID  = uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	DemoSocieteID = uuid.MustParse("00000000-0000-4000-8000-000000000010")
 	DemoSiteID    = uuid.MustParse("00000000-0000-4000-8000-000000000011")
 	DemoServiceID = uuid.MustParse("00000000-0000-4000-8000-000000000012")
 	DemoAppID     = uuid.MustParse("00000000-0000-4000-8000-000000000013")
 	DemoEquipeID  = uuid.MustParse("00000000-0000-4000-8000-000000000014")
+	DemoApp2ID    = uuid.MustParse("00000000-0000-4000-8000-000000000015")
+	DemoEquipe2ID = uuid.MustParse("00000000-0000-4000-8000-000000000016")
 )

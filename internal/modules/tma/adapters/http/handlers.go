@@ -17,7 +17,10 @@ import (
 func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
-		pr.Get("/demands", listDemands(tma))
+		pr.Get("/demands", listDemands(tma, authorizer))
+		pr.Get("/demands/export.xml", exportXML(tma))
+		pr.Get("/demands/{id}", getDemand(tma, authorizer))
+		pr.Get("/demands/{id}/analysis", getAnalysis(tma, authorizer))
 		pr.Post("/demands", createDemand(tma, authorizer))
 		pr.Post("/demands/{id}/validate-creation", validateCreation(tma, authorizer))
 		pr.Post("/demands/{id}/assign", assignDemand(tma, authorizer))
@@ -25,14 +28,16 @@ func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssue
 		pr.Post("/demands/{id}/analysis", addAnalysis(tma, authorizer))
 		pr.Post("/demands/{id}/resolve", resolveDemand(tma, authorizer))
 		pr.Post("/demands/{id}/reopen", reopenDemand(tma, authorizer))
-		pr.Get("/demands/export.xml", exportXML(tma))
 	})
 }
 
-func listDemands(tma ports.TMAService) http.HandlerFunc {
+func listDemands(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		identity, _ := authx.FromContext(r.Context())
-		filter := ports.ExportFilter{TenantID: identity.TenantID, VisibleOnly: true}
+		filter := ports.ExportFilter{
+			TenantID:    identity.TenantID,
+			VisibleOnly: !authorizer.Can(r.Context(), "tma", authx.ActionValidate),
+		}
 		if appID := r.URL.Query().Get("applicationId"); appID != "" {
 			parsed, err := uuid.Parse(appID)
 			if err != nil {
@@ -47,6 +52,64 @@ func listDemands(tma ports.TMAService) http.HandlerFunc {
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func demandVisibleTo(d domain.Demand, authorizer authx.Authorizer, r *http.Request) bool {
+	if d.Visible {
+		return true
+	}
+	return authorizer.Can(r.Context(), "tma", authx.ActionValidate)
+}
+
+func getDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		d, err := tma.Get(r.Context(), identity.TenantID, id)
+		if err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
+		if !demandVisibleTo(d, authorizer, r) {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "demand not found")
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, d)
+	}
+}
+
+func getAnalysis(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		d, err := tma.Get(r.Context(), identity.TenantID, id)
+		if err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
+		if !demandVisibleTo(d, authorizer, r) {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "demand not found")
+			return
+		}
+		dossier, err := tma.GetAnalysis(r.Context(), identity.TenantID, id)
+		if err != nil {
+			if errors.Is(err, domain.ErrAnalysisNotFound) {
+				httpx.WriteData(w, http.StatusOK, domain.AnalysisDossier{DemandID: id, TenantID: identity.TenantID})
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, dossier)
 	}
 }
 

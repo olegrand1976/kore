@@ -27,6 +27,7 @@ func RegisterRoutes(
 	authorizer authx.Authorizer,
 	uploadsDir string,
 	entitlements authx.EntitlementReader,
+	leaveBootstrap ports.LeaveTypeBootstrapper,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/refresh", refreshHandler(tokens))
@@ -35,7 +36,7 @@ func RegisterRoutes(
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/societes", listSocietes(org))
-		pr.Post("/societes", createSociete(org, authorizer))
+		pr.Post("/societes", createSociete(org, authorizer, leaveBootstrap))
 		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer, uploadsDir))
 		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
@@ -117,7 +118,7 @@ func listSocietes(org ports.OrganizationService) http.HandlerFunc {
 	}
 }
 
-func createSociete(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+func createSociete(org ports.OrganizationService, authorizer authx.Authorizer, leaveBootstrap ports.LeaveTypeBootstrapper) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
@@ -126,6 +127,7 @@ func createSociete(org ports.OrganizationService, authorizer authx.Authorizer) h
 		var req struct {
 			RaisonSociale string `json:"raisonSociale"`
 			Devise        string `json:"devise"`
+			Pays          string `json:"pays"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -136,10 +138,17 @@ func createSociete(org ports.OrganizationService, authorizer authx.Authorizer) h
 			TenantID:      identity.TenantID,
 			RaisonSociale: req.RaisonSociale,
 			Devise:        req.Devise,
+			Pays:          req.Pays,
 		})
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
+		}
+		if leaveBootstrap != nil {
+			if err := leaveBootstrap.BootstrapDefaults(r.Context(), identity.TenantID, s.ID); err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+				return
+			}
 		}
 		httpx.WriteData(w, http.StatusCreated, s)
 	}

@@ -6,7 +6,12 @@
         <p v-if="branding.raisonSociale" class="sidebar__company">{{ branding.raisonSociale }}</p>
       </div>
       <nav class="sidebar__nav" aria-label="Navigation applicative">
-        <NuxtLink v-for="item in navItems" :key="item.to" :to="item.to">
+        <NuxtLink
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          :class="{ 'router-link-active': isNavActive(item) }"
+        >
           <AppIcon :name="item.icon" />
           {{ item.label }}
         </NuxtLink>
@@ -29,7 +34,7 @@
           <AppButton variant="ghost" size="sm" class="topbar__logout" @click="logout">{{ $t('nav.logout') }}</AppButton>
         </div>
       </header>
-      <main class="main">
+      <main class="main" :class="{ 'main--wide': isWideMain }">
         <p v-if="isPastDue" class="past-due" role="alert">{{ $t('billing.past_due_banner') }}</p>
         <slot />
       </main>
@@ -44,6 +49,7 @@
         :key="item.to"
         :to="item.to"
         class="drawer-link"
+        :class="{ 'router-link-active': isNavActive(item) }"
         @click="drawerOpen = false"
       >
         <AppIcon :name="item.icon" />
@@ -84,18 +90,20 @@ type NavItem = {
   label: string
   adminOnly?: boolean
   module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
+  activePrefix?: string
 }
 
 const allNavItems = computed<NavItem[]>(() => [
   { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
   { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
-  { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges' },
+  { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },
   { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
   { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
-  { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true }
+  { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true },
+  { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), adminOnly: true, activePrefix: '/admin/parametres' }
 ])
 
 const navItems = computed(() =>
@@ -106,13 +114,27 @@ const navItems = computed(() =>
   })
 )
 
+const isNavActive = (item: NavItem) => {
+  const prefix = item.activePrefix ?? item.to
+  if (route.path === item.to) return true
+  if (prefix !== '/' && route.path.startsWith(`${prefix}/`)) return true
+  return false
+}
+
 const bottomNavItems = computed(() => navItems.value.slice(0, 4))
+
+const isWideMain = computed(() => route.meta.wide === true)
 
 const pageTitle = computed(() => {
   if (route.path.startsWith('/cra/') && route.params.id) {
     return t('nav.cra')
   }
-  const item = allNavItems.value.find(n => route.path === n.to || route.path.startsWith(n.to + '/'))
+  if (route.path === '/conges' || route.path.startsWith('/conges/')) {
+    return t('nav.conges')
+  }
+  const item = allNavItems.value.find(
+    (n) => route.path === n.to || route.path.startsWith(`${n.to}/`)
+  )
   return item?.label ?? 'Kore'
 })
 
@@ -252,8 +274,13 @@ const logout = async () => {
 
 .main {
   flex: 1;
+  width: 100%;
   padding: var(--kore-space-xl);
-  max-width: 1200px;
+  max-width: var(--kore-container-max);
+}
+
+.main--wide {
+  max-width: none;
 }
 
 .past-due {

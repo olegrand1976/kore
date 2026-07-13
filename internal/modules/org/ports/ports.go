@@ -10,16 +10,22 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
+type LeaveTypeBootstrapper interface {
+	BootstrapDefaults(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) error
+}
+
 type CreateSocieteCommand struct {
 	TenantID      kernel.TenantID
 	RaisonSociale string
 	Devise        string
+	Pays          string
 }
 
 type CreateSiteCommand struct {
 	TenantID  kernel.TenantID
 	SocieteID uuid.UUID
 	Libelle   string
+	Pays      string
 }
 
 type CreateServiceCommand struct {
@@ -76,6 +82,7 @@ type OrganizationRepository interface {
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
+	ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error)
 }
 
 type PasswordHasher interface {

@@ -1,4 +1,4 @@
-export type AuthProfile = 'Administrateur' | 'Collaborateur' | 'Utilisateur'
+export type AuthProfile = 'Administrateur' | 'Collaborateur' | 'Utilisateur' | string
 
 type SessionUser = {
   ok: boolean
@@ -21,5 +21,10 @@ export function useAuth() {
 
   const isAdmin = computed(() => user.value?.profile === 'Administrateur')
 
-  return { user, fetchSession, isAdmin }
+  const isManager = computed(() => {
+    const profile = user.value?.profile ?? ''
+    return profile === 'Administrateur' || profile.includes('Chef') || profile.includes('Responsable')
+  })
+
+  return { user, fetchSession, isAdmin, isManager }
 }

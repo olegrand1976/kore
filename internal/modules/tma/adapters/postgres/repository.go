@@ -85,10 +85,38 @@ func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter po
 	return out, rows.Err()
 }
 
+func (r *Repository) GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error) {
+	var dossier domain.AnalysisDossier
+	var tenantID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, demand_id, functional, technical, risks, test_scenario
+		FROM tma.analysis_dossiers
+		WHERE tenant_id = $1 AND demand_id = $2
+		ORDER BY id DESC
+		LIMIT 1
+	`, tenant.UUID(), demandID).Scan(
+		&dossier.ID, &tenantID, &dossier.DemandID,
+		&dossier.Functional, &dossier.Technical, &dossier.Risks, &dossier.TestScenario,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.AnalysisDossier{}, domain.ErrAnalysisNotFound
+		}
+		return domain.AnalysisDossier{}, err
+	}
+	dossier.TenantID = kernel.NewTenantID(tenantID)
+	return dossier, nil
+}
+
 func (r *Repository) SaveAnalysis(ctx context.Context, dossier domain.AnalysisDossier) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO tma.analysis_dossiers (id, tenant_id, demand_id, functional, technical, risks, test_scenario)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (demand_id) DO UPDATE SET
+			functional = EXCLUDED.functional,
+			technical = EXCLUDED.technical,
+			risks = EXCLUDED.risks,
+			test_scenario = EXCLUDED.test_scenario
 	`, dossier.ID, dossier.TenantID.UUID(), dossier.DemandID,
 		dossier.Functional, dossier.Technical, dossier.Risks, dossier.TestScenario)
 	return err

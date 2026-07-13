@@ -79,6 +79,14 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 	return demand, nil
 }
 
+func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
+	return s.repo.Get(ctx, tenant, id)
+}
+
+func (s *service) GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error) {
+	return s.repo.GetAnalysis(ctx, tenant, demandID)
+}
+
 func (s *service) ValidateCreation(ctx context.Context, cmd ports.ChefUtilisateurCommand) error {
 	demand, err := s.repo.Get(ctx, cmd.TenantID, cmd.ID)
 	if err != nil {

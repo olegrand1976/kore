@@ -144,7 +144,7 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Phase | Livrable | État audit 07/2026 |
 | --- | --- | --- |
-| **Phase 1** | UI Nuxt §10 + routes BFF `server/api/leave-requests/*` | API backend OK, **UI/BFF absents** |
+| **Phase 1** | UI Nuxt §10 + BFF `server/api/leave-requests/*` | Livré (liste, soldes, validation manager) |
 | **Phase 1bis** | Client Flutter §10bis | Non démarré |
 
 Cf. [ROADMAP.md](../ROADMAP.md).

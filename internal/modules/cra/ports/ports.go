@@ -54,6 +54,7 @@ type CRAService interface {
 	GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
 	GetByID(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Timesheet, error)
 	ListTimesheets(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.Timesheet, error)
+	ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.TimesheetSummary, error)
 	SaveWeek(ctx context.Context, cmd SaveWeekCommand) (domain.Timesheet, error)
 	SubmitWeek(ctx context.Context, cmd SubmitWeekCommand) error
 	CompleteCommercialInfo(ctx context.Context, cmd CommercialCommand) error
@@ -81,6 +82,8 @@ type CRARepository interface {
 	FindConsumption(ctx context.Context, tenant kernel.TenantID, appID ApplicationID, period kernel.Period) ([]domain.Consumption, error)
 	ListByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.Timesheet, error)
 	ListByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.Timesheet, error)
+	ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.TimesheetSummary, error)
+	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
 

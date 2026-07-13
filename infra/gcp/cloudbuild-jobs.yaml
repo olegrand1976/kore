@@ -1,0 +1,22 @@
+substitutions:
+  _AR_REGION: europe-west1
+  _RUN_REGION: europe-west9
+  _AR_REPO: kore
+  _SERVICE_ACCOUNT: kore-run
+  _VPC_CONNECTOR: premedica-connector
+  _CLOUDSQL_INSTANCE: premedica-prod-2025:europe-west9:premedica-db-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  - id: deploy-jobs
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        chmod +x infra/gcp/setup-jobs.sh
+        IMAGE="${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/kore-api:latest"
+        bash infra/gcp/setup-jobs.sh "$$IMAGE"

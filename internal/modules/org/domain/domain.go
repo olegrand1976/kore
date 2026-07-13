@@ -66,6 +66,7 @@ type Societe struct {
 	RaisonSociale string          `json:"raisonSociale"`
 	Logo          string          `json:"logo,omitempty"`
 	Devise        string          `json:"devise"`
+	Pays          string          `json:"pays"`
 	Adresse       string          `json:"adresse,omitempty"`
 	Siret         string          `json:"siret,omitempty"`
 	URLTenant     string          `json:"urlTenant,omitempty"`
@@ -76,6 +77,7 @@ type Site struct {
 	TenantID  kernel.TenantID
 	SocieteID uuid.UUID
 	Libelle   string
+	Pays      string
 }
 
 type Service struct {

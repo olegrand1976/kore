@@ -25,8 +25,9 @@ KORE_REDIS_PORT    ?= 6381
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env up up-infra up-front front down migrate seed logs ps restart ready smoke \
-        build api test test-integration lint sqlc frontend-dev frontend-install
+.PHONY: help env up up-infra up-front front down migrate seed seed-reset logs ps restart ready smoke \
+        build api test test-integration lint sqlc frontend-dev frontend-install \
+        gcp-setup gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-smoke gcp-domain gcp-github-deploy
 
 ## Affiche les cibles disponibles
 help:
@@ -39,12 +40,23 @@ help:
 	@echo "  make down         Arrête et supprime les conteneurs"
 	@echo "  make migrate      Applique les migrations (service one-shot)"
 	@echo "  make seed         Seed demo complet (tenant, org, CRA, congés, TMA, budget…)"
+	@echo "  make seed-reset   Réinitialise et recharge le jeu de données demo"
 	@echo "  make ready        Vérifie /health et /ready"
 	@echo "  make smoke        Smoke test API complet"
 	@echo "  make logs         Logs API (suivi)"
 	@echo "  make ps           État des conteneurs"
 	@echo ""
 	@echo "  Admin dev : ADM_admin / Admin123!"
+	@echo ""
+	@echo "  GCP Premedica (premedica-prod-2025) :"
+	@echo "  make gcp-setup          Bootstrap DB, secrets, SA, Artifact Registry"
+	@echo "  make gcp-github-deploy  Workload Identity Federation GitHub Actions"
+	@echo "  make gcp-deploy         Cloud Build → API + frontend"
+	@echo "  make gcp-deploy-jobs    Cloud Run Jobs (migrate, seed)"
+	@echo "  make gcp-postdeploy     Smoke test après deploy CI"
+	@echo "  make gcp-postdeploy-full Première install : migrate + seed + smoke"
+	@echo "  make gcp-domain         Domaine custom kore.ll-it-sc.be"
+	@echo "  make gcp-smoke          Smoke test services déployés"
 	@echo ""
 	@echo "  Ports par défaut (modifiables dans .env) :"
 	@echo "    API       http://localhost:$(KORE_API_PORT)"
@@ -99,6 +111,12 @@ seed: env
 	$(COMPOSE) run --rm --build --no-deps api seed
 	@echo "→ seed appliqué — voir internal/seed/constants.go pour les comptes"
 
+## Réinitialise et recharge le jeu de données demo complet
+seed-reset: env
+	$(COMPOSE) up -d db redis
+	$(COMPOSE) run --rm --build --no-deps api seed reset
+	@echo "→ seed reset appliqué — voir internal/seed/constants.go pour les comptes"
+
 ## Logs API
 logs:
 	$(COMPOSE) logs -f api
@@ -146,3 +164,43 @@ frontend-dev:
 
 frontend-install:
 	cd frontend && npm install
+
+GCP_PROJECT_ID ?= premedica-prod-2025
+
+## Bootstrap GCP (DB, secrets, SA) — une fois
+gcp-setup:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/setup-gcp.sh
+
+## WIF GitHub Actions → GCP
+gcp-github-deploy:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/setup-github-deploy.sh
+
+## Déploiement Cloud Build (API + frontend + migrate)
+gcp-deploy:
+	gcloud builds submit --config=infra/gcp/cloudbuild.yaml --project=$(GCP_PROJECT_ID)
+
+## Cloud Run Jobs uniquement
+gcp-deploy-jobs:
+	gcloud builds submit --config=infra/gcp/cloudbuild-jobs.yaml --project=$(GCP_PROJECT_ID)
+
+## Postdeploy : jobs migrate/seed + smoke
+gcp-postdeploy:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/postdeploy.sh
+
+## Postdeploy complet (première install : migrate + seed + smoke)
+gcp-postdeploy-full:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/postdeploy.sh --migrate --seed
+
+## Domaine custom kore.ll-it-sc.be
+gcp-domain:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/setup-custom-domain.sh
+
+## Smoke test GCP
+gcp-smoke:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/smoke-test.sh

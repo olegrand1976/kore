@@ -1,3 +1,8 @@
+# Build images uniquement (legacy). Déploiement complet : infra/gcp/cloudbuild.yaml
+#
+#   make gcp-deploy
+#   gcloud builds submit --config=infra/gcp/cloudbuild.yaml --project=premedica-prod-2025
+
 steps:
   - name: gcr.io/cloud-builders/docker
     args:

@@ -48,10 +48,11 @@ type RedisCache struct {
 	client *redis.Client
 }
 
-func NewRedisCache(addr, password string, useTLS bool) (*RedisCache, error) {
+func NewRedisCache(addr, password string, db int, useTLS bool) (*RedisCache, error) {
 	opts := &redis.Options{
 		Addr:     addr,
 		Password: password,
+		DB:       db,
 	}
 	if useTLS {
 		opts.TLSConfig = nil // TLS config can be extended for prod

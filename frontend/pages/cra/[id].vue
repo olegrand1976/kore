@@ -15,6 +15,15 @@
           {{ $t('cra.validate_final') }}
         </AppButton>
         <AppButton
+          v-if="canEdit"
+          variant="secondary"
+          size="sm"
+          :disabled="prefillLoading"
+          @click="loadPrefillSuggest"
+        >
+          {{ $t('ai.cra_prefill') }}
+        </AppButton>
+        <AppButton
           variant="primary"
           size="sm"
           :disabled="downloading || !canDownload"
@@ -64,6 +73,7 @@
       />
     </div>
 
+    <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
     <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
   </div>
 </template>
@@ -87,6 +97,22 @@ const commercialMsg = ref('')
 const commercialError = ref(false)
 const downloading = ref(false)
 const downloadError = ref('')
+const prefillLoading = ref(false)
+const prefillMsg = ref('')
+const { suggestCraPrefill, extractFetchError: aiError } = useAi()
+
+const loadPrefillSuggest = async () => {
+  prefillLoading.value = true
+  prefillMsg.value = ''
+  try {
+    const res = await suggestCraPrefill(id.value)
+    prefillMsg.value = t('ai.cra_prefill_result', { n: res.lines.length })
+  } catch (err) {
+    downloadError.value = aiError(err)
+  } finally {
+    prefillLoading.value = false
+  }
+}
 
 watch(timesheet, (ts) => {
   if (!ts?.commercialInfo) return

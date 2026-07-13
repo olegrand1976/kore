@@ -5,6 +5,7 @@ import (
 	"github.com/kore/kore/internal/modules/budget"
 	"github.com/kore/kore/internal/modules/conges"
 	"github.com/kore/kore/internal/modules/cra"
+	"github.com/kore/kore/internal/modules/ai"
 	"github.com/kore/kore/internal/modules/notifications"
 	"github.com/kore/kore/internal/modules/org"
 	"github.com/kore/kore/internal/modules/publicsite"
@@ -22,6 +23,7 @@ func AllModuleMigrations() []db.ModuleMigration {
 		conges.Migrations(),
 		budget.Migrations(),
 		tma.Migrations(),
+		ai.Migrations(),
 		billing.Migrations(),
 		publicsite.Migrations(),
 	}

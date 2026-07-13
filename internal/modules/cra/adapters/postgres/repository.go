@@ -206,6 +206,92 @@ func (r *Repository) ListByTenant(ctx context.Context, tenant kernel.TenantID, l
 	return r.scanTimesheetIDs(ctx, tenant, rows)
 }
 
+func (r *Repository) ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, limit int) ([]domain.TimesheetSummary, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			t.id,
+			t.user_id,
+			u.login,
+			t.month,
+			t.status,
+			t.commercial_info,
+			t.updated_at,
+			COALESCE(SUM(tl.duration), 0) AS total_minutes,
+			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted
+		FROM cra.timesheets t
+		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
+		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+		WHERE t.tenant_id = $1 AND t.user_id = $2
+		GROUP BY t.id, u.login
+		ORDER BY t.month DESC, u.login ASC
+		LIMIT $3
+	`, tenant.UUID(), userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanTimesheetSummaries(rows)
+}
+
+func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			t.id,
+			t.user_id,
+			u.login,
+			t.month,
+			t.status,
+			t.commercial_info,
+			t.updated_at,
+			COALESCE(SUM(tl.duration), 0) AS total_minutes,
+			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted
+		FROM cra.timesheets t
+		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
+		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+		WHERE t.tenant_id = $1
+		GROUP BY t.id, u.login
+		ORDER BY t.month DESC, u.login ASC
+		LIMIT $2
+	`, tenant.UUID(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanTimesheetSummaries(rows)
+}
+
+func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
+	var out []domain.TimesheetSummary
+	for rows.Next() {
+		var summary domain.TimesheetSummary
+		var month string
+		var status string
+		var commercial []byte
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.UserID,
+			&summary.UserLogin,
+			&month,
+			&status,
+			&commercial,
+			&summary.UpdatedAt,
+			&summary.TotalMinutes,
+			&summary.WeeksSubmitted,
+		); err != nil {
+			return nil, err
+		}
+		summary.Month = domain.Month(month)
+		summary.Status = domain.TimesheetStatus(status)
+		if len(commercial) > 0 {
+			_ = json.Unmarshal(commercial, &summary.CommercialInfo)
+		}
+		out = append(out, summary)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) scanTimesheetIDs(ctx context.Context, tenant kernel.TenantID, rows pgx.Rows) ([]domain.Timesheet, error) {
 	var out []domain.Timesheet
 	for rows.Next() {

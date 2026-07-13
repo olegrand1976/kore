@@ -13,6 +13,7 @@ var (
 	ErrLeaveNotEditable    = errors.New("leave request not editable after decision")
 	ErrLeavePastDate       = errors.New("approval cannot affect past days")
 	ErrInvalidDateRange    = errors.New("invalid date range")
+	ErrUnknownLeaveType    = errors.New("unknown leave type")
 )
 
 type LeaveType string

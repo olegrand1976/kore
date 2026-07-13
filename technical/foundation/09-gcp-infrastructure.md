@@ -6,11 +6,11 @@
 
 - **Compute** : **Cloud Run** (conteneurs managés, scale-to-zero, autoscaling) — un service pour l'API Go, un service pour le frontend Nuxt (SSR/BFF).
 - **Base de données** : **Cloud SQL for PostgreSQL** (managé, un schéma par module — cf. [03-database.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/03-database.md)).
-- **Cache** : **Memorystore for Redis**, **instance partagée** avec d'autres applications — isolation par préfixe de clés (cf. [10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md)).
+- **Cache** : **VM Redis partagée** (`shared-redis`, projet `premedica-prod-2025`) — DB index **13**, isolation par préfixe `kore:` (cf. [10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md)).
 - **Secrets** : **Secret Manager** (clés JWT, mots de passe DB, clés Stripe, config PDP).
 - **Images** : **Artifact Registry**.
 - **CI/CD** : **Cloud Build** (build + push + déploiement Cloud Run) déclenché sur merge.
-- **Réseau** : **VPC + Serverless VPC Access Connector** pour joindre Cloud SQL et Memorystore en **IP privée**.
+- **Réseau** : **VPC + Serverless VPC Access Connector** (`premedica-connector`) pour joindre Cloud SQL et Redis VM en **IP privée**.
 
 ```mermaid
 flowchart TB
@@ -26,7 +26,7 @@ flowchart TB
     Conn["Serverless VPC Access Connector"]
     subgraph vpc["VPC (IP privée)"]
       SQL[("Cloud SQL PostgreSQL")]
-      Redis[("Memorystore Redis (partagé)")]
+      Redis[("VM Redis shared-redis")]
     end
     SM["Secret Manager"]
     AR["Artifact Registry"]
@@ -63,25 +63,24 @@ flowchart TB
 - Pool : `pgxpool` dimensionné en tenant compte de `max_connections` de l'instance **et** du nombre max d'instances Cloud Run (concurrence × instances ≤ connexions dispo — sinon activer un pooler).
 - Sauvegardes automatiques + PITR ; migrations appliquées via job dédié (cf. §6).
 
-## 4. Memorystore for Redis (partagé)
+## 4. Redis partagé (VM `shared-redis`)
 
-- Instance **partagée avec d'autres applications** GCP → voir la stratégie complète dans [10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md).
+- Instance **partagée** avec les autres applications LL-IT sur Premedica → voir `infra/shared-redis/redis-apps.conf` (Kore : DB **13**, secret `kore-redis-url`).
 - Points d'infrastructure :
-  - Accès en **IP privée** via le VPC connector.
+  - Accès en **IP privée** via le VPC connector (`REDIS_ADDR` + `REDIS_DB=13`).
   - **Interdiction des commandes destructrices/globales** (`FLUSHALL`, `FLUSHDB`, `KEYS *`) : elles impacteraient les autres applications.
   - Politique d'éviction gérée au niveau de l'instance (partagée) : ne pas présumer de persistance, tout doit être **reconstructible** (cache-aside).
-  - TLS activé si l'instance l'exige.
 
 ## 5. Secret Manager & configuration
 
-| Secret | Usage |
+| Secret GCP | Variable runtime |
 | --- | --- |
-| `DATABASE_URL` / credentials Cloud SQL | Accès DB |
-| `JWT_SIGNING_KEY` | Signature JWT |
-| `REDIS_ADDR` / `REDIS_AUTH` | Accès Memorystore |
-| `REDIS_KEY_PREFIX` | Préfixe d'isolation (ex. `kore`) |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Paiements ([11-payments-stripe.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/11-payments-stripe.md)) |
-| `PDP_*` | Connecteur PDP (module 09) |
+| `kore-database-url` | `DATABASE_URL` |
+| `kore-migrate-database-url` | Job migrate |
+| `kore-jwt-signing-key` | `JWT_SIGNING_KEY` |
+| `kore-redis-url` | `REDIS_ADDR` + `REDIS_DB` |
+| `REDIS_KEY_PREFIX` | `kore` (env) |
+| `kore-stripe-secret-key` / `kore-stripe-webhook-secret` | Stripe |
 
 - Aucun secret dans l'image ou le dépôt. Montés comme variables d'environnement ou volumes par Cloud Run.
 
@@ -115,16 +114,19 @@ flowchart LR
 | Env | Compute | Cloud SQL | Redis |
 | --- | --- | --- | --- |
 | Local | Docker Compose | conteneur `postgres:16` | conteneur `redis:7` |
-| Staging | Cloud Run | Cloud SQL (petite instance) | Memorystore (partagé) |
-| Prod | Cloud Run (min=1, HA) | Cloud SQL HA | Memorystore (partagé) |
+| Staging | Cloud Run | `premedica-db-staging` / base `kore` | VM Redis DB 13 |
+| Prod | Cloud Run (min=1) | Cloud SQL partagé | VM Redis DB 13 |
 
 La **parité dev/prod** est assurée par des variables d'environnement identiques ; seuls les endpoints changent.
 
 ## 10. Definition of Done (fondation GCP)
 
-- [ ] Cible Cloud Run (API + frontend) documentée et paramétrée.
-- [ ] Connexion Cloud SQL (Auth Proxy/IP privée) via VPC connector spécifiée.
-- [ ] Accès Memorystore privé + contraintes d'instance partagée actées.
-- [ ] Secrets centralisés dans Secret Manager (aucun secret committé).
-- [ ] Pipeline Cloud Build (test → image → migrations → deploy → smoke) défini.
-- [ ] Migrations exécutées en job avant bascule de trafic (pas au boot en prod).
+- [x] Cible Cloud Run (API + frontend) documentée et paramétrée (`infra/gcp/cloudbuild.yaml`).
+- [x] Connexion Cloud SQL via connecteur intégré + VPC connector `premedica-connector`.
+- [x] Accès Redis VM partagée (DB 13, préfixe `kore:`).
+- [x] Secrets centralisés dans Secret Manager (`infra/gcp/setup-gcp.sh`).
+- [x] Pipeline Cloud Build + GitHub Actions (`.github/workflows/deploy-gcp.yml`).
+- [x] Migrations exécutées en job `kore-migrate` avant deploy API.
+- [x] Monitoring transverse via Business Management (`gcp_platform_registry.py`).
+
+Scripts : `make gcp-setup`, `make gcp-deploy`, `make gcp-postdeploy-full`, `make gcp-domain`.

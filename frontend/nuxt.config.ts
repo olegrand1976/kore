@@ -1,12 +1,7 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   components: [{ path: '~/components', pathPrefix: false }],
-  modules: ['@pinia/nuxt', '@nuxt/fonts', '@nuxtjs/i18n'],
-  fonts: {
-    families: [
-      { name: 'DM Sans', provider: 'google', weights: [400, 500, 600, 700] }
-    ]
-  },
+  modules: ['@pinia/nuxt', '@nuxtjs/i18n'],
   i18n: {
     restructureDir: false,
     locales: [
@@ -42,7 +37,7 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', href: '/brand/kore-emblem.svg' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap'
+          href: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap'
         }
       ]
     }

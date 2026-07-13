@@ -7,6 +7,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	aicra "github.com/kore/kore/internal/modules/ai/adapters/cra"
+	aiconges "github.com/kore/kore/internal/modules/ai/adapters/conges"
+	aihttp "github.com/kore/kore/internal/modules/ai/adapters/http"
+	aipostgres "github.com/kore/kore/internal/modules/ai/adapters/postgres"
+	aistub "github.com/kore/kore/internal/modules/ai/adapters/stub"
+	aitma "github.com/kore/kore/internal/modules/ai/adapters/tma"
+	aiworkflow "github.com/kore/kore/internal/modules/ai/adapters/workflow"
+	aiapp "github.com/kore/kore/internal/modules/ai/app"
 	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
 	billingpostgres "github.com/kore/kore/internal/modules/billing/adapters/postgres"
 	billingapp "github.com/kore/kore/internal/modules/billing/app"
@@ -16,6 +24,7 @@ import (
 	budgetapp "github.com/kore/kore/internal/modules/budget/app"
 	congescra "github.com/kore/kore/internal/modules/conges/adapters/cra"
 	congeshttp "github.com/kore/kore/internal/modules/conges/adapters/http"
+	congesorg "github.com/kore/kore/internal/modules/conges/adapters/org"
 	congesnotif "github.com/kore/kore/internal/modules/conges/adapters/notifications"
 	congespostgres "github.com/kore/kore/internal/modules/conges/adapters/postgres"
 	congesworkflow "github.com/kore/kore/internal/modules/conges/adapters/workflow"
@@ -38,6 +47,7 @@ import (
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
 	tmacra "github.com/kore/kore/internal/modules/tma/adapters/cra"
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
+	tmanotif "github.com/kore/kore/internal/modules/tma/adapters/notifications"
 	tmapostgres "github.com/kore/kore/internal/modules/tma/adapters/postgres"
 	tmaworkflow "github.com/kore/kore/internal/modules/tma/adapters/workflow"
 	tmaapp "github.com/kore/kore/internal/modules/tma/app"
@@ -77,7 +87,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	var redisCache *cache.RedisCache
 	var appCache cache.Cache
-	redisCache, err = cache.NewRedisCache(cfg.RedisAddr, cfg.RedisAuth, cfg.RedisTLS)
+	redisCache, err = cache.NewRedisCache(cfg.RedisAddr, cfg.RedisAuth, cfg.RedisDB, cfg.RedisTLS)
 	if err != nil {
 		return nil, err
 	}
@@ -115,14 +125,33 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewTenantRenderer(orgService))
+	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
+	societeReader := congesorg.NewSocieteReader(orgRepo)
+	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)
 	congesService := congesapp.NewService(
 		congesRepo,
 		congescra.NewFeederAdapter(craService),
 		congesworkflow.NewAdapter(wfService),
 		congesapp.WithNotifier(congesnotif.NewPublisherAdapter(notifService)),
+		congesapp.WithTypeConfigs(leaveTypeConfigService),
 	)
 	budgetService := budgetapp.NewService(budgetRepo, budgetcra.NewReaderAdapter(craService))
-	tmaService := tmaapp.NewService(tmaRepo, tmaworkflow.NewAdapter(wfService), tmacra.NewFeederAdapter(craService), budgetRepo)
+	tmaService := tmaapp.NewService(
+		tmaRepo,
+		tmaworkflow.NewAdapter(wfService),
+		tmacra.NewFeederAdapter(craService),
+		budgetRepo,
+		tmaapp.WithNotifier(tmanotif.NewPublisherAdapter(notifService)),
+	)
+	aiRepo := aipostgres.NewRepository(pool)
+	aiService := aiapp.NewService(
+		aiRepo,
+		aistub.NewProvider(),
+		aitma.NewReaderAdapter(tmaService),
+		aicra.NewReaderAdapter(craService),
+		aiconges.NewReaderAdapter(congesService),
+		aiworkflow.NewReaderAdapter(wfService),
+	)
 	publicService := publicapp.NewServiceWithCache(publicRepo, billingService, publicnotif.NewNotifierAdapter(notifService), cfg.StripePublishableKey, appCache, keyBuilder)
 
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
@@ -155,13 +184,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	})
 
 	router.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)
-		congeshttp.RegisterRoutes(r, congesService, tokenIssuer, authorizer, billingService)
+		congeshttp.RegisterRoutes(r, congesService, leaveTypeConfigService, tokenIssuer, authorizer, billingService)
 		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer, billingService)
 		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService)
+		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
 	})
@@ -176,6 +206,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		Workflow:      wfService,
 		CRA:           craService,
 		Leaves:        congesService,
+		LeaveTypes:    leaveTypeConfigService,
 		Budget:        budgetService,
 		TMA:           tmaService,
 		Notifications: notifService,
@@ -208,6 +239,13 @@ func (a *Application) Migrate(ctx context.Context) error {
 }
 
 func (a *Application) Seed(ctx context.Context) error {
+	return a.seed.Run(ctx)
+}
+
+func (a *Application) ResetSeed(ctx context.Context) error {
+	if err := a.seed.ResetDemoTenant(ctx); err != nil {
+		return err
+	}
 	return a.seed.Run(ctx)
 }
 

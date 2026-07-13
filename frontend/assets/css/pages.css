@@ -128,6 +128,26 @@
   font-size: 1.5rem !important;
 }
 
+.feature-card__icon--blue {
+  background: rgba(43, 108, 176, 0.12);
+  color: var(--kore-brand-blue);
+}
+
+.feature-card__icon--gold {
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--kore-brand-gold);
+}
+
+.feature-card__icon--success {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--kore-success);
+}
+
+.feature-card__icon--warn {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--kore-error);
+}
+
 .feature-card__title {
   margin: 0;
   font-size: var(--kore-text-h3);
@@ -226,7 +246,8 @@
   font-size: var(--kore-text-h1);
   font-weight: 700;
   color: var(--kore-brand-gold);
-  line-height: 1;
+  line-height: 1.15;
+  word-break: break-word;
 }
 
 .kpi-card__label {

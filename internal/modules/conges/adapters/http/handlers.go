@@ -14,7 +14,7 @@ import (
 	"github.com/kore/kore/internal/platform/httpx"
 )
 
-func RegisterRoutes(r chi.Router, leaves ports.LeaveService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterRoutes(r chi.Router, leaves ports.LeaveService, typeConfigs ports.LeaveTypeConfigService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/leave-requests", listLeaveRequests(leaves))
@@ -22,6 +22,7 @@ func RegisterRoutes(r chi.Router, leaves ports.LeaveService, tokens *authx.Token
 		pr.Post("/leave-requests/{id}/approve", approveLeaveRequest(leaves, authorizer))
 		pr.Post("/leave-requests/{id}/reject", rejectLeaveRequest(leaves, authorizer))
 		pr.Get("/leave-balances", listLeaveBalances(leaves))
+		registerLeaveTypeConfigRoutes(pr, typeConfigs, authorizer)
 	})
 }
 
@@ -77,11 +78,14 @@ func createLeaveRequest(leaves ports.LeaveService, authorizer authx.Authorizer) 
 			Motif:    req.Motif,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrInvalidDateRange) {
+			switch {
+			case errors.Is(err, domain.ErrInvalidDateRange):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
-				return
+			case errors.Is(err, domain.ErrUnknownLeaveType):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, "UNKNOWN_LEAVE_TYPE", err.Error())
+			default:
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			}
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, created)

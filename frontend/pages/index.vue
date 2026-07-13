@@ -179,6 +179,10 @@
       </div>
     </section>
 
+    <PublicSection :eyebrow="$t('ai.chat_section_eyebrow')" :title="$t('ai.chat_section_title')">
+      <PublicAiChat />
+    </PublicSection>
+
     <aside v-show="showStickyCta" class="sticky-cta" aria-label="Actions rapides">
       <div class="sticky-cta__copy">
         <p class="sticky-cta__text">{{ $t('landing.sticky_cta') }}</p>

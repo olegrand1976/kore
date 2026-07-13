@@ -22,6 +22,12 @@ func main() {
 		return
 	}
 	if len(os.Args) > 1 && os.Args[1] == "seed" {
+		if len(os.Args) > 2 && os.Args[2] == "reset" {
+			if err := runSeedReset(); err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
 		if err := runSeed(); err != nil {
 			log.Fatal(err)
 		}
@@ -65,6 +71,23 @@ func runSeed() error {
 		return err
 	}
 	return application.Seed(ctx)
+}
+
+func runSeedReset() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	application, err := app.New(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer application.Close()
+	if err := application.Migrate(ctx); err != nil {
+		return err
+	}
+	return application.ResetSeed(ctx)
 }
 
 func runServer() error {

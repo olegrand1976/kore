@@ -150,8 +150,8 @@ Les modules consommateurs affichent les actions via `useWorkflow()` (les boutons
 
 ## 11. Definition of Done
 
-- [ ] Moteur générique états/transitions opérationnel et paramétrable.
-- [ ] Gardes et rôles appliqués ; gate chef utilisateur testée (RG-TMA-01).
-- [ ] Historique append-only vérifié en intégration.
-- [ ] Événement `TransitionOccurred` publié (consommable par Notifications).
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Moteur générique états/transitions opérationnel et paramétrable.
+- [x] Gardes et rôles appliqués ; gate chef utilisateur testée (RG-TMA-01).
+- [x] Historique append-only vérifié en intégration.
+- [x] Événement `TransitionOccurred` publié (consommable par Notifications).
+- [x] Endpoints documentés dans `api/openapi.yaml`.

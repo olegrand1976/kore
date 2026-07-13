@@ -12,6 +12,7 @@ type Config struct {
 	DatabaseURL          string
 	RedisAddr            string
 	RedisAuth            string
+	RedisDB              int
 	RedisKeyPrefix       string
 	RedisTLS             bool
 	CacheDefaultTTL      time.Duration
@@ -37,6 +38,7 @@ func Load() (Config, error) {
 		DatabaseURL:          envOr("DATABASE_URL", "postgres://kore:kore@localhost:5432/kore?sslmode=disable"),
 		RedisAddr:            envOr("REDIS_ADDR", "localhost:6379"),
 		RedisAuth:            envOr("REDIS_AUTH", ""),
+		RedisDB:              envInt("REDIS_DB", 0),
 		RedisKeyPrefix:       envOr("REDIS_KEY_PREFIX", "kore"),
 		RedisTLS:             envBool("REDIS_TLS", false),
 		CacheDefaultTTL:      envDuration("CACHE_DEFAULT_TTL", 5*time.Minute),

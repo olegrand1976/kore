@@ -91,6 +91,7 @@ type NotificationEvent struct {
 
 type TMAService interface {
 	CreateDemand(ctx context.Context, cmd CreateDemandCommand) (domain.Demand, error)
+	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error)
 	ValidateCreation(ctx context.Context, cmd ChefUtilisateurCommand) error
 	Assign(ctx context.Context, cmd AssignCommand) error
 	TakeOver(ctx context.Context, tenant kernel.TenantID, id, userID uuid.UUID) error
@@ -98,6 +99,7 @@ type TMAService interface {
 	Resolve(ctx context.Context, tenant kernel.TenantID, id, userID uuid.UUID) error
 	Reopen(ctx context.Context, cmd ReworkCommand) error
 	List(ctx context.Context, tenant kernel.TenantID, filter ExportFilter) ([]domain.Demand, error)
+	GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error)
 	ExportXML(ctx context.Context, filter ExportFilter) ([]domain.XmlExportRow, error)
 }
 
@@ -106,6 +108,7 @@ type DemandRepository interface {
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error)
 	List(ctx context.Context, tenant kernel.TenantID, filter ExportFilter) ([]domain.Demand, error)
 	SaveAnalysis(ctx context.Context, dossier domain.AnalysisDossier) error
+	GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error)
 }
 
 type WorkflowService interface {

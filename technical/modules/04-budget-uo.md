@@ -144,7 +144,7 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Phase | Livrable | État audit 07/2026 |
 | --- | --- | --- |
-| **Phase 1** | UI Nuxt §10 + BFF `server/api/budgets/*` | Backend OK, **UI absente** |
+| **Phase 1** | UI Nuxt §10 + BFF `server/api/budgets/*` | Livré (liste, détail triple, estimation/devis) |
 
 Cf. [ROADMAP.md](../ROADMAP.md).
 

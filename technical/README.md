@@ -10,7 +10,7 @@ Spécifications techniques du projet **Kore** (reprise fonctionnelle de B-Hive),
 - Source fonctionnelle : [`documentation/SPECIFICATION_FONCTIONNELLE.md`](/home/olivier/ll-it-sc/projets/kore/documentation/SPECIFICATION_FONCTIONNELLE.md).
 - Analyse commerciale liée : [`documentation/ANALYSE_COMMERCIALE.md`](/home/olivier/ll-it-sc/projets/kore/documentation/ANALYSE_COMMERCIALE.md) (§2bis).
 
-## État d'implémentation (MVP en cours)
+## État d'implémentation (MVP validé — gate 07/2026)
 
 | Brique | Statut | Packages |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Spécifications techniques du projet **Kore** (reprise fonctionnelle de B-Hive),
 | 11 Notifications | Implémenté | `internal/modules/notifications/` |
 | 14 Abonnement SaaS (Stripe) | Implémenté | `internal/modules/billing/` |
 | 15 Site vitrine & booking | Implémenté | `internal/modules/publicsite/` |
-| Frontend Nuxt 3 + BFF | En cours | `frontend/` |
+| Frontend Nuxt 3 + BFF | Gate validée (07/2026) | `frontend/` |
 | Mobile Flutter | Phase 1bis (planifié) | `mobile/` (à créer) |
 | F12 SSO / F13 API publique / F14 Flutter | Planifié | cf. [ROADMAP.md](ROADMAP.md) |
 | 06–13, 16–17 (Support, SSII, Facturation, ETT, Mobile, Intégrations, …) | Phase ultérieure | — |
@@ -55,6 +55,20 @@ Chaque fiche module est autoportante et suit le **même template** (référence 
 | [12-sso-federation.md](foundation/12-sso-federation.md) | OIDC/SAML, PKCE Flutter, fédération IdP (Phase 1) |
 | [13-public-api-ecosystem.md](foundation/13-public-api-ecosystem.md) | Clés API, webhooks sortants, scopes (Phase 2) |
 | [14-flutter-mobile-client.md](foundation/14-flutter-mobile-client.md) | Conventions client Flutter iOS/Android (Phase 1bis) |
+
+## Assistance IA (ia/)
+
+| Fiche | Contenu |
+| --- | --- |
+| [ia/README.md](ia/README.md) | Index dossier IA, phasing Vagues 0–4, gate validation |
+| [ia/00-ai-act-conformite.md](ia/00-ai-act-conformite.md) | Conformité Règlement UE 2024/1689 |
+| [ia/01-architecture-module-ai.md](ia/01-architecture-module-ai.md) | Module `internal/modules/ai/` |
+| [ia/02-capabilities-registry.md](ia/02-capabilities-registry.md) | Registre officiel des capabilities |
+| [ia/03-governance-deployer.md](ia/03-governance-deployer.md) | Opt-in tenant, notice, information travailleurs |
+| [ia/04-journalisation-explicabilite.md](ia/04-journalisation-explicabilite.md) | Journalisation Art. 12, explicabilité Art. 86 |
+| [ia/05-ui-patterns.md](ia/05-ui-patterns.md) | `AppAiBadge`, accept/reject, i18n |
+| [ia/06-fournisseurs-modeles.md](ia/06-fournisseurs-modeles.md) | LLM stub / cloud / Ollama |
+| [ia/capabilities/](ia/capabilities/) | Spécification détaillée par point d'implémentation |
 
 ## Roadmap par phases
 

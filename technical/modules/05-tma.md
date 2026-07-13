@@ -144,7 +144,7 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Phase | Livrable | État audit 07/2026 |
 | --- | --- | --- |
-| **Phase 1** | UI Nuxt §10 + BFF `server/api/demands/*` | Backend OK, **UI absente** |
+| **Phase 1** | UI Nuxt §10 + BFF `server/api/demands/*` | Livré (liste, détail, workflow, export ; gantt reporté) |
 
 Cf. [ROADMAP.md](../ROADMAP.md).
 

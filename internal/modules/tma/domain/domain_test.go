@@ -31,6 +31,12 @@ func TestDemand_ReopenReactivatesConsumption(t *testing.T) {
 	assert.True(t, d.ConsumptionActive)
 }
 
+func TestDemand_AssignRequiresVisible(t *testing.T) {
+	d := domain.NewDemand(kernel.NewTenantID(uuid.New()), uuid.New(), uuid.New(), "bug", true)
+	err := d.Assign(uuid.New())
+	assert.ErrorIs(t, err, domain.ErrDemandNotVisible)
+}
+
 func TestToXmlExportRow_Has17Fields(t *testing.T) {
 	d := domain.NewDemand(kernel.NewTenantID(uuid.New()), uuid.New(), uuid.New(), "bug", false)
 	row := domain.ToXmlExportRow(d)

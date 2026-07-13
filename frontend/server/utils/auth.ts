@@ -61,3 +61,28 @@ export function apiAuthHeaders(event: Parameters<typeof defineEventHandler>[0] e
 export function apiBase(): string {
   return useRuntimeConfig().public.apiBase
 }
+
+export type SessionPayload = {
+  profile?: string
+  userId?: string
+  tenantId?: string
+}
+
+export function parseSessionFromEvent(event: import('h3').H3Event): SessionPayload | null {
+  const token = getCookie(event, 'kore_access_token')
+  if (!token) return null
+
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+    return {
+      profile: payload.profile as string | undefined,
+      userId: payload.sub as string | undefined,
+      tenantId: payload.tenant_id as string | undefined
+    }
+  } catch {
+    return null
+  }
+}

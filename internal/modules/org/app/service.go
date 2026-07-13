@@ -32,19 +32,33 @@ func (s *organizationService) CreateSociete(ctx context.Context, cmd ports.Creat
 		TenantID:      cmd.TenantID,
 		RaisonSociale: cmd.RaisonSociale,
 		Devise:        cmd.Devise,
+		Pays:          cmd.Pays,
 	}
 	if societe.Devise == "" {
 		societe.Devise = "EUR"
+	}
+	if societe.Pays == "" {
+		societe.Pays = "FR"
 	}
 	return societe, s.repo.SaveSociete(ctx, societe)
 }
 
 func (s *organizationService) CreateSite(ctx context.Context, cmd ports.CreateSiteCommand) (domain.Site, error) {
+	pays := cmd.Pays
+	if pays == "" {
+		societe, err := s.repo.GetSociete(ctx, cmd.TenantID, cmd.SocieteID)
+		if err == nil && societe.Pays != "" {
+			pays = societe.Pays
+		} else {
+			pays = "FR"
+		}
+	}
 	site := domain.Site{
 		ID:        uuid.New(),
 		TenantID:  cmd.TenantID,
 		SocieteID: cmd.SocieteID,
 		Libelle:   cmd.Libelle,
+		Pays:      pays,
 	}
 	return site, s.repo.SaveSite(ctx, site)
 }
@@ -279,16 +293,42 @@ func (h *argon2Hasher) Verify(hash, plain string) bool {
 }
 
 func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
+	read := map[authx.Action]bool{authx.ActionRead: true}
+	readWrite := map[authx.Action]bool{authx.ActionRead: true, authx.ActionWrite: true}
+	readWriteValidate := map[authx.Action]bool{
+		authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true,
+	}
+	mvpAdmin := map[authx.Module]map[authx.Action]bool{
+		"org":           readWriteValidate,
+		"cra":           readWriteValidate,
+		"tma":           readWriteValidate,
+		"conges":        readWriteValidate,
+		"budget":        readWriteValidate,
+		"workflow":      readWriteValidate,
+		"billing":       readWrite,
+		"notifications": readWrite,
+	}
 	return map[string]map[authx.Module]map[authx.Action]bool{
-		string(domain.ProfileAdmin): {
-			"org":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"cra":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"tma":           {authx.ActionRead: true, authx.ActionWrite: true, authx.ActionValidate: true},
-			"billing":       {authx.ActionRead: true, authx.ActionWrite: true},
-			"notifications": {authx.ActionRead: true, authx.ActionWrite: true},
-		},
+		string(domain.ProfileAdmin): mvpAdmin,
 		string(domain.ProfileCollaborateur): {
-			"cra": {authx.ActionRead: true, authx.ActionWrite: true},
+			"cra":    readWrite,
+			"tma":    readWrite,
+			"conges": readWrite,
+			"budget": read,
+		},
+		"Chef d'équipe": {
+			"org":    read,
+			"cra":    readWriteValidate,
+			"tma":    readWriteValidate,
+			"conges": read,
+			"budget": readWrite,
+		},
+		"Responsable de service": {
+			"org":    read,
+			"cra":    readWriteValidate,
+			"tma":    readWriteValidate,
+			"conges": readWriteValidate,
+			"budget": readWriteValidate,
 		},
 	}
 }

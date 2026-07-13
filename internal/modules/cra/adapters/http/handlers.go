@@ -196,7 +196,7 @@ func listTimesheets(svc ports.CRAService, authorizer authx.Authorizer) http.Hand
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
-		limit := 12
+		limit := 24
 		if raw := r.URL.Query().Get("limit"); raw != "" {
 			if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 48 {
 				limit = n
@@ -204,7 +204,7 @@ func listTimesheets(svc ports.CRAService, authorizer authx.Authorizer) http.Hand
 		}
 		identity, _ := authx.FromContext(r.Context())
 		managerView := authorizer.Can(r.Context(), "cra", authx.ActionValidate)
-		items, err := svc.ListTimesheets(r.Context(), identity.TenantID, identity.UserID, managerView, limit)
+		items, err := svc.ListTimesheetSummaries(r.Context(), identity.TenantID, identity.UserID, managerView, limit)
 		if err != nil {
 			writeCRAError(w, err)
 			return

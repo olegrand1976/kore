@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="dashboard">
     <section class="welcome-banner">
       <div>
         <p class="welcome-banner__eyebrow">{{ $t('dashboard.banner') }}</p>
@@ -8,47 +8,198 @@
       <AppIcon name="insights" class="welcome-banner__icon" />
     </section>
 
-    <div class="dashboard-grid">
-      <AppCard padding="lg" hoverable class="kpi-card">
-        <div class="feature-card__icon"><AppIcon name="extension" /></div>
-        <p class="kpi-card__value">{{ activeModulesCount }}</p>
-        <p class="kpi-card__label">{{ $t('dashboard.modules_active') }}</p>
-      </AppCard>
-      <AppCard padding="lg" hoverable class="kpi-card">
-        <div class="feature-card__icon"><AppIcon name="pending_actions" /></div>
-        <p class="kpi-card__value">2</p>
-        <p class="kpi-card__label">{{ $t('dashboard.pending_validations') }}</p>
-      </AppCard>
-      <AppCard padding="lg" hoverable class="kpi-card kpi-card--action">
-        <div class="feature-card__icon"><AppIcon name="schedule" /></div>
+    <AppCard v-if="briefingText" padding="lg" class="dashboard__briefing">
+      <div class="dashboard__briefing-header">
+        <h2 class="dashboard__briefing-title">{{ $t('ai.briefing_title') }}</h2>
+        <AppAiBadge variant="generated" />
+      </div>
+      <p class="dashboard__briefing-text">{{ briefingText }}</p>
+    </AppCard>
+
+    <AppKpiGrid class="dashboard__kpis">
+      <AppKpiCard
+        icon="extension"
+        tone="gold"
+        :value="activeModulesCount"
+        :label="$t('dashboard.modules_active')"
+      />
+      <AppKpiCard
+        v-if="canValidateConges && showModule('conges')"
+        icon="pending_actions"
+        tone="warn"
+        :loading="statsPending"
+        :error="statErrors.conges"
+        :value="stats.pendingValidations"
+        :label="$t('dashboard.pending_validations')"
+        to="/conges/validation"
+      />
+      <AppKpiCard
+        v-if="showModule('cra')"
+        icon="schedule"
+        tone="blue"
+        :loading="statsPending"
+        :error="statErrors.cra"
+        :value="craCurrentDisplay"
+        :label="$t('dashboard.cra_current')"
+        :hint="currentMonthLabel"
+        to="/cra"
+      />
+      <AppKpiCard
+        v-if="showModule('conges') && !canValidateConges"
+        icon="event"
+        tone="warn"
+        :loading="statsPending"
+        :error="statErrors.conges"
+        :value="stats.leavePending"
+        :label="$t('dashboard.leave_pending')"
+        to="/conges"
+      />
+      <AppKpiCard
+        v-if="showModule('tma')"
+        icon="support_agent"
+        tone="blue"
+        :loading="statsPending"
+        :error="statErrors.tma"
+        :value="stats.tmaOpen"
+        :label="$t('dashboard.tma_open')"
+        :hint="tmaTotalHint"
+        to="/tma"
+      />
+      <AppKpiCard
+        v-if="showModule('budget')"
+        icon="account_balance"
+        :tone="stats.budgetOverrun > 0 ? 'warn' : 'success'"
+        :loading="statsPending"
+        :error="statErrors.budget"
+        :value="budgetConsumptionDisplay"
+        :label="$t('dashboard.budget_consumption')"
+        :hint="budgetOverrunHint"
+        to="/budget"
+      />
+      <AppCard v-if="showModule('cra')" padding="lg" hoverable class="kpi-card kpi-card--action">
+        <div class="feature-card__icon"><AppIcon name="edit_calendar" /></div>
         <p class="kpi-card__label">{{ $t('nav.cra') }}</p>
         <AppButton variant="primary" size="sm" to="/cra">{{ $t('dashboard.quick_cra') }}</AppButton>
       </AppCard>
-    </div>
+    </AppKpiGrid>
+
+    <DashboardCharts
+      :charts="charts"
+      :errors="statErrors"
+      :loading="statsPending"
+      :show-module="showModule"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ALL_MODULES } from '~/composables/useEntitlements'
+import type { DashboardStatErrors } from '~/composables/useDashboardStats'
 
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'default', wide: true })
 
+const { t, locale } = useI18n()
 const { modules, loaded, fetchEntitlements } = useEntitlements()
+const { fetchSession } = useAuth()
+const { load, craCurrentLabel, showModule, currentMonthKey, canValidateConges, emptyStats, emptyCharts } =
+  useDashboardStats()
+const { fetchBriefing } = useAi()
 
-await fetchEntitlements()
+await Promise.all([fetchEntitlements(), fetchSession()])
+
+const { data: dashboardData, pending: statsPending } = await useAsyncData('dashboard-stats', () => load())
+
+const briefingText = ref('')
+watch(
+  () => dashboardData.value?.stats,
+  async (s) => {
+    if (!s) return
+    try {
+      const briefing = await fetchBriefing({
+        craStatus: s.craCurrentStatus ?? '',
+        leavePending: s.leavePending,
+        tmaOpen: s.tmaOpen,
+        budgetConsumption: s.budgetConsumptionPct,
+        budgetOverrun: s.budgetOverrun,
+        pendingValidations: s.pendingValidations
+      })
+      briefingText.value = briefing.text
+    } catch {
+      briefingText.value = ''
+    }
+  },
+  { immediate: true }
+)
+
+const stats = computed(() => dashboardData.value?.stats ?? emptyStats())
+const charts = computed(() => dashboardData.value?.charts ?? emptyCharts())
+const statErrors = computed<DashboardStatErrors>(() => dashboardData.value?.errors ?? {})
 
 const activeModulesCount = computed(() => {
-  if (!loaded.value) {
-    return ALL_MODULES.length
-  }
-  if (modules.value.length === 0) {
-    return 0
-  }
+  if (!loaded.value) return '—'
+  if (modules.value.length === 0) return 0
   return modules.value.length
 })
+
+const craCurrentDisplay = computed(() => craCurrentLabel(stats.value.craCurrentStatus))
+
+const currentMonthLabel = computed(() => {
+  const [y, m] = currentMonthKey().split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'fr-FR', {
+    month: 'long',
+    year: 'numeric'
+  })
+})
+
+const tmaTotalHint = computed(() =>
+  stats.value.tmaTotal > 0 ? t('dashboard.tma_total_hint', { n: stats.value.tmaTotal }) : undefined
+)
+
+const budgetOverrunHint = computed(() =>
+  stats.value.budgetOverrun > 0 ? t('dashboard.budget_overrun_hint', { n: stats.value.budgetOverrun }) : undefined
+)
+
+const budgetConsumptionDisplay = computed(() => `${stats.value.budgetConsumptionPct}%`)
 </script>
 
 <style scoped>
+.dashboard {
+  width: 100%;
+}
+
+.dashboard__kpis {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+@media (min-width: 1200px) {
+  .dashboard__kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.dashboard__briefing {
+  margin-bottom: var(--kore-space-xl);
+}
+
+.dashboard__briefing-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  margin-bottom: var(--kore-space-sm);
+}
+
+.dashboard__briefing-title {
+  margin: 0;
+  font-size: var(--kore-text-body);
+  font-weight: 600;
+}
+
+.dashboard__briefing-text {
+  margin: 0;
+  color: var(--kore-text-muted);
+  line-height: 1.5;
+}
+
 .welcome-banner {
   display: flex;
   align-items: center;
@@ -82,17 +233,29 @@ const activeModulesCount = computed(() => {
   opacity: 0.6;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--kore-space-lg);
-}
-
 .kpi-card--action {
   display: flex;
   flex-direction: column;
   gap: var(--kore-space-md);
 }
 
-.kpi-card--action .kpi-card__label { margin-bottom: auto; }
+.kpi-card--action .kpi-card__label {
+  margin-bottom: auto;
+}
+
+@media (max-width: 768px) {
+  .welcome-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--kore-space-lg);
+  }
+
+  .welcome-banner__icon {
+    align-self: flex-end;
+  }
+
+  .dashboard__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 </style>

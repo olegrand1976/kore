@@ -41,10 +41,21 @@ func (r *Repository) GetTenant(ctx context.Context, id kernel.TenantID) (domain.
 }
 
 func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
+	pays := s.Pays
+	if pays == "" {
+		pays = "FR"
+	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.societes (id, tenant_id, raison_sociale, logo, devise, adresse, siret, url_tenant)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise,
+		INSERT INTO org.societes (id, tenant_id, raison_sociale, logo, devise, pays, adresse, siret, url_tenant)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (id) DO UPDATE SET
+			raison_sociale = EXCLUDED.raison_sociale,
+			devise = EXCLUDED.devise,
+			pays = EXCLUDED.pays,
+			adresse = EXCLUDED.adresse,
+			siret = EXCLUDED.siret,
+			url_tenant = EXCLUDED.url_tenant
+	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise, pays,
 		s.Adresse, s.Siret, s.URLTenant)
 	return err
 }
@@ -61,7 +72,7 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 
 func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise,
+		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise, COALESCE(pays, 'FR'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
@@ -70,7 +81,7 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 
 func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise,
+		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise, COALESCE(pays, 'FR'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
 	`, tenant.UUID())
@@ -92,13 +103,14 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
-	var logo, adresse, siret, urlTenant string
-	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &adresse, &siret, &urlTenant)
+	var logo, adresse, siret, urlTenant, pays string
+	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays, &adresse, &siret, &urlTenant)
 	if err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
 	s.Logo = logo
+	s.Pays = pays
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
@@ -108,12 +120,13 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
-	var logo, adresse, siret, urlTenant string
-	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &adresse, &siret, &urlTenant); err != nil {
+	var logo, adresse, siret, urlTenant, pays string
+	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays, &adresse, &siret, &urlTenant); err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
 	s.Logo = logo
+	s.Pays = pays
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
@@ -128,9 +141,14 @@ func nullString(v string) *string {
 }
 
 func (r *Repository) SaveSite(ctx context.Context, s domain.Site) error {
+	pays := s.Pays
+	if pays == "" {
+		pays = "FR"
+	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.sites (id, tenant_id, societe_id, libelle) VALUES ($1, $2, $3, $4)
-	`, s.ID, s.TenantID.UUID(), s.SocieteID, s.Libelle)
+		INSERT INTO org.sites (id, tenant_id, societe_id, libelle, pays) VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (id) DO UPDATE SET libelle = EXCLUDED.libelle, pays = EXCLUDED.pays
+	`, s.ID, s.TenantID.UUID(), s.SocieteID, s.Libelle, pays)
 	return err
 }
 
@@ -277,6 +295,29 @@ func (r *Repository) ResolveUserEmails(ctx context.Context, tenant kernel.Tenant
 		emails = append(emails, login+"@kore.local")
 	}
 	return emails, rows.Err()
+}
+
+func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error) {
+	var societeID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.users u
+		LEFT JOIN org.equipes e ON e.id = u.equipe_id
+		LEFT JOIN org.applications a ON a.id = e.application_id
+		LEFT JOIN org.services sv ON sv.id = a.service_id
+		LEFT JOIN org.sites st ON st.id = sv.site_id
+		WHERE u.tenant_id = $1 AND u.id = $2
+	`, tenant.UUID(), userID).Scan(&societeID)
+	if err == nil && societeID != uuid.Nil {
+		return societeID, nil
+	}
+	err = r.pool.QueryRow(ctx, `
+		SELECT id FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale LIMIT 1
+	`, tenant.UUID()).Scan(&societeID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return societeID, nil
 }
 
 func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
