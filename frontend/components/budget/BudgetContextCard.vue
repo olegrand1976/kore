@@ -21,7 +21,7 @@ const isDefault = computed(() => normalizeBudgetType(props.budgetType) === 'defa
     <dl class="budget-context__dl">
       <div>
         <dt>{{ $t('budget.context_application') }}</dt>
-        <dd>{{ pickAppLabel(application) || '—' }}</dd>
+        <dd>{{ pickAppLabel(application) || $t('budget.col_empty') }}</dd>
       </div>
       <div>
         <dt>{{ $t('budget.context_client') }}</dt>

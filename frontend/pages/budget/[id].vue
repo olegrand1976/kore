@@ -15,6 +15,10 @@
 
     <AppCard v-if="pending" padding="lg"><p class="muted">{{ $t('budget.loading') }}</p></AppCard>
 
+    <AppCard v-else-if="loadError" padding="lg">
+      <AppEmptyState icon="error" :title="$t('budget.not_found')" />
+    </AppCard>
+
     <template v-else-if="budget">
       <BudgetContextCard
         class="mb"
@@ -123,6 +127,7 @@ const {
   statusLabel,
   statusBadgeVariant,
   currentMonthPeriod,
+  worstBudgetStatus,
   budgetPageTitle,
   pickApplicationId,
   eurosToCentimes
@@ -148,20 +153,28 @@ const id = computed(() => String(route.params.id))
 const busy = ref(false)
 const errorMsg = ref('')
 
+const loadError = ref('')
+
 const { data, pending, refresh } = await useAsyncData(
   () => `budget-${id.value}`,
   async () => {
-    const budget = await get(id.value)
-    const appId = pickApplicationId(budget as BudgetItem)
-    let application: OrgApplication | null = null
-    if (appId) {
-      try {
-        application = await getApplication(appId)
-      } catch {
-        application = null
+    loadError.value = ''
+    try {
+      const budget = await get(id.value)
+      const appId = pickApplicationId(budget as BudgetItem)
+      let application: OrgApplication | null = null
+      if (appId) {
+        try {
+          application = await getApplication(appId)
+        } catch {
+          application = null
+        }
       }
+      return { budget, application }
+    } catch (err) {
+      loadError.value = extractFetchError(err)
+      return null
     }
-    return { budget, application }
   },
   { watch: [id] }
 )
@@ -181,7 +194,13 @@ const plannedAmount = computed(() => tripleValue(budget.value?.planned ?? budget
 const consumedAmount = computed(() => tripleValue(budget.value?.consumed ?? budget.value?.Consumed, 'amount'))
 const remainingAmount = computed(() => tripleValue(budget.value?.remaining ?? budget.value?.Remaining, 'amount'))
 
-const overallStatus = computed(() => budgetStatus(consumedDays.value, plannedDays.value))
+const overallStatus = computed(() =>
+  worstBudgetStatus(
+    budgetStatus(consumedDays.value, plannedDays.value),
+    budgetStatus(consumedUO.value, plannedUO.value),
+    budgetStatus(consumedAmount.value, plannedAmount.value)
+  )
+)
 
 const pageTitle = computed(() => budgetPageTitle(pickAppLabel(application.value), pickId(budget.value ?? {}) || id.value))
 const pageSubtitle = computed(() => {
@@ -212,16 +231,28 @@ const loadTmaOptions = async () => {
   }
 }
 
+const ensureTmaOption = (demandId: string, subject: string) => {
+  if (!demandId || tmaOptions.value.some((d) => d.id === demandId)) return
+  tmaOptions.value.unshift({
+    id: demandId,
+    label: subject || demandId.slice(0, 8)
+  })
+}
+
+const applyDemandSuggestion = (demandId: string, subject: string) => {
+  ensureTmaOption(demandId, subject)
+  if (!estimateForm.demandId) estimateForm.demandId = demandId
+  if (!quoteForm.demandId) quoteForm.demandId = demandId
+}
+
 onMounted(async () => {
   await loadTmaOptions()
   if (!isManager.value) return
   try {
     const suggestions = await suggestBudgetDemands(id.value)
-    if (suggestions.length > 0 && !estimateForm.demandId) {
-      estimateForm.demandId = suggestions[0].demandId
-    }
-    if (suggestions.length > 0 && !quoteForm.demandId) {
-      quoteForm.demandId = suggestions[0].demandId
+    const first = suggestions[0]
+    if (first?.demandId) {
+      applyDemandSuggestion(first.demandId, first.subject)
     }
   } catch {
     /* optional */
