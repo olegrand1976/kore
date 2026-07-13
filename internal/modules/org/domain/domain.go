@@ -16,6 +16,8 @@ var (
 	ErrAccountExpired            = errors.New("account expired")
 	ErrServiceWithoutResponsible = errors.New("service without responsible")
 	ErrSeatLimitReached          = errors.New("seat limit reached")
+	ErrUserNotFound              = errors.New("user not found")
+	ErrCannotModifySelf          = errors.New("cannot modify own account")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)
@@ -58,6 +60,7 @@ type User struct {
 	Profile      Profile
 	Active       bool
 	Period       ActivationPeriod
+	DeletedAt    *time.Time
 }
 
 type Societe struct {

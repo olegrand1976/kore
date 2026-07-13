@@ -130,3 +130,56 @@ export function minEditionPrice(payload: unknown): number | null {
   }
   return Math.min(...editions.map((edition) => edition.unitAmount))
 }
+
+const EDITION_ORDER: EditionCode[] = ['starter', 'pro', 'enterprise']
+
+function normalizeModuleCodes(codes: string[]): Set<string> {
+  return new Set(codes.map((code) => code.toLowerCase()).filter(Boolean))
+}
+
+/** Finds the highest edition whose module set matches or is covered by active modules. */
+export function matchEdition(activeCodes: string[], editions: EditionPrice[]): EditionPrice | null {
+  const active = normalizeModuleCodes(activeCodes)
+  if (active.size === 0 || editions.length === 0) {
+    return null
+  }
+
+  for (let i = EDITION_ORDER.length - 1; i >= 0; i -= 1) {
+    const edition = editions.find((item) => item.code === EDITION_ORDER[i])
+    if (!edition) {
+      continue
+    }
+    const editionModules = normalizeModuleCodes(edition.modules)
+    const exactMatch =
+      active.size === editionModules.size && [...active].every((code) => editionModules.has(code))
+    const coveredMatch = [...editionModules].every((code) => active.has(code))
+    if (exactMatch || coveredMatch) {
+      return edition
+    }
+  }
+
+  return null
+}
+
+/** Suggests the next edition tier when the tenant can extend module access. */
+export function suggestUpgradeEdition(
+  current: EditionPrice | null,
+  editions: EditionPrice[]
+): EditionPrice | null {
+  if (editions.length === 0) {
+    return null
+  }
+  if (!current) {
+    return editions.find((edition) => edition.code === 'pro') ?? editions[0] ?? null
+  }
+  const idx = EDITION_ORDER.indexOf(current.code)
+  if (idx < 0 || idx >= EDITION_ORDER.length - 1) {
+    return null
+  }
+  return editions.find((edition) => edition.code === EDITION_ORDER[idx + 1]) ?? null
+}
+
+export function modulesMissingFromEdition(activeCodes: string[], edition: EditionPrice): string[] {
+  const active = normalizeModuleCodes(activeCodes)
+  return edition.modules.filter((code) => !active.has(code.toLowerCase()))
+}

@@ -5,6 +5,7 @@ type SessionUser = {
   profile?: AuthProfile
   userId?: string
   tenantId?: string
+  isPlatformAdmin?: boolean
 }
 
 export function useAuth() {
@@ -20,11 +21,12 @@ export function useAuth() {
   }
 
   const isAdmin = computed(() => user.value?.profile === 'Administrateur')
+  const isPlatformAdmin = computed(() => user.value?.isPlatformAdmin === true)
 
   const isManager = computed(() => {
     const profile = user.value?.profile ?? ''
     return profile === 'Administrateur' || profile.includes('Chef') || profile.includes('Responsable')
   })
 
-  return { user, fetchSession, isAdmin, isManager }
+  return { user, fetchSession, isAdmin, isManager, isPlatformAdmin }
 }

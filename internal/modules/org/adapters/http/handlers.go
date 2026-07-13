@@ -44,6 +44,9 @@ func RegisterRoutes(
 		pr.Post("/applications", createApplication(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Post("/users", createUser(users, authorizer))
+		pr.Put("/users/{id}", updateUser(users, authorizer))
+		pr.Patch("/users/{id}/deactivate", deactivateUser(users, authorizer))
+		pr.Delete("/users/{id}", deleteUser(users, authorizer))
 		pr.Get("/clients", listClients(clients))
 		pr.Post("/clients", createClient(clients, authorizer))
 	})
@@ -429,6 +432,106 @@ func listUsers(users ports.UserService, authorizer authx.Authorizer) http.Handle
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func updateUser(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		userID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid user id")
+			return
+		}
+		var req struct {
+			Profile  *domain.Profile `json:"profil"`
+			Password string          `json:"password"`
+			Active   *bool           `json:"active"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		summary, err := users.UpdateUser(r.Context(), ports.UpdateUserCommand{
+			TenantID:    identity.TenantID,
+			UserID:      userID,
+			ActorUserID: identity.UserID,
+			Profile:     req.Profile,
+			Password:    req.Password,
+			Active:      req.Active,
+		})
+		if err != nil {
+			writeUserMutationError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, summary)
+	}
+}
+
+func deactivateUser(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		userID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid user id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		err = users.DeactivateUser(r.Context(), ports.DeleteUserCommand{
+			TenantID:    identity.TenantID,
+			UserID:      userID,
+			ActorUserID: identity.UserID,
+		})
+		if err != nil {
+			writeUserMutationError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deactivated"})
+	}
+}
+
+func deleteUser(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		userID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid user id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		err = users.DeleteUser(r.Context(), ports.DeleteUserCommand{
+			TenantID:    identity.TenantID,
+			UserID:      userID,
+			ActorUserID: identity.UserID,
+		})
+		if err != nil {
+			writeUserMutationError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
+	}
+}
+
+func writeUserMutationError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrUserNotFound):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+	case errors.Is(err, domain.ErrCannotModifySelf):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrSeatLimitReached):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}
 }
 

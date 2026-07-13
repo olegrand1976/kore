@@ -11,5 +11,8 @@ Ordre d'application (cf. `internal/app/migrations.go`) :
 5. conges
 6. budget
 7. tma
-8. billing
-9. publicsite
+8. ai
+9. billing
+10. publicsite
+
+**Schéma DB documenté** : [`documentation/SCHEMA_DB.md`](../../documentation/SCHEMA_DB.md)

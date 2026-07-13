@@ -2,6 +2,7 @@
 
 > Fondation transverse. Stratégie de persistance commune à toutes les briques.
 > Référence fonctionnelle : spec §11 (modèle de données), §4 (organisation).
+> **Schéma DB actuel (tables, colonnes, relations)** : [`documentation/SCHEMA_DB.md`](../../documentation/SCHEMA_DB.md).
 
 ## 1. Principes
 
@@ -72,7 +73,7 @@ flowchart LR
 
 ## 9. Definition of Done (fondation database)
 
-- [ ] Schémas par module définis et documentés.
+- [x] Schémas par module définis et documentés ([SCHEMA_DB.md](../../documentation/SCHEMA_DB.md)).
 - [ ] Conventions PK/tenant/timestamps actées.
 - [ ] Stratégie migrations golang-migrate opérationnelle (up/down testés).
 - [ ] Règles d'inaltérabilité ETT traduites en contraintes/roles DB.

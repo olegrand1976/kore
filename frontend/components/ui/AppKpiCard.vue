@@ -11,9 +11,12 @@ const props = withDefaults(
     loading?: boolean
     error?: boolean
     to?: string
+    clickable?: boolean
   }>(),
-  { tone: 'default', loading: false, error: false }
+  { tone: 'default', loading: false, error: false, clickable: false }
 )
+
+const emit = defineEmits<{ click: [] }>()
 
 const { t } = useI18n()
 
@@ -59,7 +62,19 @@ const valueClass = computed(() => ({
       <slot />
     </AppCard>
   </NuxtLink>
-  <AppCard v-else padding="lg" hoverable class="kpi-card" role="group" :aria-label="label">
+  <AppCard
+    v-else
+    padding="lg"
+    hoverable
+    class="kpi-card"
+    :class="{ 'kpi-card--clickable': clickable }"
+    :role="clickable ? 'button' : 'group'"
+    :tabindex="clickable ? 0 : undefined"
+    :aria-label="label"
+    @click="clickable ? emit('click') : undefined"
+    @keydown.enter.prevent="clickable ? emit('click') : undefined"
+    @keydown.space.prevent="clickable ? emit('click') : undefined"
+  >
     <div class="feature-card__icon" :class="toneClass">
       <AppIcon :name="icon" />
     </div>

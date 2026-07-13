@@ -121,13 +121,14 @@ func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd por
 }
 
 type userService struct {
-	repo        ports.OrganizationRepository
-	hasher      ports.PasswordHasher
-	tokens      ports.TokenIssuer
-	entitlement ports.EntitlementReader
-	cache       cache.Cache
-	keys        cache.KeyBuilder
-	clock       func() time.Time
+	repo                ports.OrganizationRepository
+	hasher              ports.PasswordHasher
+	tokens              ports.TokenIssuer
+	entitlement         ports.EntitlementReader
+	cache               cache.Cache
+	keys                cache.KeyBuilder
+	clock               func() time.Time
+	platformAdminLogins map[string]struct{}
 }
 
 func NewUserService(
@@ -137,15 +138,21 @@ func NewUserService(
 	entitlement ports.EntitlementReader,
 	appCache cache.Cache,
 	keys cache.KeyBuilder,
+	platformAdminLogins []string,
 ) ports.UserService {
+	logins := make(map[string]struct{}, len(platformAdminLogins))
+	for _, login := range platformAdminLogins {
+		logins[strings.ToUpper(login)] = struct{}{}
+	}
 	return &userService{
-		repo:        repo,
-		hasher:      hasher,
-		tokens:      tokens,
-		entitlement: entitlement,
-		cache:       appCache,
-		keys:        keys,
-		clock:       time.Now,
+		repo:                repo,
+		hasher:              hasher,
+		tokens:              tokens,
+		entitlement:         entitlement,
+		cache:               appCache,
+		keys:                keys,
+		clock:               time.Now,
+		platformAdminLogins: logins,
 	}
 }
 
@@ -206,11 +213,7 @@ func (s *userService) Authenticate(ctx context.Context, login, password string) 
 	if !s.hasher.Verify(user.PasswordHash, password) {
 		return ports.AuthResult{}, domain.ErrInvalidCredentials
 	}
-	pair, err := s.tokens.Issue(authx.Identity{
-		UserID:   user.ID,
-		TenantID: user.TenantID,
-		Profile:  authx.Profile(user.Profile),
-	})
+	pair, err := s.tokens.Issue(s.buildIdentity(user))
 	if err != nil {
 		return ports.AuthResult{}, err
 	}
@@ -223,6 +226,18 @@ func (s *userService) Authenticate(ctx context.Context, login, password string) 
 	}, nil
 }
 
+func (s *userService) buildIdentity(user domain.User) authx.Identity {
+	identity := authx.Identity{
+		UserID:   user.ID,
+		TenantID: user.TenantID,
+		Profile:  authx.Profile(user.Profile),
+	}
+	if _, ok := s.platformAdminLogins[strings.ToUpper(string(user.Login))]; ok {
+		identity.Roles = []string{authx.RolePlatformAdmin}
+	}
+	return identity
+}
+
 func (s *userService) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]ports.UserSummary, error) {
 	users, err := s.repo.ListUsers(ctx, tenant)
 	if err != nil {
@@ -230,14 +245,86 @@ func (s *userService) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]
 	}
 	out := make([]ports.UserSummary, 0, len(users))
 	for _, u := range users {
-		out = append(out, ports.UserSummary{
-			ID:      u.ID,
-			Login:   string(u.Login),
-			Profile: string(u.Profile),
-			Active:  u.Active,
-		})
+		out = append(out, userToSummary(u))
 	}
 	return out, nil
+}
+
+func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserCommand) (ports.UserSummary, error) {
+	user, err := s.repo.FindUserByID(ctx, cmd.TenantID, cmd.UserID)
+	if err != nil {
+		return ports.UserSummary{}, domain.ErrUserNotFound
+	}
+	if cmd.Profile != nil {
+		user.Profile = *cmd.Profile
+	}
+	if cmd.Password != "" {
+		hash, err := s.hasher.Hash(cmd.Password)
+		if err != nil {
+			return ports.UserSummary{}, err
+		}
+		user.PasswordHash = hash
+	}
+	if cmd.Active != nil {
+		if !*cmd.Active && cmd.UserID == cmd.ActorUserID {
+			return ports.UserSummary{}, domain.ErrCannotModifySelf
+		}
+		if *cmd.Active && !user.Active {
+			limit, err := s.entitlement.GetSeatLimit(ctx, cmd.TenantID)
+			if err != nil {
+				return ports.UserSummary{}, err
+			}
+			count, err := s.repo.CountActiveUsers(ctx, cmd.TenantID)
+			if err != nil {
+				return ports.UserSummary{}, err
+			}
+			if limit > 0 && count >= limit {
+				return ports.UserSummary{}, domain.ErrSeatLimitReached
+			}
+		}
+		user.Active = *cmd.Active
+	}
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return ports.UserSummary{}, domain.ErrUserNotFound
+	}
+	return userToSummary(user), nil
+}
+
+func (s *userService) DeactivateUser(ctx context.Context, cmd ports.DeleteUserCommand) error {
+	if cmd.UserID == cmd.ActorUserID {
+		return domain.ErrCannotModifySelf
+	}
+	user, err := s.repo.FindUserByID(ctx, cmd.TenantID, cmd.UserID)
+	if err != nil {
+		return domain.ErrUserNotFound
+	}
+	if !user.Active {
+		return nil
+	}
+	user.Active = false
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
+func (s *userService) DeleteUser(ctx context.Context, cmd ports.DeleteUserCommand) error {
+	if cmd.UserID == cmd.ActorUserID {
+		return domain.ErrCannotModifySelf
+	}
+	if err := s.repo.SoftDeleteUser(ctx, cmd.TenantID, cmd.UserID, s.clock().UTC()); err != nil {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
+func userToSummary(u domain.User) ports.UserSummary {
+	return ports.UserSummary{
+		ID:      u.ID,
+		Login:   string(u.Login),
+		Profile: string(u.Profile),
+		Active:  u.Active,
+	}
 }
 
 type clientService struct {

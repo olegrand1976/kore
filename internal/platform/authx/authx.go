@@ -19,6 +19,8 @@ const (
 	ProfileAdmin         Profile = "Administrateur"
 	ProfileUtilisateur   Profile = "Utilisateur"
 	ProfileCollaborateur Profile = "Collaborateur"
+
+	RolePlatformAdmin = "platform_admin"
 )
 
 type Module string
@@ -200,6 +202,15 @@ type RBACAuthorizer struct {
 
 func NewRBACAuthorizer(permissions map[string]map[Module]map[Action]bool) *RBACAuthorizer {
 	return &RBACAuthorizer{permissions: permissions}
+}
+
+func IsPlatformAdmin(identity Identity) bool {
+	for _, role := range identity.Roles {
+		if role == RolePlatformAdmin {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *RBACAuthorizer) Can(ctx context.Context, module Module, action Action) bool {

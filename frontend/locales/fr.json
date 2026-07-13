@@ -7,7 +7,8 @@
     "no": "Non",
     "edit": "Modifier",
     "delete": "Supprimer",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "close": "Fermer"
   },
   "nav": {
     "modules": "Modules",
@@ -25,7 +26,8 @@
     "notifications": "Notifications",
     "organisation": "Organisation",
     "users": "Utilisateurs",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "platform": "Plateforme"
   },
   "brand": {
     "name": "Kore",
@@ -79,6 +81,38 @@
     "tma_total_hint": "{n} demande(s) au total",
     "budget_consumption": "Consommation budget",
     "budget_overrun_hint": "{n} budget(s) en dépassement",
+    "modules_panel": {
+      "title": "Votre abonnement",
+      "active_title": "Modules actifs",
+      "extend_title": "Étendre l'accès",
+      "extend_hint_edition": "Passez à l'édition {edition} pour débloquer les modules suivants.",
+      "extend_hint_custom": "Composez un abonnement sur mesure pour activer d'autres modules.",
+      "custom_plan": "Abonnement sur mesure",
+      "custom_plan_desc": "Votre formule ne correspond pas exactement à une édition standard.",
+      "seats": "{n} poste(s) souscrit(s)",
+      "in_upgrade": "Inclus dans {edition}",
+      "upgrade_from": "À partir de {price}",
+      "cta_upgrade": "Étendre mon abonnement",
+      "cta_manage": "Gérer l'abonnement",
+      "admin_only": "Seul un administrateur peut modifier l'abonnement. Consultez les tarifs ou contactez votre admin.",
+      "status": {
+        "trial": "Essai",
+        "active": "Actif",
+        "past_due": "Paiement en retard",
+        "suspended": "Suspendu",
+        "canceled": "Annulé"
+      },
+      "codes": {
+        "org": "Organisation",
+        "cra": "CRA",
+        "conges": "Congés",
+        "budget": "Budget UO",
+        "tma": "TMA",
+        "workflow": "Workflow",
+        "notifications": "Notifications",
+        "billing": "Facturation"
+      }
+    },
     "charts": {
       "title": "Suivi d'activité",
       "view_module": "Voir le module",
@@ -329,7 +363,25 @@
     "inactive": "Inactif",
     "empty": "Aucun utilisateur",
     "loading": "Chargement…",
-    "forbidden": "Accès réservé aux administrateurs"
+    "forbidden": "Accès réservé aux administrateurs",
+    "add": "Ajouter",
+    "add_title": "Nouvel utilisateur",
+    "edit_title": "Modifier l'utilisateur",
+    "password": "Mot de passe",
+    "password_optional": "Nouveau mot de passe (optionnel)",
+    "login_hint": "Format : XXX_nom (ex. COL_dupont)",
+    "deactivate": "Désactiver",
+    "deactivate_confirm": "Désactiver le compte « {login} » ?",
+    "delete_confirm": "Supprimer définitivement « {login} » ? Le compte sera masqué.",
+    "created": "Utilisateur créé.",
+    "saved": "Utilisateur mis à jour.",
+    "deactivated": "Utilisateur désactivé.",
+    "deleted": "Utilisateur supprimé.",
+    "error_generic": "Une erreur est survenue",
+    "error_login_exists": "Cet identifiant existe déjà.",
+    "error_login_format": "Format invalide. Utilisez XXX_nom (3 lettres majuscules, underscore, nom en minuscules).",
+    "error_seat_limit": "Plafond de sièges atteint.",
+    "error_self": "Vous ne pouvez pas modifier votre propre compte de cette façon."
   },
   "org": {
     "title": "Organisation",
@@ -509,6 +561,40 @@
       "reset_desc": "Les libellés par défaut du pays {country} remplaceront les entrées existantes (codes identiques). Les types personnalisés ajoutés manuellement sont conservés s'ils n'existent pas dans le catalogue pays.",
       "reset_confirm": "Confirmer le rechargement",
       "reset_done": "Catalogue rechargé depuis le template pays"
+    }
+  },
+  "platform": {
+    "title": "Administration plateforme",
+    "subtitle": "Vue consolidée de l'utilisation réelle des tenants",
+    "loading": "Chargement des indicateurs…",
+    "forbidden": "Accès réservé aux administrateurs plateforme",
+    "error": "Impossible de charger les données plateforme",
+    "tenants_title": "Détail par tenant",
+    "empty": "Aucun tenant enregistré",
+    "active_yes": "Actif",
+    "active_no": "Inactif",
+    "status": {
+      "none": "Sans abonnement"
+    },
+    "kpi": {
+      "total_tenants": "Tenants",
+      "active_tenants": "Tenants actifs (30j)",
+      "active_hint": "Activité CRA, TMA ou IA",
+      "total_users": "Utilisateurs actifs",
+      "seats_hint": "{n} sièges souscrits au total",
+      "trial_tenants": "En essai"
+    },
+    "col": {
+      "tenant": "Tenant",
+      "status": "Abonnement",
+      "seats": "Sièges",
+      "modules": "Modules",
+      "cra": "CRA",
+      "tma_open": "TMA ouvertes",
+      "budget": "Budgets",
+      "ai": "IA (30j)",
+      "active": "Actif 30j",
+      "last_activity": "Dernière activité"
     }
   }
 }

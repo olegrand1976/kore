@@ -66,6 +66,7 @@ export type SessionPayload = {
   profile?: string
   userId?: string
   tenantId?: string
+  roles?: string[]
 }
 
 export function parseSessionFromEvent(event: import('h3').H3Event): SessionPayload | null {
@@ -80,7 +81,8 @@ export function parseSessionFromEvent(event: import('h3').H3Event): SessionPaylo
     return {
       profile: payload.profile as string | undefined,
       userId: payload.sub as string | undefined,
-      tenantId: payload.tenant_id as string | undefined
+      tenantId: payload.tenant_id as string | undefined,
+      roles: Array.isArray(payload.roles) ? (payload.roles as string[]) : undefined
     }
   } catch {
     return null

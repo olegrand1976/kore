@@ -22,12 +22,15 @@ type SubscriptionResponse = {
     Modules?: SubscriptionModule[]
     status?: string
     Status?: string
+    seats?: number
+    Seats?: number
   }
 }
 
 export function useEntitlements() {
   const modules = useState<ModuleCode[]>('entitlements-modules', () => [])
   const status = useState<string>('subscription-status', () => 'active')
+  const seats = useState<number | null>('subscription-seats', () => null)
   const loaded = useState<boolean>('entitlements-loaded', () => false)
 
   const fetchEntitlements = async () => {
@@ -41,6 +44,7 @@ export function useEntitlements() {
         .map((m) => String(m.moduleCode ?? m.ModuleCode ?? '').toLowerCase() as ModuleCode)
         .filter(Boolean)
       status.value = String(sub.status ?? sub.Status ?? 'active')
+      seats.value = Number(sub.seats ?? sub.Seats ?? 0) || null
       loaded.value = true
     } catch (err) {
       const code = httpStatus(err)
@@ -51,9 +55,11 @@ export function useEntitlements() {
       if (code === 404) {
         modules.value = [...ALL_MODULES]
         status.value = 'active'
+        seats.value = null
       } else {
         modules.value = []
         status.value = 'active'
+        seats.value = null
       }
       loaded.value = true
     }
@@ -67,5 +73,5 @@ export function useEntitlements() {
 
   const isPastDue = computed(() => status.value === 'past_due')
 
-  return { modules, status, loaded, fetchEntitlements, hasModule, isPastDue }
+  return { modules, status, seats, loaded, fetchEntitlements, hasModule, isPastDue }
 }

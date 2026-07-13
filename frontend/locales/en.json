@@ -7,7 +7,8 @@
     "no": "No",
     "edit": "Edit",
     "delete": "Delete",
-    "save": "Save"
+    "save": "Save",
+    "close": "Close"
   },
   "nav": {
     "modules": "Modules",
@@ -25,7 +26,8 @@
     "notifications": "Notifications",
     "organisation": "Organization",
     "users": "Users",
-    "settings": "Settings"
+    "settings": "Settings",
+    "platform": "Platform"
   },
   "brand": {
     "name": "Kore",
@@ -79,6 +81,38 @@
     "tma_total_hint": "{n} request(s) total",
     "budget_consumption": "Budget consumption",
     "budget_overrun_hint": "{n} budget(s) over limit",
+    "modules_panel": {
+      "title": "Your subscription",
+      "active_title": "Active modules",
+      "extend_title": "Extend access",
+      "extend_hint_edition": "Upgrade to the {edition} edition to unlock the following modules.",
+      "extend_hint_custom": "Build a custom subscription to activate more modules.",
+      "custom_plan": "Custom subscription",
+      "custom_plan_desc": "Your plan does not exactly match a standard edition.",
+      "seats": "{n} seat(s) subscribed",
+      "in_upgrade": "Included in {edition}",
+      "upgrade_from": "From {price}",
+      "cta_upgrade": "Extend subscription",
+      "cta_manage": "Manage subscription",
+      "admin_only": "Only an administrator can change the subscription. View pricing or contact your admin.",
+      "status": {
+        "trial": "Trial",
+        "active": "Active",
+        "past_due": "Payment overdue",
+        "suspended": "Suspended",
+        "canceled": "Canceled"
+      },
+      "codes": {
+        "org": "Organisation",
+        "cra": "Timesheets",
+        "conges": "Leave",
+        "budget": "Budget UO",
+        "tma": "TMA",
+        "workflow": "Workflow",
+        "notifications": "Notifications",
+        "billing": "Billing"
+      }
+    },
     "charts": {
       "title": "Activity tracking",
       "view_module": "View module",
@@ -329,7 +363,25 @@
     "inactive": "Inactive",
     "empty": "No users",
     "loading": "Loading…",
-    "forbidden": "Administrators only"
+    "forbidden": "Administrators only",
+    "add": "Add",
+    "add_title": "New user",
+    "edit_title": "Edit user",
+    "password": "Password",
+    "password_optional": "New password (optional)",
+    "login_hint": "Format: XXX_name (e.g. COL_dupont)",
+    "deactivate": "Deactivate",
+    "deactivate_confirm": "Deactivate account « {login} »?",
+    "delete_confirm": "Permanently delete « {login} »? The account will be hidden.",
+    "created": "User created.",
+    "saved": "User updated.",
+    "deactivated": "User deactivated.",
+    "deleted": "User deleted.",
+    "error_generic": "An error occurred",
+    "error_login_exists": "This login already exists.",
+    "error_login_format": "Invalid format. Use XXX_name (3 uppercase letters, underscore, lowercase name).",
+    "error_seat_limit": "Seat limit reached.",
+    "error_self": "You cannot modify your own account this way."
   },
   "org": {
     "title": "Organization",
@@ -509,6 +561,40 @@
       "reset_desc": "Default labels for country {country} will overwrite existing entries (same codes). Custom types you added manually are kept if they are not in the country catalogue.",
       "reset_confirm": "Confirm reload",
       "reset_done": "Catalogue reloaded from country template"
+    }
+  },
+  "platform": {
+    "title": "Platform administration",
+    "subtitle": "Consolidated view of real tenant usage",
+    "loading": "Loading metrics…",
+    "forbidden": "Platform admin access only",
+    "error": "Unable to load platform data",
+    "tenants_title": "Per-tenant breakdown",
+    "empty": "No tenants registered",
+    "active_yes": "Active",
+    "active_no": "Inactive",
+    "status": {
+      "none": "No subscription"
+    },
+    "kpi": {
+      "total_tenants": "Tenants",
+      "active_tenants": "Active tenants (30d)",
+      "active_hint": "CRA, TMA or AI activity",
+      "total_users": "Active users",
+      "seats_hint": "{n} seats subscribed in total",
+      "trial_tenants": "On trial"
+    },
+    "col": {
+      "tenant": "Tenant",
+      "status": "Subscription",
+      "seats": "Seats",
+      "modules": "Modules",
+      "cra": "Timesheets",
+      "tma_open": "Open TMA",
+      "budget": "Budgets",
+      "ai": "AI (30d)",
+      "active": "Active 30d",
+      "last_activity": "Last activity"
     }
   }
 }

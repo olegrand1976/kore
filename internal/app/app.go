@@ -117,7 +117,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	billingService := billingapp.NewService(billingRepo, cfg.BillingTrialDays)
 
 	orgService := orgapp.NewOrganizationService(orgRepo)
-	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder)
+	platformService := orgapp.NewPlatformService(orgRepo)
+	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins)
 	clientService := orgapp.NewClientService(orgRepo)
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
@@ -185,6 +186,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	router.Route("/api/v1", func(r chi.Router) {
 		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
+		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)

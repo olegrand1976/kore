@@ -176,17 +176,54 @@ func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
 	return err
 }
 
+func (r *Repository) FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error) {
+	return r.scanUser(r.pool.QueryRow(ctx, `
+		SELECT `+userSelectCols+`
+		FROM org.users WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), id))
+}
+
+func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users
+		SET profil = $3, password_hash = $4, active = $5
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+	}
+	return nil
+}
+
+func (r *Repository) SoftDeleteUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users
+		SET active = FALSE, deleted_at = $3
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), id, deletedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+	}
+	return nil
+}
+
 func (r *Repository) FindUserByLogin(ctx context.Context, tenant kernel.TenantID, login string) (domain.User, error) {
 	return r.scanUser(r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active
-		FROM org.users WHERE tenant_id = $1 AND login = $2
+		SELECT `+userSelectCols+`
+		FROM org.users WHERE tenant_id = $1 AND login = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), login))
 }
 
 func (r *Repository) FindUserByLoginGlobal(ctx context.Context, login string) (domain.User, error) {
 	return r.scanUser(r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active
-		FROM org.users WHERE login = $1 LIMIT 1
+		SELECT `+userSelectCols+`
+		FROM org.users WHERE login = $1 AND deleted_at IS NULL LIMIT 1
 	`, login))
 }
 
@@ -198,14 +235,17 @@ func (r *Repository) ExistsLogin(ctx context.Context, tenant kernel.TenantID, lo
 
 func (r *Repository) CountActiveUsers(ctx context.Context, tenant kernel.TenantID) (int, error) {
 	var count int
-	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM org.users WHERE tenant_id = $1 AND active = TRUE`, tenant.UUID()).Scan(&count)
+	err := r.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM org.users
+		WHERE tenant_id = $1 AND active = TRUE AND deleted_at IS NULL
+	`, tenant.UUID()).Scan(&count)
 	return count, err
 }
 
 func (r *Repository) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active
-		FROM org.users WHERE tenant_id = $1 ORDER BY login
+		SELECT `+userSelectCols+`
+		FROM org.users WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY login
 	`, tenant.UUID())
 	if err != nil {
 		return nil, err
@@ -327,7 +367,7 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var profile string
 	var expiration *time.Time
 	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &u.PasswordHash, &profile,
-		&u.Period.Activation, &expiration, &u.Active)
+		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, fmt.Errorf("user not found: %w", err)
@@ -340,5 +380,7 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	u.Period.Expiration = expiration
 	return u, nil
 }
+
+const userSelectCols = `id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active, deleted_at`
 
 var _ ports.OrganizationRepository = (*Repository)(nil)

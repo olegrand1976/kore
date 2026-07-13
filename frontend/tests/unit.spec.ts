@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { currentMonthKey, useCraStatus } from '../composables/useCraStatus'
-import { minEditionPrice, parsePricingEditions, parsePricingModules } from '../composables/usePricingCatalog'
+import { minEditionPrice, matchEdition, parsePricingEditions, parsePricingModules, suggestUpgradeEdition } from '../composables/usePricingCatalog'
 import { ALL_MODULES, useEntitlements } from '../composables/useEntitlements'
 import { fetchWithRefresh } from '../composables/useApiFetch'
 
@@ -151,6 +151,33 @@ describe('parsePricingEditions', () => {
     expect(minEditionPrice({
       data: { catalog: { editions: [{ code: 'starter', unitAmount: 1200, modules: [] }] } }
     })).toBe(1200)
+  })
+})
+
+describe('matchEdition', () => {
+  const editions = parsePricingEditions({
+    data: {
+      catalog: {
+        editions: [
+          { code: 'starter', unitAmount: 1200, modules: ['org', 'cra', 'conges', 'budget'] },
+          { code: 'pro', unitAmount: 2500, modules: ['org', 'cra', 'conges', 'budget', 'tma', 'workflow'] },
+          { code: 'enterprise', unitAmount: 4900, modules: ['org', 'cra', 'conges', 'budget', 'tma', 'workflow', 'notifications', 'billing'] }
+        ]
+      }
+    }
+  })
+
+  it('matches starter modules', () => {
+    expect(matchEdition(['org', 'cra', 'conges', 'budget'], editions)?.code).toBe('starter')
+  })
+
+  it('matches pro when tma is active', () => {
+    expect(matchEdition(['org', 'cra', 'conges', 'budget', 'tma', 'workflow'], editions)?.code).toBe('pro')
+  })
+
+  it('suggests pro after starter', () => {
+    const current = matchEdition(['org', 'cra', 'conges', 'budget'], editions)
+    expect(suggestUpgradeEdition(current, editions)?.code).toBe('pro')
   })
 })
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,7 @@ type Config struct {
 	BillingTrialDays     int
 	DevSeedEnabled       bool
 	UploadsDir           string
+	PlatformAdminLogins  []string
 }
 
 func Load() (Config, error) {
@@ -56,6 +58,7 @@ func Load() (Config, error) {
 		BillingTrialDays:     envInt("BILLING_TRIAL_DAYS", 14),
 		DevSeedEnabled:       envBool("DEV_SEED_ENABLED", true),
 		UploadsDir:           envOr("UPLOADS_DIR", "./uploads"),
+		PlatformAdminLogins:  envCSV("PLATFORM_ADMIN_LOGINS", "ADM_admin"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
@@ -92,6 +95,19 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return i
+}
+
+func envCSV(key, fallback string) []string {
+	raw := envOr(key, fallback)
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envDuration(key string, fallback time.Duration) time.Duration {
