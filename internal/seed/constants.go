@@ -20,18 +20,18 @@ const (
 	CommercialLogin = "COM_commercial"
 	CommercialPass  = "Commercial123!"
 
-	DemoSocieteName = "Kore Demo SAS"
-	DemoSiteLabel   = "Paris HQ"
-	DemoAppLabel    = "Portail Client ACME"
-	DemoApp2Label   = "Refonte ERP Globex"
-	DemoEquipeLabel = "Équipe Dev"
+	DemoSocieteName  = "Kore Demo SAS"
+	DemoSiteLabel    = "Paris HQ"
+	DemoAppLabel     = "Portail Client ACME"
+	DemoApp2Label    = "Refonte ERP Globex"
+	DemoEquipeLabel  = "Équipe Dev"
 	DemoEquipe2Label = "Équipe TMA"
-	DemoClientName  = "ACME Corp"
-	DemoClientTVA   = "FR12345678901"
-	DemoClient2Name = "Globex Industries"
-	DemoClient2TVA  = "FR98765432109"
-	MarkerLogin     = CollabLogin
-	TrialSeats      = 50
+	DemoClientName   = "ACME Corp"
+	DemoClientTVA    = "FR12345678901"
+	DemoClient2Name  = "Globex Industries"
+	DemoClient2TVA   = "FR98765432109"
+	MarkerLogin      = CollabLogin
+	TrialSeats       = 50
 )
 
 var (

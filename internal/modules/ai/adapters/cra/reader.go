@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	craports "github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/internal/modules/ai/ports"
 	"github.com/kore/kore/internal/modules/cra/domain"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 

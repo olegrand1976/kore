@@ -222,13 +222,13 @@ func (r *Runner) seedExtendedCRA(ctx context.Context, tenant kernel.TenantID, oc
 			login: ChefDevLogin, appID: oc.appID, clientName: DemoClientName, mission: DemoAppLabel,
 			weeksCurr: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2, 3}, submit: true}, {number: 2, dayOffsets: []int{8, 9}}},
 			weeksPrev: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2}}, {number: 2, dayOffsets: []int{8, 9, 10}}},
-			finalize: true,
+			finalize:  true,
 		},
 		{
 			login: Collab3Login, appID: oc.appID, clientName: DemoClientName, mission: DemoAppLabel,
 			weeksCurr: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2, 3, 4}, submit: true}, {number: 2, dayOffsets: []int{8, 9, 10}}},
 			weeksPrev: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2, 3}}, {number: 2, dayOffsets: []int{8, 9}}},
-			finalize: true,
+			finalize:  true,
 		},
 		{
 			login: CollabQALogin, appID: oc.appID, clientName: DemoClientName, mission: "Recette " + DemoAppLabel,
@@ -238,13 +238,13 @@ func (r *Runner) seedExtendedCRA(ctx context.Context, tenant kernel.TenantID, oc
 			login: CollabIntegLogin, appID: oc.app3ID, clientName: DemoClient3Name, mission: DemoApp3Label,
 			weeksCurr: []craWeekSpec{{number: 1, dayOffsets: []int{2, 3, 4}, submit: true}, {number: 2, dayOffsets: []int{9, 10}}},
 			weeksPrev: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2, 3, 4}}, {number: 2, dayOffsets: []int{8, 9, 10}}},
-			finalize: true,
+			finalize:  true,
 		},
 		{
 			login: Presta2Login, appID: oc.app2ID, clientName: DemoClient2Name, mission: DemoApp2Label,
 			weeksCurr: []craWeekSpec{{number: 1, dayOffsets: []int{1, 2, 3}, submit: true}, {number: 2, dayOffsets: []int{8, 9, 10}}},
 			weeksPrev: []craWeekSpec{{number: 1, dayOffsets: []int{2, 3}}, {number: 2, dayOffsets: []int{9, 10}}},
-			finalize: true,
+			finalize:  true,
 		},
 		{
 			login: Presta3Login, appID: oc.app3ID, clientName: DemoClient3Name, mission: DemoApp3Label,
@@ -277,8 +277,8 @@ func (r *Runner) seedExtendedCRA(ctx context.Context, tenant kernel.TenantID, oc
 
 func (r *Runner) seedExtendedConges(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
 	type balanceSpec struct {
-		login                    string
-		leaveType                congesdomain.LeaveType
+		login                      string
+		leaveType                  congesdomain.LeaveType
 		acquired, taken, remaining float64
 	}
 	balances := []balanceSpec{
@@ -305,11 +305,11 @@ func (r *Runner) seedExtendedConges(ctx context.Context, tenant kernel.TenantID,
 	}
 
 	type leaveSpec struct {
-		login   string
+		login     string
 		leaveType congesdomain.LeaveType
-		from, to time.Time
-		motif   string
-		approve bool
+		from, to  time.Time
+		motif     string
+		approve   bool
 	}
 	now := time.Now().UTC()
 	leaves := []leaveSpec{

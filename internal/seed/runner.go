@@ -30,21 +30,21 @@ type PublicSlotSeeder interface {
 }
 
 type Dependencies struct {
-	Pool         *db.Pool
-	OrgRepo      orgports.OrganizationRepository
-	Org          orgports.OrganizationService
-	Users        orgports.UserService
-	Clients      orgports.ClientService
-	Billing      TrialEnsurer
-	Workflow     wfports.WorkflowService
-	CRA          craports.CRAService
-	Leaves       congesports.LeaveService
-	LeaveTypes   congesports.LeaveTypeConfigService
-	Budget       budgetports.BudgetService
-	TMA          tmaports.TMAService
+	Pool          *db.Pool
+	OrgRepo       orgports.OrganizationRepository
+	Org           orgports.OrganizationService
+	Users         orgports.UserService
+	Clients       orgports.ClientService
+	Billing       TrialEnsurer
+	Workflow      wfports.WorkflowService
+	CRA           craports.CRAService
+	Leaves        congesports.LeaveService
+	LeaveTypes    congesports.LeaveTypeConfigService
+	Budget        budgetports.BudgetService
+	TMA           tmaports.TMAService
 	Notifications notifports.NotificationService
-	Public       publicports.PublicSiteService
-	PublicSlots  PublicSlotSeeder
+	Public        publicports.PublicSiteService
+	PublicSlots   PublicSlotSeeder
 }
 
 type Runner struct {
@@ -56,25 +56,25 @@ func NewRunner(deps Dependencies) *Runner {
 }
 
 type orgContext struct {
-	tenant       kernel.TenantID
-	adminID      uuid.UUID
-	managerID    uuid.UUID
-	collabID     uuid.UUID
-	collab2ID    uuid.UUID
-	prestaID     uuid.UUID
-	clientUserID uuid.UUID
-	commercialID uuid.UUID
-	chefEquipeID uuid.UUID
-	appID        uuid.UUID
-	app2ID       uuid.UUID
-	app3ID       uuid.UUID
-	equipeDataID uuid.UUID
+	tenant         kernel.TenantID
+	adminID        uuid.UUID
+	managerID      uuid.UUID
+	collabID       uuid.UUID
+	collab2ID      uuid.UUID
+	prestaID       uuid.UUID
+	clientUserID   uuid.UUID
+	commercialID   uuid.UUID
+	chefEquipeID   uuid.UUID
+	appID          uuid.UUID
+	app2ID         uuid.UUID
+	app3ID         uuid.UUID
+	equipeDataID   uuid.UUID
 	equipeDevExtID uuid.UUID
-	usersByLogin map[string]uuid.UUID
-	collabIDs    []uuid.UUID
-	prestaIDs    []uuid.UUID
-	clientUserIDs []uuid.UUID
-	commercialIDs []uuid.UUID
+	usersByLogin   map[string]uuid.UUID
+	collabIDs      []uuid.UUID
+	prestaIDs      []uuid.UUID
+	clientUserIDs  []uuid.UUID
+	commercialIDs  []uuid.UUID
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -413,12 +413,12 @@ func (r *Runner) ensureNotificationRules(ctx context.Context, tenant kernel.Tena
 	}
 	rules := []notifdomain.NotificationRule{
 		{
-			TenantID:   tenant,
-			Code:       "leave-requested",
-			Trigger:    "leave.requested",
-			Frequency:  notifdomain.FrequencyImmediate,
-			Template:   "Nouvelle demande de congé de {{user}}.",
-			AttachPDF:  false,
+			TenantID:  tenant,
+			Code:      "leave-requested",
+			Trigger:   "leave.requested",
+			Frequency: notifdomain.FrequencyImmediate,
+			Template:  "Nouvelle demande de congé de {{user}}.",
+			AttachPDF: false,
 			RecipientsPolicy: notifdomain.RecipientPolicy{
 				UserIDs: []uuid.UUID{},
 			},

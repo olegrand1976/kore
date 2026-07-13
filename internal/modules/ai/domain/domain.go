@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrAIDisabled     = errors.New("ai assistance disabled for tenant")
-	ErrCapabilityOff  = errors.New("ai capability disabled")
+	ErrAIDisabled      = errors.New("ai assistance disabled for tenant")
+	ErrCapabilityOff   = errors.New("ai capability disabled")
 	ErrRequestNotFound = errors.New("ai request not found")
 )
 
@@ -23,12 +23,12 @@ const (
 )
 
 type Capability struct {
-	Code              string
-	RiskClass         RiskClass
-	AnnexIII          bool
-	Art63Assessment   string
-	Enabled           bool
-	Wave              int
+	Code            string
+	RiskClass       RiskClass
+	AnnexIII        bool
+	Art63Assessment string
+	Enabled         bool
+	Wave            int
 }
 
 type TenantSettings struct {
@@ -41,17 +41,17 @@ type TenantSettings struct {
 }
 
 type RequestLog struct {
-	ID              uuid.UUID
-	TenantID        kernel.TenantID
-	UserID          uuid.UUID
-	CapabilityCode  string
-	EntityType      string
-	EntityID        *uuid.UUID
-	InputHash       string
-	OutputJSON      []byte
-	Model           string
-	ExplainContext  map[string]any
-	CreatedAt       time.Time
+	ID             uuid.UUID
+	TenantID       kernel.TenantID
+	UserID         uuid.UUID
+	CapabilityCode string
+	EntityType     string
+	EntityID       *uuid.UUID
+	InputHash      string
+	OutputJSON     []byte
+	Model          string
+	ExplainContext map[string]any
+	CreatedAt      time.Time
 }
 
 type AnalysisDraft struct {
@@ -67,9 +67,9 @@ type ExplainFactor struct {
 }
 
 type ExplainResult struct {
-	RequestID   uuid.UUID       `json:"requestId"`
-	Capability  string          `json:"capability"`
-	Summary     string          `json:"summary"`
-	Factors     []ExplainFactor `json:"factors"`
-	Disclaimer  string          `json:"disclaimer"`
+	RequestID  uuid.UUID       `json:"requestId"`
+	Capability string          `json:"capability"`
+	Summary    string          `json:"summary"`
+	Factors    []ExplainFactor `json:"factors"`
+	Disclaimer string          `json:"disclaimer"`
 }

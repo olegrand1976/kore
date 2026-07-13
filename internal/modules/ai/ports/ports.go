@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	cradomain "github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/ai/domain"
 	congesdomain "github.com/kore/kore/internal/modules/conges/domain"
+	cradomain "github.com/kore/kore/internal/modules/cra/domain"
 	tmadomain "github.com/kore/kore/internal/modules/tma/domain"
 	wfdomain "github.com/kore/kore/internal/modules/workflow/domain"
 	"github.com/kore/kore/internal/platform/authx"
@@ -84,10 +84,10 @@ type CraAnomaly struct {
 }
 
 type BudgetEstimateCommand struct {
-	TenantID  kernel.TenantID
-	UserID    uuid.UUID
-	DemandID  uuid.UUID
-	BudgetID  uuid.UUID
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	DemandID uuid.UUID
+	BudgetID uuid.UUID
 }
 
 type BudgetEstimateResult struct {
@@ -156,10 +156,10 @@ type ChatResult struct {
 }
 
 type EnableAICommand struct {
-	TenantID          kernel.TenantID
-	UserID            uuid.UUID
-	NoticeAccepted    bool
-	WorkersInformed   bool
+	TenantID        kernel.TenantID
+	UserID          uuid.UUID
+	NoticeAccepted  bool
+	WorkersInformed bool
 }
 
 type CompletionRequest struct {

@@ -213,7 +213,7 @@ func dashboardBriefing(ai ports.AIService) http.HandlerFunc {
 		budgetConsumption, _ := strconv.ParseFloat(q.Get("budgetConsumption"), 64)
 		result, err := ai.DashboardBriefing(r.Context(), ports.DashboardBriefingCommand{
 			TenantID: identity.TenantID, UserID: identity.UserID,
-			Profile: string(identity.Profile),
+			Profile:   string(identity.Profile),
 			CraStatus: q.Get("craStatus"), LeavePending: leavePending, TmaOpen: tmaOpen,
 			BudgetConsumption: budgetConsumption, BudgetOverrun: budgetOverrun,
 			PendingValidations: pendingValidations,

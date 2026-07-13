@@ -75,7 +75,7 @@ func (r *Runner) enrichOrgStructure(ctx context.Context, tenant kernel.TenantID,
 }
 
 const (
-	clientContactsACME = `[{"nom":"Dupont","prenom":"Marie","email":"marie.dupont@acme.test","role":"DSI","telephone":"+33 1 42 00 00 01"},{"nom":"Martin","prenom":"Paul","email":"paul.martin@acme.test","role":"MOA Portail","telephone":"+33 1 42 00 00 02"}]`
+	clientContactsACME   = `[{"nom":"Dupont","prenom":"Marie","email":"marie.dupont@acme.test","role":"DSI","telephone":"+33 1 42 00 00 01"},{"nom":"Martin","prenom":"Paul","email":"paul.martin@acme.test","role":"MOA Portail","telephone":"+33 1 42 00 00 02"}]`
 	clientContactsGlobex = `[{"nom":"Schmidt","prenom":"Anna","email":"anna.schmidt@globex.test","role":"Directrice SI","telephone":"+33 4 78 00 00 03"}]`
 )
 

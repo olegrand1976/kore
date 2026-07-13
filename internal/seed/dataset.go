@@ -226,8 +226,8 @@ func (r *Runner) seedTimesheet(
 
 func (r *Runner) seedCongesData(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
 	balances := []struct {
-		userID                   uuid.UUID
-		leaveType                congesdomain.LeaveType
+		userID                     uuid.UUID
+		leaveType                  congesdomain.LeaveType
 		acquired, taken, remaining float64
 	}{
 		{oc.adminID, congesdomain.LeaveTypeCongesPayes, 25, 0, 25},
@@ -249,12 +249,12 @@ func (r *Runner) seedCongesData(ctx context.Context, tenant kernel.TenantID, oc 
 	}
 
 	scenarios := []struct {
-		userID  uuid.UUID
+		userID    uuid.UUID
 		leaveType congesdomain.LeaveType
-		from, to time.Time
-		motif   string
-		approve bool
-		reject  bool
+		from, to  time.Time
+		motif     string
+		approve   bool
+		reject    bool
 	}{
 		{
 			userID:    oc.collabID,
@@ -396,9 +396,9 @@ func (r *Runner) ensureLeaveBalance(
 
 func (r *Runner) seedBudgetData(ctx context.Context, tenant kernel.TenantID, oc orgContext) error {
 	budgets := []struct {
-		appID uuid.UUID
+		appID    uuid.UUID
 		days, uo float64
-		amount int64
+		amount   int64
 	}{
 		{oc.appID, 120, 600, 12000000},
 		{oc.app2ID, 80, 400, 8000000},
@@ -463,8 +463,8 @@ func (r *Runner) enrichBudgetEstimates(ctx context.Context, tenant kernel.Tenant
 		effortUO   float64
 		effortDays float64
 	}{
-		"Lenteur écran de saisie CRA": {3, 1.5},
-		"Régression export Excel budget": {5, 2.5},
+		"Lenteur écran de saisie CRA":          {3, 1.5},
+		"Régression export Excel budget":       {5, 2.5},
 		"Évolution reporting financier Globex": {8, 4},
 	}
 

@@ -416,7 +416,9 @@ func writeUploadError(w http.ResponseWriter, err error) {
 
 func listUsers(users ports.UserService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "org", authx.ActionRead) {
+		canRead := authorizer.Can(r.Context(), "org", authx.ActionRead)
+		canValidateConges := authorizer.Can(r.Context(), "conges", authx.ActionValidate)
+		if !canRead && !canValidateConges {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}

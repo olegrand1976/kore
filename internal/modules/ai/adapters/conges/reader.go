@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	congesports "github.com/kore/kore/internal/modules/conges/ports"
 	"github.com/kore/kore/internal/modules/ai/ports"
 	"github.com/kore/kore/internal/modules/conges/domain"
+	congesports "github.com/kore/kore/internal/modules/conges/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 

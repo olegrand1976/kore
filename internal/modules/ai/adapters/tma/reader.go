@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	"github.com/kore/kore/internal/modules/ai/ports"
 	"github.com/kore/kore/internal/modules/tma/domain"
+	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 

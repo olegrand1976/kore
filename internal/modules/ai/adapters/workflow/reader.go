@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/kore/kore/internal/modules/ai/ports"
-	wfports "github.com/kore/kore/internal/modules/workflow/ports"
 	"github.com/kore/kore/internal/modules/workflow/domain"
+	wfports "github.com/kore/kore/internal/modules/workflow/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/pkg/kernel"
 )
