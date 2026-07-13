@@ -58,6 +58,11 @@ func (s *oidcRepoStub) FindUserByID(_ context.Context, _ kernel.TenantID, id uui
 func (s *oidcRepoStub) FindUserDetailByID(context.Context, kernel.TenantID, uuid.UUID) (ports.UserDetail, error) {
 	return ports.UserDetail{}, domain.ErrUserNotFound
 }
+func (s *oidcRepoStub) GetReleaseNotesPreferences(context.Context, kernel.TenantID, uuid.UUID) (ports.ReleaseNotesPreferences, error) {
+	return ports.ReleaseNotesPreferences{LastSeenVersion: nil, AutoShowEnabled: true}, nil
+}
+func (s *oidcRepoStub) SetReleaseNotesAutoShow(context.Context, kernel.TenantID, uuid.UUID, bool) error { return nil }
+func (s *oidcRepoStub) SetLastSeenVersion(context.Context, kernel.TenantID, uuid.UUID, string) error    { return nil }
 func (s *oidcRepoStub) UpdateUser(context.Context, domain.User) error { return nil }
 func (s *oidcRepoStub) SoftDeleteUser(context.Context, kernel.TenantID, uuid.UUID, time.Time) error {
 	return nil

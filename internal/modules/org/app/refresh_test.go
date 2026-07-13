@@ -45,6 +45,11 @@ func (r refreshUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUI
 func (r refreshUserRepo) FindUserDetailByID(context.Context, kernel.TenantID, uuid.UUID) (ports.UserDetail, error) {
 	return ports.UserDetail{}, domain.ErrUserNotFound
 }
+func (r refreshUserRepo) GetReleaseNotesPreferences(context.Context, kernel.TenantID, uuid.UUID) (ports.ReleaseNotesPreferences, error) {
+	return ports.ReleaseNotesPreferences{LastSeenVersion: nil, AutoShowEnabled: true}, nil
+}
+func (r refreshUserRepo) SetReleaseNotesAutoShow(context.Context, kernel.TenantID, uuid.UUID, bool) error { return nil }
+func (r refreshUserRepo) SetLastSeenVersion(context.Context, kernel.TenantID, uuid.UUID, string) error    { return nil }
 func (r refreshUserRepo) UpdateUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) SoftDeleteUser(context.Context, kernel.TenantID, uuid.UUID, time.Time) error {
 	return nil
