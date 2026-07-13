@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/cra/ports"
 	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	orgports "github.com/kore/kore/internal/modules/org/ports"
-	"github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 

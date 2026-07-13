@@ -164,9 +164,9 @@ type UpdateSocieteSettingsCommand struct {
 }
 
 type UserCalendarSettings struct {
-	WeekStartDay         int    `json:"weekStartDay"`
-	DayCapacityMinutes   int    `json:"dayCapacityMinutes"`
-	WeekSubmitPolicy     string `json:"weekSubmitPolicy"`
+	WeekStartDay       int    `json:"weekStartDay"`
+	DayCapacityMinutes int    `json:"dayCapacityMinutes"`
+	WeekSubmitPolicy   string `json:"weekSubmitPolicy"`
 }
 
 type OrganizationService interface {

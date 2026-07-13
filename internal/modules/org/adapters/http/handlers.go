@@ -469,10 +469,10 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			return
 		}
 		var req struct {
-			WeekStartDay         *int    `json:"weekStartDay"`
-			DayCapacityMinutes   *int    `json:"dayCapacityMinutes"`
-			CraMailAuto          *bool   `json:"craMailAuto"`
-			WeekSubmitPolicy     *string `json:"weekSubmitPolicy"`
+			WeekStartDay       *int    `json:"weekStartDay"`
+			DayCapacityMinutes *int    `json:"dayCapacityMinutes"`
+			CraMailAuto        *bool   `json:"craMailAuto"`
+			WeekSubmitPolicy   *string `json:"weekSubmitPolicy"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
