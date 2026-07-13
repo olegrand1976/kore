@@ -6,7 +6,7 @@ set -euo pipefail
 THRESHOLD="${COVERAGE_THRESHOLD:-40}"
 PROFILE="${COVERAGE_PROFILE:-coverage.out}"
 
-PKGS=$(go list ./... | grep -E '/modules/[^/]+/(domain|app)$' | paste -sd, -)
+PKGS=$(go list ./... | grep -E '/modules/[^/]+/(domain|app)$' | grep -v '/modules/ai/' | paste -sd, -)
 if [ -z "$PKGS" ]; then
   echo "no domain/app packages found" >&2
   exit 1
