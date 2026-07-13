@@ -53,7 +53,7 @@
           </button>
         </template>
         <template #cell-client="{ value }">
-          <span :class="{ muted: value === '—' }">{{ value }}</span>
+          <span :class="{ muted: !value }">{{ value || $t('budget.col_empty') }}</span>
         </template>
         <template #cell-type="{ row }">
           <AppBadge variant="gold">{{ row.typeLabel }}</AppBadge>
@@ -142,7 +142,7 @@ const rows = computed(() =>
     return {
       id,
       application: pickAppLabel(app) || id.slice(0, 8),
-      client: pickAppClient(app) || '—',
+      client: pickAppClient(app) || '',
       typeLabel: budgetTypeLabel(type),
       type,
       planned,

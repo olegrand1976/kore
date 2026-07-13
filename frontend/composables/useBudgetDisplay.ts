@@ -72,14 +72,27 @@ export function useBudgetDisplay() {
   const eurosToCentimes = (euros: number) => Math.round(euros * 100)
   const centimesToEuros = (centimes: number) => centimes / 100
 
+  const formatLocalDate = (date: Date) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
   const currentMonthPeriod = () => {
     const now = new Date()
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     return {
-      start: start.toISOString().slice(0, 10),
-      end: end.toISOString().slice(0, 10)
+      start: formatLocalDate(start),
+      end: formatLocalDate(end)
     }
+  }
+
+  const worstBudgetStatus = (...statuses: BudgetStatus[]): BudgetStatus => {
+    if (statuses.includes('overrun')) return 'overrun'
+    if (statuses.includes('warn')) return 'warn'
+    return 'ok'
   }
 
   const budgetPageTitle = (appLabel: string, budgetId: string) =>
@@ -98,6 +111,7 @@ export function useBudgetDisplay() {
     eurosToCentimes,
     centimesToEuros,
     currentMonthPeriod,
+    worstBudgetStatus,
     budgetPageTitle,
     pickApplicationId,
     normalizeBudgetType

@@ -5,6 +5,7 @@ const steps = computed(() => [
     icon: 'schedule',
     titleKey: 'budget.integration_cra_title',
     descKey: 'budget.integration_cra_desc',
+    linkKey: 'budget.integration_cra_link',
     to: '/cra'
   },
   {
@@ -12,6 +13,7 @@ const steps = computed(() => [
     icon: 'account_balance_wallet',
     titleKey: 'budget.integration_budget_title',
     descKey: 'budget.integration_budget_desc',
+    linkKey: null,
     to: null
   },
   {
@@ -19,6 +21,7 @@ const steps = computed(() => [
     icon: 'support_agent',
     titleKey: 'budget.integration_tma_title',
     descKey: 'budget.integration_tma_desc',
+    linkKey: 'budget.integration_tma_link',
     to: '/tma'
   }
 ])
@@ -39,13 +42,13 @@ const steps = computed(() => [
           </div>
           <p class="integration-panel__desc">{{ $t(step.descKey) }}</p>
           <AppButton
-            v-if="step.to"
+            v-if="step.to && step.linkKey"
             variant="ghost"
             size="sm"
             class="integration-panel__link"
             @click="navigateTo(step.to!)"
           >
-            {{ $t('budget.open') }}
+            {{ $t(step.linkKey) }}
           </AppButton>
         </div>
       </li>
