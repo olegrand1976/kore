@@ -34,6 +34,7 @@ type AssignCommand struct {
 type AnalysisCommand struct {
 	TenantID     kernel.TenantID
 	DemandID     uuid.UUID
+	ActorID      uuid.UUID
 	Functional   string
 	Technical    string
 	Risks        string
@@ -85,8 +86,10 @@ type WorkflowInstance struct {
 type NotificationEvent struct {
 	TenantID kernel.TenantID
 	UserID   uuid.UUID
+	Trigger  string
 	Subject  string
 	Body     string
+	Vars     map[string]string
 }
 
 type TMAService interface {

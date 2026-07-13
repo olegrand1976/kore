@@ -159,7 +159,25 @@ func (s *service) AddAnalysis(ctx context.Context, cmd ports.AnalysisCommand) er
 		Risks:        cmd.Risks,
 		TestScenario: cmd.TestScenario,
 	}
-	return s.repo.SaveAnalysis(ctx, dossier)
+	if err := s.repo.SaveAnalysis(ctx, dossier); err != nil {
+		return err
+	}
+	if s.notifier != nil {
+		_ = s.notifier.Notify(ctx, ports.NotificationEvent{
+			TenantID: cmd.TenantID,
+			Trigger:  "tma.analysis.updated",
+			Subject:  "TMA — analyse mise à jour",
+			Vars: map[string]string{
+				"demandId":  cmd.DemandID.String(),
+				"subject":   demand.Subject,
+				"authorId":  cmd.ActorID.String(),
+				"status":    string(demand.Status),
+				"entityId":  demand.ID.String(),
+				"entityTyp": "tma.demand",
+			},
+		})
+	}
+	return nil
 }
 
 func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, id, userID uuid.UUID) error {

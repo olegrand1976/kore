@@ -160,10 +160,19 @@ func (s *Service) ProcessPending(ctx context.Context) (int, error) {
 }
 
 func (s *Service) resolveRecipients(ctx context.Context, tenant kernel.TenantID, policy domain.RecipientPolicy) ([]string, error) {
-	if len(policy.UserIDs) == 0 {
-		return nil, nil
+	if len(policy.UserIDs) > 0 {
+		return s.resolver.ResolveUserEmails(ctx, tenant, policy.UserIDs)
 	}
-	return s.resolver.ResolveUserEmails(ctx, tenant, policy.UserIDs)
+	if policy.EquipeID != nil {
+		return s.resolver.ResolveEquipeUserEmails(ctx, tenant, *policy.EquipeID)
+	}
+	if policy.ApplicationID != nil {
+		return s.resolver.ResolveApplicationUserEmails(ctx, tenant, *policy.ApplicationID)
+	}
+	if policy.ServiceID != nil {
+		return s.resolver.ResolveServiceUserEmails(ctx, tenant, *policy.ServiceID)
+	}
+	return nil, nil
 }
 
 func (s *Service) dispatch(ctx context.Context, msg *domain.NotificationMessage) error {

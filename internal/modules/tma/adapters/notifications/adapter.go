@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 
+	"github.com/google/uuid"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/internal/modules/tma/ports"
 )
@@ -16,14 +17,25 @@ func NewPublisherAdapter(notifier notifports.NotificationPublisher) ports.Notifi
 }
 
 func (a *PublisherAdapter) Notify(ctx context.Context, evt ports.NotificationEvent) error {
+	trigger := evt.Trigger
+	if trigger == "" {
+		trigger = "tma.notification"
+	}
+	vars := map[string]string{}
+	for k, v := range evt.Vars {
+		vars[k] = v
+	}
+	if evt.Body != "" {
+		vars["body"] = evt.Body
+	}
+	if evt.UserID != uuid.Nil {
+		vars["userId"] = evt.UserID.String()
+	}
 	return a.notifier.Notify(ctx, notifports.NotificationEvent{
 		TenantID: evt.TenantID,
-		Trigger:  "tma.notification",
+		Trigger:  trigger,
 		Subject:  evt.Subject,
-		Vars: map[string]string{
-			"body":   evt.Body,
-			"userId": evt.UserID.String(),
-		},
+		Vars:     vars,
 	})
 }
 

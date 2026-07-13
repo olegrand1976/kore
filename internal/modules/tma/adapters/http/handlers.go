@@ -264,6 +264,7 @@ func addAnalysis(tma ports.TMAService, authorizer authx.Authorizer) http.Handler
 		err = tma.AddAnalysis(r.Context(), ports.AnalysisCommand{
 			TenantID:     identity.TenantID,
 			DemandID:     id,
+			ActorID:      identity.UserID,
 			Functional:   req.Functional,
 			Technical:    req.Technical,
 			Risks:        req.Risks,

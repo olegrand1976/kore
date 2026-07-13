@@ -510,6 +510,71 @@ func (r *Repository) ResolveUserEmails(ctx context.Context, tenant kernel.Tenant
 	return emails, rows.Err()
 }
 
+func (r *Repository) ResolveEquipeUserEmails(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT login FROM org.users
+		WHERE tenant_id = $1 AND equipe_id = $2 AND active = TRUE
+	`, tenant.UUID(), equipeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var emails []string
+	for rows.Next() {
+		var login string
+		if err := rows.Scan(&login); err != nil {
+			return nil, err
+		}
+		emails = append(emails, login+"@kore.local")
+	}
+	return emails, rows.Err()
+}
+
+func (r *Repository) ResolveApplicationUserEmails(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.login
+		FROM org.users u
+		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
+		WHERE u.tenant_id = $1 AND e.application_id = $2 AND u.active = TRUE
+	`, tenant.UUID(), applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var emails []string
+	for rows.Next() {
+		var login string
+		if err := rows.Scan(&login); err != nil {
+			return nil, err
+		}
+		emails = append(emails, login+"@kore.local")
+	}
+	return emails, rows.Err()
+}
+
+func (r *Repository) ResolveServiceUserEmails(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.login
+		FROM org.users u
+		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
+		JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		WHERE u.tenant_id = $1 AND a.service_id = $2 AND u.active = TRUE
+	`, tenant.UUID(), serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var emails []string
+	for rows.Next() {
+		var login string
+		if err := rows.Scan(&login); err != nil {
+			return nil, err
+		}
+		emails = append(emails, login+"@kore.local")
+	}
+	return emails, rows.Err()
+}
+
 func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error) {
 	var societeID uuid.UUID
 	err := r.pool.QueryRow(ctx, `

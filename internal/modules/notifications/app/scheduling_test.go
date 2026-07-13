@@ -102,6 +102,18 @@ func (fakeResolver) ResolveUserEmails(_ context.Context, _ kernel.TenantID, _ []
 	return []string{"user@example.com"}, nil
 }
 
+func (fakeResolver) ResolveEquipeUserEmails(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]string, error) {
+	return []string{"user@example.com"}, nil
+}
+
+func (fakeResolver) ResolveApplicationUserEmails(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]string, error) {
+	return []string{"user@example.com"}, nil
+}
+
+func (fakeResolver) ResolveServiceUserEmails(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]string, error) {
+	return []string{"user@example.com"}, nil
+}
+
 func TestScheduledMessageNotSentBeforeDue(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeRepo()
