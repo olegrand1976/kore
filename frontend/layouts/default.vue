@@ -7,7 +7,21 @@
       </div>
       <nav class="sidebar__nav" aria-label="Navigation applicative">
         <NuxtLink
-          v-for="item in navItems"
+          v-for="item in mainNavItems"
+          :key="item.to"
+          :to="item.to"
+          :class="{ 'router-link-active': isNavActive(item) }"
+        >
+          <AppIcon :name="item.icon" />
+          {{ item.label }}
+        </NuxtLink>
+
+        <div v-if="settingsNavItems.length > 0" class="sidebar__divider" />
+        <p v-if="settingsNavItems.length > 0" class="sidebar__section-label">
+          {{ t('nav.settings') }}
+        </p>
+        <NuxtLink
+          v-for="item in settingsNavItems"
           :key="item.to"
           :to="item.to"
           :class="{ 'router-link-active': isNavActive(item) }"
@@ -24,7 +38,7 @@
             <AppIcon name="menu" />
           </button>
           <div class="topbar__breadcrumb">
-            <AppIcon name="grid_view" />
+            <AppIcon :name="activeNavItem?.icon ?? 'grid_view'" />
             <span>{{ pageTitle }}</span>
           </div>
         </div>
@@ -66,7 +80,23 @@
     <MobileDrawer v-model:open="drawerOpen">
       <p class="drawer-title">{{ branding.raisonSociale || 'Kore' }}</p>
       <NuxtLink
-        v-for="item in navItems"
+        v-for="item in mainNavItems"
+        :key="item.to"
+        :to="item.to"
+        class="drawer-link"
+        :class="{ 'router-link-active': isNavActive(item) }"
+        @click="drawerOpen = false"
+      >
+        <AppIcon :name="item.icon" />
+        {{ item.label }}
+      </NuxtLink>
+
+      <div v-if="settingsNavItems.length > 0" class="drawer-divider" />
+      <p v-if="settingsNavItems.length > 0" class="drawer-section-label">
+        {{ t('nav.settings') }}
+      </p>
+      <NuxtLink
+        v-for="item in settingsNavItems"
         :key="item.to"
         :to="item.to"
         class="drawer-link"
@@ -205,6 +235,7 @@ type NavItem = {
 
 const allNavItems = computed<NavItem[]>(() => [
   { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
+  { to: '/compte', icon: 'person', label: t('nav.profile'), activePrefix: '/compte' },
   { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
@@ -226,6 +257,20 @@ const navItems = computed(() =>
   })
 )
 
+const mainNavItems = computed(() =>
+  navItems.value.filter((item) => !['/admin/parametres', '/platform', '/billing/abonnement'].includes(item.to))
+)
+
+const settingsNavItems = computed(() => {
+  const byTo = new Map(navItems.value.map((item) => [item.to, item]))
+
+  return [
+    byTo.get('/admin/parametres'),
+    byTo.get('/platform'),
+    byTo.get('/billing/abonnement')
+  ].filter((item): item is NavItem => item !== undefined)
+})
+
 const isNavActive = (item: NavItem) => {
   const prefix = item.activePrefix ?? item.to
   if (route.path === item.to) return true
@@ -233,7 +278,9 @@ const isNavActive = (item: NavItem) => {
   return false
 }
 
-const bottomNavItems = computed(() => navItems.value.slice(0, 4))
+const activeNavItem = computed(() => navItems.value.find((item) => isNavActive(item)))
+
+const bottomNavItems = computed(() => mainNavItems.value.slice(0, 4))
 
 const isNarrowMain = computed(() => route.meta.narrow === true)
 
@@ -290,6 +337,21 @@ const logout = async () => {
   display: flex;
   flex-direction: column;
   gap: var(--kore-space-xs);
+}
+
+.sidebar__divider {
+  height: 1px;
+  background: var(--kore-border);
+  margin: var(--kore-space-sm) 0;
+}
+
+.sidebar__section-label {
+  margin: var(--kore-space-xs) 0;
+  font-size: var(--kore-text-caption);
+  font-weight: 700;
+  color: var(--kore-text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .sidebar__nav a {
@@ -432,6 +494,21 @@ const logout = async () => {
 .drawer-link.router-link-active {
   color: var(--kore-brand-gold);
   background: rgba(201, 162, 39, 0.1);
+}
+
+.drawer-divider {
+  height: 1px;
+  background: var(--kore-border);
+  margin: var(--kore-space-sm) 0;
+}
+
+.drawer-section-label {
+  margin: var(--kore-space-xs) 0;
+  font-size: var(--kore-text-caption);
+  font-weight: 700;
+  color: var(--kore-text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 768px) {
