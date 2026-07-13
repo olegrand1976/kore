@@ -54,7 +54,7 @@ defineExpose({ local })
   display: flex;
   flex-direction: column;
   gap: var(--kore-space-md);
-  max-width: 420px;
+  max-width: var(--kore-form-max);
 }
 
 .flash {

@@ -117,7 +117,7 @@ const onAssign = () => {
   display: grid;
   gap: var(--kore-space-xs);
   width: 100%;
-  max-width: 420px;
+  max-width: var(--kore-form-max);
 }
 
 .workflow-actions__label {
@@ -138,6 +138,6 @@ const onAssign = () => {
   display: grid;
   gap: var(--kore-space-sm);
   width: 100%;
-  max-width: 420px;
+  max-width: var(--kore-form-max);
 }
 </style>

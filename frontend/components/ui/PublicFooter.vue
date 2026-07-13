@@ -28,7 +28,7 @@ const year = new Date().getFullYear()
 }
 
 .pub-footer__inner {
-  max-width: var(--kore-container-max);
+  max-width: var(--kore-public-container-max);
   margin: 0 auto;
   padding: var(--kore-space-2xl) var(--kore-space-xl);
   display: grid;

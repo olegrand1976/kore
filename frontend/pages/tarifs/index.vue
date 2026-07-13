@@ -157,7 +157,7 @@ const formatPrice = (cents: number) =>
 
 .pricing-note {
   margin: var(--kore-space-xl) auto 0;
-  max-width: 720px;
+  max-width: var(--kore-prose-max);
   text-align: center;
   font-size: var(--kore-text-small);
   color: var(--kore-text-muted);

@@ -58,7 +58,7 @@ const onSubmit = () => {
 .demand-form {
   display: grid;
   gap: var(--kore-space-md);
-  max-width: 480px;
+  max-width: var(--kore-form-wide-max);
 }
 
 .demand-form__check {

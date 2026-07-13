@@ -24,7 +24,7 @@
 
 .page-hero__inner {
   position: relative;
-  max-width: 720px;
+  max-width: var(--kore-prose-max);
 }
 
 .page-hero--centered {
@@ -69,7 +69,17 @@
 }
 
 .card-grid--2 {
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+@media (min-width: 1400px) {
+  .card-grid--2 {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  .card-grid--3 {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .card-grid--3 {
@@ -230,7 +240,7 @@
 
 @media (min-width: 900px) {
   .split-layout {
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: minmax(480px, 1fr) minmax(320px, 420px);
     align-items: start;
   }
 }

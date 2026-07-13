@@ -130,7 +130,7 @@ useHead({
 .main {
   flex: 1;
   width: 100%;
-  max-width: var(--kore-container-max);
+  max-width: var(--kore-public-container-max);
   margin: 0 auto;
   padding: 0 var(--kore-space-xl);
 }

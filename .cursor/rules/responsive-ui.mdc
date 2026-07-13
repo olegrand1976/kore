@@ -14,3 +14,12 @@ alwaysApply: false
 - [ ] CTAs pleine largeur
 - [ ] Safe area bottom nav
 - [ ] Test 320px et 768px
+
+# Largeur desktop (web)
+
+- [ ] App : pas de `max-width` sur wrapper page (layout fluide via `--kore-app-main-max`)
+- [ ] Public : hériter `--kore-public-container-max` (1440px)
+- [ ] Formulaires : champs limités à `--kore-form-max` / `--kore-form-wide-max`
+- [ ] Prose marketing : `--kore-prose-max` sur hero/intro uniquement
+- [ ] Tableaux : `AppTable` pleine largeur ; colonnes dates/actions en `nowrap`
+- [ ] `narrow: true` dans `definePageMeta` seulement si page centrée étroite

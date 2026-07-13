@@ -358,7 +358,7 @@ const confirmReset = async () => {
 .settings-form__grid {
   display: grid;
   gap: var(--kore-space-md);
-  max-width: 420px;
+  max-width: var(--kore-form-max);
 }
 
 .settings-form__actions {
@@ -387,7 +387,7 @@ const confirmReset = async () => {
 }
 
 .settings-dialog {
-  width: min(100%, 480px);
+  width: min(100%, var(--kore-form-wide-max));
 }
 
 .settings-dialog__text {

@@ -53,7 +53,7 @@ const submit = async () => {
 
 @media (min-width: 900px) {
   .login-page {
-    grid-template-columns: 1fr 420px;
+    grid-template-columns: 1fr var(--kore-form-max);
     gap: var(--kore-space-2xl);
     align-items: center;
   }

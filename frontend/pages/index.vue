@@ -647,7 +647,7 @@ onMounted(() => {
 }
 
 .faq-list {
-  max-width: 720px;
+  max-width: var(--kore-prose-max);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -694,7 +694,7 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-width: 720px;
+  max-width: var(--kore-prose-max);
   margin-inline: auto;
 }
 

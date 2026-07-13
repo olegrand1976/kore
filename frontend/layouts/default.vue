@@ -34,7 +34,7 @@
           <AppButton variant="ghost" size="sm" class="topbar__logout" @click="logout">{{ $t('nav.logout') }}</AppButton>
         </div>
       </header>
-      <main class="main" :class="{ 'main--wide': isWideMain }">
+      <main class="main" :class="{ 'main--narrow': isNarrowMain }">
         <p v-if="isPastDue" class="past-due" role="alert">{{ $t('billing.past_due_banner') }}</p>
         <slot />
       </main>
@@ -72,7 +72,7 @@ const { locale, setLocale, t } = useI18n()
 const { theme, toggleTheme } = useTheme()
 const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
-const { fetchSession, isAdmin } = useAuth()
+const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
 const drawerOpen = ref(false)
 
@@ -89,6 +89,7 @@ type NavItem = {
   icon: string
   label: string
   adminOnly?: boolean
+  platformOnly?: boolean
   module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
   activePrefix?: string
 }
@@ -99,6 +100,7 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },
+  { to: '/platform', icon: 'hub', label: t('nav.platform'), platformOnly: true, activePrefix: '/platform' },
   { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
   { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
@@ -108,6 +110,7 @@ const allNavItems = computed<NavItem[]>(() => [
 
 const navItems = computed(() =>
   allNavItems.value.filter((item) => {
+    if (item.platformOnly && !isPlatformAdmin.value) return false
     if (item.adminOnly && !isAdmin.value) return false
     if (item.module && !hasModule(item.module)) return false
     return true
@@ -123,7 +126,7 @@ const isNavActive = (item: NavItem) => {
 
 const bottomNavItems = computed(() => navItems.value.slice(0, 4))
 
-const isWideMain = computed(() => route.meta.wide === true)
+const isNarrowMain = computed(() => route.meta.narrow === true)
 
 const pageTitle = computed(() => {
   if (route.path.startsWith('/cra/') && route.params.id) {
@@ -276,11 +279,11 @@ const logout = async () => {
   flex: 1;
   width: 100%;
   padding: var(--kore-space-xl);
-  max-width: var(--kore-container-max);
+  max-width: var(--kore-app-main-max);
 }
 
-.main--wide {
-  max-width: none;
+.main--narrow {
+  max-width: var(--kore-container-max);
 }
 
 .past-due {

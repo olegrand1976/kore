@@ -22,6 +22,8 @@
         tone="gold"
         :value="activeModulesCount"
         :label="$t('dashboard.modules_active')"
+        clickable
+        @click="showModulesPanel = true"
       />
       <AppKpiCard
         v-if="canValidateConges && showModule('conges')"
@@ -89,22 +91,32 @@
       :loading="statsPending"
       :show-module="showModule"
     />
+
+    <DashboardModulesPanel
+      :open="showModulesPanel"
+      :active-modules="modules"
+      :subscription-status="status"
+      :seats="seats"
+      @close="showModulesPanel = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { DashboardStatErrors } from '~/composables/useDashboardStats'
 
-definePageMeta({ layout: 'default', wide: true })
+definePageMeta({ layout: 'default' })
 
 const { t, locale } = useI18n()
-const { modules, loaded, fetchEntitlements } = useEntitlements()
+const { modules, status, seats, loaded, fetchEntitlements } = useEntitlements()
 const { fetchSession } = useAuth()
 const { load, craCurrentLabel, showModule, currentMonthKey, canValidateConges, emptyStats, emptyCharts } =
   useDashboardStats()
 const { fetchBriefing } = useAi()
 
 await Promise.all([fetchEntitlements(), fetchSession()])
+
+const showModulesPanel = ref(false)
 
 const { data: dashboardData, pending: statsPending } = await useAsyncData('dashboard-stats', () => load())
 

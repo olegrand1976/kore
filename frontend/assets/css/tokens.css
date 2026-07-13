@@ -36,7 +36,13 @@
   --kore-radius-lg: 0.75rem;
   --kore-radius-full: 9999px;
 
-  --kore-container-max: 1200px;
+  /* Layout width */
+  --kore-app-main-max: none;
+  --kore-public-container-max: 1440px;
+  --kore-prose-max: 720px;
+  --kore-form-max: 420px;
+  --kore-form-wide-max: 480px;
+  --kore-container-max: 1200px; /* legacy — narrow app pages via meta narrow */
 }
 
 [data-theme='dark'] {

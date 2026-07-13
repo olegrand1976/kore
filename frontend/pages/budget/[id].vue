@@ -164,7 +164,7 @@ const submitQuote = () =>
 .mb { margin-bottom: var(--kore-space-lg); }
 .mt { margin-top: var(--kore-space-lg); }
 .section-title { margin: 0 0 var(--kore-space-md); font-size: var(--kore-text-body); }
-.form { display: grid; gap: var(--kore-space-md); max-width: 420px; margin-bottom: var(--kore-space-xl); }
+.form { display: grid; gap: var(--kore-space-md); max-width: var(--kore-form-max); margin-bottom: var(--kore-space-xl); }
 .form-row { display: flex; flex-wrap: wrap; gap: var(--kore-space-sm); }
 .ai-hint { margin: 0; font-size: var(--kore-text-caption); color: var(--kore-text-muted); }
 .flash { margin: 0 0 var(--kore-space-md); padding: var(--kore-space-sm) var(--kore-space-md); border-radius: var(--kore-radius-md); font-size: var(--kore-text-small); }
