@@ -94,6 +94,14 @@ paths:
         "201":
           description: Créé
   /users/{id}:
+    get:
+      summary: Détail utilisateur
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Détail
     put:
       summary: Mettre à jour un utilisateur
       security: [{ bearerAuth: [] }]
@@ -165,6 +173,15 @@ paths:
       responses:
         "201":
           description: Créé
+  /clients/{id}:
+    get:
+      summary: Détail client
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Détail
   /notification-rules:
     get:
       summary: Lister règles notifications
@@ -545,12 +562,27 @@ paths:
         "201":
           description: Service créé
   /applications:
+    get:
+      summary: Liste applications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
     post:
       summary: Créer une application
       security: [{ bearerAuth: [] }]
       responses:
         "201":
           description: Application créée
+  /applications/{id}:
+    get:
+      summary: Détail application
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Détail
   /branding/logo/{tenantId}:
     get:
       summary: Logo du tenant
