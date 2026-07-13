@@ -47,16 +47,28 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		pays = "FR"
 	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.societes (id, tenant_id, raison_sociale, logo, devise, pays, adresse, siret, url_tenant)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO org.societes (
+			id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
+			day_capacity_minutes, cra_mail_auto, week_submit_policy,
+			adresse, siret, url_tenant
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET
 			raison_sociale = EXCLUDED.raison_sociale,
 			devise = EXCLUDED.devise,
 			pays = EXCLUDED.pays,
+			week_start_day = EXCLUDED.week_start_day,
+			day_capacity_minutes = EXCLUDED.day_capacity_minutes,
+			cra_mail_auto = EXCLUDED.cra_mail_auto,
+			week_submit_policy = EXCLUDED.week_submit_policy,
 			adresse = EXCLUDED.adresse,
 			siret = EXCLUDED.siret,
 			url_tenant = EXCLUDED.url_tenant
 	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise, pays,
+		normalizeWeekStartDay(s.WeekStartDay),
+		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
+		s.CraMailAuto,
+		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
 		s.Adresse, s.Siret, s.URLTenant)
 	return err
 }
@@ -64,16 +76,25 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE org.societes
-		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7
+		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
+			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
-		s.Adresse, s.Siret, s.URLTenant)
+		s.Adresse, s.Siret, s.URLTenant,
+		normalizeWeekStartDay(s.WeekStartDay),
+		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
+		s.CraMailAuto,
+		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy))
 	return err
 }
 
 func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise, COALESCE(pays, 'FR'),
+		       COALESCE(week_start_day, 1),
+		       COALESCE(day_capacity_minutes, 480),
+		       COALESCE(cra_mail_auto, FALSE),
+		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
@@ -83,6 +104,10 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, raison_sociale, COALESCE(logo, ''), devise, COALESCE(pays, 'FR'),
+		       COALESCE(week_start_day, 1),
+		       COALESCE(day_capacity_minutes, 480),
+		       COALESCE(cra_mail_auto, FALSE),
+		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
 	`, tenant.UUID())
@@ -105,13 +130,22 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
-	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays, &adresse, &siret, &urlTenant)
+	var weekStartDay, dayCapacity int
+	var craMailAuto bool
+	var weekSubmitPolicy string
+	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy,
+		&adresse, &siret, &urlTenant)
 	if err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
 	s.Logo = logo
 	s.Pays = pays
+	s.WeekStartDay = normalizeWeekStartDay(weekStartDay)
+	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
+	s.CraMailAuto = craMailAuto
+	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
@@ -122,16 +156,48 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
-	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays, &adresse, &siret, &urlTenant); err != nil {
+	var weekStartDay, dayCapacity int
+	var craMailAuto bool
+	var weekSubmitPolicy string
+	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy,
+		&adresse, &siret, &urlTenant); err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
 	s.Logo = logo
 	s.Pays = pays
+	s.WeekStartDay = normalizeWeekStartDay(weekStartDay)
+	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
+	s.CraMailAuto = craMailAuto
+	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
 	return s, nil
+}
+
+func normalizeWeekStartDay(day int) int {
+	if day < 0 || day > 6 {
+		return domain.DefaultWeekStartDay
+	}
+	return day
+}
+
+func normalizeDayCapacityMinutes(minutes int) int {
+	if minutes <= 0 || minutes > 1440 {
+		return domain.DefaultDayCapacityMinutes
+	}
+	return minutes
+}
+
+func normalizeWeekSubmitPolicy(policy string) string {
+	switch policy {
+	case "block", "warn", "none":
+		return policy
+	default:
+		return domain.DefaultWeekSubmitPolicy
+	}
 }
 
 func nullString(v string) *string {

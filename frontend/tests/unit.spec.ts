@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { currentMonthKey, useCraStatus } from '../composables/useCraStatus'
+import { useCraMonthStats } from '../composables/useCraMonthStats'
 import { minEditionPrice, matchEdition, parsePricingEditions, parsePricingModules, suggestUpgradeEdition } from '../composables/usePricingCatalog'
 import { ALL_MODULES, useEntitlements } from '../composables/useEntitlements'
 import { fetchWithRefresh } from '../composables/useApiFetch'
@@ -9,6 +10,22 @@ beforeAll(() => {
   vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
   vi.stubGlobal('useState', (_key: string, init: () => unknown) => ref(init()))
   vi.stubGlobal('computed', computed)
+})
+
+describe('useCraMonthStats', () => {
+  it('recalculates capacity when dayCapacityMinutes ref changes', () => {
+    const weeks = ref([{ weekNumber: 1, lines: [], submittedAt: null }])
+    const month = ref('2026-07')
+    const weekStartDay = ref(1)
+    const dayCapacity = ref(480)
+
+    const stats = useCraMonthStats(weeks, month, weekStartDay, dayCapacity)
+    const before = stats.capacityMinutes.value
+
+    dayCapacity.value = 420
+    expect(stats.capacityMinutes.value).toBeLessThan(before)
+    expect(stats.capacityMinutes.value).toBeGreaterThan(0)
+  })
 })
 
 describe('useCraStatus', () => {

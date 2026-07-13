@@ -35,7 +35,7 @@
     </AppPageHeader>
 
     <AppCard v-if="loading" padding="lg">
-      <p class="muted">{{ $t('cra.loading') }}</p>
+      <CraSkeleton />
     </AppCard>
 
     <AppCard v-else-if="error" padding="lg">
@@ -51,13 +51,26 @@
             <dd><AppBadge :variant="statusVariant(timesheet.status)">{{ statusLabel(timesheet.status) }}</AppBadge></dd>
           </div>
         </dl>
+        <CraMonthlyPreview
+          class="cra-detail__preview"
+          :total-minutes="monthStats.totalMinutes"
+          :capacity-minutes="monthStats.capacityMinutes"
+          :weeks-submitted="monthStats.weeksSubmitted"
+          :weeks-total="monthStats.weeksTotal"
+          :prefill-ratio="monthStats.prefillRatio"
+          :progress="monthStats.progress"
+        />
       </AppCard>
 
       <TimesheetGrid
         :weeks="selectedWeeks"
         :month="timesheet.month"
+        :week-start-day="weekStartDay"
+        :day-capacity-minutes="dayCapacityMinutes"
+        :week-submit-policy="weekSubmitPolicy"
         :can-edit="canEdit"
         :saving="saving"
+        :missions="missions"
         @save="onSaveWeek"
         @submit="onSubmitWeek"
       />
@@ -79,6 +92,10 @@
 </template>
 
 <script setup lang="ts">
+import type { CraLine } from '~/stores/cra'
+import { weekNumberForDay } from '~/composables/useWeekCalendar'
+import { useCraMonthStats } from '~/composables/useCraMonthStats'
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -89,7 +106,61 @@ const id = computed(() => String(route.params.id))
 
 const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal } = useCra(id)
 
-await load(id.value)
+const weekStartDay = ref(1)
+const dayCapacityMinutes = ref(480)
+const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
+const missions = ref<Array<{ id: string; clientName?: string; clientId?: string }>>([])
+
+const loadOrgSettings = async () => {
+  try {
+    const res = await $fetch<{
+      data?: {
+        weekStartDay?: number
+        dayCapacityMinutes?: number
+        weekSubmitPolicy?: string
+      }
+      weekStartDay?: number
+      dayCapacityMinutes?: number
+      weekSubmitPolicy?: string
+    }>('/api/org/users/me/calendar-settings')
+    const data = res.data ?? res
+    const day = data.weekStartDay
+    if (day != null && day >= 0 && day <= 6) {
+      weekStartDay.value = day
+    }
+    if (data.dayCapacityMinutes != null && data.dayCapacityMinutes > 0) {
+      dayCapacityMinutes.value = data.dayCapacityMinutes
+    }
+    const policy = data.weekSubmitPolicy
+    if (policy === 'block' || policy === 'warn' || policy === 'none') {
+      weekSubmitPolicy.value = policy
+    }
+  } catch {
+    weekStartDay.value = 1
+    dayCapacityMinutes.value = 480
+    weekSubmitPolicy.value = 'warn'
+  }
+}
+
+const loadMissions = async () => {
+  try {
+    const res = await $fetch<{ data: Array<Record<string, unknown>> }>('/api/ssii/missions')
+    missions.value = (res.data ?? []).map((item) => ({
+      id: String(item.id ?? item.ID ?? ''),
+      clientName: String(item.clientName ?? item.ClientName ?? ''),
+      clientId: String(item.clientId ?? item.ClientID ?? '')
+    })).filter((m) => m.id)
+  } catch {
+    missions.value = []
+  }
+}
+
+await Promise.all([load(id.value), loadOrgSettings(), loadMissions()])
+
+const monthRef = computed(() => timesheet.value?.month ?? '')
+const weekStartDayRef = computed(() => weekStartDay.value)
+const weeksRef = computed(() => selectedWeeks.value)
+const monthStats = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapacityMinutes)
 
 const commercial = reactive({ client: '', mission: '' })
 const savingCommercial = ref(false)
@@ -101,11 +172,64 @@ const prefillLoading = ref(false)
 const prefillMsg = ref('')
 const { suggestCraPrefill, extractFetchError: aiError } = useAi()
 
+const mergePrefillLines = (existing: CraLine[], suggestions: Array<{ day: string; duration: number; comment?: string }>): CraLine[] => {
+  const result = existing.map((line) => ({ ...line }))
+  for (const suggestion of suggestions) {
+    const day = suggestion.day.slice(0, 10)
+    const hasManual = result.some(
+      (line) =>
+        line.day.slice(0, 10) === day &&
+        line.duration > 0 &&
+        (line.origin === 'manual' || (line.sourceType === 'manual' && line.sourceId !== 'default'))
+    )
+    if (hasManual) continue
+
+    const duration = Math.round(suggestion.duration * 60)
+    if (duration <= 0) continue
+
+    const idx = result.findIndex(
+      (line) => line.day.slice(0, 10) === day && line.sourceType === 'manual' && line.sourceId === 'default'
+    )
+    const line: CraLine = {
+      sourceType: 'manual',
+      sourceId: 'default',
+      day,
+      duration,
+      comment: suggestion.comment ?? '',
+      origin: 'prefill'
+    }
+    if (idx >= 0) {
+      result[idx] = line
+    } else {
+      result.push(line)
+    }
+  }
+  return result
+}
+
 const loadPrefillSuggest = async () => {
+  if (!timesheet.value) return
   prefillLoading.value = true
   prefillMsg.value = ''
   try {
     const res = await suggestCraPrefill(id.value)
+    if (res.lines.length === 0) {
+      prefillMsg.value = t('ai.cra_prefill_result', { n: 0 })
+      return
+    }
+
+    const byWeek = new Map<number, CraLine[]>()
+    for (const suggestion of res.lines) {
+      const weekNumber = weekNumberForDay(timesheet.value.month, suggestion.day, weekStartDay.value)
+      const week = selectedWeeks.value.find((w) => w.weekNumber === weekNumber)
+      const current = byWeek.get(weekNumber) ?? week?.lines.map((line) => ({ ...line })) ?? []
+      byWeek.set(weekNumber, mergePrefillLines(current, [suggestion]))
+    }
+
+    for (const [weekNumber, lines] of byWeek) {
+      await saveWeek(weekNumber, lines)
+    }
+    await load(id.value)
     prefillMsg.value = t('ai.cra_prefill_result', { n: res.lines.length })
   } catch (err) {
     downloadError.value = aiError(err)
@@ -207,6 +331,12 @@ const downloadPdf = async () => {
 }
 
 .meta dd { margin: 0; font-weight: 600; }
+
+.cra-detail__preview {
+  margin-top: var(--kore-space-lg);
+  padding-top: var(--kore-space-lg);
+  border-top: 1px solid var(--kore-border);
+}
 
 .muted { color: var(--kore-text-muted); }
 

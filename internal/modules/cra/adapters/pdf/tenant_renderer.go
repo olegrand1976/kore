@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
@@ -33,6 +34,7 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 		brand.CompanyLogo = s.Logo
 	}
 
+	brand.Lines = buildLinesFromTimesheet(ts)
 	content, err := r.inner.Render(ctx, ts, brand)
 	if err != nil {
 		return domain.Document{}, err
@@ -42,6 +44,31 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 		Content:  content,
 		MimeType: "text/html",
 	}, nil
+}
+
+func buildLinesFromTimesheet(ts domain.Timesheet) []CRALine {
+	var out []CRALine
+	for _, week := range ts.Weeks {
+		for _, line := range week.Lines {
+			if line.Duration.Minutes <= 0 {
+				continue
+			}
+			hours := float64(line.Duration.Minutes) / 60
+			out = append(out, CRALine{
+				Task:  line.Source.Type + "/" + line.Source.ID,
+				Days:  line.Day.Format("02/01/2006"),
+				Hours: formatHours(hours),
+			})
+		}
+	}
+	return out
+}
+
+func formatHours(h float64) string {
+	if h == float64(int(h)) {
+		return fmt.Sprintf("%d", int(h))
+	}
+	return fmt.Sprintf("%.1f", h)
 }
 
 func trimJoin(parts ...string) string {

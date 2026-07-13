@@ -124,6 +124,11 @@ Index :
 | `siret` | TEXT | NOT NULL, DEFAULT `''` |
 | `url_tenant` | TEXT | NOT NULL, DEFAULT `''` |
 | `pays` | TEXT | NOT NULL, DEFAULT `'FR'` |
+| `week_start_day` | SMALLINT | NOT NULL, DEFAULT `1`, CHECK 0–6 (0=dimanche … 6=samedi) |
+| `day_capacity_minutes` | INT | NOT NULL, DEFAULT `480`, CHECK 1–1440 |
+| `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
+| `cra_mail_recipients` | JSONB | NOT NULL, DEFAULT `'[]'` |
+| `week_submit_policy` | TEXT | NOT NULL, DEFAULT `'warn'`, CHECK `block` / `warn` / `none` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `org.sites`
@@ -355,6 +360,9 @@ Comptes rendus d'activité (pivot temps).
 | `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` |
 | `validated_at` | TIMESTAMPTZ | |
 | `validated_by` | UUID | |
+| `rejected_at` | TIMESTAMPTZ | Rejet manager (Lot 4) |
+| `rejected_by` | UUID | |
+| `reject_reason` | TEXT | NOT NULL, DEFAULT `''` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
@@ -385,6 +393,7 @@ Comptes rendus d'activité (pivot temps).
 | `duration` | INT | NOT NULL, DEFAULT 0 |
 | `comment` | TEXT | NOT NULL, DEFAULT `''` |
 | `origin` | TEXT | NOT NULL, DEFAULT `'manual'` |
+| `billable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |
 
 **Contraintes** : `UNIQUE (week_entry_id, source_type, source_id, day)` — index `idx_cra_time_lines_source`
 

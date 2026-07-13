@@ -17,11 +17,12 @@ import (
 const consumptionCacheTTL = 5 * time.Minute
 
 type Service struct {
-	repo  ports.CRARepository
-	cache cache.Cache
-	keys  cache.KeyBuilder
-	pdf   ports.PDFRenderer
-	clock ports.Clock
+	repo      ports.CRARepository
+	cache     cache.Cache
+	keys      cache.KeyBuilder
+	pdf       ports.PDFRenderer
+	clock     ports.Clock
+	calendar  ports.SocieteCalendarReader
 }
 
 func NewService(repo ports.CRARepository, appCache cache.Cache, keys cache.KeyBuilder) *Service {
@@ -46,6 +47,24 @@ func (s *Service) WithClock(clock ports.Clock) *Service {
 		s.clock = clock
 	}
 	return s
+}
+
+func (s *Service) WithCalendarReader(reader ports.SocieteCalendarReader) *Service {
+	if reader != nil {
+		s.calendar = reader
+	}
+	return s
+}
+
+func (s *Service) weekStartDayForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) int {
+	if s.calendar == nil {
+		return domain.DefaultWeekStartDay
+	}
+	day, err := s.calendar.WeekStartDayForUser(ctx, tenant, userID)
+	if err != nil || day < 0 || day > 6 {
+		return domain.DefaultWeekStartDay
+	}
+	return day
 }
 
 func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, error) {
@@ -108,6 +127,13 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 		line.Origin = domain.OriginManual
 		if line.ID == uuid.Nil {
 			line.ID = uuid.New()
+		}
+		if line.Duration.Minutes <= 0 {
+			existing, idx := domain.FindLine(week.Lines, line.Source, line.Day)
+			if existing != nil {
+				week.Lines = append(week.Lines[:idx], week.Lines[idx+1:]...)
+			}
+			continue
 		}
 		existing, idx := domain.FindLine(week.Lines, line.Source, line.Day)
 		if existing != nil {
@@ -222,8 +248,14 @@ func (s *Service) ProposeLines(ctx context.Context, lines []ports.ProposedLine) 
 		for _, line := range batch {
 			weekNum := line.WeekNumber
 			if weekNum == 0 {
-				_, isoWeek := line.Day.ISOWeek()
-				weekNum = domain.WeekNumber(isoWeek)
+				month := line.Month
+				if month == "" {
+					month = domain.Month(line.Day.Format("2006-01"))
+				}
+				weekStartDay := s.weekStartDayForUser(ctx, line.TenantID, line.UserID)
+				if w, err := domain.MonthWeekNumber(line.Day.UTC(), month, weekStartDay); err == nil {
+					weekNum = w
+				}
 			}
 			byWeek[weekNum] = append(byWeek[weekNum], line)
 		}

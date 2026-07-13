@@ -30,16 +30,20 @@ func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
 		}
 		_, err = tx.Exec(ctx, `
 			INSERT INTO cra.timesheets (
-				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+				rejected_at, rejected_by, reject_reason, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
 			ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
 				status = EXCLUDED.status,
 				commercial_info = EXCLUDED.commercial_info,
 				validated_at = EXCLUDED.validated_at,
 				validated_by = EXCLUDED.validated_by,
+				rejected_at = EXCLUDED.rejected_at,
+				rejected_by = EXCLUDED.rejected_by,
+				reject_reason = EXCLUDED.reject_reason,
 				updated_at = NOW()
 		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
-			commercial, ts.ValidatedAt, ts.ValidatedBy)
+			commercial, ts.ValidatedAt, ts.ValidatedBy, ts.RejectedAt, ts.RejectedBy, ts.RejectReason)
 		if err != nil {
 			return err
 		}
@@ -115,9 +119,11 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 	var month string
 	var status string
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by
+		SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+			rejected_at, rejected_by, COALESCE(reject_reason, '')
 		FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
-	`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy)
+	`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy,
+		&ts.RejectedAt, &ts.RejectedBy, &ts.RejectReason)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Timesheet{}, domain.ErrTimesheetNotFound
@@ -234,6 +240,19 @@ func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.Te
 	return scanTimesheetSummaries(rows)
 }
 
+func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error) {
+	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
+		WHERE t.tenant_id = $1 AND t.month = $2
+		GROUP BY t.id, u.login, u.prenom, u.nom
+		ORDER BY u.nom ASC, u.prenom ASC
+	`, tenant.UUID(), string(month))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanTimesheetSummaries(rows)
+}
+
 const timesheetSummarySelect = `
 		SELECT
 			t.id,
@@ -244,9 +263,11 @@ const timesheetSummarySelect = `
 			t.month,
 			t.status,
 			t.commercial_info,
+			COALESCE(t.reject_reason, ''),
 			t.updated_at,
 			COALESCE(SUM(tl.duration), 0) AS total_minutes,
 			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
+			COUNT(DISTINCT we.id) AS weeks_total,
 			(
 				SELECT c.id FROM org.clients c
 				WHERE c.tenant_id = t.tenant_id
@@ -287,9 +308,11 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 			&month,
 			&status,
 			&commercial,
+			&summary.RejectReason,
 			&summary.UpdatedAt,
 			&summary.TotalMinutes,
 			&summary.WeeksSubmitted,
+			&summary.WeeksTotal,
 			&clientID,
 			&missionID,
 		); err != nil {

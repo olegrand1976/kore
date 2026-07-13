@@ -132,6 +132,24 @@ func (r *Repository) ListMissionCollaborators(ctx context.Context, tenant kernel
 	return out, rows.Err()
 }
 
+func (r *Repository) SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx, `
+		DELETE FROM ssii.mission_collaborators WHERE tenant_id = $1 AND mission_id = $2
+	`, tenant.UUID(), missionID); err != nil {
+		return err
+	}
+	for _, userID := range userIDs {
+		if _, err := r.pool.Exec(ctx, `
+			INSERT INTO ssii.mission_collaborators (id, tenant_id, mission_id, user_id)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (mission_id, user_id) DO NOTHING
+		`, uuid.New(), tenant.UUID(), missionID, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *Repository) GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error) {
 	var name string
 	err := r.pool.QueryRow(ctx, `

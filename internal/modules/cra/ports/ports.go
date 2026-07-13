@@ -39,6 +39,19 @@ type ManagerValidateCommand struct {
 	ManagerID   UserID
 }
 
+type RejectTimesheetCommand struct {
+	TenantID    kernel.TenantID
+	TimesheetID TimesheetID
+	ManagerID   UserID
+	Reason      string
+}
+
+type ValidateAllCommand struct {
+	TenantID  kernel.TenantID
+	ManagerID UserID
+	Month     domain.Month
+}
+
 type ProposedLine struct {
 	TenantID   kernel.TenantID
 	UserID     UserID
@@ -55,11 +68,14 @@ type CRAService interface {
 	GetByID(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Timesheet, error)
 	ListTimesheets(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.Timesheet, error)
 	ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.TimesheetSummary, error)
+	ListPrestations(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
 	SaveWeek(ctx context.Context, cmd SaveWeekCommand) (domain.Timesheet, error)
 	SubmitWeek(ctx context.Context, cmd SubmitWeekCommand) error
 	CompleteCommercialInfo(ctx context.Context, cmd CommercialCommand) error
 	GeneratePDF(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Document, error)
 	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) error
+	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (int, error)
+	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
 }
 
 type CRAFeeder interface {
@@ -75,6 +91,10 @@ type CRAReader interface {
 	TimesheetOf(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
 }
 
+type SocieteCalendarReader interface {
+	WeekStartDayForUser(ctx context.Context, tenant kernel.TenantID, userID UserID) (int, error)
+}
+
 type CRARepository interface {
 	Save(ctx context.Context, ts domain.Timesheet) error
 	Get(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
@@ -84,6 +104,7 @@ type CRARepository interface {
 	ListByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.Timesheet, error)
 	ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
+	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
 

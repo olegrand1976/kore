@@ -28,11 +28,14 @@ func NewOrganizationService(repo ports.OrganizationRepository) ports.Organizatio
 
 func (s *organizationService) CreateSociete(ctx context.Context, cmd ports.CreateSocieteCommand) (domain.Societe, error) {
 	societe := domain.Societe{
-		ID:            uuid.New(),
-		TenantID:      cmd.TenantID,
-		RaisonSociale: cmd.RaisonSociale,
-		Devise:        cmd.Devise,
-		Pays:          cmd.Pays,
+		ID:                 uuid.New(),
+		TenantID:           cmd.TenantID,
+		RaisonSociale:      cmd.RaisonSociale,
+		Devise:             cmd.Devise,
+		Pays:               cmd.Pays,
+		WeekStartDay:       domain.DefaultWeekStartDay,
+		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
+		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
 	}
 	if societe.Devise == "" {
 		societe.Devise = "EUR"
@@ -126,6 +129,76 @@ func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd por
 		return domain.Societe{}, err
 	}
 	return societe, nil
+}
+
+func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd ports.UpdateSocieteSettingsCommand) (domain.Societe, error) {
+	societe, err := s.repo.GetSociete(ctx, cmd.TenantID, cmd.SocieteID)
+	if err != nil {
+		return domain.Societe{}, err
+	}
+	if cmd.WeekStartDay != nil {
+		day := *cmd.WeekStartDay
+		if day < 0 || day > 6 {
+			return domain.Societe{}, fmt.Errorf("weekStartDay must be between 0 and 6")
+		}
+		societe.WeekStartDay = day
+	}
+	if cmd.DayCapacityMinutes != nil {
+		cap := *cmd.DayCapacityMinutes
+		if cap <= 0 || cap > 1440 {
+			return domain.Societe{}, fmt.Errorf("dayCapacityMinutes must be between 1 and 1440")
+		}
+		societe.DayCapacityMinutes = cap
+	}
+	if cmd.CraMailAuto != nil {
+		societe.CraMailAuto = *cmd.CraMailAuto
+	}
+	if cmd.WeekSubmitPolicy != nil {
+		policy := strings.TrimSpace(*cmd.WeekSubmitPolicy)
+		switch policy {
+		case "block", "warn", "none":
+			societe.WeekSubmitPolicy = policy
+		default:
+			return domain.Societe{}, fmt.Errorf("weekSubmitPolicy must be block, warn, or none")
+		}
+	}
+	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
+		return domain.Societe{}, err
+	}
+	return societe, nil
+}
+
+func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ports.UserCalendarSettings, error) {
+	defaults := ports.UserCalendarSettings{
+		WeekStartDay:       domain.DefaultWeekStartDay,
+		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
+		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
+	}
+	societeID, err := s.repo.ResolveSocieteIDForUser(ctx, tenant, userID)
+	if err != nil {
+		return defaults, nil
+	}
+	societe, err := s.repo.GetSociete(ctx, tenant, societeID)
+	if err != nil {
+		return defaults, nil
+	}
+	day := societe.WeekStartDay
+	if day < 0 || day > 6 {
+		day = domain.DefaultWeekStartDay
+	}
+	cap := societe.DayCapacityMinutes
+	if cap <= 0 || cap > 1440 {
+		cap = domain.DefaultDayCapacityMinutes
+	}
+	policy := societe.WeekSubmitPolicy
+	if policy != "block" && policy != "warn" && policy != "none" {
+		policy = domain.DefaultWeekSubmitPolicy
+	}
+	return ports.UserCalendarSettings{
+		WeekStartDay:       day,
+		DayCapacityMinutes: cap,
+		WeekSubmitPolicy:   policy,
+	}, nil
 }
 
 type userService struct {

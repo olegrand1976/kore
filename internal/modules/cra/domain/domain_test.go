@@ -63,6 +63,17 @@ func TestDetectAbsenceConflict(t *testing.T) {
 	}
 }
 
+func TestDetectAbsenceConflict_Leave(t *testing.T) {
+	day := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
+	lines := []TimeLine{
+		{Day: day, Duration: kernel.Duration{Minutes: 60}, Source: SourceRef{Type: "leave", ID: "1"}},
+		{Day: day, Duration: kernel.Duration{Minutes: 60}, Source: SourceRef{Type: "mission", ID: "2"}},
+	}
+	if err := DetectAbsenceConflict(lines); err == nil {
+		t.Fatal("expected leave absence conflict")
+	}
+}
+
 func TestCommercialInfo_Complete(t *testing.T) {
 	if (CommercialInfo{}).Complete() {
 		t.Fatal("empty commercial info should be incomplete")
@@ -70,5 +81,40 @@ func TestCommercialInfo_Complete(t *testing.T) {
 	info := CommercialInfo{Client: "ACME", Mission: "Support"}
 	if !info.Complete() {
 		t.Fatal("expected complete commercial info")
+	}
+}
+
+func TestReject_ClearsSubmittedWeeks(t *testing.T) {
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	submitted := now.Add(-time.Hour)
+	managerID := uuid.New()
+	ts := Timesheet{
+		Status: StatusValideSemaine,
+		Weeks: []WeekEntry{
+			{WeekNumber: 1, SubmittedAt: &submitted},
+			{WeekNumber: 2, SubmittedAt: &submitted},
+		},
+	}
+
+	if err := ts.Reject(now, managerID, "Incomplet"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ts.Status != StatusBrouillon {
+		t.Fatalf("expected Brouillon, got %s", ts.Status)
+	}
+	if ts.RejectReason != "Incomplet" {
+		t.Fatalf("expected reject reason, got %q", ts.RejectReason)
+	}
+	for _, week := range ts.Weeks {
+		if week.SubmittedAt != nil {
+			t.Fatalf("week %d should have submittedAt cleared", week.WeekNumber)
+		}
+	}
+}
+
+func TestReject_FinalTimesheetFails(t *testing.T) {
+	ts := Timesheet{Status: StatusDefinitif}
+	if err := ts.Reject(time.Now(), uuid.New(), "too late"); err != ErrCRAAlreadyValidated {
+		t.Fatalf("expected ErrCRAAlreadyValidated, got %v", err)
 	}
 }

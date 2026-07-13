@@ -80,6 +80,28 @@ paths:
       responses:
         "200":
           description: Branding mis à jour
+  /societes/{id}/settings:
+    put:
+      summary: Paramètres CRA société
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weekStartDay: { type: integer, minimum: 0, maximum: 6 }
+                dayCapacityMinutes: { type: integer, minimum: 1, maximum: 1440 }
+                craMailAuto: { type: boolean }
+                weekSubmitPolicy: { type: string, enum: [block, warn, none] }
+      responses:
+        "200":
+          description: Paramètres mis à jour
   /users:
     get:
       summary: Liste utilisateurs
@@ -128,6 +150,13 @@ paths:
       responses:
         "200":
           description: Préférences
+  /users/me/calendar-settings:
+    get:
+      summary: Paramètres calendrier CRA (utilisateur courant)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: weekStartDay, dayCapacityMinutes, weekSubmitPolicy
   /users/me/release-notes/auto-show:
     post:
       summary: Activer/désactiver l'affichage auto des release notes (utilisateur courant)
@@ -457,6 +486,53 @@ paths:
       responses:
         "200":
           description: CRA validé
+  /timesheets/{id}/reject:
+    post:
+      summary: Rejeter un CRA (manager)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: CRA rejeté
+  /prestations:
+    get:
+      summary: Suivi prestations CRA (manager)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: "2026-07" }
+      responses:
+        "200":
+          description: Liste des CRA du mois
+  /prestations/validate-all:
+    post:
+      summary: Valider tous les CRA soumis du mois
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [month]
+              properties:
+                month: { type: string, example: "2026-07" }
+      responses:
+        "200":
+          description: Nombre de CRA validés
   /leave-requests:
     get:
       summary: Liste congés

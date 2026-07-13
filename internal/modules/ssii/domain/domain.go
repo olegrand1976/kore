@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrMissionNotFound      = errors.New("mission not found")
-	ErrInvalidMissionStatus = errors.New("invalid mission status transition")
+	ErrMissionNotFound           = errors.New("mission not found")
+	ErrInvalidMissionStatus      = errors.New("invalid mission status transition")
+	ErrMissionWithoutCollaborator = errors.New("mission without collaborator")
 )
 
 type MissionStatus string

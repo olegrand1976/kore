@@ -1,0 +1,3 @@
+ALTER TABLE org.societes
+  ADD COLUMN IF NOT EXISTS week_start_day SMALLINT NOT NULL DEFAULT 1
+  CHECK (week_start_day BETWEEN 0 AND 6);

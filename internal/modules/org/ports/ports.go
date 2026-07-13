@@ -154,6 +154,21 @@ type UpdateSocieteBrandingCommand struct {
 	URLTenant     string
 }
 
+type UpdateSocieteSettingsCommand struct {
+	TenantID           kernel.TenantID
+	SocieteID          uuid.UUID
+	WeekStartDay       *int
+	DayCapacityMinutes *int
+	CraMailAuto        *bool
+	WeekSubmitPolicy   *string
+}
+
+type UserCalendarSettings struct {
+	WeekStartDay         int    `json:"weekStartDay"`
+	DayCapacityMinutes   int    `json:"dayCapacityMinutes"`
+	WeekSubmitPolicy     string `json:"weekSubmitPolicy"`
+}
+
 type OrganizationService interface {
 	CreateSociete(ctx context.Context, cmd CreateSocieteCommand) (domain.Societe, error)
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
@@ -164,6 +179,8 @@ type OrganizationService interface {
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	UpdateSocieteBranding(ctx context.Context, cmd UpdateSocieteBrandingCommand) (domain.Societe, error)
+	UpdateSocieteSettings(ctx context.Context, cmd UpdateSocieteSettingsCommand) (domain.Societe, error)
+	CalendarSettingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (UserCalendarSettings, error)
 }
 
 type UserSummary struct {

@@ -10,14 +10,16 @@ import (
 )
 
 type CreateMissionCommand struct {
-	TenantID      kernel.TenantID
-	ClientID      uuid.UUID
-	StartDate     time.Time
-	EndDate       *time.Time
-	TJMAmount     int64
-	Currency      string
-	Technologies  []string
-	ClientContact string
+	TenantID         kernel.TenantID
+	ClientID         uuid.UUID
+	StartDate        time.Time
+	EndDate          *time.Time
+	TJMAmount        int64
+	Currency         string
+	Technologies     []string
+	ClientContact    string
+	CollaboratorIDs  []uuid.UUID
+	CountryCode      string
 }
 
 type UpdateEndDateCommand struct {
@@ -75,5 +77,6 @@ type SSIIRepository interface {
 	ListMissions(ctx context.Context, tenant kernel.TenantID) ([]domain.Mission, error)
 	ListMissionSummaries(ctx context.Context, tenant kernel.TenantID) ([]MissionSummary, error)
 	ListMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionCollaborator, error)
+	SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error
 	GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
 }

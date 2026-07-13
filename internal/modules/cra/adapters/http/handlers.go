@@ -29,6 +29,9 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Put("/timesheets/{id}/commercial-info", completeCommercialInfo(svc, authorizer))
 		pr.Post("/timesheets/{id}/pdf", generatePDF(svc, authorizer))
 		pr.Post("/timesheets/{id}/validate", validateFinal(svc, authorizer))
+		pr.Post("/timesheets/{id}/reject", rejectTimesheet(svc, authorizer))
+		pr.Get("/prestations", listPrestations(svc, authorizer))
+		pr.Post("/prestations/validate-all", validateAllPrestations(svc, authorizer))
 	})
 }
 
@@ -274,6 +277,88 @@ func validateFinal(svc ports.CRAService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "validated"})
+	}
+}
+
+func rejectTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		var req struct {
+			Reason string `json:"reason"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		identity, _ := authx.FromContext(r.Context())
+		if err := svc.RejectTimesheet(r.Context(), ports.RejectTimesheetCommand{
+			TenantID: identity.TenantID, TimesheetID: id, ManagerID: identity.UserID, Reason: req.Reason,
+		}); err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "rejected"})
+	}
+}
+
+func listPrestations(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		monthRaw := r.URL.Query().Get("month")
+		if monthRaw == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month query required (YYYY-MM)")
+			return
+		}
+		month, err := domain.ParseMonth(monthRaw)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := svc.ListPrestations(r.Context(), identity.TenantID, month)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func validateAllPrestations(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			Month string `json:"month"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		month, err := domain.ParseMonth(req.Month)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		count, err := svc.ValidateAll(r.Context(), ports.ValidateAllCommand{
+			TenantID: identity.TenantID, ManagerID: identity.UserID, Month: month,
+		})
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]int{"validated": count})
 	}
 }
 

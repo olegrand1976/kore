@@ -47,8 +47,14 @@ func ParseMonth(raw string) (Month, error) {
 type WeekNumber int
 
 type CommercialInfo struct {
-	Client  string `json:"client"`
-	Mission string `json:"mission"`
+	ClientID          *uuid.UUID `json:"clientId,omitempty"`
+	MissionID         *uuid.UUID `json:"missionId,omitempty"`
+	Client            string     `json:"client"`
+	Mission           string     `json:"mission"`
+	Description       string     `json:"description,omitempty"`
+	Technologies      []string   `json:"technologies,omitempty"`
+	Lieu              string     `json:"lieu,omitempty"`
+	ResponsableClient string     `json:"responsableClient,omitempty"`
 }
 
 func (c CommercialInfo) Complete() bool {
@@ -69,6 +75,7 @@ type TimeLine struct {
 	Duration    kernel.Duration
 	Comment     string
 	Origin      LineOrigin
+	Billable    bool
 }
 
 type WeekEntry struct {
@@ -90,6 +97,9 @@ type Timesheet struct {
 	Weeks          []WeekEntry     `json:"weeks"`
 	ValidatedAt    *time.Time      `json:"validatedAt,omitempty"`
 	ValidatedBy    *uuid.UUID      `json:"validatedBy,omitempty"`
+	RejectedAt     *time.Time      `json:"rejectedAt,omitempty"`
+	RejectedBy     *uuid.UUID      `json:"rejectedBy,omitempty"`
+	RejectReason   string          `json:"rejectReason,omitempty"`
 }
 
 type TimesheetSummary struct {
@@ -105,6 +115,8 @@ type TimesheetSummary struct {
 	MissionID      *uuid.UUID      `json:"missionId,omitempty"`
 	TotalMinutes   int             `json:"totalMinutes"`
 	WeeksSubmitted int             `json:"weeksSubmitted"`
+	WeeksTotal     int             `json:"weeksTotal"`
+	RejectReason   string          `json:"rejectReason,omitempty"`
 	UpdatedAt      time.Time       `json:"updatedAt"`
 }
 
@@ -114,6 +126,21 @@ func (ts Timesheet) IsFinal() bool {
 
 func (ts Timesheet) CanEdit() bool {
 	return ts.Status != StatusDefinitif
+}
+
+func (ts *Timesheet) Reject(now time.Time, managerID uuid.UUID, reason string) error {
+	if ts.IsFinal() {
+		return ErrCRAAlreadyValidated
+	}
+	ts.Status = StatusBrouillon
+	t := now.UTC()
+	ts.RejectedAt = &t
+	ts.RejectedBy = &managerID
+	ts.RejectReason = reason
+	for i := range ts.Weeks {
+		ts.Weeks[i].SubmittedAt = nil
+	}
+	return nil
 }
 
 func lineKey(source SourceRef, day time.Time) string {
@@ -177,7 +204,7 @@ func DetectAbsenceConflict(lines []TimeLine) error {
 		hasAbsence := false
 		hasMission := false
 		for _, s := range sources {
-			if s.Type == "absence" || s.Type == "conge" {
+			if isAbsenceSource(s) {
 				hasAbsence = true
 			} else {
 				hasMission = true
@@ -188,6 +215,15 @@ func DetectAbsenceConflict(lines []TimeLine) error {
 		}
 	}
 	return nil
+}
+
+func isAbsenceSource(s SourceRef) bool {
+	switch s.Type {
+	case "absence", "conge", "leave":
+		return true
+	default:
+		return false
+	}
 }
 
 func (ts *Timesheet) Week(number WeekNumber) (*WeekEntry, int) {

@@ -104,10 +104,18 @@ type Societe struct {
 	Logo          string          `json:"logo,omitempty"`
 	Devise        string          `json:"devise"`
 	Pays          string          `json:"pays"`
-	Adresse       string          `json:"adresse,omitempty"`
+	WeekStartDay       int             `json:"weekStartDay"`
+	DayCapacityMinutes int             `json:"dayCapacityMinutes"`
+	CraMailAuto        bool            `json:"craMailAuto"`
+	WeekSubmitPolicy   string          `json:"weekSubmitPolicy"`
+	Adresse            string          `json:"adresse,omitempty"`
 	Siret         string          `json:"siret,omitempty"`
 	URLTenant     string          `json:"urlTenant,omitempty"`
 }
+
+const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
+const DefaultDayCapacityMinutes = 480
+const DefaultWeekSubmitPolicy = "warn"
 
 type Site struct {
 	ID        uuid.UUID

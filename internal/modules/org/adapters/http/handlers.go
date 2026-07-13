@@ -43,6 +43,7 @@ func RegisterRoutes(
 		pr.Get("/societes", listSocietes(org))
 		pr.Post("/societes", createSociete(org, authorizer, leaveBootstrap))
 		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer, uploadsDir))
+		pr.Put("/societes/{id}/settings", updateSocieteSettings(org, authorizer))
 		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
@@ -52,6 +53,7 @@ func RegisterRoutes(
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Get("/users/me/release-notes", getReleaseNotesPreferences(users))
+		pr.Get("/users/me/calendar-settings", getUserCalendarSettings(org))
 		pr.Post("/users/me/release-notes/auto-show", setReleaseNotesAutoShow(users))
 		pr.Post("/users/me/release-notes/seen", markReleaseNotesSeen(users))
 		pr.Post("/users", createUser(users, authorizer))
@@ -455,6 +457,44 @@ func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Autho
 	}
 }
 
+func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		societeID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid societe id")
+			return
+		}
+		var req struct {
+			WeekStartDay         *int    `json:"weekStartDay"`
+			DayCapacityMinutes   *int    `json:"dayCapacityMinutes"`
+			CraMailAuto          *bool   `json:"craMailAuto"`
+			WeekSubmitPolicy     *string `json:"weekSubmitPolicy"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		societe, err := org.UpdateSocieteSettings(r.Context(), ports.UpdateSocieteSettingsCommand{
+			TenantID:           identity.TenantID,
+			SocieteID:          societeID,
+			WeekStartDay:       req.WeekStartDay,
+			DayCapacityMinutes: req.DayCapacityMinutes,
+			CraMailAuto:        req.CraMailAuto,
+			WeekSubmitPolicy:   req.WeekSubmitPolicy,
+		})
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, societe)
+	}
+}
+
 func serveTenantLogo(uploadsDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := authx.FromContext(r.Context())
@@ -632,6 +672,18 @@ func deleteUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
+	}
+}
+
+func getUserCalendarSettings(org ports.OrganizationService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		settings, err := org.CalendarSettingsForUser(r.Context(), identity.TenantID, identity.UserID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, settings)
 	}
 }
 

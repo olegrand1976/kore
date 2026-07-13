@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/ssii/domain"
 	"github.com/kore/kore/internal/modules/ssii/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
@@ -48,13 +50,15 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			return
 		}
 		var req struct {
-			ClientID      uuid.UUID  `json:"clientId"`
-			StartDate     time.Time  `json:"startDate"`
-			EndDate       *time.Time `json:"endDate"`
-			TJMAmount     int64      `json:"tjmAmount"`
-			Currency      string     `json:"currency"`
-			Technologies  []string   `json:"technologies"`
-			ClientContact string     `json:"clientContact"`
+			ClientID        uuid.UUID   `json:"clientId"`
+			StartDate       time.Time   `json:"startDate"`
+			EndDate         *time.Time  `json:"endDate"`
+			TJMAmount       int64       `json:"tjmAmount"`
+			Currency        string      `json:"currency"`
+			Technologies    []string    `json:"technologies"`
+			ClientContact   string      `json:"clientContact"`
+			CollaboratorIDs []uuid.UUID `json:"collaboratorIds"`
+			CountryCode     string      `json:"countryCode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -62,16 +66,22 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 		}
 		identity, _ := authx.FromContext(r.Context())
 		m, err := svc.Create(r.Context(), ports.CreateMissionCommand{
-			TenantID:      identity.TenantID,
-			ClientID:      req.ClientID,
-			StartDate:     req.StartDate,
-			EndDate:       req.EndDate,
-			TJMAmount:     req.TJMAmount,
-			Currency:      req.Currency,
-			Technologies:  req.Technologies,
-			ClientContact: req.ClientContact,
+			TenantID:        identity.TenantID,
+			ClientID:        req.ClientID,
+			StartDate:       req.StartDate,
+			EndDate:         req.EndDate,
+			TJMAmount:       req.TJMAmount,
+			Currency:        req.Currency,
+			Technologies:    req.Technologies,
+			ClientContact:   req.ClientContact,
+			CollaboratorIDs: req.CollaboratorIDs,
+			CountryCode:     req.CountryCode,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrMissionWithoutCollaborator) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, "MISSION_WITHOUT_COLLABORATOR", err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
