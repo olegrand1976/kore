@@ -17,12 +17,12 @@ import (
 const consumptionCacheTTL = 5 * time.Minute
 
 type Service struct {
-	repo      ports.CRARepository
-	cache     cache.Cache
-	keys      cache.KeyBuilder
-	pdf       ports.PDFRenderer
-	clock     ports.Clock
-	calendar  ports.SocieteCalendarReader
+	repo     ports.CRARepository
+	cache    cache.Cache
+	keys     cache.KeyBuilder
+	pdf      ports.PDFRenderer
+	clock    ports.Clock
+	calendar ports.SocieteCalendarReader
 }
 
 func NewService(repo ports.CRARepository, appCache cache.Cache, keys cache.KeyBuilder) *Service {

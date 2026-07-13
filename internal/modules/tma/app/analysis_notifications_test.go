@@ -89,4 +89,3 @@ func TestAddAnalysisPublishesNotification(t *testing.T) {
 		t.Fatalf("expected authorId var")
 	}
 }
-

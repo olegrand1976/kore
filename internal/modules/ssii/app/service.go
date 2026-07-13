@@ -12,10 +12,10 @@ import (
 )
 
 type service struct {
-	repo      ports.SSIIRepository
-	feeder    ports.CRAFeeder
-	cleaner   ports.CRAFutureCleaner
-	calendar  ports.WorkCalendarGateway
+	repo     ports.SSIIRepository
+	feeder   ports.CRAFeeder
+	cleaner  ports.CRAFutureCleaner
+	calendar ports.WorkCalendarGateway
 }
 
 func NewService(repo ports.SSIIRepository, feeder ports.CRAFeeder, cleaner ports.CRAFutureCleaner, calendar ports.WorkCalendarGateway) ports.SSIIService {

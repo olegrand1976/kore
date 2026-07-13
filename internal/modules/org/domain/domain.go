@@ -98,19 +98,19 @@ type UserIdentityLink struct {
 }
 
 type Societe struct {
-	ID            uuid.UUID       `json:"id"`
-	TenantID      kernel.TenantID `json:"tenantId"`
-	RaisonSociale string          `json:"raisonSociale"`
-	Logo          string          `json:"logo,omitempty"`
-	Devise        string          `json:"devise"`
-	Pays          string          `json:"pays"`
+	ID                 uuid.UUID       `json:"id"`
+	TenantID           kernel.TenantID `json:"tenantId"`
+	RaisonSociale      string          `json:"raisonSociale"`
+	Logo               string          `json:"logo,omitempty"`
+	Devise             string          `json:"devise"`
+	Pays               string          `json:"pays"`
 	WeekStartDay       int             `json:"weekStartDay"`
 	DayCapacityMinutes int             `json:"dayCapacityMinutes"`
 	CraMailAuto        bool            `json:"craMailAuto"`
 	WeekSubmitPolicy   string          `json:"weekSubmitPolicy"`
 	Adresse            string          `json:"adresse,omitempty"`
-	Siret         string          `json:"siret,omitempty"`
-	URLTenant     string          `json:"urlTenant,omitempty"`
+	Siret              string          `json:"siret,omitempty"`
+	URLTenant          string          `json:"urlTenant,omitempty"`
 }
 
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)

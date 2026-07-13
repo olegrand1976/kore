@@ -95,4 +95,3 @@ func TestRecipientPolicyResolutionPrecedence(t *testing.T) {
 		})
 	}
 }
-

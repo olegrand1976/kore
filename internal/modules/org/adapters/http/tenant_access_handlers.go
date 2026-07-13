@@ -112,4 +112,3 @@ func baseLoginURL(r *http.Request) string {
 	}
 	return proto + "://" + host + "/login"
 }
-

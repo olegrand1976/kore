@@ -10,16 +10,16 @@ import (
 )
 
 type CreateMissionCommand struct {
-	TenantID         kernel.TenantID
-	ClientID         uuid.UUID
-	StartDate        time.Time
-	EndDate          *time.Time
-	TJMAmount        int64
-	Currency         string
-	Technologies     []string
-	ClientContact    string
-	CollaboratorIDs  []uuid.UUID
-	CountryCode      string
+	TenantID        kernel.TenantID
+	ClientID        uuid.UUID
+	StartDate       time.Time
+	EndDate         *time.Time
+	TJMAmount       int64
+	Currency        string
+	Technologies    []string
+	ClientContact   string
+	CollaboratorIDs []uuid.UUID
+	CountryCode     string
 }
 
 type UpdateEndDateCommand struct {

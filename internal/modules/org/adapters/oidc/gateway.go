@@ -28,8 +28,8 @@ type TokenResponse struct {
 }
 
 type IDTokenClaims struct {
-	Email   string `json:"email"`
-	Nonce   string `json:"nonce"`
+	Email string `json:"email"`
+	Nonce string `json:"nonce"`
 	jwt.RegisteredClaims
 }
 
