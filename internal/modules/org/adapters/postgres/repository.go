@@ -169,9 +169,9 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO org.users (
-			id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), u.PasswordHash, string(u.Profile),
+			id, tenant_id, equipe_id, login, email, password_hash, profil, date_activation, date_expiration, active
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), nullString(u.Email), u.PasswordHash, string(u.Profile),
 		u.Period.Activation, u.Period.Expiration, u.Active)
 	return err
 }
@@ -365,8 +365,9 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var tenantID uuid.UUID
 	var login string
 	var profile string
+	var email *string
 	var expiration *time.Time
-	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &u.PasswordHash, &profile,
+	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &email, &u.PasswordHash, &profile,
 		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -376,11 +377,93 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	}
 	u.TenantID = kernel.NewTenantID(tenantID)
 	u.Login = domain.Login(login)
+	if email != nil {
+		u.Email = *email
+	}
 	u.Profile = domain.Profile(profile)
 	u.Period.Expiration = expiration
 	return u, nil
 }
 
-const userSelectCols = `id, tenant_id, equipe_id, login, password_hash, profil, date_activation, date_expiration, active, deleted_at`
+const userSelectCols = `id, tenant_id, equipe_id, login, email, password_hash, profil, date_activation, date_expiration, active, deleted_at`
+
+func (r *Repository) SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO org.identity_providers (
+			id, tenant_id, name, issuer, client_id, client_secret, jwks_uri, scopes, default_profile, enabled, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+		ON CONFLICT (tenant_id) DO UPDATE SET
+			name = EXCLUDED.name,
+			issuer = EXCLUDED.issuer,
+			client_id = EXCLUDED.client_id,
+			client_secret = CASE WHEN EXCLUDED.client_secret = '' THEN org.identity_providers.client_secret ELSE EXCLUDED.client_secret END,
+			jwks_uri = EXCLUDED.jwks_uri,
+			scopes = EXCLUDED.scopes,
+			default_profile = EXCLUDED.default_profile,
+			enabled = EXCLUDED.enabled,
+			updated_at = NOW()
+	`, idp.ID, idp.TenantID.UUID(), idp.Name, idp.Issuer, idp.ClientID, idp.ClientSecret,
+		idp.JWKSURI, idp.Scopes, string(idp.DefaultProfile), idp.Enabled)
+	return err
+}
+
+func (r *Repository) GetIdentityProvider(ctx context.Context, tenant kernel.TenantID) (domain.IdentityProvider, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, name, issuer, client_id, client_secret, jwks_uri, scopes, default_profile, enabled
+		FROM org.identity_providers WHERE tenant_id = $1
+	`, tenant.UUID())
+	var idp domain.IdentityProvider
+	var tenantID uuid.UUID
+	var profile string
+	err := row.Scan(&idp.ID, &tenantID, &idp.Name, &idp.Issuer, &idp.ClientID, &idp.ClientSecret,
+		&idp.JWKSURI, &idp.Scopes, &profile, &idp.Enabled)
+	if err != nil {
+		return domain.IdentityProvider{}, err
+	}
+	idp.TenantID = kernel.NewTenantID(tenantID)
+	idp.DefaultProfile = domain.Profile(profile)
+	return idp, nil
+}
+
+func (r *Repository) ListIdentityProviders(ctx context.Context, tenant kernel.TenantID) ([]domain.IdentityProvider, error) {
+	idp, err := r.GetIdentityProvider(ctx, tenant)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return []domain.IdentityProvider{idp}, nil
+}
+
+func (r *Repository) LinkUserIdentity(ctx context.Context, link domain.UserIdentityLink) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO org.user_identities (id, tenant_id, user_id, idp_id, subject, email)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (tenant_id, idp_id, subject) DO NOTHING
+	`, link.ID, link.TenantID.UUID(), link.UserID, link.IdPID, link.Subject, link.Email)
+	return err
+}
+
+func (r *Repository) FindUserIdentityBySubject(ctx context.Context, tenant kernel.TenantID, idpID uuid.UUID, subject string) (domain.UserIdentityLink, error) {
+	var link domain.UserIdentityLink
+	var tenantID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, user_id, idp_id, subject, email
+		FROM org.user_identities WHERE tenant_id = $1 AND idp_id = $2 AND subject = $3
+	`, tenant.UUID(), idpID, subject).Scan(&link.ID, &tenantID, &link.UserID, &link.IdPID, &link.Subject, &link.Email)
+	if err != nil {
+		return domain.UserIdentityLink{}, err
+	}
+	link.TenantID = kernel.NewTenantID(tenantID)
+	return link, nil
+}
+
+func (r *Repository) FindUserByEmail(ctx context.Context, tenant kernel.TenantID, email string) (domain.User, error) {
+	return r.scanUser(r.pool.QueryRow(ctx, `
+		SELECT `+userSelectCols+`
+		FROM org.users WHERE tenant_id = $1 AND lower(email) = lower($2) AND deleted_at IS NULL
+	`, tenant.UUID(), email))
+}
 
 var _ ports.OrganizationRepository = (*Repository)(nil)

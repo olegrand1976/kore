@@ -15,6 +15,16 @@ export type TmaDemand = {
   AssigneeID?: string
   requiresChefGate?: boolean
   RequiresChefGate?: boolean
+  createdAt?: string
+  CreatedAt?: string
+}
+
+export type TmaGanttItem = {
+  id: string
+  label: string
+  status: string
+  start: Date
+  end: Date
 }
 
 export type TmaAnalysis = {
@@ -33,6 +43,30 @@ export function useTma() {
   const pickSubject = (d: TmaDemand) => d.subject ?? d.Subject ?? ''
   const pickStatus = (d: TmaDemand) => d.status ?? d.Status ?? ''
   const pickWorkflowId = (d: TmaDemand) => d.workflowInstanceId ?? d.WorkflowInstanceID ?? ''
+  const pickCreatedAt = (d: TmaDemand) => d.createdAt ?? d.CreatedAt ?? ''
+
+  const toGanttItem = (d: TmaDemand): TmaGanttItem | null => {
+    const id = pickId(d)
+    if (!id) return null
+    const status = pickStatus(d)
+    const rawStart = pickCreatedAt(d)
+    const now = new Date()
+    const start = rawStart ? new Date(rawStart) : new Date(now.getTime() - 7 * 86400000)
+    if (Number.isNaN(start.getTime())) return null
+    const end = status === 'resolue'
+      ? new Date(Math.max(now.getTime(), start.getTime() + 86400000))
+      : new Date(Math.max(now.getTime(), start.getTime() + 14 * 86400000))
+    return {
+      id,
+      label: pickSubject(d) || id,
+      status,
+      start,
+      end
+    }
+  }
+
+  const toGanttItems = (demands: TmaDemand[]) =>
+    demands.map(toGanttItem).filter((item): item is TmaGanttItem => item !== null)
 
   const list = async () => {
     const res = await $fetch<{ data?: TmaDemand[] }>('/api/tma/demands')
@@ -96,6 +130,9 @@ export function useTma() {
     pickId,
     pickSubject,
     pickStatus,
-    pickWorkflowId
+    pickWorkflowId,
+    pickCreatedAt,
+    toGanttItem,
+    toGanttItems
   }
 }

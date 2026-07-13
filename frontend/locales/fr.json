@@ -66,7 +66,21 @@
     "subtitle": "Accédez à votre espace Kore",
     "password": "Mot de passe",
     "submit": "Se connecter",
-    "error": "Échec de connexion"
+    "error": "Échec de connexion",
+    "sso": "Connexion SSO",
+    "sso_tenant": "Identifiant tenant (UUID)"
+  },
+  "idp": {
+    "title": "Fournisseurs d'identité",
+    "subtitle": "Configurer Azure AD ou Google Workspace (OIDC)",
+    "name": "Nom",
+    "issuer": "Issuer OIDC",
+    "client_id": "Client ID",
+    "client_secret": "Client secret",
+    "jwks_uri": "JWKS URI",
+    "scopes": "Scopes",
+    "enabled": "SSO activé",
+    "saved": "Configuration enregistrée"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -313,7 +327,12 @@
     "kpi_total": "Demandes",
     "kpi_open": "Ouvertes",
     "kpi_resolved": "Résolues",
-    "kpi_awaiting": "En attente création"
+    "kpi_awaiting": "En attente création",
+    "gantt": "Planning Gantt",
+    "gantt_title": "Planning TMA",
+    "gantt_subtitle": "Vue chronologique lecture seule des demandes",
+    "gantt_col_task": "Demande",
+    "gantt_empty": "Aucune demande à afficher"
   },
   "notifications": {
     "title": "Notifications",
@@ -325,7 +344,21 @@
     "col_trigger": "Déclencheur",
     "col_frequency": "Fréquence",
     "col_subject": "Sujet",
-    "col_status": "Statut"
+    "col_status": "Statut",
+    "col_template": "Modèle",
+    "add_rule": "Nouvelle règle",
+    "add_title": "Créer une règle",
+    "edit_title": "Modifier la règle",
+    "attach_pdf": "Joindre un PDF",
+    "created": "Règle créée",
+    "saved": "Règle mise à jour",
+    "frequency": {
+      "immediate": "Immédiat",
+      "morning": "Chaque matin (8h)",
+      "monday": "Chaque lundi",
+      "friday": "Chaque vendredi",
+      "last_monday_of_month": "Dernier lundi du mois"
+    }
   },
   "billing": {
     "title": "Abonnement",
@@ -538,6 +571,23 @@
     "title": "Paramètres",
     "tabs_label": "Sections paramètres",
     "tab_conges": "Congés",
+    "tab_ia": "Intelligence artificielle",
+    "ia": {
+      "status_enabled": "IA activée",
+      "status_disabled": "IA désactivée",
+      "provider": "Fournisseur LLM",
+      "notice_title": "Notice d'utilisation IA",
+      "notice_intro": "L'assistance IA Kore aide à la rédaction et à l'analyse. Elle ne remplace pas la validation humaine.",
+      "notice_capabilities": "Capacités : brouillons TMA, suggestions CRA, briefing tableau de bord, etc.",
+      "notice_limits": "Limites : risque d'erreurs, données non décisionnelles sans relecture.",
+      "notice_duties": "Obligations deployer (Art. 26 IA Act) : informer les travailleurs et superviser les usages.",
+      "accept_notice": "J'ai lu et j'accepte la notice d'utilisation IA",
+      "workers_informed": "Je confirme avoir informé (ou planifier d'informer) les travailleurs",
+      "enable": "Activer l'assistance IA",
+      "enabled_success": "Assistance IA activée pour le tenant",
+      "enabled_info": "L'assistance IA est active. Les collaborateurs voient les badges « Généré par IA » sur les contenus concernés.",
+      "notice_accepted": "Notice acceptée le {date}"
+    },
     "conges": {
       "societe": "Société",
       "country": "Pays société",

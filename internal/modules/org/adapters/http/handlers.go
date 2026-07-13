@@ -30,7 +30,7 @@ func RegisterRoutes(
 	leaveBootstrap ports.LeaveTypeBootstrapper,
 ) {
 	r.Post("/auth/login", loginHandler(users))
-	r.Post("/auth/refresh", refreshHandler(tokens))
+	r.Post("/auth/refresh", refreshHandler(users))
 	r.Post("/auth/logout", logoutHandler())
 
 	r.Group(func(pr chi.Router) {
@@ -80,7 +80,7 @@ func loginHandler(users ports.UserService) http.HandlerFunc {
 	}
 }
 
-func refreshHandler(tokens *authx.TokenIssuer) http.HandlerFunc {
+func refreshHandler(users ports.UserService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			RefreshToken string `json:"refreshToken"`
@@ -89,14 +89,16 @@ func refreshHandler(tokens *authx.TokenIssuer) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		identity, err := tokens.ParseRefreshToken(req.RefreshToken)
+		pair, err := users.RefreshSession(r.Context(), req.RefreshToken)
 		if err != nil {
-			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid refresh token")
-			return
-		}
-		pair, err := tokens.Issue(identity)
-		if err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			switch {
+			case errors.Is(err, domain.ErrAccountExpired):
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
+			case errors.Is(err, domain.ErrInvalidCredentials):
+				httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid refresh token")
+			default:
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			}
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, pair)

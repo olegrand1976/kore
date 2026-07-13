@@ -66,7 +66,21 @@
     "subtitle": "Access your Kore workspace",
     "password": "Password",
     "submit": "Sign in",
-    "error": "Sign in failed"
+    "error": "Sign in failed",
+    "sso": "SSO sign in",
+    "sso_tenant": "Tenant ID (UUID)"
+  },
+  "idp": {
+    "title": "Identity providers",
+    "subtitle": "Configure Azure AD or Google Workspace (OIDC)",
+    "name": "Name",
+    "issuer": "OIDC issuer",
+    "client_id": "Client ID",
+    "client_secret": "Client secret",
+    "jwks_uri": "JWKS URI",
+    "scopes": "Scopes",
+    "enabled": "SSO enabled",
+    "saved": "Configuration saved"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -313,7 +327,12 @@
     "kpi_total": "Requests",
     "kpi_open": "Open",
     "kpi_resolved": "Resolved",
-    "kpi_awaiting": "Awaiting creation"
+    "kpi_awaiting": "Awaiting creation",
+    "gantt": "Gantt planning",
+    "gantt_title": "TMA planning",
+    "gantt_subtitle": "Read-only timeline of maintenance requests",
+    "gantt_col_task": "Request",
+    "gantt_empty": "No requests to display"
   },
   "notifications": {
     "title": "Notifications",
@@ -325,7 +344,21 @@
     "col_trigger": "Trigger",
     "col_frequency": "Frequency",
     "col_subject": "Subject",
-    "col_status": "Status"
+    "col_status": "Status",
+    "col_template": "Template",
+    "add_rule": "New rule",
+    "add_title": "Create a rule",
+    "edit_title": "Edit rule",
+    "attach_pdf": "Attach PDF",
+    "created": "Rule created",
+    "saved": "Rule updated",
+    "frequency": {
+      "immediate": "Immediate",
+      "morning": "Every morning (8am)",
+      "monday": "Every Monday",
+      "friday": "Every Friday",
+      "last_monday_of_month": "Last Monday of month"
+    }
   },
   "billing": {
     "title": "Subscription",
@@ -538,6 +571,23 @@
     "title": "Settings",
     "tabs_label": "Settings sections",
     "tab_conges": "Leave",
+    "tab_ia": "Artificial intelligence",
+    "ia": {
+      "status_enabled": "AI enabled",
+      "status_disabled": "AI disabled",
+      "provider": "LLM provider",
+      "notice_title": "AI usage notice",
+      "notice_intro": "Kore AI assistance helps with drafting and analysis. It does not replace human validation.",
+      "notice_capabilities": "Capabilities: TMA drafts, CRA suggestions, dashboard briefing, etc.",
+      "notice_limits": "Limits: risk of errors; outputs are not decision-grade without review.",
+      "notice_duties": "Deployer duties (EU AI Act Art. 26): inform workers and supervise usage.",
+      "accept_notice": "I have read and accept the AI usage notice",
+      "workers_informed": "I confirm workers have been (or will be) informed",
+      "enable": "Enable AI assistance",
+      "enabled_success": "AI assistance enabled for tenant",
+      "enabled_info": "AI assistance is active. Collaborators see « AI generated » badges on relevant content.",
+      "notice_accepted": "Notice accepted on {date}"
+    },
     "conges": {
       "societe": "Company",
       "country": "Company country",

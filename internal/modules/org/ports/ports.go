@@ -101,6 +101,12 @@ type OrganizationRepository interface {
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
 	ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error)
+	SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error
+	GetIdentityProvider(ctx context.Context, tenant kernel.TenantID) (domain.IdentityProvider, error)
+	ListIdentityProviders(ctx context.Context, tenant kernel.TenantID) ([]domain.IdentityProvider, error)
+	LinkUserIdentity(ctx context.Context, link domain.UserIdentityLink) error
+	FindUserIdentityBySubject(ctx context.Context, tenant kernel.TenantID, idpID uuid.UUID, subject string) (domain.UserIdentityLink, error)
+	FindUserByEmail(ctx context.Context, tenant kernel.TenantID, email string) (domain.User, error)
 }
 
 type PasswordHasher interface {
@@ -110,6 +116,7 @@ type PasswordHasher interface {
 
 type TokenIssuer interface {
 	Issue(identity authx.Identity) (authx.TokenPair, error)
+	ParseRefreshToken(token string) (authx.Identity, error)
 }
 
 type EntitlementReader interface {
@@ -147,6 +154,7 @@ type UserSummary struct {
 type UserService interface {
 	CreateUser(ctx context.Context, cmd CreateUserCommand) (domain.User, error)
 	Authenticate(ctx context.Context, login, password string) (AuthResult, error)
+	RefreshSession(ctx context.Context, refreshToken string) (authx.TokenPair, error)
 	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]UserSummary, error)
 	UpdateUser(ctx context.Context, cmd UpdateUserCommand) (UserSummary, error)
 	DeactivateUser(ctx context.Context, cmd DeleteUserCommand) error
@@ -217,6 +225,40 @@ type PlatformService interface {
 	CurrentGeminiModel(ctx context.Context) string
 }
 
-type Clock interface {
-	Now() time.Time
+type ConfigureIdPCommand struct {
+	ID             uuid.UUID
+	TenantID       kernel.TenantID
+	Name           string
+	Issuer         string
+	ClientID       string
+	ClientSecret   string
+	JWKSURI        string
+	Scopes         string
+	DefaultProfile domain.Profile
+	Enabled        bool
+}
+
+type OIDCAuthorizeCommand struct {
+	TenantID      kernel.TenantID
+	RedirectURI   string
+	CodeChallenge string
+	State         string
+}
+
+type OIDCCallbackCommand struct {
+	TenantID     kernel.TenantID
+	Code         string
+	RedirectURI  string
+	CodeVerifier string
+	State        string
+}
+
+type OIDCService interface {
+	AuthorizeURL(ctx context.Context, cmd OIDCAuthorizeCommand) (string, error)
+	HandleCallback(ctx context.Context, cmd OIDCCallbackCommand) (AuthResult, error)
+}
+
+type IdentityProviderService interface {
+	Configure(ctx context.Context, cmd ConfigureIdPCommand) (domain.IdentityProvider, error)
+	List(ctx context.Context, tenant kernel.TenantID) ([]domain.IdentityProvider, error)
 }

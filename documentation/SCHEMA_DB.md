@@ -8,7 +8,7 @@
 
 ## Vue d'ensemble
 
-PostgreSQL — **11 schémas** actifs, un par module implémenté. Isolation multi-tenant via `tenant_id UUID` sur les tables métier (sauf `publicsite` et tables de référence globales).
+PostgreSQL — **19 schémas** actifs, un par module implémenté. Isolation multi-tenant via `tenant_id UUID` sur les tables métier (sauf `publicsite` et tables de référence globales).
 
 ```mermaid
 erDiagram
@@ -53,9 +53,17 @@ erDiagram
 | 5 | conges | `conges` | `internal/modules/conges/migrations/` |
 | 6 | budget | `budget` | `internal/modules/budget/migrations/` |
 | 7 | tma | `tma` | `internal/modules/tma/migrations/` |
-| 8 | ai | `ai` | `internal/modules/ai/migrations/` |
-| 9 | billing | `billing` | `internal/modules/billing/migrations/` |
-| 10 | publicsite | `publicsite` | `internal/modules/publicsite/migrations/` |
+| 8 | ssii | `ssii` | `internal/modules/ssii/migrations/` |
+| 9 | support | `support` | `internal/modules/support/migrations/` |
+| 10 | maintenance | `maintenance` | `internal/modules/maintenance/migrations/` |
+| 11 | invoicing | `invoicing` | `internal/modules/invoicing/migrations/` |
+| 12 | ett | `ett` | `internal/modules/ett/migrations/` |
+| 13 | reporting | `reporting` | `internal/modules/reporting/migrations/` |
+| 14 | admin | `admin` | `internal/modules/admin/migrations/` |
+| 15 | integrations | `integrations` | `internal/modules/integrations/migrations/` |
+| 16 | ai | `ai` | `internal/modules/ai/migrations/` |
+| 17 | billing | `billing` | `internal/modules/billing/migrations/` |
+| 18 | publicsite | `publicsite` | `internal/modules/publicsite/migrations/` |
 
 > Référence code : `internal/app/migrations.go`
 
@@ -158,6 +166,7 @@ Organisation, identité, RBAC.
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `equipe_id` | UUID | → `org.equipes(id)` |
 | `login` | TEXT | NOT NULL |
+| `email` | TEXT | |
 | `password_hash` | TEXT | NOT NULL |
 | `profil` | TEXT | NOT NULL |
 | `langue` | TEXT | NOT NULL, DEFAULT `'fr'` |
@@ -170,6 +179,37 @@ Organisation, identité, RBAC.
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`
+
+### `org.identity_providers`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)`, UNIQUE |
+| `name` | TEXT | NOT NULL |
+| `issuer` | TEXT | NOT NULL |
+| `client_id` | TEXT | NOT NULL |
+| `client_secret` | TEXT | NOT NULL, DEFAULT `''` |
+| `jwks_uri` | TEXT | NOT NULL, DEFAULT `''` |
+| `scopes` | TEXT | NOT NULL, DEFAULT `'openid profile email'` |
+| `default_profile` | TEXT | NOT NULL, DEFAULT `'Collaborateur'` |
+| `enabled` | BOOLEAN | NOT NULL, DEFAULT FALSE |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `org.user_identities`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
+| `user_id` | UUID | NOT NULL → `org.users(id)` |
+| `idp_id` | UUID | NOT NULL → `org.identity_providers(id)` ON DELETE CASCADE |
+| `subject` | TEXT | NOT NULL |
+| `email` | TEXT | NOT NULL, DEFAULT `''` |
+| `linked_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index / contraintes** : `UNIQUE (tenant_id, idp_id, subject)` — `UNIQUE (tenant_id, user_id, idp_id)` — `idx_user_identities_email`
 
 ### `org.clients`
 
@@ -714,6 +754,320 @@ Site vitrine et prise de rendez-vous commercial (hors tenant).
 
 ---
 
+## Schéma `ssii`
+
+Missions ESN (staffing, TJM, collaborateurs).
+
+### `ssii.missions`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `client_id` | UUID | NOT NULL |
+| `status` | TEXT | NOT NULL, DEFAULT `'active'` |
+| `start_date` | DATE | NOT NULL |
+| `end_date` | DATE | |
+| `tjm_amount` | BIGINT | NOT NULL, DEFAULT 0 |
+| `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
+| `technologies` | TEXT[] | NOT NULL, DEFAULT `'{}'` |
+| `client_contact` | TEXT | NOT NULL, DEFAULT `''` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `ssii.mission_collaborators`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `mission_id` | UUID | NOT NULL → `ssii.missions(id)` |
+| `user_id` | UUID | NOT NULL |
+
+**Contrainte** : UNIQUE (`mission_id`, `user_id`)
+
+---
+
+## Schéma `support`
+
+Helpdesk tickets et réponses historisées.
+
+### `support.tickets`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `application_id` | UUID | NOT NULL |
+| `subject` | TEXT | NOT NULL |
+| `description` | TEXT | NOT NULL, DEFAULT `''` |
+| `state` | TEXT | NOT NULL, DEFAULT `'open'` |
+| `channel` | TEXT | NOT NULL, DEFAULT `'web'` |
+| `reporter_id` | UUID | |
+| `assignee_id` | UUID | |
+| `analysis_note` | TEXT | NOT NULL, DEFAULT `''` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `resolved_at` | TIMESTAMPTZ | |
+
+### `support.ticket_replies`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `ticket_id` | UUID | NOT NULL → `support.tickets(id)` |
+| `author_id` | UUID | NOT NULL |
+| `content` | TEXT | NOT NULL |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+---
+
+## Schéma `maintenance`
+
+Demandes de travaux (cycle allégé).
+
+### `maintenance.work_requests`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `application_id` | UUID | NOT NULL |
+| `subject` | TEXT | NOT NULL |
+| `state` | TEXT | NOT NULL, DEFAULT `'created'` |
+| `assignee_id` | UUID | |
+| `consumption_days` | NUMERIC(12,2) | NOT NULL, DEFAULT 0 |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `completed_at` | TIMESTAMPTZ | |
+
+---
+
+## Schéma `invoicing`
+
+Facturation métier e-invoicing (PDP/PA).
+
+### `invoicing.invoices`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `client_id` | UUID | NOT NULL |
+| `type` | TEXT | NOT NULL |
+| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` |
+| `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
+| `total_amount` | BIGINT | NOT NULL, DEFAULT 0 |
+| `tax_amount` | BIGINT | NOT NULL, DEFAULT 0 |
+| `pdp_receipt_id` | TEXT | |
+| `transmitted_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `invoicing.invoice_lines`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `invoice_id` | UUID | NOT NULL → `invoicing.invoices(id)` |
+| `description` | TEXT | NOT NULL |
+| `quantity` | NUMERIC(12,2) | NOT NULL, DEFAULT 1 |
+| `unit_price` | BIGINT | NOT NULL, DEFAULT 0 |
+| `tax_rate` | NUMERIC(5,2) | NOT NULL, DEFAULT 20 |
+
+### `invoicing.pdp_queue`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `invoice_id` | UUID | NOT NULL → `invoicing.invoices(id)` |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `status` | TEXT | NOT NULL, DEFAULT `'pending'` |
+| `attempts` | INT | NOT NULL, DEFAULT 0 |
+| `last_error` | TEXT | NOT NULL, DEFAULT `''` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `next_retry_at` | TIMESTAMPTZ | |
+
+---
+
+## Schéma `ett`
+
+Conformité enregistrement légal du temps (append-only).
+
+### `ett.work_time_records`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `user_id` | UUID | NOT NULL |
+| `work_date` | DATE | NOT NULL |
+| `clock_in` | TIMESTAMPTZ | |
+| `clock_out` | TIMESTAMPTZ | |
+| `effective_hours` | NUMERIC(5,2) | NOT NULL, DEFAULT 0 |
+| `overtime_hours` | NUMERIC(5,2) | NOT NULL, DEFAULT 0 |
+| `status` | TEXT | NOT NULL, DEFAULT `'pointed'` |
+| `origin` | TEXT | NOT NULL, DEFAULT `'web'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Contrainte** : UNIQUE (`tenant_id`, `user_id`, `work_date`)
+
+### `ett.audit_journal`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `record_id` | UUID | NOT NULL |
+| `action` | TEXT | NOT NULL |
+| `actor_id` | UUID | NOT NULL |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `ett.country_work_rules`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `country_code` | TEXT | NOT NULL |
+| `max_daily_hours` | NUMERIC(5,2) | NOT NULL, DEFAULT 10 |
+| `min_rest_hours` | NUMERIC(5,2) | NOT NULL, DEFAULT 11 |
+| `retention_days` | INT | NOT NULL, DEFAULT 1825 |
+
+**Contrainte** : UNIQUE (`tenant_id`, `country_code`)
+
+---
+
+## Schéma `reporting`
+
+Vues et définitions de rapports (lecture seule).
+
+### `reporting.report_definitions`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `code` | TEXT | NOT NULL |
+| `name` | TEXT | NOT NULL |
+| `config` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Contrainte** : UNIQUE (`tenant_id`, `code`)
+
+### `reporting.dashboard_snapshots`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `dashboard_code` | TEXT | NOT NULL |
+| `period_start` | DATE | NOT NULL |
+| `period_end` | DATE | NOT NULL |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `computed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+---
+
+## Schéma `admin`
+
+Paramétrage transverse (rubriques, modèles, répertoire).
+
+### `admin.parameter_sets`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `code` | TEXT | NOT NULL |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Contrainte** : UNIQUE (`tenant_id`, `code`)
+
+### `admin.templates`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `type` | TEXT | NOT NULL |
+| `name` | TEXT | NOT NULL |
+| `content` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `admin.phone_directory`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `user_id` | UUID | |
+| `label` | TEXT | NOT NULL |
+| `phone` | TEXT | NOT NULL |
+| `visibility` | TEXT | NOT NULL, DEFAULT `'internal'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+---
+
+## Schéma `integrations`
+
+Hub d'intégrations (connexions, clés API, webhooks).
+
+### `integrations.connections`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `type` | TEXT | NOT NULL |
+| `provider` | TEXT | NOT NULL |
+| `status` | TEXT | NOT NULL, DEFAULT `'active'` |
+| `credentials_ref` | TEXT | NOT NULL, DEFAULT `''` |
+| `last_sync_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `integrations.api_keys`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `name` | TEXT | NOT NULL |
+| `key_prefix` | TEXT | NOT NULL |
+| `key_hash` | TEXT | NOT NULL |
+| `revoked_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `last_used_at` | TIMESTAMPTZ | |
+
+### `integrations.webhook_subscriptions`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `url` | TEXT | NOT NULL |
+| `events` | TEXT[] | NOT NULL, DEFAULT `'{}'` |
+| `secret_ref` | TEXT | NOT NULL, DEFAULT `''` |
+| `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `integrations.sync_jobs`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `connection_id` | UUID | NOT NULL → `integrations.connections(id)` |
+| `status` | TEXT | NOT NULL |
+| `started_at` | TIMESTAMPTZ | NOT NULL |
+| `finished_at` | TIMESTAMPTZ | |
+| `error_message` | TEXT | NOT NULL, DEFAULT `''` |
+
+---
+
 ## Inventaire des tables (résumé)
 
 | Schéma | Tables | Nb |
@@ -725,18 +1079,18 @@ Site vitrine et prise de rendez-vous commercial (hors tenant).
 | `conges` | leave_requests, leave_balances, leave_type_configs | 3 |
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
 | `tma` | demands, analysis_dossiers, releases, delivery_codes | 4 |
+| `ssii` | missions, mission_collaborators | 2 |
+| `support` | tickets, ticket_replies | 2 |
+| `maintenance` | work_requests | 1 |
+| `invoicing` | invoices, invoice_lines, pdp_queue | 3 |
+| `ett` | work_time_records, audit_journal, country_work_rules | 3 |
+| `reporting` | report_definitions, dashboard_snapshots | 2 |
+| `admin` | parameter_sets, templates, phone_directory | 3 |
+| `integrations` | connections, api_keys, webhook_subscriptions, sync_jobs | 4 |
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **40** |
-
----
-
-## Schémas planifiés (non implémentés)
-
-Référencés dans la spec technique (`technical/foundation/03-database.md`) mais **sans migration** à ce jour :
-
-`support`, `maintenance`, `ssii`, `facturation`, `ett`, `reporting`, `admin`
+| **Total** | | **62** |
 
 ---
 

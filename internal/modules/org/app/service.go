@@ -226,6 +226,21 @@ func (s *userService) Authenticate(ctx context.Context, login, password string) 
 	}, nil
 }
 
+func (s *userService) RefreshSession(ctx context.Context, refreshToken string) (authx.TokenPair, error) {
+	identity, err := s.tokens.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return authx.TokenPair{}, domain.ErrInvalidCredentials
+	}
+	user, err := s.repo.FindUserByID(ctx, identity.TenantID, identity.UserID)
+	if err != nil {
+		return authx.TokenPair{}, domain.ErrInvalidCredentials
+	}
+	if !user.Active || !user.Period.IsActive(s.clock()) {
+		return authx.TokenPair{}, domain.ErrAccountExpired
+	}
+	return s.tokens.Issue(s.buildIdentity(user))
+}
+
 func (s *userService) buildIdentity(user domain.User) authx.Identity {
 	identity := authx.Identity{
 		UserID:   user.ID,
@@ -394,6 +409,14 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 		"workflow":      readWriteValidate,
 		"billing":       readWrite,
 		"notifications": readWrite,
+		"integrations":  readWriteValidate,
+		"invoicing":     readWriteValidate,
+		"admin":         readWriteValidate,
+		"reporting":     read,
+		"ssii":          readWriteValidate,
+		"ett":           readWriteValidate,
+		"support":       readWriteValidate,
+		"maintenance":   readWriteValidate,
 	}
 	return map[string]map[authx.Module]map[authx.Action]bool{
 		string(domain.ProfileAdmin): mvpAdmin,

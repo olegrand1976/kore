@@ -19,6 +19,10 @@ var (
 	ErrUserNotFound              = errors.New("user not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
 	ErrInvalidGeminiModel        = errors.New("invalid gemini model")
+	ErrSSONotEnabled             = errors.New("sso not enabled")
+	ErrInvalidIDPToken           = errors.New("invalid idp token")
+	ErrIdentityAlreadyLinked     = errors.New("identity already linked")
+	ErrOIDCStateInvalid          = errors.New("invalid oidc state")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)
@@ -57,11 +61,34 @@ type User struct {
 	TenantID     kernel.TenantID
 	EquipeID     *uuid.UUID
 	Login        Login
+	Email        string
 	PasswordHash string
 	Profile      Profile
 	Active       bool
 	Period       ActivationPeriod
 	DeletedAt    *time.Time
+}
+
+type IdentityProvider struct {
+	ID             uuid.UUID
+	TenantID       kernel.TenantID
+	Name           string
+	Issuer         string
+	ClientID       string
+	ClientSecret   string
+	JWKSURI        string
+	Scopes         string
+	DefaultProfile Profile
+	Enabled        bool
+}
+
+type UserIdentityLink struct {
+	ID       uuid.UUID
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	IdPID    uuid.UUID
+	Subject  string
+	Email    string
 }
 
 type Societe struct {

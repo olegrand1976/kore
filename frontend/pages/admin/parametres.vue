@@ -11,6 +11,14 @@
       >
         {{ $t('settings.tab_conges') }}
       </NuxtLink>
+      <NuxtLink
+        to="/admin/parametres/ia"
+        role="tab"
+        class="parametres-tab"
+        :class="{ 'parametres-tab--active': route.path.startsWith('/admin/parametres/ia') }"
+      >
+        {{ $t('settings.tab_ia') }}
+      </NuxtLink>
     </nav>
 
     <NuxtPage />

@@ -17,6 +17,11 @@
         <PublicInput id="password" v-model="password" type="password" :label="$t('login.password')" required />
         <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.submit') }}</PublicButton>
       </form>
+      <div v-if="ssoEnabled" class="login-card__sso">
+        <p class="login-card__divider">{{ $t('login.sso') }}</p>
+        <PublicInput id="tenant" v-model="tenantId" :label="$t('login.sso_tenant')" />
+        <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ $t('login.sso') }}</PublicButton>
+      </div>
       <p v-if="error" class="login-card__error" role="alert">{{ error }}</p>
     </PublicCard>
   </div>
@@ -28,6 +33,8 @@ definePageMeta({ layout: 'public' })
 const { t } = useI18n()
 const login = ref('ADM_admin')
 const password = ref('Admin123!')
+const tenantId = ref('')
+const ssoEnabled = ref(true)
 const error = ref('')
 
 const submit = async () => {
@@ -40,6 +47,70 @@ const submit = async () => {
     error.value = err?.data?.error?.message || t('login.error')
   }
 }
+
+function randomVerifier(): string {
+  const arr = new Uint8Array(32)
+  crypto.getRandomValues(arr)
+  return btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function sha256Base64Url(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+const startSSO = async () => {
+  error.value = ''
+  if (!tenantId.value) {
+    error.value = t('login.sso_tenant')
+    return
+  }
+  try {
+    const verifier = randomVerifier()
+    const challenge = await sha256Base64Url(verifier)
+    const redirectUri = `${window.location.origin}/login`
+    sessionStorage.setItem('oidc_verifier', verifier)
+    sessionStorage.setItem('oidc_tenant', tenantId.value)
+    sessionStorage.setItem('oidc_redirect', redirectUri)
+    const res = await $fetch<{ data?: { authorizeUrl?: string } }>('/api/auth/oidc/authorize', {
+      query: {
+        tenant: tenantId.value,
+        redirect_uri: redirectUri,
+        code_challenge: challenge
+      }
+    })
+    const url = res?.data?.authorizeUrl
+    if (url) window.location.href = url
+  } catch (e: unknown) {
+    const err = e as { data?: { error?: { message?: string } } }
+    error.value = err?.data?.error?.message || t('login.error')
+  }
+}
+
+onMounted(async () => {
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const state = params.get('state')
+  if (!code || !state) return
+  const verifier = sessionStorage.getItem('oidc_verifier')
+  const tenant = sessionStorage.getItem('oidc_tenant')
+  const redirectUri = sessionStorage.getItem('oidc_redirect')
+  if (!verifier || !tenant || !redirectUri) return
+  try {
+    await $fetch('/api/auth/oidc/callback', {
+      method: 'POST',
+      body: { tenantId: tenant, code, state, codeVerifier: verifier, redirectUri }
+    })
+    sessionStorage.removeItem('oidc_verifier')
+    sessionStorage.removeItem('oidc_tenant')
+    sessionStorage.removeItem('oidc_redirect')
+    await navigateTo('/dashboard')
+  } catch (e: unknown) {
+    const err = e as { data?: { error?: { message?: string } } }
+    error.value = err?.data?.error?.message || t('login.error')
+  }
+})
 </script>
 
 <style scoped>

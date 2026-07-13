@@ -8,13 +8,21 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	adminhttp "github.com/kore/kore/internal/modules/admin/adapters/http"
 	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
 	budgethttp "github.com/kore/kore/internal/modules/budget/adapters/http"
 	congeshttp "github.com/kore/kore/internal/modules/conges/adapters/http"
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
+	etthttp "github.com/kore/kore/internal/modules/ett/adapters/http"
+	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
+	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
+	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
+	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
+	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
+	supporthttp "github.com/kore/kore/internal/modules/support/adapters/http"
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
 	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
 	"gopkg.in/yaml.v3"
@@ -27,6 +35,7 @@ func buildAPIRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
 		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, "", nil, nil)
+		orghttp.RegisterOIDCRoutes(r, nil, nil, nil)
 		notifhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		wfhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		crahttp.RegisterRoutes(r, nil, nil, nil, nil)
@@ -35,6 +44,14 @@ func buildAPIRouter() chi.Router {
 		tmahttp.RegisterRoutes(r, nil, nil, nil, nil)
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
+		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
+		invoicinghttp.RegisterRoutes(r, nil, nil, nil, nil)
+		adminhttp.RegisterRoutes(r, nil, nil, nil, nil)
+		reportinghttp.RegisterRoutes(r, nil, nil, nil, nil)
+		ssiihttp.RegisterRoutes(r, nil, nil, nil, nil)
+		etthttp.RegisterRoutes(r, nil, nil, nil, nil)
+		supporthttp.RegisterRoutes(r, nil, nil, nil, nil)
+		maintenancehttp.RegisterRoutes(r, nil, nil, nil, nil)
 	})
 	return r
 }

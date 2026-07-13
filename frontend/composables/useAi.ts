@@ -97,6 +97,30 @@ export function useAi() {
     })
   }
 
+  const fetchSettings = async () => {
+    return $fetch<{ data?: Record<string, unknown> }>('/api/ai/settings')
+  }
+
+  const enableAI = async (payload: { noticeAccepted: boolean; workersInformed: boolean }) => {
+    return $fetch('/api/ai/settings/enable', { method: 'POST', body: payload })
+  }
+
+  const fetchSimilarDemands = async (query: { subject: string; applicationId?: string; limit?: number }) => {
+    return $fetch('/api/ai/tma/similar', { query })
+  }
+
+  const fetchCraAnomalies = async (timesheetId: string) => {
+    return $fetch('/api/ai/cra/anomalies', { query: { timesheetId } })
+  }
+
+  const explainWorkflow = async (instanceId: string) => {
+    return $fetch('/api/ai/workflow/explain', { query: { instanceId } })
+  }
+
+  const explainRequest = async (requestId: string) => {
+    return $fetch(`/api/ai/explain/${requestId}`)
+  }
+
   return {
     extractFetchError,
     generateAnalysisDraft,
@@ -106,6 +130,12 @@ export function useAi() {
     estimateBudgetEffort,
     suggestBudgetDemands,
     suggestCraPrefill,
-    publicChat
+    publicChat,
+    fetchSettings,
+    enableAI,
+    fetchSimilarDemands,
+    fetchCraAnomalies,
+    explainWorkflow,
+    explainRequest
   }
 }

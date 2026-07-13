@@ -103,6 +103,20 @@ func (s *Service) SuggestAnalysisDraft(ctx context.Context, cmd ports.AnalysisDr
 		}
 	}
 	draft := buildAnalysisDraft(subject)
+	model := stub.ModelName
+	if resp, err := s.llmComplete(ctx, capCode,
+		`Rédige un brouillon d'analyse TMA en français. Format strict, une ligne par section :
+FUNCTIONAL|analyse fonctionnelle
+TECHNICAL|investigation technique
+RISKS|risques identifiés
+TESTS|scénario de test`,
+		map[string]string{"subject": subject},
+	); err == nil {
+		if parsed, ok := parseAnalysisDraftLLM(resp.Text); ok {
+			draft = parsed
+			model = resp.Model
+		}
+	}
 	out, _ := json.Marshal(draft)
 	reqID, err := s.logRequest(ctx, domain.RequestLog{
 		TenantID:       cmd.TenantID,
@@ -112,7 +126,7 @@ func (s *Service) SuggestAnalysisDraft(ctx context.Context, cmd ports.AnalysisDr
 		EntityID:       ptrUUID(cmd.DemandID),
 		InputHash:      hashInput(cmd),
 		OutputJSON:     out,
-		Model:          stub.ModelName,
+		Model:          model,
 		ExplainContext: map[string]any{"subject": subject, "capability": capCode},
 	})
 	if err != nil {
@@ -374,33 +388,20 @@ func (s *Service) DashboardBriefing(ctx context.Context, cmd ports.DashboardBrie
 	if err := s.ensureAI(ctx, cmd.TenantID, capCode); err != nil {
 		return ports.BriefingResult{}, err
 	}
-	var parts []string
-	if cmd.CraStatus != "" {
-		parts = append(parts, fmt.Sprintf("CRA du mois : %s.", cmd.CraStatus))
-	}
-	if cmd.LeavePending > 0 {
-		parts = append(parts, fmt.Sprintf("%d demande(s) de congés en attente.", cmd.LeavePending))
-	}
-	if cmd.PendingValidations > 0 {
-		parts = append(parts, fmt.Sprintf("%d validation(s) manager à traiter.", cmd.PendingValidations))
-	}
-	if cmd.TmaOpen > 0 {
-		parts = append(parts, fmt.Sprintf("%d demande(s) TMA ouverte(s).", cmd.TmaOpen))
-	}
-	if cmd.BudgetOverrun > 0 {
-		parts = append(parts, fmt.Sprintf("%d budget(s) en dépassement.", cmd.BudgetOverrun))
-	} else if cmd.BudgetConsumption > 0 {
-		parts = append(parts, fmt.Sprintf("Consommation budget moyenne : %.0f%%.", cmd.BudgetConsumption))
-	}
-	text := "Aucune action urgente détectée."
-	if len(parts) > 0 {
-		text = strings.Join(parts, " ")
+	text := buildBriefingFallback(cmd)
+	model := stub.ModelName
+	if resp, err := s.llmComplete(ctx, capCode,
+		`Synthétise un briefing dashboard concis en français (2-4 phrases). Priorise les actions urgentes. Ne invente pas de chiffres absents des données fournies.`,
+		briefingContextFields(cmd),
+	); err == nil && strings.TrimSpace(resp.Text) != "" {
+		text = strings.TrimSpace(resp.Text)
+		model = resp.Model
 	}
 	result := ports.BriefingResult{Text: text}
 	out, _ := json.Marshal(result)
 	reqID, err := s.logRequest(ctx, domain.RequestLog{
 		TenantID: cmd.TenantID, UserID: cmd.UserID, CapabilityCode: capCode,
-		InputHash: hashInput(cmd), OutputJSON: out, Model: stub.ModelName,
+		InputHash: hashInput(cmd), OutputJSON: out, Model: model,
 	})
 	if err != nil {
 		return ports.BriefingResult{}, err
@@ -485,11 +486,16 @@ func actionCodes(actions []wfdomain.ActionCode) []string {
 	return out
 }
 
-func (s *Service) PublicChat(_ context.Context, cmd ports.PublicChatCommand) (ports.ChatResult, error) {
+func (s *Service) PublicChat(ctx context.Context, cmd ports.PublicChatCommand) (ports.ChatResult, error) {
 	reply := stub.PublicChatReply(cmd.Message)
+	if resp, err := s.llmComplete(ctx, "public.chat",
+		`Tu es l'assistant commercial Kore (plateforme PSA/ESN : CRA, TMA, congés, budget). Réponds brièvement en français. Oriente vers une démo ou la page tarifs si pertinent. Ne cite pas de prix précis.`,
+		map[string]string{"message": cmd.Message},
+	); err == nil && strings.TrimSpace(resp.Text) != "" {
+		reply = strings.TrimSpace(resp.Text)
+	}
 	result := ports.ChatResult{Reply: reply}
-	reqID := uuid.New()
-	result.RequestID = reqID
+	result.RequestID = uuid.New()
 	return result, nil
 }
 

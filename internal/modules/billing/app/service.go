@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	stripegw "github.com/kore/kore/internal/modules/billing/adapters/stripe"
 	"github.com/kore/kore/internal/modules/billing/adapters/stripemock"
 	"github.com/kore/kore/internal/modules/billing/domain"
 	"github.com/kore/kore/internal/modules/billing/ports"
@@ -23,12 +23,16 @@ type Service struct {
 	trialDays int
 }
 
-func NewService(repo ports.SubscriptionRepository, trialDays int) *Service {
-	webhookSecret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+func NewService(repo ports.SubscriptionRepository, stripeSecretKey, webhookSecret string, trialDays int) *Service {
 	if webhookSecret == "" {
 		webhookSecret = "whsec_test"
 	}
-	gateway := stripemock.New(webhookSecret, trialDays)
+	var gateway ports.PaymentGateway
+	if stripegw.Enabled(stripeSecretKey) {
+		gateway = stripegw.New(stripeSecretKey, webhookSecret, trialDays)
+	} else {
+		gateway = stripemock.New(webhookSecret, trialDays)
+	}
 	return &Service{
 		repo:      repo,
 		gateway:   gateway,

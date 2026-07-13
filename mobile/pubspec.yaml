@@ -1,0 +1,28 @@
+name: kore_mobile
+description: Client mobile Kore (CRA & congés) — iOS / Android.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  flutter_secure_storage: ^9.2.4
+  flutter_appauth: ^8.0.2
+  go_router: ^14.6.2
+  intl: ^0.20.2
+  crypto: ^3.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

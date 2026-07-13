@@ -93,6 +93,65 @@ paths:
       responses:
         "201":
           description: Créé
+  /users/{id}:
+    put:
+      summary: Mettre à jour un utilisateur
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Mis à jour
+    delete:
+      summary: Supprimer un utilisateur (soft delete)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Supprimé
+  /users/{id}/deactivate:
+    patch:
+      summary: Désactiver un utilisateur
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Désactivé
+  /auth/oidc/authorize:
+    get:
+      summary: URL de redirection OIDC SSO
+      parameters:
+        - name: tenant
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: redirect_uri
+          in: query
+          required: true
+          schema: { type: string }
+        - name: code_challenge
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: URL authorize
+  /auth/oidc/callback:
+    post:
+      summary: Callback OIDC → JWT Kore
+      responses:
+        "200":
+          description: Tokens émis
+  /admin/identity-providers:
+    get:
+      summary: Liste IdP du tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
+  /admin/identity-providers/{id}:
+    put:
+      summary: Configurer IdP OIDC
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Configuré
   /clients:
     get:
       summary: Liste clients
@@ -630,6 +689,306 @@ paths:
       responses:
         "200":
           description: Création validée
+  /integrations/connections:
+    get:
+      summary: Liste connexions intégration
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer connexion intégration
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /integrations/connections/{id}:
+    get:
+      summary: Détail connexion
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+    delete:
+      summary: Supprimer connexion
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /integrations/connections/{id}/sync:
+    post:
+      summary: Synchroniser connexion
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /integrations/api-keys:
+    get:
+      summary: Liste clés API
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer clé API
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /integrations/api-keys/{id}:
+    delete:
+      summary: Révoquer clé API
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /invoices:
+    get:
+      summary: Liste factures
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer facture
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /invoices/{id}:
+    get:
+      summary: Détail facture
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /invoices/compute-virtual:
+    post:
+      summary: Calcul facture virtuelle
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /invoices/{id}/transmit:
+    post:
+      summary: Transmettre à PDP
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /invoices/{id}/credit-note:
+    post:
+      summary: Émettre avoir
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /admin/parameters:
+    get:
+      summary: Paramètres admin tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    put:
+      summary: Mettre à jour paramètres admin
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /admin/templates:
+    get:
+      summary: Liste modèles admin
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer modèle admin
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /admin/templates/{id}:
+    get:
+      summary: Détail modèle
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /admin/phone-directory:
+    get:
+      summary: Annuaire téléphonique
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Ajouter entrée annuaire
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /gantt:
+    get:
+      summary: Données Gantt
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /planning:
+    get:
+      summary: Planning 60j
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /dashboards/{code}:
+    get:
+      summary: Dashboard applicatif
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+  /reports/run:
+    post:
+      summary: Exécuter rapport
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /billing-stats:
+    get:
+      summary: Statistiques CA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /missions:
+    get:
+      summary: Liste missions SSII
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer mission
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /missions/{id}:
+    get:
+      summary: Détail mission
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /missions/{id}/stop:
+    post:
+      summary: Arrêter mission
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /missions/{id}/end-date:
+    put:
+      summary: Modifier fin mission
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /ett/clock-in:
+    post:
+      summary: Pointage entrée ETT
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /ett/clock-out:
+    post:
+      summary: Pointage sortie ETT
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ett/records:
+    get:
+      summary: Relevés ETT
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ett/records/{id}/correct:
+    post:
+      summary: Correction tracée ETT
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /ett/records/{id}/audit:
+    get:
+      summary: Journal audit ETT
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /tickets:
+    get:
+      summary: Liste tickets support
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer ticket
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /tickets/{id}:
+    get:
+      summary: Détail ticket
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/take-over:
+    post:
+      summary: Prendre en charge ticket
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/replies:
+    post:
+      summary: Répondre au ticket
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/resolve:
+    post:
+      summary: Résoudre ticket
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /work-requests:
+    get:
+      summary: Liste travaux maintenance
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer demande travaux
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /work-requests/{id}:
+    get:
+      summary: Détail travaux
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /work-requests/{id}/assign:
+    post:
+      summary: Affecter travaux
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /work-requests/{id}/progress:
+    post:
+      summary: Avancement travaux
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /work-requests/{id}/complete:
+    post:
+      summary: Terminer travaux
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
 components:
   securitySchemes:
     bearerAuth:

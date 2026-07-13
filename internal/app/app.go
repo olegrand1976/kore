@@ -14,6 +14,9 @@ import (
 	aitma "github.com/kore/kore/internal/modules/ai/adapters/tma"
 	aiworkflow "github.com/kore/kore/internal/modules/ai/adapters/workflow"
 	aiapp "github.com/kore/kore/internal/modules/ai/app"
+	adminhttp "github.com/kore/kore/internal/modules/admin/adapters/http"
+	adminpostgres "github.com/kore/kore/internal/modules/admin/adapters/postgres"
+	adminapp "github.com/kore/kore/internal/modules/admin/app"
 	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
 	billingpostgres "github.com/kore/kore/internal/modules/billing/adapters/postgres"
 	billingapp "github.com/kore/kore/internal/modules/billing/app"
@@ -32,6 +35,18 @@ import (
 	crapdf "github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
 	craapp "github.com/kore/kore/internal/modules/cra/app"
+	etthttp "github.com/kore/kore/internal/modules/ett/adapters/http"
+	ettpostgres "github.com/kore/kore/internal/modules/ett/adapters/postgres"
+	ettapp "github.com/kore/kore/internal/modules/ett/app"
+	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
+	integrationspostgres "github.com/kore/kore/internal/modules/integrations/adapters/postgres"
+	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
+	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
+	invoicingpostgres "github.com/kore/kore/internal/modules/invoicing/adapters/postgres"
+	invoicingapp "github.com/kore/kore/internal/modules/invoicing/app"
+	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
+	maintenancepostgres "github.com/kore/kore/internal/modules/maintenance/adapters/postgres"
+	maintenanceapp "github.com/kore/kore/internal/modules/maintenance/app"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
 	notifpostgres "github.com/kore/kore/internal/modules/notifications/adapters/postgres"
 	notifsmtp "github.com/kore/kore/internal/modules/notifications/adapters/smtp"
@@ -43,6 +58,15 @@ import (
 	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
+	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
+	reportingpostgres "github.com/kore/kore/internal/modules/reporting/adapters/postgres"
+	reportingapp "github.com/kore/kore/internal/modules/reporting/app"
+	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
+	ssiipostgres "github.com/kore/kore/internal/modules/ssii/adapters/postgres"
+	ssiiapp "github.com/kore/kore/internal/modules/ssii/app"
+	supporthttp "github.com/kore/kore/internal/modules/support/adapters/http"
+	supportpostgres "github.com/kore/kore/internal/modules/support/adapters/postgres"
+	supportapp "github.com/kore/kore/internal/modules/support/app"
 	tmacra "github.com/kore/kore/internal/modules/tma/adapters/cra"
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
 	tmanotif "github.com/kore/kore/internal/modules/tma/adapters/notifications"
@@ -112,8 +136,16 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	tmaRepo := tmapostgres.NewRepository(pool)
 	billingRepo := billingpostgres.NewRepository(pool)
 	publicRepo := publicpostgres.NewRepository(pool)
+	integrationsRepo := integrationspostgres.NewRepository(pool)
+	invoicingRepo := invoicingpostgres.NewRepository(pool)
+	adminRepo := adminpostgres.NewRepository(pool)
+	reportingRepo := reportingpostgres.NewRepository(pool)
+	ssiiRepo := ssiipostgres.NewRepository(pool)
+	ettRepo := ettpostgres.NewRepository(pool)
+	supportRepo := supportpostgres.NewRepository(pool)
+	maintenanceRepo := maintenancepostgres.NewRepository(pool)
 
-	billingService := billingapp.NewService(billingRepo, cfg.BillingTrialDays)
+	billingService := billingapp.NewService(billingRepo, cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.BillingTrialDays)
 
 	orgService := orgapp.NewOrganizationService(orgRepo)
 	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
@@ -154,6 +186,16 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	)
 	publicService := publicapp.NewServiceWithCache(publicRepo, billingService, publicnotif.NewNotifierAdapter(notifService), cfg.StripePublishableKey, appCache, keyBuilder)
 
+	integrationsService := integrationsapp.NewService(integrationsRepo)
+	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
+	invoicingService := invoicingapp.NewService(invoicingRepo)
+	adminService := adminapp.NewService(adminRepo)
+	reportingService := reportingapp.NewService(reportingRepo)
+	ssiiService := ssiiapp.NewService(ssiiRepo)
+	ettService := ettapp.NewService(ettRepo)
+	supportService := supportapp.NewService(supportRepo)
+	maintenanceService := maintenanceapp.NewService(maintenanceRepo)
+
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
 	deps := httpx.Dependencies{
 		Logger:            log,
@@ -184,7 +226,10 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	})
 
 	router.Route("/api/v1", func(r chi.Router) {
+		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
+		idpService := orgapp.NewIdentityProviderService(orgRepo)
 		orghttp.RegisterRoutes(r, orgService, userService, clientService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
+		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
@@ -194,6 +239,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService)
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
+		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
+		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService)
+		adminhttp.RegisterRoutes(r, adminService, tokenIssuer, authorizer, billingService)
+		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)
+		ssiihttp.RegisterRoutes(r, ssiiService, tokenIssuer, authorizer, billingService)
+		etthttp.RegisterRoutes(r, ettService, tokenIssuer, authorizer, billingService)
+		supporthttp.RegisterRoutes(r, supportService, tokenIssuer, authorizer, billingService)
+		maintenancehttp.RegisterRoutes(r, maintenanceService, tokenIssuer, authorizer, billingService)
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
 	})
 

@@ -2,6 +2,9 @@
   <div>
     <AppPageHeader :title="$t('tma.title')">
       <template #actions>
+        <AppButton variant="ghost" size="sm" @click="navigateTo('/tma/gantt')">
+          {{ $t('tma.gantt') }}
+        </AppButton>
         <AppButton variant="ghost" size="sm" @click="exportXml">
           {{ $t('tma.export') }}
         </AppButton>
