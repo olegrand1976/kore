@@ -28,7 +28,29 @@
     "organisation": "Organisation",
     "users": "Utilisateurs",
     "settings": "Paramètres",
-    "platform": "Plateforme"
+    "platform": "Plateforme",
+    "profile": "Mon profil"
+  },
+  "profile": {
+    "title": "Mon profil",
+    "subtitle": "Vos informations personnelles",
+    "loading": "Chargement…",
+    "load_error": "Impossible de charger votre profil.",
+    "not_available": "Profil indisponible",
+    "none": "—",
+    "section_account": "Compte",
+    "section_org": "Organisation",
+    "field_first_name": "Prénom",
+    "field_last_name": "Nom",
+    "field_login": "Identifiant",
+    "field_email": "Email",
+    "field_account_type": "Type de compte",
+    "field_lang": "Langue",
+    "field_team": "Équipe",
+    "field_profile": "Profil",
+    "account_type_interne": "Interne",
+    "account_type_client": "Client",
+    "account_type_prestataire": "Prestataire"
   },
   "brand": {
     "name": "Kore",

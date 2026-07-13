@@ -28,7 +28,29 @@
     "organisation": "Organization",
     "users": "Users",
     "settings": "Settings",
-    "platform": "Platform"
+    "platform": "Platform",
+    "profile": "My profile"
+  },
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Your personal information",
+    "loading": "Loading…",
+    "load_error": "Unable to load your profile.",
+    "not_available": "Profile not available",
+    "none": "—",
+    "section_account": "Account",
+    "section_org": "Organization",
+    "field_first_name": "First name",
+    "field_last_name": "Last name",
+    "field_login": "Login",
+    "field_email": "Email",
+    "field_account_type": "Account type",
+    "field_lang": "Language",
+    "field_team": "Team",
+    "field_profile": "Profile",
+    "account_type_interne": "Internal",
+    "account_type_client": "Customer",
+    "account_type_prestataire": "Contractor"
   },
   "brand": {
     "name": "Kore",

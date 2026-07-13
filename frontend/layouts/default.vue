@@ -285,6 +285,9 @@ const bottomNavItems = computed(() => mainNavItems.value.slice(0, 4))
 const isNarrowMain = computed(() => route.meta.narrow === true)
 
 const pageTitle = computed(() => {
+  const active = activeNavItem.value
+  if (active) return active.label
+
   if (route.path.startsWith('/cra/') && route.params.id) {
     return t('nav.cra')
   }
