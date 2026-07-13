@@ -104,7 +104,7 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 
 	tokenResp, err := s.gateway.ExchangeCode(ctx, idp.Issuer, idp.ClientID, idp.ClientSecret, cmd.RedirectURI, cmd.Code, cmd.CodeVerifier)
 	if err != nil {
-		return ports.AuthResult{}, domain.ErrInvalidIDPToken
+		return ports.AuthResult{}, fmt.Errorf("%w: %v", domain.ErrInvalidIDPToken, err)
 	}
 
 	var claims oidc.IDTokenClaims
@@ -114,6 +114,9 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 		claims, err = oidc.ParseIDTokenPayload(tokenResp.IDToken)
 	}
 	if err != nil || claims.Subject == "" {
+		if err != nil {
+			return ports.AuthResult{}, fmt.Errorf("%w: %v", domain.ErrInvalidIDPToken, err)
+		}
 		return ports.AuthResult{}, domain.ErrInvalidIDPToken
 	}
 

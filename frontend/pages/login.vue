@@ -97,6 +97,11 @@ onMounted(async () => {
   const tenant = sessionStorage.getItem('oidc_tenant')
   const redirectUri = sessionStorage.getItem('oidc_redirect')
   if (!verifier || !tenant || !redirectUri) return
+  const handledKey = `oidc_callback_handled:${state}`
+  if (sessionStorage.getItem(handledKey) === '1') {
+    return
+  }
+  sessionStorage.setItem(handledKey, '1')
   try {
     await $fetch('/api/auth/oidc/callback', {
       method: 'POST',

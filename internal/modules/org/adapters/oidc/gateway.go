@@ -28,9 +28,7 @@ type TokenResponse struct {
 }
 
 type IDTokenClaims struct {
-	Subject string `json:"sub"`
 	Email   string `json:"email"`
-	Issuer  string `json:"iss"`
 	Nonce   string `json:"nonce"`
 	jwt.RegisteredClaims
 }

@@ -14,6 +14,10 @@ source "${SCRIPT_DIR}/lib/gcp-env.sh"
 if [[ -f "${REPO_ROOT}/.env.oidc" ]]; then
   # shellcheck disable=SC1091
   set -a && source "${REPO_ROOT}/.env.oidc" && set +a
+elif [[ -f "${REPO_ROOT}/.env.iodc" ]]; then
+  # Compat: certains environnements ont un fichier mal nommé ".env.iodc"
+  # shellcheck disable=SC1091
+  set -a && source "${REPO_ROOT}/.env.iodc" && set +a
 fi
 
 CLIENT_ID="${OIDC_GOOGLE_CLIENT_ID:-}"
