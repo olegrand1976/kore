@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	ErrMissionNotFound        = errors.New("mission not found")
-	ErrInvalidMissionStatus   = errors.New("invalid mission status transition")
+	ErrMissionNotFound      = errors.New("mission not found")
+	ErrInvalidMissionStatus = errors.New("invalid mission status transition")
 )
 
 type MissionStatus string
 
 const (
-	MissionStatusActive  MissionStatus = "active"
-	MissionStatusArretee MissionStatus = "arretee"
+	MissionStatusActive   MissionStatus = "active"
+	MissionStatusArretee  MissionStatus = "arretee"
 	MissionStatusTerminee MissionStatus = "terminee"
 )
 

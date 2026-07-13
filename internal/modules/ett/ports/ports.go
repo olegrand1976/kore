@@ -22,11 +22,11 @@ type ClockOutCommand struct {
 }
 
 type CorrectRecordCommand struct {
-	TenantID  kernel.TenantID
-	RecordID  uuid.UUID
-	ActorID   uuid.UUID
-	ClockIn   *time.Time
-	ClockOut  *time.Time
+	TenantID kernel.TenantID
+	RecordID uuid.UUID
+	ActorID  uuid.UUID
+	ClockIn  *time.Time
+	ClockOut *time.Time
 }
 
 type RecordsQuery struct {

@@ -24,7 +24,7 @@ func (s *oidcRepoStub) SaveTenant(context.Context, domain.Tenant) error { return
 func (s *oidcRepoStub) GetTenant(context.Context, kernel.TenantID) (domain.Tenant, error) {
 	return domain.Tenant{}, nil
 }
-func (s *oidcRepoStub) SaveSociete(context.Context, domain.Societe) error { return nil }
+func (s *oidcRepoStub) SaveSociete(context.Context, domain.Societe) error   { return nil }
 func (s *oidcRepoStub) UpdateSociete(context.Context, domain.Societe) error { return nil }
 func (s *oidcRepoStub) ListSocietes(context.Context, kernel.TenantID) ([]domain.Societe, error) {
 	return nil, nil
@@ -32,8 +32,8 @@ func (s *oidcRepoStub) ListSocietes(context.Context, kernel.TenantID) ([]domain.
 func (s *oidcRepoStub) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (domain.Societe, error) {
 	return domain.Societe{}, nil
 }
-func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error { return nil }
-func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error { return nil }
+func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error               { return nil }
+func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error         { return nil }
 func (s *oidcRepoStub) SaveApplication(context.Context, domain.Application) error { return nil }
 func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil

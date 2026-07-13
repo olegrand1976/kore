@@ -215,11 +215,11 @@ type TenantUsageSummary struct {
 }
 
 type PlatformOverviewSummary struct {
-	TotalTenants      int            `json:"totalTenants"`
-	ActiveTenants30d  int            `json:"activeTenants30d"`
-	TotalActiveUsers  int            `json:"totalActiveUsers"`
-	TotalSeatLimit    int            `json:"totalSeatLimit"`
-	TenantsByStatus   map[string]int `json:"tenantsByStatus"`
+	TotalTenants     int            `json:"totalTenants"`
+	ActiveTenants30d int            `json:"activeTenants30d"`
+	TotalActiveUsers int            `json:"totalActiveUsers"`
+	TotalSeatLimit   int            `json:"totalSeatLimit"`
+	TenantsByStatus  map[string]int `json:"tenantsByStatus"`
 }
 
 type PlatformOverview struct {

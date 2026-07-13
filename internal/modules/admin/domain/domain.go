@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrParameterSetNotFound      = errors.New("parameter set not found")
-	ErrTemplateNotFound          = errors.New("template not found")
+	ErrParameterSetNotFound        = errors.New("parameter set not found")
+	ErrTemplateNotFound            = errors.New("template not found")
 	ErrPhoneDirectoryEntryNotFound = errors.New("phone directory entry not found")
 )
 

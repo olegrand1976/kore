@@ -121,13 +121,13 @@ type Service struct {
 }
 
 type Application struct {
-	ID               uuid.UUID       `json:"id"`
-	TenantID         kernel.TenantID `json:"tenantId"`
-	ServiceID        uuid.UUID       `json:"serviceId"`
-	Libelle          string          `json:"libelle"`
-	Proprietaire     string          `json:"proprietaire,omitempty"`
-	ModeFacturation  string          `json:"modeFacturation,omitempty"`
-	UOActivee        bool            `json:"uoActivee"`
+	ID              uuid.UUID       `json:"id"`
+	TenantID        kernel.TenantID `json:"tenantId"`
+	ServiceID       uuid.UUID       `json:"serviceId"`
+	Libelle         string          `json:"libelle"`
+	Proprietaire    string          `json:"proprietaire,omitempty"`
+	ModeFacturation string          `json:"modeFacturation,omitempty"`
+	UOActivee       bool            `json:"uoActivee"`
 }
 
 type ClientContact struct {

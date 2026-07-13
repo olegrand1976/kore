@@ -49,9 +49,9 @@ func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http
 			return
 		}
 		var req struct {
-			ClientID uuid.UUID              `json:"clientId"`
-			Type     domain.InvoiceType     `json:"type"`
-			Currency string                 `json:"currency"`
+			ClientID uuid.UUID                `json:"clientId"`
+			Type     domain.InvoiceType       `json:"type"`
+			Currency string                   `json:"currency"`
 			Lines    []ports.InvoiceLineInput `json:"lines"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

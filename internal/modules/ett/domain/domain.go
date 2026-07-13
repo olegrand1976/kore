@@ -47,12 +47,12 @@ type CountryWorkRule struct {
 
 func NewWorkTimeRecord(tenant kernel.TenantID, userID uuid.UUID, workDate time.Time) WorkTimeRecord {
 	return WorkTimeRecord{
-		ID:       uuid.New(),
-		TenantID: tenant,
-		UserID:   userID,
-		WorkDate: workDate,
-		Status:   "pointed",
-		Origin:   "web",
+		ID:        uuid.New(),
+		TenantID:  tenant,
+		UserID:    userID,
+		WorkDate:  workDate,
+		Status:    "pointed",
+		Origin:    "web",
 		CreatedAt: time.Now().UTC(),
 	}
 }

@@ -21,7 +21,7 @@ func (r refreshUserRepo) SaveTenant(context.Context, domain.Tenant) error { retu
 func (r refreshUserRepo) GetTenant(context.Context, kernel.TenantID) (domain.Tenant, error) {
 	return domain.Tenant{}, nil
 }
-func (r refreshUserRepo) SaveSociete(context.Context, domain.Societe) error { return nil }
+func (r refreshUserRepo) SaveSociete(context.Context, domain.Societe) error   { return nil }
 func (r refreshUserRepo) UpdateSociete(context.Context, domain.Societe) error { return nil }
 func (r refreshUserRepo) ListSocietes(context.Context, kernel.TenantID) ([]domain.Societe, error) {
 	return nil, nil
@@ -29,8 +29,8 @@ func (r refreshUserRepo) ListSocietes(context.Context, kernel.TenantID) ([]domai
 func (r refreshUserRepo) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (domain.Societe, error) {
 	return domain.Societe{}, nil
 }
-func (r refreshUserRepo) SaveSite(context.Context, domain.Site) error { return nil }
-func (r refreshUserRepo) SaveService(context.Context, domain.Service) error { return nil }
+func (r refreshUserRepo) SaveSite(context.Context, domain.Site) error               { return nil }
+func (r refreshUserRepo) SaveService(context.Context, domain.Service) error         { return nil }
 func (r refreshUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
 func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
@@ -80,7 +80,9 @@ func (r refreshUserRepo) ResolveUserEmails(context.Context, kernel.TenantID, []u
 func (r refreshUserRepo) ResolveSocieteIDForUser(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
-func (r refreshUserRepo) SaveIdentityProvider(context.Context, domain.IdentityProvider) error { return nil }
+func (r refreshUserRepo) SaveIdentityProvider(context.Context, domain.IdentityProvider) error {
+	return nil
+}
 func (r refreshUserRepo) GetIdentityProvider(context.Context, kernel.TenantID) (domain.IdentityProvider, error) {
 	return domain.IdentityProvider{}, domain.ErrSSONotEnabled
 }

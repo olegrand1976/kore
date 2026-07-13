@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrTicketNotFound        = errors.New("ticket not found")
-	ErrInvalidTicketState    = errors.New("invalid ticket state transition")
+	ErrTicketNotFound     = errors.New("ticket not found")
+	ErrInvalidTicketState = errors.New("invalid ticket state transition")
 )
 
 type TicketState string

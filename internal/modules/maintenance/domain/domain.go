@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrWorkRequestNotFound     = errors.New("work request not found")
-	ErrInvalidWorkState        = errors.New("invalid work state transition")
+	ErrWorkRequestNotFound = errors.New("work request not found")
+	ErrInvalidWorkState    = errors.New("invalid work state transition")
 )
 
 type WorkState string

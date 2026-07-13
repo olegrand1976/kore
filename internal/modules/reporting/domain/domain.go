@@ -31,8 +31,8 @@ type Dashboard struct {
 }
 
 type GanttView struct {
-	Period  kernel.Period
-	Items   []GanttItem
+	Period kernel.Period
+	Items  []GanttItem
 }
 
 type GanttItem struct {

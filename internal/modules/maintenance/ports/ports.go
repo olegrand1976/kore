@@ -15,9 +15,9 @@ type CreateWorkRequestCommand struct {
 }
 
 type AssignCommand struct {
-	TenantID     kernel.TenantID
-	RequestID    uuid.UUID
-	AssigneeID   uuid.UUID
+	TenantID   kernel.TenantID
+	RequestID  uuid.UUID
+	AssigneeID uuid.UUID
 }
 
 type ProgressCommand struct {

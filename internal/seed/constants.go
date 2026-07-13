@@ -5,14 +5,14 @@ import "github.com/google/uuid"
 const (
 	TenantName = "Kore Demo"
 
-	AdminLogin      = "ADM_admin"
-	AdminEmail      = "lalouviere.it.sc@gmail.com"
-	AdminPassword   = "Admin123!"
+	AdminLogin    = "ADM_admin"
+	AdminEmail    = "lalouviere.it.sc@gmail.com"
+	AdminPassword = "Admin123!"
 
-	GoogleIdPName  = "Google"
-	GoogleIssuer   = "https://accounts.google.com"
-	GoogleJWKSURI  = "https://www.googleapis.com/oauth2/v3/certs"
-	GoogleScopes   = "openid profile email"
+	GoogleIdPName   = "Google"
+	GoogleIssuer    = "https://accounts.google.com"
+	GoogleJWKSURI   = "https://www.googleapis.com/oauth2/v3/certs"
+	GoogleScopes    = "openid profile email"
 	ManagerLogin    = "MGR_manager"
 	ManagerPassword = "Manager123!"
 	CollabLogin     = "COL_collab"
@@ -41,13 +41,13 @@ const (
 )
 
 var (
-	DemoTenantID  = uuid.MustParse("00000000-0000-4000-8000-000000000001")
-	DemoSocieteID = uuid.MustParse("00000000-0000-4000-8000-000000000010")
-	DemoSiteID    = uuid.MustParse("00000000-0000-4000-8000-000000000011")
-	DemoServiceID = uuid.MustParse("00000000-0000-4000-8000-000000000012")
-	DemoAppID     = uuid.MustParse("00000000-0000-4000-8000-000000000013")
-	DemoEquipeID  = uuid.MustParse("00000000-0000-4000-8000-000000000014")
-	DemoApp2ID    = uuid.MustParse("00000000-0000-4000-8000-000000000015")
-	DemoEquipe2ID = uuid.MustParse("00000000-0000-4000-8000-000000000016")
+	DemoTenantID    = uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	DemoSocieteID   = uuid.MustParse("00000000-0000-4000-8000-000000000010")
+	DemoSiteID      = uuid.MustParse("00000000-0000-4000-8000-000000000011")
+	DemoServiceID   = uuid.MustParse("00000000-0000-4000-8000-000000000012")
+	DemoAppID       = uuid.MustParse("00000000-0000-4000-8000-000000000013")
+	DemoEquipeID    = uuid.MustParse("00000000-0000-4000-8000-000000000014")
+	DemoApp2ID      = uuid.MustParse("00000000-0000-4000-8000-000000000015")
+	DemoEquipe2ID   = uuid.MustParse("00000000-0000-4000-8000-000000000016")
 	DemoGoogleIdPID = uuid.MustParse("00000000-0000-4000-8000-000000000020")
 )
