@@ -434,7 +434,7 @@ const canDownload = computed(() => Boolean(commercial.client.trim() && commercia
 
 const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
-  return `${t('cra.title')} — ${formatMonth(timesheet.value.month)}`
+  return t('cra.detail_title', { period: formatMonth(timesheet.value.month) })
 })
 
 const formatMonth = (raw: string) => {

@@ -43,11 +43,25 @@ func (r *ChromedpRenderer) Render(ctx context.Context, ts domain.Timesheet) (dom
 }
 
 func htmlToPDF(ctx context.Context, html string) ([]byte, error) {
+	userDataDir := strings.TrimSpace(os.Getenv("CHROME_USER_DATA_DIR"))
+	if userDataDir == "" {
+		userDataDir = "/tmp/chrome-user-data"
+	}
+	if err := os.MkdirAll(userDataDir, 0o700); err != nil {
+		return nil, fmt.Errorf("chrome user data dir: %w", err)
+	}
+
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.NoFirstRun,
+		chromedp.NoDefaultBrowserCheck,
+		chromedp.UserDataDir(userDataDir),
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("disable-software-rasterizer", true),
+		chromedp.Flag("disable-extensions", true),
 	)
 	if chromePath := strings.TrimSpace(os.Getenv("CHROME_PATH")); chromePath != "" {
 		opts = append(opts, chromedp.ExecPath(chromePath))

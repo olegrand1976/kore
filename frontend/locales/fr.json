@@ -272,6 +272,7 @@
   },
   "cra": {
     "title": "Comptes-rendus d'activité",
+    "detail_title": "CRA — {period}",
     "empty": "Aucun CRA pour le moment.",
     "empty_desc": "Créez votre premier compte-rendu d'activité.",
     "new": "CRA du mois en cours",

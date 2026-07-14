@@ -272,6 +272,7 @@
   },
   "cra": {
     "title": "Activity reports",
+    "detail_title": "CRA — {period}",
     "empty": "No timesheets yet.",
     "empty_desc": "Create your first activity report.",
     "new": "Current month timesheet",

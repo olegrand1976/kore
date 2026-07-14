@@ -12,8 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 ENV CHROME_PATH=/usr/bin/chromium
+ENV HOME=/tmp
+ENV CHROME_USER_DATA_DIR=/tmp/chrome-user-data
 COPY --from=build /out/kore-api /kore-api
-RUN useradd -r -u 65532 -g nogroup kore
+RUN useradd -r -u 65532 -g nogroup kore \
+    && mkdir -p /tmp/chrome-user-data \
+    && chown -R kore:nogroup /tmp/chrome-user-data
 USER kore
 EXPOSE 8080
 ENTRYPOINT ["/kore-api"]
