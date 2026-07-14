@@ -187,6 +187,7 @@ const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 
 const { t } = useI18n()
 const { statusVariant, statusLabel } = useCraStatus()
+const { mapInvoiceDraftMessage } = useCraError()
 
 type PrestationRow = {
   id: string
@@ -405,10 +406,10 @@ const anomalyLabel = (row: PrestationRow) => {
 }
 
 const invoiceDraftMessage = (draft?: { status?: string; reason?: string }) => {
-  if (!draft?.status || draft.status === 'created') {
-    return draft?.status === 'created' ? t('prestations.invoice_created') : t('prestations.validate_ok')
-  }
-  return t('prestations.invoice_skipped', { reason: draft.reason ?? 'unknown' })
+  if (!draft?.status) return t('prestations.validate_ok')
+  if (draft.status === 'created') return t('prestations.invoice_created')
+  if (draft.status === 'unavailable') return t('prestations.invoice_unavailable')
+  return mapInvoiceDraftMessage(draft, 'prestations.invoice_skipped')
 }
 
 const setActionMsg = (msg: string, isError = false) => {

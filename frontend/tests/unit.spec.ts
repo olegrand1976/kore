@@ -242,6 +242,15 @@ describe('mapCraApiError', () => {
   })
 })
 
+describe('mapInvoiceDraftReason', () => {
+  it('maps known invoice skip reasons', async () => {
+    const { mapInvoiceDraftReason, mapInvoiceDraftMessage } = await import('../composables/useCraError')
+    const t = (key: string) => key
+    expect(mapInvoiceDraftReason('client_unresolved', t)).toBe('cra.invoice_reason.client_unresolved')
+    expect(mapInvoiceDraftMessage({ status: 'unavailable' }, t)).toBe('cra.invoice_unavailable')
+  })
+})
+
 describe('useWeekRows toSaveLines', () => {
   it('skips empty rows without existing lines and persists edited hours', () => {
     const week = ref({

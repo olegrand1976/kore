@@ -118,7 +118,7 @@ import type { KanbanColumn } from '~/components/ui/AppKanbanBoard.vue'
 import { countTmaByStatus, countTmaOpen } from '~/composables/useKpiMetrics'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 
-definePageMeta({ layout: 'default', middleware: 'cra-gate' })
+definePageMeta({ layout: 'default' })
 
 const TMA_STATUSES = [
   'en_attente_creation',

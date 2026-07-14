@@ -277,6 +277,12 @@ func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCo
 	if ts.IsFinal() {
 		return ports.ValidateFinalResult{}, domain.ErrCRAAlreadyValidated
 	}
+	if ts.Status != domain.StatusValideSemaine {
+		return ports.ValidateFinalResult{}, domain.ErrWeekIncomplete
+	}
+	if !ts.CommercialInfo.Complete() {
+		return ports.ValidateFinalResult{}, domain.ErrCommercialInfoRequired
+	}
 	now := s.clock.Now().UTC()
 	ts.Status = domain.StatusDefinitif
 	ts.ValidatedAt = &now

@@ -28,6 +28,9 @@ func (r *LeaveReader) ListApprovedDays(ctx context.Context, tenant kernel.Tenant
 	}
 	var out []reportports.PlanningActivityRow
 	for _, item := range items {
+		if item.Period.To.Before(period.Start) || item.Period.From.After(period.End) {
+			continue
+		}
 		for day := item.Period.From; !day.After(item.Period.To); day = day.AddDate(0, 0, 1) {
 			if day.Before(period.Start) || day.After(period.End) {
 				continue

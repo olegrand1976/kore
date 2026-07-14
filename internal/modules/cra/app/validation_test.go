@@ -80,6 +80,10 @@ func TestSubmitWeekThenValidateFinal(t *testing.T) {
 		UserID:   userID,
 		Month:    "2026-07",
 		Status:   domain.StatusBrouillon,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "ACME",
+			Mission: "Projet X",
+		},
 		Weeks: []domain.WeekEntry{{
 			ID:         weekID,
 			WeekNumber: 2,
@@ -172,4 +176,50 @@ type missionRateStub struct {
 
 func (m missionRateStub) GetMissionRate(context.Context, kernel.TenantID, uuid.UUID) (ports.MissionRate, error) {
 	return m.rate, m.err
+}
+
+func TestValidateFinal_RequiresSubmittedStatus(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "ACME",
+			Mission: "Projet X",
+		},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	_, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   uuid.New(),
+	})
+	if err != domain.ErrWeekIncomplete {
+		t.Fatalf("expected ErrWeekIncomplete, got %v", err)
+	}
+}
+
+func TestValidateFinal_RequiresCommercialInfo(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusValideSemaine,
+	}}
+	svc := NewService(repo, nil, nil)
+
+	_, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   uuid.New(),
+	})
+	if err != domain.ErrCommercialInfoRequired {
+		t.Fatalf("expected ErrCommercialInfoRequired, got %v", err)
+	}
 }

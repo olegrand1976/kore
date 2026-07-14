@@ -147,6 +147,9 @@ paths:
                 dayCapacityMinutes: { type: integer, minimum: 1, maximum: 1440 }
                 craMailAuto: { type: boolean }
                 weekSubmitPolicy: { type: string, enum: [block, warn, none] }
+                craGateMode: { type: string, enum: [block, warn] }
+                craMailRecipients: { type: array, items: { type: string } }
+                taskTypesEnabled: { type: array, items: { type: string } }
       responses:
         "200":
           description: Paramètres mis à jour
@@ -259,7 +262,19 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "200":
-          description: weekStartDay, dayCapacityMinutes, weekSubmitPolicy
+          description: weekStartDay, dayCapacityMinutes, weekSubmitPolicy, craGateMode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      weekStartDay: { type: integer }
+                      dayCapacityMinutes: { type: integer }
+                      weekSubmitPolicy: { type: string, enum: [block, warn, none] }
+                      craGateMode: { type: string, enum: [block, warn] }
   /users/me/release-notes/auto-show:
     post:
       summary: Activer/désactiver l'affichage auto des release notes (utilisateur courant)
@@ -599,11 +614,7 @@ paths:
                     properties:
                       status: { type: string }
                       invoiceDraft:
-                        type: object
-                        properties:
-                          status: { type: string, enum: [created, skipped, unavailable] }
-                          reason: { type: string }
-                          invoiceId: { type: string, format: uuid }
+                        $ref: '#/components/schemas/InvoiceDraftResult'
         "409":
           description: CRA déjà validé
           content:
@@ -1536,6 +1547,7 @@ components:
           type: string
           enum: [created, skipped, unavailable]
         reason: { type: string }
+        invoiceId: { type: string, format: uuid }
   securitySchemes:
     bearerAuth:
       type: http

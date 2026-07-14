@@ -182,7 +182,7 @@ const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
 const { canValidateCra } = usePermissions()
-const { mapCraError } = useCraError()
+const { mapCraError, mapInvoiceDraftMessage: mapInvoiceDraft } = useCraError()
 const id = computed(() => String(route.params.id))
 
 const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal, rejectTimesheet } = useCra(id)
@@ -455,14 +455,9 @@ const onValidateFinal = async () => {
   actionError.value = ''
   validateMsg.value = ''
   try {
+    await persistCommercial()
     const draft = await validateFinal()
-    if (draft?.status === 'skipped') {
-      validateMsg.value = t('cra.invoice_skipped', { reason: draft.reason ?? 'unknown' })
-    } else if (draft?.status === 'created') {
-      validateMsg.value = t('cra.invoice_created')
-    } else {
-      validateMsg.value = t('cra.validated_ok')
-    }
+    validateMsg.value = mapInvoiceDraft(draft)
     await loadAnomalies()
   } catch (err) {
     actionError.value = mapCraError(err)
@@ -485,29 +480,33 @@ const confirmReject = async () => {
   }
 }
 
+const persistCommercial = async () => {
+  const local = (commercialFormRef.value?.local ?? commercial) as typeof commercial
+  await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
+    method: 'PUT',
+    body: {
+      client: local.client,
+      mission: local.mission,
+      clientId: local.clientId || undefined,
+      missionId: local.missionId || undefined,
+      description: local.description,
+      technologies: local.technologies,
+      lieu: local.lieu,
+      responsableClient: local.responsableClient
+    }
+  })
+}
+
 const saveCommercial = async () => {
   savingCommercial.value = true
   commercialMsg.value = ''
   commercialError.value = false
-  const local = (commercialFormRef.value?.local ?? commercial) as typeof commercial
   try {
-    await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
-      method: 'PUT',
-      body: {
-        client: local.client,
-        mission: local.mission,
-        clientId: local.clientId || undefined,
-        missionId: local.missionId || undefined,
-        description: local.description,
-        technologies: local.technologies,
-        lieu: local.lieu,
-        responsableClient: local.responsableClient
-      }
-    })
+    await persistCommercial()
     commercialMsg.value = t('cra.commercial_saved')
     await load()
   } catch {
-    commercialMsg.value = t('cra.download_error')
+    commercialMsg.value = t('cra.commercial_save_error')
     commercialError.value = true
   } finally {
     savingCommercial.value = false
@@ -517,15 +516,25 @@ const saveCommercial = async () => {
 const fetchPdfBlob = async () =>
   $fetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
 
+const revokePdfPreviewUrl = () => {
+  if (pdfPreviewUrl.value) {
+    URL.revokeObjectURL(pdfPreviewUrl.value)
+    pdfPreviewUrl.value = ''
+  }
+}
+
+watch(pdfPreviewOpen, (open) => {
+  if (!open) revokePdfPreviewUrl()
+})
+
+onUnmounted(revokePdfPreviewUrl)
+
 const openPdfPreview = async () => {
   if (!canDownload.value) return
   pdfPreviewOpen.value = true
   pdfPreviewLoading.value = true
   pdfPreviewError.value = ''
-  if (pdfPreviewUrl.value) {
-    URL.revokeObjectURL(pdfPreviewUrl.value)
-    pdfPreviewUrl.value = ''
-  }
+  revokePdfPreviewUrl()
   try {
     const blob = await fetchPdfBlob()
     pdfPreviewUrl.value = URL.createObjectURL(blob)

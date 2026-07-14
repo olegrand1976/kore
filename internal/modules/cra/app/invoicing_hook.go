@@ -137,9 +137,9 @@ func dominantMissionFromLines(ts domain.Timesheet) uuid.UUID {
 		}
 	}
 	var bestID string
-	var bestMinutes int
+	bestMinutes := -1
 	for id, minutes := range minutesByMission {
-		if minutes > bestMinutes {
+		if minutes > bestMinutes || (minutes == bestMinutes && (bestID == "" || id < bestID)) {
 			bestMinutes = minutes
 			bestID = id
 		}

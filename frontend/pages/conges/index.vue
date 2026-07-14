@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default', middleware: 'cra-gate' })
+definePageMeta({ layout: 'default' })
 
 import { leaveMetrics, leaveStatusSeries } from '~/composables/useKpiMetrics'
 import { useListControls } from '~/composables/useListControls'
