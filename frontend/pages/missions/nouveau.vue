@@ -43,6 +43,12 @@
           :label="$t('missions.field_country')"
           maxlength="2"
         />
+        <AppUserMultiSelect
+          id="mission-collaborators"
+          v-model="form.collaboratorIds"
+          :label="$t('missions.field_collaborators')"
+          required
+        />
         <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
         <div class="mission-form__actions">
           <AppButton variant="primary" type="submit" :loading="submitting">
@@ -58,6 +64,7 @@
 definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
+const { user } = useAuth()
 
 const form = reactive({
   clientId: '',
@@ -65,7 +72,15 @@ const form = reactive({
   endDate: '',
   tjmAmount: 0,
   clientContact: '',
-  countryCode: 'FR'
+  countryCode: 'FR',
+  collaboratorIds: [] as string[]
+})
+
+onMounted(() => {
+  const selfId = user.value?.userId ?? user.value?.id
+  if (selfId && !form.collaboratorIds.includes(selfId)) {
+    form.collaboratorIds = [selfId]
+  }
 })
 
 const submitting = ref(false)
@@ -73,6 +88,10 @@ const errorMsg = ref('')
 
 async function submit() {
   errorMsg.value = ''
+  if (!form.collaboratorIds.length) {
+    errorMsg.value = t('missions.collaborators_required')
+    return
+  }
   submitting.value = true
   try {
     const body: Record<string, unknown> = {
@@ -83,7 +102,7 @@ async function submit() {
       clientContact: form.clientContact,
       countryCode: form.countryCode || 'FR',
       technologies: [],
-      collaboratorIds: []
+      collaboratorIds: form.collaboratorIds
     }
     if (form.endDate) {
       body.endDate = new Date(form.endDate).toISOString()

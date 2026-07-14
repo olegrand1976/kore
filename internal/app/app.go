@@ -182,7 +182,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	}
 
 	orgService := orgapp.NewOrganizationService(orgRepo)
-	attachmentService := orgapp.NewAttachmentService(attachmentRepo)
+	attachmentChecker := NewAttachmentResourceChecker(tmaRepo, supportRepo, maintenanceRepo)
+	attachmentService := orgapp.NewAttachmentService(attachmentRepo, attachmentChecker)
 	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
 	clientService := orgapp.NewClientService(orgRepo)

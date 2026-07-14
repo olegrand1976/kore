@@ -18,6 +18,7 @@ import (
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
 	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
+	orgapp "github.com/kore/kore/internal/modules/org/app"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
@@ -34,7 +35,7 @@ import (
 func buildAPIRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", nil, nil, nil)
+		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", orgapp.NoopAttachmentService{}, nil, nil)
 		orghttp.RegisterOIDCRoutes(r, nil, nil, nil)
 		notifhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		wfhttp.RegisterRoutes(r, nil, nil, nil, nil)

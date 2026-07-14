@@ -26,6 +26,10 @@ type AttachmentService interface {
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.RequestAttachment, error)
 }
 
+type AttachmentResourceChecker interface {
+	Exists(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) (bool, error)
+}
+
 type AttachmentRepository interface {
 	Save(ctx context.Context, att domain.RequestAttachment) error
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.RequestAttachment, error)

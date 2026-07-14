@@ -137,6 +137,26 @@ func (s *service) UpdateEndDate(ctx context.Context, cmd ports.UpdateEndDateComm
 	return m, nil
 }
 
+func (s *service) UpdateCollaborators(ctx context.Context, cmd ports.UpdateCollaboratorsCommand) (ports.MissionDetail, error) {
+	if len(cmd.CollaboratorIDs) == 0 {
+		return ports.MissionDetail{}, domain.ErrMissionWithoutCollaborator
+	}
+	m, err := s.repo.GetMission(ctx, cmd.TenantID, cmd.MissionID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if err := s.repo.SaveMissionCollaborators(ctx, cmd.TenantID, m.ID, cmd.CollaboratorIDs); err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if err := s.purgeFutureMissionLines(ctx, m.ID); err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if err := s.prefillMissionDays(ctx, m, cmd.CollaboratorIDs, "FR"); err != nil {
+		return ports.MissionDetail{}, err
+	}
+	return s.GetDetail(ctx, cmd.TenantID, m.ID)
+}
+
 func (s *service) prefillMissionDays(ctx context.Context, m domain.Mission, collaborators []uuid.UUID, countryCode string) error {
 	if s.feeder == nil || s.calendar == nil || len(collaborators) == 0 {
 		return nil

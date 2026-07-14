@@ -123,6 +123,20 @@
           </template>
         </AppTable>
       </AppCard>
+
+      <AppCard v-if="canEditStaffing" padding="lg" class="fiche-staff-edit">
+        <h3 class="fiche-section-title">{{ $t('missions.edit_collaborators') }}</h3>
+        <AppUserMultiSelect
+          id="mission-staff-edit"
+          v-model="selectedCollaboratorIds"
+          :label="$t('missions.field_collaborators')"
+          required
+        />
+        <p v-if="staffError" class="flash flash--error" role="alert">{{ staffError }}</p>
+        <AppButton variant="primary" size="sm" :loading="staffSaving" @click="saveCollaborators">
+          {{ $t('missions.save_collaborators') }}
+        </AppButton>
+      </AppCard>
     </template>
   </div>
 </template>
@@ -156,11 +170,16 @@ type MissionDetail = {
 
 const route = useRoute()
 const { t } = useI18n()
+const { isAdmin } = useAuth()
 const { formatDate, formatMoney, missionStatusLabel, missionStatusVariant } = useFicheFormat()
 
 const id = computed(() => String(route.params.id ?? ''))
+const canEditStaffing = computed(() => isAdmin.value)
+const selectedCollaboratorIds = ref<string[]>([])
+const staffSaving = ref(false)
+const staffError = ref('')
 
-const { data, pending, error } = await useFetch<MissionDetail>(() => `/api/ssii/missions/${id.value}`, {
+const { data, pending, error, refresh } = await useFetch<MissionDetail>(() => `/api/ssii/missions/${id.value}`, {
   watch: [id]
 })
 
@@ -176,6 +195,36 @@ const mission = computed(() => {
 })
 
 const collaborators = computed(() => mission.value?.collaborators ?? [])
+
+watch(
+  collaborators,
+  (items) => {
+    selectedCollaboratorIds.value = items
+      .map((c) => String(c.userId ?? ''))
+      .filter(Boolean)
+  },
+  { immediate: true }
+)
+
+const saveCollaborators = async () => {
+  staffError.value = ''
+  if (!selectedCollaboratorIds.value.length) {
+    staffError.value = t('missions.collaborators_required')
+    return
+  }
+  staffSaving.value = true
+  try {
+    await $fetch(`/api/ssii/missions/${id.value}/collaborators`, {
+      method: 'PUT',
+      body: { collaboratorIds: selectedCollaboratorIds.value }
+    })
+    await refresh()
+  } catch {
+    staffError.value = t('missions.save_collaborators_error')
+  } finally {
+    staffSaving.value = false
+  }
+}
 
 const pageTitle = computed(() => {
   if (mission.value?.clientName) {
@@ -278,5 +327,17 @@ const staffRows = computed(() =>
 
 .fiche-table-head {
   padding: var(--kore-space-lg) var(--kore-space-lg) 0;
+}
+
+.fiche-staff-edit {
+  margin-top: var(--kore-space-lg);
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.flash--error {
+  margin: 0;
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
 }
 </style>

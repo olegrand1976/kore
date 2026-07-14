@@ -1373,6 +1373,40 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: OK }
+  /missions/{id}/collaborators:
+    put:
+      summary: Modifier collaborateurs mission
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /request-attachments:
+    get:
+      summary: Liste pièces jointes demande
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: resourceType
+          in: query
+          required: true
+          schema: { type: string }
+        - name: resourceId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Téléverser pièce jointe
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /request-attachments/{id}/download:
+    get:
+      summary: Télécharger pièce jointe
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Fichier }
   /ett/clock-in:
     post:
       summary: Pointage entrée ETT
@@ -1440,6 +1474,13 @@ paths:
   /tickets/{id}/take-over:
     post:
       summary: Prendre en charge ticket
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /tickets/{id}/assign:
+    post:
+      summary: Affecter ticket
       security: [{ bearerAuth: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:

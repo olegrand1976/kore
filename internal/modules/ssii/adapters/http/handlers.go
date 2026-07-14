@@ -22,6 +22,7 @@ func RegisterRoutes(r chi.Router, svc ports.SSIIService, tokens *authx.TokenIssu
 		pr.Get("/missions/{id}", getMission(svc, authorizer))
 		pr.Post("/missions/{id}/stop", stopMission(svc, authorizer))
 		pr.Put("/missions/{id}/end-date", updateEndDate(svc, authorizer))
+		pr.Put("/missions/{id}/collaborators", updateCollaborators(svc, authorizer))
 	})
 }
 
@@ -162,5 +163,41 @@ func updateEndDate(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, m)
+	}
+}
+
+func updateCollaborators(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ssii", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			CollaboratorIDs []uuid.UUID `json:"collaboratorIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		detail, err := svc.UpdateCollaborators(r.Context(), ports.UpdateCollaboratorsCommand{
+			TenantID:        identity.TenantID,
+			MissionID:       id,
+			CollaboratorIDs: req.CollaboratorIDs,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrMissionWithoutCollaborator) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, "MISSION_WITHOUT_COLLABORATOR", err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, detail)
 	}
 }

@@ -13,16 +13,34 @@ import (
 )
 
 type attachmentService struct {
-	repo ports.AttachmentRepository
+	repo     ports.AttachmentRepository
+	checker  ports.AttachmentResourceChecker
 }
 
-func NewAttachmentService(repo ports.AttachmentRepository) ports.AttachmentService {
-	return &attachmentService{repo: repo}
+func NewAttachmentService(repo ports.AttachmentRepository, checker ports.AttachmentResourceChecker) ports.AttachmentService {
+	return &attachmentService{repo: repo, checker: checker}
+}
+
+func (s *attachmentService) ensureResource(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) error {
+	if s.checker == nil {
+		return nil
+	}
+	exists, err := s.checker.Exists(ctx, tenant, resourceType, resourceID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return domain.ErrAttachmentResourceNotFound
+	}
+	return nil
 }
 
 func (s *attachmentService) List(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) ([]domain.RequestAttachment, error) {
 	if !domain.ValidResourceType(resourceType) {
 		return nil, domain.ErrInvalidAttachmentTarget
+	}
+	if err := s.ensureResource(ctx, tenant, resourceType, resourceID); err != nil {
+		return nil, err
 	}
 	return s.repo.ListByResource(ctx, tenant, resourceType, resourceID)
 }
@@ -30,6 +48,9 @@ func (s *attachmentService) List(ctx context.Context, tenant kernel.TenantID, re
 func (s *attachmentService) Create(ctx context.Context, cmd ports.CreateAttachmentCommand) (domain.RequestAttachment, error) {
 	if !domain.ValidResourceType(cmd.ResourceType) {
 		return domain.RequestAttachment{}, domain.ErrInvalidAttachmentTarget
+	}
+	if err := s.ensureResource(ctx, cmd.TenantID, cmd.ResourceType, cmd.ResourceID); err != nil {
+		return domain.RequestAttachment{}, err
 	}
 	data, err := uploads.ReadAndValidateAttachment(cmd.Content, cmd.FileName)
 	if err != nil {

@@ -74,9 +74,7 @@ func RegisterRoutes(
 		pr.Post("/clients", createClient(clients, authorizer))
 
 		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
-		if attachments != nil {
-			registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
-		}
+		registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
 	})
 }
 

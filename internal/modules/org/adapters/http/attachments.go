@@ -41,7 +41,7 @@ func listRequestAttachments(attachments ports.AttachmentService, authorizer auth
 		identity, _ := authx.FromContext(r.Context())
 		items, err := attachments.List(r.Context(), identity.TenantID, resourceType, resourceID)
 		if err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeAttachmentError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
@@ -84,7 +84,7 @@ func uploadRequestAttachment(attachments ports.AttachmentService, authorizer aut
 			UploadsDir:   uploadsDir,
 		})
 		if err != nil {
-			writeAttachmentUploadError(w, err)
+			writeAttachmentError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, att)
@@ -124,12 +124,28 @@ func downloadRequestAttachment(attachments ports.AttachmentService, authorizer a
 	}
 }
 
+func writeAttachmentError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrAttachmentResourceNotFound):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+	case errors.Is(err, domain.ErrInvalidAttachmentTarget):
+		httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+	}
+}
+
 func writeAttachmentUploadError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, uploads.ErrInvalidAttachment),
 		errors.Is(err, uploads.ErrAttachmentTooLarge),
 		errors.Is(err, uploads.ErrUnsupportedExt),
-		errors.Is(err, domain.ErrInvalidAttachmentTarget):
+		errors.Is(err, domain.ErrInvalidAttachmentTarget),
+		errors.Is(err, domain.ErrAttachmentResourceNotFound):
+		if errors.Is(err, domain.ErrAttachmentResourceNotFound) {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
 		httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())

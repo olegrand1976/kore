@@ -34,6 +34,12 @@
         />
       </AppCard>
 
+      <RequestAttachmentsPanel
+        resource="tma"
+        :resource-id="id"
+        :can-upload="can('tma', 'E')"
+      />
+
       <AppCard padding="lg">
         <h2 class="section-title">{{ $t('tma.analysis_title') }}</h2>
         <AnalysisEditor
@@ -172,6 +178,7 @@ const onSaveAnalysis = (payload: typeof analysis) =>
 .meta div { display: flex; justify-content: space-between; gap: var(--kore-space-sm); }
 .meta dt { color: var(--kore-text-muted); }
 .muted { color: var(--kore-text-muted); }
+.mb { margin-bottom: var(--kore-space-lg); }
 .mb { margin-bottom: var(--kore-space-lg); }
 .section-title { margin: 0 0 var(--kore-space-md); font-size: var(--kore-text-body); }
 .flash { margin: 0 0 var(--kore-space-md); padding: var(--kore-space-sm) var(--kore-space-md); border-radius: var(--kore-radius-md); font-size: var(--kore-text-small); }

@@ -47,6 +47,7 @@ export function useMaintenance() {
   const pickDueAt = (w: WorkRequest) => w.dueAt ?? w.DueAt ?? ''
   const pickApplicationId = (w: WorkRequest) => w.applicationId ?? w.ApplicationID ?? ''
   const pickAssigneeId = (w: WorkRequest) => w.assigneeId ?? w.AssigneeID ?? ''
+  const pickDescription = (w: WorkRequest) => w.description ?? w.Description ?? ''
 
   const list = async () => {
     const res = await $fetch<{ data?: WorkRequest[] }>('/api/work-requests')
@@ -104,6 +105,7 @@ export function useMaintenance() {
     pickPriority,
     pickDueAt,
     pickApplicationId,
-    pickAssigneeId
+    pickAssigneeId,
+    pickDescription
   }
 }

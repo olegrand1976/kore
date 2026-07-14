@@ -28,6 +28,12 @@ type UpdateEndDateCommand struct {
 	EndDate   time.Time
 }
 
+type UpdateCollaboratorsCommand struct {
+	TenantID        kernel.TenantID
+	MissionID       uuid.UUID
+	CollaboratorIDs []uuid.UUID
+}
+
 type MissionCollaborator struct {
 	UserID uuid.UUID `json:"userId"`
 	Login  string    `json:"login"`
@@ -69,6 +75,7 @@ type SSIIService interface {
 	Create(ctx context.Context, cmd CreateMissionCommand) (domain.Mission, error)
 	Stop(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error)
 	UpdateEndDate(ctx context.Context, cmd UpdateEndDateCommand) (domain.Mission, error)
+	UpdateCollaborators(ctx context.Context, cmd UpdateCollaboratorsCommand) (MissionDetail, error)
 }
 
 type SSIIRepository interface {
