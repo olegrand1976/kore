@@ -888,6 +888,12 @@ paths:
       responses:
         "200":
           description: Traité
+  /webhooks/pdp:
+    post:
+      summary: Webhook PDP (statuts e-facturation)
+      responses:
+        "200":
+          description: Traité
   /public/pricing:
     get:
       summary: Grille tarifaire publique
@@ -1153,6 +1159,30 @@ paths:
   /integrations/api-keys/{id}:
     delete:
       summary: Révoquer clé API
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /integrations/sync-logs:
+    get:
+      summary: Journal synchronisations intégrations
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /integrations/webhooks:
+    get:
+      summary: Liste webhooks sortants
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Créer webhook sortant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Créé }
+  /integrations/webhooks/{id}:
+    delete:
+      summary: Supprimer webhook sortant
       security: [{ bearerAuth: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
