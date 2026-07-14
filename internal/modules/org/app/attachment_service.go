@@ -13,8 +13,8 @@ import (
 )
 
 type attachmentService struct {
-	repo     ports.AttachmentRepository
-	checker  ports.AttachmentResourceChecker
+	repo    ports.AttachmentRepository
+	checker ports.AttachmentResourceChecker
 }
 
 func NewAttachmentService(repo ports.AttachmentRepository, checker ports.AttachmentResourceChecker) ports.AttachmentService {

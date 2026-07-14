@@ -84,7 +84,7 @@ func uploadRequestAttachment(attachments ports.AttachmentService, authorizer aut
 			UploadsDir:   uploadsDir,
 		})
 		if err != nil {
-			writeAttachmentError(w, err)
+			writeAttachmentUploadError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, att)

@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrAttachmentNotFound        = errors.New("attachment not found")
-	ErrInvalidAttachmentTarget   = errors.New("invalid attachment resource type")
+	ErrAttachmentNotFound         = errors.New("attachment not found")
+	ErrInvalidAttachmentTarget    = errors.New("invalid attachment resource type")
 	ErrAttachmentResourceNotFound = errors.New("attachment resource not found")
 )
 
