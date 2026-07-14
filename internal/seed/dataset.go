@@ -215,6 +215,23 @@ func (r *Runner) seedTimesheet(
 		return err
 	}
 	if finalize {
+		ts, err = r.deps.CRA.GetByID(ctx, tenant, ts.ID)
+		if err != nil {
+			return err
+		}
+		for _, week := range ts.Weeks {
+			if week.SubmittedAt != nil || len(week.Lines) == 0 {
+				continue
+			}
+			if err := r.deps.CRA.SubmitWeek(ctx, craports.SubmitWeekCommand{
+				TenantID:    tenant,
+				TimesheetID: ts.ID,
+				WeekNumber:  week.WeekNumber,
+				UserID:      userID,
+			}); err != nil {
+				return err
+			}
+		}
 		_, err := r.deps.CRA.ValidateFinal(ctx, craports.ManagerValidateCommand{
 			TenantID:    tenant,
 			TimesheetID: ts.ID,
