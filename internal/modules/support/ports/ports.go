@@ -30,6 +30,7 @@ type SupportService interface {
 	TakeOver(ctx context.Context, tenant kernel.TenantID, ticketID, assigneeID uuid.UUID) (domain.Ticket, error)
 	AddReply(ctx context.Context, cmd AddReplyCommand) (domain.TicketReply, error)
 	Resolve(ctx context.Context, tenant kernel.TenantID, ticketID uuid.UUID) (domain.Ticket, error)
+	IngestInboundEmails(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error)
 }
 
 type SupportRepository interface {

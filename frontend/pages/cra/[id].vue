@@ -90,12 +90,12 @@
         </dl>
         <CraMonthlyPreview
           class="cra-detail__preview"
-          :total-minutes="monthStats.totalMinutes"
-          :capacity-minutes="monthStats.capacityMinutes"
-          :weeks-submitted="monthStats.weeksSubmitted"
-          :weeks-total="monthStats.weeksTotal"
-          :prefill-ratio="monthStats.prefillRatio"
-          :progress="monthStats.progress"
+          :total-minutes="totalMinutes"
+          :capacity-minutes="capacityMinutes"
+          :weeks-submitted="weeksSubmitted"
+          :weeks-total="weeksTotal"
+          :prefill-ratio="prefillRatio"
+          :progress="progress"
         />
       </AppCard>
 
@@ -309,7 +309,14 @@ await loadAnomalies()
 const monthRef = computed(() => timesheet.value?.month ?? '')
 const weekStartDayRef = computed(() => weekStartDay.value)
 const weeksRef = computed(() => selectedWeeks.value)
-const monthStats = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapacityMinutes)
+const {
+  totalMinutes,
+  capacityMinutes,
+  weeksSubmitted,
+  weeksTotal,
+  prefillRatio,
+  progress
+} = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapacityMinutes)
 
 const commercial = reactive({
   client: '',

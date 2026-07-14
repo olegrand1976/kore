@@ -71,6 +71,7 @@ func (s *service) ClockOut(ctx context.Context, cmd ports.ClockOutCommand) (doma
 		return domain.WorkTimeRecord{}, err
 	}
 	rec.ClockOutAt(cmd.At.UTC())
+	s.applyOvertime(ctx, &rec, cmd.TenantID, "BE")
 	if err := s.repo.SaveRecord(ctx, rec); err != nil {
 		return domain.WorkTimeRecord{}, err
 	}
@@ -87,23 +88,33 @@ func (s *service) CorrectRecord(ctx context.Context, cmd ports.CorrectRecordComm
 	if err != nil {
 		return domain.WorkTimeRecord{}, err
 	}
-	payload := map[string]any{}
+	payload := map[string]any{
+		"previousClockIn":  rec.ClockIn,
+		"previousClockOut": rec.ClockOut,
+	}
 	if cmd.ClockIn != nil {
-		rec.ClockIn = cmd.ClockIn
 		payload["clockIn"] = cmd.ClockIn
 	}
 	if cmd.ClockOut != nil {
-		rec.ClockOut = cmd.ClockOut
 		payload["clockOut"] = cmd.ClockOut
-		if rec.ClockIn != nil {
-			rec.EffectiveHours = cmd.ClockOut.Sub(*rec.ClockIn).Hours()
-		}
-	}
-	if err := s.repo.SaveRecord(ctx, rec); err != nil {
-		return domain.WorkTimeRecord{}, err
 	}
 	entry := domain.NewAuditEntry(cmd.TenantID, rec.ID, cmd.ActorID, "correct", payload)
 	return rec, s.repo.AppendAuditEntry(ctx, entry)
+}
+
+func (s *service) applyOvertime(ctx context.Context, rec *domain.WorkTimeRecord, tenant kernel.TenantID, countryCode string) {
+	if countryCode == "" {
+		countryCode = "BE"
+	}
+	maxDaily := 8.0
+	if rule, err := s.repo.GetCountryRule(ctx, tenant, countryCode); err == nil && rule.MaxDailyHours > 0 {
+		maxDaily = rule.MaxDailyHours
+	}
+	if rec.EffectiveHours > maxDaily {
+		rec.OvertimeHours = rec.EffectiveHours - maxDaily
+	} else {
+		rec.OvertimeHours = 0
+	}
 }
 
 func (s *service) GetAuditTrail(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error) {

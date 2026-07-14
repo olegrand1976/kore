@@ -60,6 +60,7 @@ class _KoreAppState extends State<KoreApp> {
   late final CraRepository _cra;
   late final LeaveRepository _leave;
   late final GoRouter _router;
+  bool _canValidateLeave = false;
 
   @override
   void initState() {
@@ -84,7 +85,11 @@ class _KoreAppState extends State<KoreApp> {
           builder: (context, state) => LoginScreen(
             authRepository: _auth,
             oidcService: _oidc,
-            onLoggedIn: () => _router.go('/cra'),
+            onLoggedIn: () async {
+              final session = await _auth.loadSession();
+              setState(() => _canValidateLeave = session?.canValidateLeave ?? false);
+              _router.go('/cra');
+            },
           ),
         ),
         GoRoute(
@@ -99,10 +104,16 @@ class _KoreAppState extends State<KoreApp> {
           builder: (context, state) => LeaveListScreen(
             repository: _leave,
             onNavigateCra: () => _router.go('/cra'),
+            canValidate: _canValidateLeave,
           ),
         ),
       ],
     );
+    _auth.loadSession().then((session) {
+      if (mounted) {
+        setState(() => _canValidateLeave = session?.canValidateLeave ?? false);
+      }
+    });
   }
 
   @override
@@ -131,7 +142,6 @@ class _KoreAppState extends State<KoreApp> {
           ...GlobalMaterialLocalizations.delegates,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('fr'),
         routerConfig: _router,
       ),
     );

@@ -13,10 +13,11 @@ import (
 type service struct {
 	repo   ports.SupportRepository
 	feeder ports.CRAFeeder
+	mail   ports.InboundMailGateway
 }
 
-func NewService(repo ports.SupportRepository, feeder ports.CRAFeeder) ports.SupportService {
-	return &service{repo: repo, feeder: feeder}
+func NewService(repo ports.SupportRepository, feeder ports.CRAFeeder, mail ports.InboundMailGateway) ports.SupportService {
+	return &service{repo: repo, feeder: feeder, mail: mail}
 }
 
 func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Ticket, error) {
@@ -62,7 +63,7 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, ticketID 
 	}
 	if s.feeder != nil && t.AssigneeID != nil && t.ResolvedAt != nil {
 		day := time.Date(t.ResolvedAt.Year(), t.ResolvedAt.Month(), t.ResolvedAt.Day(), 0, 0, 0, 0, time.UTC)
-		_ = s.feeder.ProposeLines(ctx, []ports.ProposedLine{{
+		if err := s.feeder.ProposeLines(ctx, []ports.ProposedLine{{
 			TenantID:   tenant,
 			UserID:     *t.AssigneeID,
 			SourceType: "ticket",
@@ -70,7 +71,9 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, ticketID 
 			Day:        day,
 			Duration:   kernel.Duration{Minutes: 60},
 			Comment:    t.Subject,
-		}})
+		}}); err != nil {
+			return domain.Ticket{}, err
+		}
 	}
 	return t, nil
 }

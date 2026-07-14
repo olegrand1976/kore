@@ -9,6 +9,7 @@
         <AppInput id="idp-client-secret" v-model="form.clientSecret" type="password" :label="$t('idp.client_secret')" />
         <AppInput id="idp-jwks" v-model="form.jwksUri" :label="$t('idp.jwks_uri')" />
         <AppInput id="idp-scopes" v-model="form.scopes" :label="$t('idp.scopes')" />
+        <AppInput id="idp-default-profile" v-model="form.defaultProfile" :label="$t('idp.default_profile')" />
         <label class="idp-form__toggle">
           <input v-model="form.enabled" type="checkbox" />
           {{ $t('idp.enabled') }}
@@ -49,6 +50,7 @@ watch(data, (items) => {
   form.clientId = String(first.clientId ?? '')
   form.jwksUri = String(first.jwksUri ?? '')
   form.scopes = String(first.scopes ?? form.scopes)
+  form.defaultProfile = String(first.defaultProfile ?? form.defaultProfile)
   form.enabled = Boolean(first.enabled)
 }, { immediate: true })
 

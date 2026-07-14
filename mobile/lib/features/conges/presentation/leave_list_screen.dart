@@ -4,6 +4,7 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../shared/widgets/kore_scaffold.dart';
 import '../data/leave_models.dart';
 import '../data/leave_repository.dart';
+import 'leave_request_screen.dart';
 import 'leave_balances_screen.dart';
 import 'leave_validation_screen.dart';
 
@@ -12,10 +13,12 @@ class LeaveListScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.onNavigateCra,
+    this.canValidate = false,
   });
 
   final LeaveRepository repository;
   final VoidCallback onNavigateCra;
+  final bool canValidate;
 
   @override
   State<LeaveListScreen> createState() => _LeaveListScreenState();
@@ -54,19 +57,31 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
             );
           },
         ),
-        IconButton(
-          icon: const Icon(Icons.rule_outlined),
-          tooltip: l10n.t('congesValidation'),
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    LeaveValidationScreen(repository: widget.repository),
-              ),
-            );
-          },
-        ),
+        if (widget.canValidate)
+          IconButton(
+            icon: const Icon(Icons.rule_outlined),
+            tooltip: l10n.t('congesValidation'),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      LeaveValidationScreen(repository: widget.repository),
+                ),
+              );
+            },
+          ),
       ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final created = await Navigator.of(context).push<bool>(
+            MaterialPageRoute<bool>(
+              builder: (_) => LeaveRequestScreen(repository: widget.repository),
+            ),
+          );
+          if (created == true) _reload();
+        },
+        child: const Icon(Icons.add),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => _reload(),
         child: FutureBuilder<List<LeaveRequest>>(

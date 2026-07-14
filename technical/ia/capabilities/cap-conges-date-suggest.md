@@ -7,7 +7,7 @@
 | Code | `conges.date_suggest` |
 | Module | 03 Congés |
 | Vague | 3 — P2 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

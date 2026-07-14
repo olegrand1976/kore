@@ -7,7 +7,7 @@
 | Code | `tma.executive_summary` |
 | Module | 05 TMA |
 | Vague | 2 — P2 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

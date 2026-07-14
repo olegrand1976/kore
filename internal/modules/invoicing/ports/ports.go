@@ -24,9 +24,29 @@ type InvoiceLineInput struct {
 }
 
 type ComputeVirtualCommand struct {
-	TenantID kernel.TenantID
-	ClientID uuid.UUID
-	Period   kernel.Period
+	TenantID  kernel.TenantID
+	ClientID  uuid.UUID
+	MissionID *uuid.UUID
+	Period    kernel.Period
+	Lines     []InvoiceLineInput
+}
+
+type En16931Document map[string]any
+
+type PDPReceipt struct {
+	ID string
+}
+
+type PDPStatusEvent struct {
+	TenantID  kernel.TenantID
+	InvoiceID uuid.UUID
+	ReceiptID string
+	Status    domain.InvoiceStatus
+}
+
+type PDPGateway interface {
+	Transmit(ctx context.Context, tenant kernel.TenantID, doc En16931Document) (PDPReceipt, error)
+	SyncStatus(ctx context.Context, receiptID string) (domain.InvoiceStatus, error)
 }
 
 type CreateFromCRACommand struct {
@@ -49,6 +69,7 @@ type InvoicingService interface {
 	CreateFromCRAValidation(ctx context.Context, cmd CreateFromCRACommand) (domain.Invoice, error)
 	ComputeVirtual(ctx context.Context, cmd ComputeVirtualCommand) (domain.Invoice, error)
 	Transmit(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
+	SyncPDPStatus(ctx context.Context, evt PDPStatusEvent) error
 	CreateCreditNote(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) (domain.Invoice, error)
 }
 

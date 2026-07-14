@@ -7,7 +7,7 @@
 | Code | `mobile.voice_cra` |
 | Module | 16 Mobile |
 | Vague | 1bis — P2 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

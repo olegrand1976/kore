@@ -43,11 +43,14 @@ import (
 	ettpostgres "github.com/kore/kore/internal/modules/ett/adapters/postgres"
 	ettapp "github.com/kore/kore/internal/modules/ett/app"
 	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
+	integrationsdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	integrationspostgres "github.com/kore/kore/internal/modules/integrations/adapters/postgres"
 	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
+	invoicingpdp "github.com/kore/kore/internal/modules/invoicing/adapters/pdp"
 	invoicingpostgres "github.com/kore/kore/internal/modules/invoicing/adapters/postgres"
 	invoicingapp "github.com/kore/kore/internal/modules/invoicing/app"
+	maintenancecra "github.com/kore/kore/internal/modules/maintenance/adapters/cra"
 	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
 	maintenancepostgres "github.com/kore/kore/internal/modules/maintenance/adapters/postgres"
 	maintenanceapp "github.com/kore/kore/internal/modules/maintenance/app"
@@ -68,6 +71,7 @@ import (
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
 	reportinginvoicing "github.com/kore/kore/internal/modules/reporting/adapters/invoicing"
 	reportingpostgres "github.com/kore/kore/internal/modules/reporting/adapters/postgres"
+	reportingtma "github.com/kore/kore/internal/modules/reporting/adapters/tma"
 	reportingapp "github.com/kore/kore/internal/modules/reporting/app"
 	ssiicalendar "github.com/kore/kore/internal/modules/ssii/adapters/calendar"
 	ssiicra "github.com/kore/kore/internal/modules/ssii/adapters/cra"
@@ -185,14 +189,18 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
-	invoicingService := invoicingapp.NewService(invoicingRepo)
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
 		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).
-		WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService)).
 		WithMissionRateReader(crassii.NewMissionRateReader(ssiiRepo)).
 		WithETTRecordReader(ettcra.NewRecordReader(ettRepo))
+	invoicingService := invoicingapp.NewService(
+		invoicingRepo,
+		invoicingapp.WithPDPGateway(invoicingpdp.NewStubGateway()),
+		invoicingapp.WithMissionReader(ssiicra.NewMissionReader(ssiiRepo, craService)),
+	)
+	craService.WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
 	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)
@@ -231,6 +239,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		reportingcra.NewPlanningReader(craService),
 		reportinginvoicing.NewBillingReader(invoicingRepo),
 		reportingconges.NewLeaveReader(congesService),
+		reportingtma.NewDemandReader(tmaService),
 	)
 	ssiiService := ssiiapp.NewService(
 		ssiiRepo,
@@ -239,8 +248,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		ssiicalendar.NewGateway(congesRepo),
 	)
 	ettService := ettapp.NewService(ettRepo, craService, craService, orgRepo)
-	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService))
-	maintenanceService := maintenanceapp.NewService(maintenanceRepo)
+	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService), nil)
+	maintenanceService := maintenanceapp.NewService(maintenanceRepo, maintenancecra.NewFeederAdapter(craService))
 
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
 	deps := httpx.Dependencies{
@@ -294,6 +303,27 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		supporthttp.RegisterRoutes(r, supportService, tokenIssuer, authorizer, billingService)
 		maintenancehttp.RegisterRoutes(r, maintenanceService, tokenIssuer, authorizer, billingService)
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
+
+		apiKeyLookup := httpx.NewApiKeyLookup(
+			integrationsRepo.GetApiKeyByHash,
+			func(ctx context.Context, key integrationsdomain.ApiKey) error {
+				now := time.Now().UTC()
+				key.LastUsedAt = &now
+				return integrationsRepo.SaveApiKey(ctx, key)
+			},
+		)
+		r.Route("/public", func(pr chi.Router) {
+			pr.Use(httpx.PublicAPIStack(apiKeyLookup, appCache, keyBuilder))
+			pr.Get("/invoices", func(w http.ResponseWriter, req *http.Request) {
+				identity, _ := authx.FromContext(req.Context())
+				items, err := invoicingService.List(req.Context(), identity.TenantID)
+				if err != nil {
+					httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+					return
+				}
+				httpx.WriteData(w, http.StatusOK, items)
+			})
+		})
 	})
 
 	seedRunner := seed.NewRunner(seed.Dependencies{

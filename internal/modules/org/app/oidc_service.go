@@ -24,12 +24,17 @@ type oidcStatePayload struct {
 	Nonce         string `json:"nonce"`
 }
 
+type tokenGateway interface {
+	ExchangeCode(ctx context.Context, issuer, clientID, clientSecret, redirectURI, code, codeVerifier string) (oidc.TokenResponse, error)
+	ValidateIDToken(ctx context.Context, idToken, issuer, jwksURI, clientID string) (oidc.IDTokenClaims, error)
+}
+
 type oidcService struct {
 	repo        ports.OrganizationRepository
 	tokens      ports.TokenIssuer
 	entitlement ports.EntitlementReader
 	hasher      ports.PasswordHasher
-	gateway     *oidc.Gateway
+	gateway     tokenGateway
 	cache       cache.Cache
 	keys        cache.KeyBuilder
 	clock       func() time.Time

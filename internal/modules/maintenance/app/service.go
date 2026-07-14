@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/maintenance/domain"
@@ -10,11 +11,12 @@ import (
 )
 
 type service struct {
-	repo ports.MaintenanceRepository
+	repo   ports.MaintenanceRepository
+	feeder ports.CRAFeeder
 }
 
-func NewService(repo ports.MaintenanceRepository) ports.MaintenanceService {
-	return &service{repo: repo}
+func NewService(repo ports.MaintenanceRepository, feeder ports.CRAFeeder) ports.MaintenanceService {
+	return &service{repo: repo, feeder: feeder}
 }
 
 func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.WorkRequest, error) {
@@ -58,7 +60,29 @@ func (s *service) Complete(ctx context.Context, tenant kernel.TenantID, id uuid.
 	if err := wr.Complete(); err != nil {
 		return domain.WorkRequest{}, err
 	}
-	return wr, s.repo.SaveWorkRequest(ctx, wr)
+	if err := s.repo.SaveWorkRequest(ctx, wr); err != nil {
+		return domain.WorkRequest{}, err
+	}
+	if s.feeder != nil && wr.AssigneeID != nil && wr.CompletedAt != nil {
+		days := wr.ConsumptionDays
+		if days <= 0 {
+			days = 1
+		}
+		minutes := int(days * 480)
+		day := time.Date(wr.CompletedAt.Year(), wr.CompletedAt.Month(), wr.CompletedAt.Day(), 0, 0, 0, 0, time.UTC)
+		if err := s.feeder.ProposeLines(ctx, []ports.ProposedLine{{
+			TenantID:   tenant,
+			UserID:     *wr.AssigneeID,
+			SourceType: "work_request",
+			SourceID:   wr.ID,
+			Day:        day,
+			Duration:   kernel.Duration{Minutes: minutes},
+			Comment:    wr.Subject,
+		}}); err != nil {
+			return domain.WorkRequest{}, err
+		}
+	}
+	return wr, nil
 }
 
 var _ ports.MaintenanceService = (*service)(nil)

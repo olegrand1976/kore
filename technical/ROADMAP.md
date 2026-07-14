@@ -29,13 +29,14 @@ flowchart LR
 
 **Périmètre** : modules **00 + 01 + 02 + 03 + 04 + 05 + 11 + 14 + 15** (cf. README §Périmètre MVP).
 
-**État actuel (gate validée 07/2026)** :
-- Backend : modules MVP câblés dans `internal/app/app.go`.
-- Frontend Nuxt : CRA, congés/TMA/budget UI MVP, KPI dashboard, RBAC permissions (`usePermissions`), workflow TMA dynamique.
-- Correctifs gate : org read managers (assign TMA), UPSERT analyse, smoke étendu, wording e-facturation roadmap.
-- Mobile : responsive web uniquement ; **pas d'app Flutter**.
-- Intégrations : Stripe (abonnement SaaS) + SMTP ; **pas de SSO, API publique, connecteur compta**.
-- **Dette acceptée post-gate** : Gantt TMA, SSO (Phase 1).
+**État actuel (07/2026, post-plan technique)** :
+- Backend : modules MVP + post-MVP câblés dans `internal/app/app.go` (support, maintenance, ssii, ett, invoicing, integrations, reporting, admin, ai).
+- Frontend Nuxt : UI Phase 1 (congés/TMA/budget), facturation, admin intégrations/workflows, support/maintenance.
+- SSO OIDC (F12) : backend + admin + tests ; gate Phase 1 partiellement validée.
+- Mobile Flutter : socle OIDC PKCE (`flutter_web_auth_2`), écrans CRA/congés, CI `flutter test`.
+- Intégrations : clés API, webhooks sortants, export FEC, middleware `X-Api-Key`.
+- E-facturation M09 : mapper EN 16931 + stub PDP + webhook entrant.
+- **Dette résiduelle** : validation E2E IdP prod, connecteurs compta/SIRH réels, inaltérabilité ETT DB prod.
 
 **Gate MVP** : validée — tests Go + smoke + build frontend OK (07/2026).
 

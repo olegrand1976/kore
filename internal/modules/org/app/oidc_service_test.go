@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/org/adapters/oidc"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
@@ -206,6 +208,93 @@ func TestOIDCStatusReturnsProviderName(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, status.Enabled)
 	require.Equal(t, "Google", status.ProviderName)
+}
+
+func TestOIDCCallbackInvalidState(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &oidcRepoStub{idp: domain.IdentityProvider{Enabled: true, ID: uuid.New()}}
+	svc := NewOIDCService(repo, authx.NewTokenIssuer("k", time.Hour, time.Hour), entitlementStub{limit: 10}, NewArgon2Hasher(), cache.NewInMemoryCache(), cache.NewKeyBuilder("kore"))
+	_, err := svc.HandleCallback(context.Background(), ports.OIDCCallbackCommand{
+		TenantID:     tenant,
+		State:        "missing-state",
+		Code:         "code",
+		CodeVerifier: "verifier",
+		RedirectURI:  "http://localhost/callback",
+	})
+	require.ErrorIs(t, err, domain.ErrOIDCStateInvalid)
+}
+
+type mockTokenGateway struct {
+	token oidc.TokenResponse
+	claims oidc.IDTokenClaims
+}
+
+func (m mockTokenGateway) ExchangeCode(context.Context, string, string, string, string, string, string) (oidc.TokenResponse, error) {
+	return m.token, nil
+}
+
+func (m mockTokenGateway) ValidateIDToken(context.Context, string, string, string, string) (oidc.IDTokenClaims, error) {
+	return m.claims, nil
+}
+
+func TestOIDCCallbackLinksExistingUserByEmail(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	idpID := uuid.New()
+	userID := uuid.New()
+	repo := &oidcRepoStub{
+		idp: domain.IdentityProvider{ID: idpID, Enabled: true, Name: "Google", JWKSURI: "https://example.com/jwks", DefaultProfile: domain.ProfileCollaborateur},
+		users: map[uuid.UUID]domain.User{
+			userID: {ID: userID, TenantID: tenant, Email: "dev@example.com", Login: "DEV_dev", Profile: domain.ProfileCollaborateur, Active: true},
+		},
+	}
+	memCache := cache.NewInMemoryCache()
+	keys := cache.NewKeyBuilder("kore")
+	svc := NewOIDCService(repo, authx.NewTokenIssuer("k", time.Hour, time.Hour), entitlementStub{limit: 10}, NewArgon2Hasher(), memCache, keys).(*oidcService)
+	svc.gateway = mockTokenGateway{
+		token:  oidc.TokenResponse{IDToken: "tok"},
+		claims: oidc.IDTokenClaims{Email: "dev@example.com", RegisteredClaims: jwt.RegisteredClaims{Subject: "sub-123"}},
+	}
+	state := "state-1"
+	stateKey := keys.Key(tenant, "org", "oidc-state", state)
+	require.NoError(t, memCache.Set(context.Background(), stateKey, oidcStatePayload{
+		TenantID: tenant.String(), RedirectURI: "http://localhost/callback", CodeChallenge: "abc",
+	}, 10*time.Minute))
+
+	result, err := svc.HandleCallback(context.Background(), ports.OIDCCallbackCommand{
+		TenantID: tenant, State: state, Code: "code", CodeVerifier: "verifier", RedirectURI: "http://localhost/callback",
+	})
+	require.NoError(t, err)
+	require.Equal(t, userID, result.UserID)
+	require.Len(t, repo.links, 1)
+	require.Equal(t, "sub-123", repo.links[0].Subject)
+}
+
+func TestOIDCCallbackSeatLimitBlocksJIT(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	idpID := uuid.New()
+	repo := &oidcRepoStub{
+		idp: domain.IdentityProvider{ID: idpID, Enabled: true, JWKSURI: "https://example.com/jwks", DefaultProfile: domain.ProfileCollaborateur},
+		users: map[uuid.UUID]domain.User{
+			uuid.New(): {ID: uuid.New(), TenantID: tenant, Active: true},
+		},
+	}
+	memCache := cache.NewInMemoryCache()
+	keys := cache.NewKeyBuilder("kore")
+	svc := NewOIDCService(repo, authx.NewTokenIssuer("k", time.Hour, time.Hour), entitlementStub{limit: 1}, NewArgon2Hasher(), memCache, keys).(*oidcService)
+	svc.gateway = mockTokenGateway{
+		token:  oidc.TokenResponse{IDToken: "tok"},
+		claims: oidc.IDTokenClaims{Email: "new@example.com", RegisteredClaims: jwt.RegisteredClaims{Subject: "sub-new"}},
+	}
+	state := "state-2"
+	stateKey := keys.Key(tenant, "org", "oidc-state", state)
+	require.NoError(t, memCache.Set(context.Background(), stateKey, oidcStatePayload{
+		TenantID: tenant.String(), RedirectURI: "http://localhost/callback",
+	}, 10*time.Minute))
+
+	_, err := svc.HandleCallback(context.Background(), ports.OIDCCallbackCommand{
+		TenantID: tenant, State: state, Code: "code", CodeVerifier: "verifier", RedirectURI: "http://localhost/callback",
+	})
+	require.ErrorIs(t, err, domain.ErrSeatLimitReached)
 }
 
 func TestIdentityProviderConfigure(t *testing.T) {

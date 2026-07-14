@@ -23,6 +23,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _loginCtrl = TextEditingController(text: 'ADM_admin');
   final _passwordCtrl = TextEditingController(text: 'Admin123!');
+  final _tenantCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
 
@@ -30,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _loginCtrl.dispose();
     _passwordCtrl.dispose();
+    _tenantCtrl.dispose();
     super.dispose();
   }
 
@@ -57,12 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await widget.oidcService.signInWithSso(
-        tenantId: const String.fromEnvironment(
-          'KORE_TENANT_ID',
-          defaultValue: '',
-        ),
-      );
+      final tenantId = _tenantCtrl.text.trim().isNotEmpty
+          ? _tenantCtrl.text.trim()
+          : const String.fromEnvironment('KORE_TENANT_ID', defaultValue: '');
+      if (tenantId.isEmpty) {
+        setState(() => _error = AppLocalizations.of(context).t('loginTenantRequired'));
+        return;
+      }
+      await widget.oidcService.signInWithSso(tenantId: tenantId);
       widget.onLoggedIn();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -94,6 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(labelText: l10n.t('loginPassword')),
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.username],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _tenantCtrl,
+                    decoration: InputDecoration(labelText: l10n.t('loginTenant')),
+                    textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
                   TextField(

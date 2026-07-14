@@ -7,7 +7,7 @@
 | Code | `notifications.digest` |
 | Module | 11 Notifications |
 | Vague | 3 — P3 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

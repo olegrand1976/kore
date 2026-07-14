@@ -15,6 +15,7 @@ import (
 )
 
 func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+	r.Post("/webhooks/pdp", pdpWebhook(svc))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/invoices", listInvoices(svc, authorizer))
@@ -102,9 +103,11 @@ func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer) htt
 			return
 		}
 		var req struct {
-			ClientID uuid.UUID `json:"clientId"`
-			Start    time.Time `json:"start"`
-			End      time.Time `json:"end"`
+			ClientID  uuid.UUID                `json:"clientId"`
+			MissionID *uuid.UUID               `json:"missionId"`
+			Start     time.Time                `json:"start"`
+			End       time.Time                `json:"end"`
+			Lines     []ports.InvoiceLineInput `json:"lines"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -117,9 +120,11 @@ func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer) htt
 		}
 		identity, _ := authx.FromContext(r.Context())
 		inv, err := svc.ComputeVirtual(r.Context(), ports.ComputeVirtualCommand{
-			TenantID: identity.TenantID,
-			ClientID: req.ClientID,
-			Period:   period,
+			TenantID:  identity.TenantID,
+			ClientID:  req.ClientID,
+			MissionID: req.MissionID,
+			Period:    period,
+			Lines:     req.Lines,
 		})
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
@@ -168,5 +173,40 @@ func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer) h
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, cn)
+	}
+}
+
+func pdpWebhook(svc ports.InvoicingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			TenantID  string `json:"tenantId"`
+			InvoiceID string `json:"invoiceId"`
+			ReceiptID string `json:"receiptId"`
+			Status    string `json:"status"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		tenantUUID, err := uuid.Parse(req.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid tenantId")
+			return
+		}
+		invoiceID, err := uuid.Parse(req.InvoiceID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid invoiceId")
+			return
+		}
+		if err := svc.SyncPDPStatus(r.Context(), ports.PDPStatusEvent{
+			TenantID:  kernel.NewTenantID(tenantUUID),
+			InvoiceID: invoiceID,
+			ReceiptID: req.ReceiptID,
+			Status:    domain.InvoiceStatus(req.Status),
+		}); err != nil {
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "synced"})
 	}
 }

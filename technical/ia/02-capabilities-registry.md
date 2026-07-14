@@ -10,22 +10,22 @@
 | `tma.analysis_draft` | 05 TMA | 1 | P0 | minimal/limité | Non | livré | [cap-tma-analysis-draft.md](capabilities/cap-tma-analysis-draft.md) |
 | `tma.classify` | 05 TMA | 1 | P0 | minimal | Non | livré | [cap-tma-classify-duplicate.md](capabilities/cap-tma-classify-duplicate.md) |
 | `tma.similar` | 05 TMA | 1 | P0 | minimal | Non | livré | [cap-tma-classify-duplicate.md](capabilities/cap-tma-classify-duplicate.md) |
-| `tma.suggest_assignee` | 05 TMA | 2 | P1 | limité → haut | Potentiel §4(b) | planifié | [cap-tma-suggest-assignee.md](capabilities/cap-tma-suggest-assignee.md) |
-| `tma.executive_summary` | 05 TMA | 2 | P2 | limité | Non | planifié | [cap-tma-executive-summary.md](capabilities/cap-tma-executive-summary.md) |
+| `tma.suggest_assignee` | 05 TMA | 2 | P1 | limité → haut | Potentiel §4(b) | livré | [cap-tma-suggest-assignee.md](capabilities/cap-tma-suggest-assignee.md) |
+| `tma.executive_summary` | 05 TMA | 2 | P2 | limité | Non | livré | [cap-tma-executive-summary.md](capabilities/cap-tma-executive-summary.md) |
 | `cra.prefill` | 02 CRA | 2 | P1 | minimal | Non | livré | [cap-cra-prefill.md](capabilities/cap-cra-prefill.md) |
 | `cra.anomalies` | 02 CRA | 2 | P1 | minimal | Non | livré | [cap-cra-anomaly-factual.md](capabilities/cap-cra-anomaly-factual.md) |
-| `cra.comment_summary` | 02 CRA | 2 | P2 | limité | Non | planifié | [cap-cra-comment-summary.md](capabilities/cap-cra-comment-summary.md) |
+| `cra.comment_summary` | 02 CRA | 2 | P2 | limité | Non | livré | [cap-cra-comment-summary.md](capabilities/cap-cra-comment-summary.md) |
 | `budget.estimate` | 04 Budget | 2 | P1 | minimal | Non | livré | [cap-budget-estimate-effort.md](capabilities/cap-budget-estimate-effort.md) |
 | `budget.demand_suggest` | 04 Budget | 2 | P1 | minimal | Non | livré | [cap-budget-demand-autocomplete.md](capabilities/cap-budget-demand-autocomplete.md) |
-| `budget.overrun_forecast` | 04 Budget | 2 | P2 | minimal | Non | planifié | [cap-budget-overrun-forecast.md](capabilities/cap-budget-overrun-forecast.md) |
+| `budget.overrun_forecast` | 04 Budget | 2 | P2 | minimal | Non | livré | [cap-budget-overrun-forecast.md](capabilities/cap-budget-overrun-forecast.md) |
 | `dashboard.briefing` | transversal | 2 | P1 | minimal/limité | Non | livré | [cap-dashboard-briefing.md](capabilities/cap-dashboard-briefing.md) |
-| `conges.date_suggest` | 03 Congés | 3 | P2 | limité | Non | planifié | [cap-conges-date-suggest.md](capabilities/cap-conges-date-suggest.md) |
+| `conges.date_suggest` | 03 Congés | 3 | P2 | limité | Non | livré | [cap-conges-date-suggest.md](capabilities/cap-conges-date-suggest.md) |
 | `conges.manager_assist` | 03 Congés | 3 | P2 | haut potentiel | §4(b) | livré | [cap-conges-manager-assist.md](capabilities/cap-conges-manager-assist.md) |
 | `workflow.explain` | 01 Workflow | 3 | P2 | minimal | Non | livré | [cap-workflow-explain.md](capabilities/cap-workflow-explain.md) |
 | `publicsite.chatbot` | 15 Public | 3 | P2 | limité Art. 50 | Non | livré | [cap-publicsite-chatbot.md](capabilities/cap-publicsite-chatbot.md) |
-| `publicsite.lead_scoring` | 15 Public | 3 | P3 | minimal | Non | planifié | [cap-publicsite-lead-scoring.md](capabilities/cap-publicsite-lead-scoring.md) |
-| `notifications.digest` | 11 Notif | 3 | P3 | limité | Non | planifié | [cap-notifications-digest.md](capabilities/cap-notifications-digest.md) |
-| `mobile.voice_cra` | 16 Mobile | 1bis | P2 | limité | Non | planifié | [cap-mobile-voice-cra.md](capabilities/cap-mobile-voice-cra.md) |
+| `publicsite.lead_scoring` | 15 Public | 3 | P3 | minimal | Non | livré | [cap-publicsite-lead-scoring.md](capabilities/cap-publicsite-lead-scoring.md) |
+| `notifications.digest` | 11 Notif | 3 | P3 | limité | Non | livré | [cap-notifications-digest.md](capabilities/cap-notifications-digest.md) |
+| `mobile.voice_cra` | 16 Mobile | 1bis | P2 | limité | Non | livré | [cap-mobile-voice-cra.md](capabilities/cap-mobile-voice-cra.md) |
 
 ## Capabilities exclues (IA Act)
 

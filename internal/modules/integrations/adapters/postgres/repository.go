@@ -79,6 +79,26 @@ func (r *Repository) SaveSyncJob(ctx context.Context, j domain.SyncJob) error {
 	return err
 }
 
+func (r *Repository) ListSyncJobs(ctx context.Context, tenant kernel.TenantID) ([]domain.SyncJob, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, connection_id, status, started_at, finished_at, error_message
+		FROM integrations.sync_jobs WHERE tenant_id = $1 ORDER BY started_at DESC LIMIT 100
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.SyncJob
+	for rows.Next() {
+		j, err := r.scanSyncJob(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) SaveApiKey(ctx context.Context, k domain.ApiKey) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO integrations.api_keys (id, tenant_id, name, key_prefix, key_hash, revoked_at, created_at, last_used_at)
@@ -93,6 +113,52 @@ func (r *Repository) GetApiKey(ctx context.Context, tenant kernel.TenantID, id u
 		SELECT id, tenant_id, name, key_prefix, key_hash, revoked_at, created_at, last_used_at
 		FROM integrations.api_keys WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
+}
+
+func (r *Repository) GetApiKeyByHash(ctx context.Context, keyHash string) (domain.ApiKey, error) {
+	return r.scanApiKey(r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, name, key_prefix, key_hash, revoked_at, created_at, last_used_at
+		FROM integrations.api_keys WHERE key_hash = $1
+	`, keyHash))
+}
+
+func (r *Repository) SaveWebhookSubscription(ctx context.Context, sub domain.WebhookSubscription) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO integrations.webhook_subscriptions (id, tenant_id, url, events, secret_ref, active, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, sub.ID, sub.TenantID.UUID(), sub.URL, sub.Events, sub.SecretRef, sub.Active, sub.CreatedAt)
+	return err
+}
+
+func (r *Repository) ListWebhookSubscriptions(ctx context.Context, tenant kernel.TenantID) ([]domain.WebhookSubscription, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, url, events, secret_ref, active, created_at
+		FROM integrations.webhook_subscriptions WHERE tenant_id = $1 ORDER BY created_at DESC
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.WebhookSubscription
+	for rows.Next() {
+		sub, err := r.scanWebhookSubscription(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sub)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) DeleteWebhookSubscription(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM integrations.webhook_subscriptions WHERE tenant_id = $1 AND id = $2`, tenant.UUID(), id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrWebhookNotFound
+	}
+	return nil
 }
 
 func (r *Repository) ListApiKeys(ctx context.Context, tenant kernel.TenantID) ([]domain.ApiKey, error) {
@@ -113,6 +179,28 @@ func (r *Repository) ListApiKeys(ctx context.Context, tenant kernel.TenantID) ([
 		out = append(out, k)
 	}
 	return out, rows.Err()
+}
+
+func (r *Repository) scanSyncJob(row pgx.Row) (domain.SyncJob, error) {
+	var j domain.SyncJob
+	var tenantID uuid.UUID
+	err := row.Scan(&j.ID, &tenantID, &j.ConnectionID, &j.Status, &j.StartedAt, &j.FinishedAt, &j.ErrorMessage)
+	if err != nil {
+		return domain.SyncJob{}, err
+	}
+	j.TenantID = kernel.NewTenantID(tenantID)
+	return j, nil
+}
+
+func (r *Repository) scanWebhookSubscription(row pgx.Row) (domain.WebhookSubscription, error) {
+	var sub domain.WebhookSubscription
+	var tenantID uuid.UUID
+	err := row.Scan(&sub.ID, &tenantID, &sub.URL, &sub.Events, &sub.SecretRef, &sub.Active, &sub.CreatedAt)
+	if err != nil {
+		return domain.WebhookSubscription{}, err
+	}
+	sub.TenantID = kernel.NewTenantID(tenantID)
+	return sub, nil
 }
 
 func (r *Repository) scanConnection(row pgx.Row) (domain.IntegrationConnection, error) {

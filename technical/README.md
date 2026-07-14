@@ -24,9 +24,13 @@ Spécifications techniques du projet **Kore** (reprise fonctionnelle de B-Hive),
 | 14 Abonnement SaaS (Stripe) | Implémenté | `internal/modules/billing/` |
 | 15 Site vitrine & booking | Implémenté | `internal/modules/publicsite/` |
 | Frontend Nuxt 3 + BFF | Gate validée (07/2026) | `frontend/` |
-| Mobile Flutter | Phase 1bis (planifié) | `mobile/` (à créer) |
-| F12 SSO / F13 API publique / F14 Flutter | Planifié | cf. [ROADMAP.md](ROADMAP.md) |
-| 06–13, 16–17 (Support, SSII, Facturation, ETT, Mobile, Intégrations, …) | Phase ultérieure | — |
+| **F12 SSO OIDC** | Implémenté (tests + admin IdP) | `org/app/oidc_service.go` |
+| **F13 API publique** | Partiel (clés API + route publique) | `httpx/api_key.go`, `integrations/` |
+| **F14 / M16 Mobile Flutter** | Phase 1bis amorcée | `mobile/` (OIDC PKCE, CRA/congés, CI) |
+| 06 Support / 07 Maintenance | Amorcé (backend + UI) | `support/`, `maintenance/` |
+| 08 SSII / 09 Facturation / 10 ETT | Amorcé (MissionReader, EN16931/PDP stub, pointage) | `ssii/`, `invoicing/`, `ett/` |
+| 12 Reporting / 13 Admin / 17 Intégrations | Partiel | `reporting/`, `admin/`, `integrations/` |
+| **IA** | Vagues 1–3 + 8 capabilities planifiées livrées (stub) | `internal/modules/ai/` |
 
 ## Comment utiliser ces spécifications
 

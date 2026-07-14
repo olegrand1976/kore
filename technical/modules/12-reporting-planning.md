@@ -128,7 +128,7 @@ Couverture : application/agrégation > 80 %.
 
 | Phase | Livrable | État audit 07/2026 |
 | --- | --- | --- |
-| **Phase 3** | Module 12 + remplacement KPIs statiques `dashboard/index.vue` (valeurs `6`, `2` en dur) | Non démarré |
+| **Phase 3** | Module 12 + KPIs dashboard via API réelle | Livré (stats dynamiques) |
 
 Cf. [ROADMAP.md](../ROADMAP.md).
 

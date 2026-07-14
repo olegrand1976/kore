@@ -93,7 +93,9 @@ export function weekNumberForDay(month: string, day: string, weekStartDay = DEFA
 }
 
 export function minutesToHoursLabel(minutes: number): string {
-  const h = minutes / 60
+  const value = Number(minutes)
+  if (!Number.isFinite(value)) return '0'
+  const h = value / 60
   return Number.isInteger(h) ? String(h) : h.toFixed(1)
 }
 

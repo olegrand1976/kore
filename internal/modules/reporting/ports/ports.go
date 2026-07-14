@@ -46,6 +46,15 @@ type LeavePlanningReader interface {
 	ListApprovedDays(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]PlanningActivityRow, error)
 }
 
+type TMASummaryStats struct {
+	OpenDemands    int
+	ValidatedMonth int
+}
+
+type TMADemandReader interface {
+	SummaryStats(ctx context.Context, tenant kernel.TenantID, month time.Time) (TMASummaryStats, error)
+}
+
 type PlanningActivityRow struct {
 	UserID       uuid.UUID
 	UserPrenom   string

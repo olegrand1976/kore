@@ -6,24 +6,50 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/integrations/adapters/calendar"
+	"github.com/kore/kore/internal/modules/integrations/adapters/fec"
+	"github.com/kore/kore/internal/modules/integrations/adapters/hris"
 	"github.com/kore/kore/internal/modules/integrations/domain"
 	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
 type service struct {
-	repo ports.IntegrationRepository
+	repo     ports.IntegrationRepository
+	fec      *fec.Exporter
+	calendar *calendar.StubGateway
+	hris     *hris.StubGateway
 }
 
-func NewService(repo ports.IntegrationRepository) ports.IntegrationService {
-	return &service{repo: repo}
+func NewService(repo ports.IntegrationRepository, opts ...ServiceOption) ports.IntegrationService {
+	s := &service{
+		repo:     repo,
+		fec:      fec.NewExporter(),
+		calendar: calendar.NewStubGateway(slog.Default()),
+		hris:     hris.NewStubGateway(slog.Default()),
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+type ServiceOption func(*service)
+
+func WithCalendarGateway(gw *calendar.StubGateway) ServiceOption {
+	return func(s *service) { s.calendar = gw }
+}
+
+func WithHRISGateway(gw *hris.StubGateway) ServiceOption {
+	return func(s *service) { s.hris = gw }
 }
 
 func NewApiKeyService(repo ports.IntegrationRepository) ports.ApiKeyService {
-	return &service{repo: repo}
+	return &service{repo: repo, fec: fec.NewExporter(), calendar: calendar.NewStubGateway(slog.Default()), hris: hris.NewStubGateway(slog.Default())}
 }
 
 func (s *service) Connect(ctx context.Context, cmd ports.ConnectCommand) (domain.IntegrationConnection, error) {
@@ -55,6 +81,31 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 		StartedAt:    now,
 		FinishedAt:   &now,
 	}
+	if conn.Provider == "fec" {
+		_, count, exportErr := s.fec.Export(ctx, cmd.TenantID, now.Format("2006-01"), 1)
+		if exportErr != nil {
+			job.Status = "failed"
+			job.ErrorMessage = exportErr.Error()
+		} else {
+			job.ErrorMessage = fmt.Sprintf("fec export: %d records", count)
+		}
+	} else if conn.Type == domain.ConnectionTypeCalendar && (conn.Provider == "google" || conn.Provider == "googlecalendar") {
+		count, syncErr := s.calendar.Sync(ctx, cmd.TenantID, conn.Provider)
+		if syncErr != nil {
+			job.Status = "failed"
+			job.ErrorMessage = syncErr.Error()
+		} else {
+			job.ErrorMessage = fmt.Sprintf("calendar sync: %d records", count)
+		}
+	} else if conn.Type == domain.ConnectionTypeHRIS && conn.Provider == "lucca" {
+		count, syncErr := s.hris.Sync(ctx, cmd.TenantID, conn.Provider)
+		if syncErr != nil {
+			job.Status = "failed"
+			job.ErrorMessage = syncErr.Error()
+		} else {
+			job.ErrorMessage = fmt.Sprintf("hris sync: %d records", count)
+		}
+	}
 	conn.LastSyncAt = &now
 	if err := s.repo.SaveConnection(ctx, conn); err != nil {
 		return domain.SyncJob{}, err
@@ -68,6 +119,39 @@ func (s *service) ListConnections(ctx context.Context, tenant kernel.TenantID) (
 
 func (s *service) GetConnection(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.IntegrationConnection, error) {
 	return s.repo.GetConnection(ctx, tenant, id)
+}
+
+func (s *service) ListSyncLogs(ctx context.Context, tenant kernel.TenantID) ([]domain.SyncJob, error) {
+	return s.repo.ListSyncJobs(ctx, tenant)
+}
+
+func (s *service) CreateWebhook(ctx context.Context, cmd ports.CreateWebhookCommand) (domain.WebhookSubscription, error) {
+	secret := cmd.Secret
+	if secret == "" {
+		var err error
+		secret, err = randomSecret()
+		if err != nil {
+			return domain.WebhookSubscription{}, err
+		}
+	}
+	sub := domain.WebhookSubscription{
+		ID:        uuid.New(),
+		TenantID:  cmd.TenantID,
+		URL:       cmd.URL,
+		Events:    cmd.Events,
+		SecretRef: secret,
+		Active:    true,
+		CreatedAt: time.Now().UTC(),
+	}
+	return sub, s.repo.SaveWebhookSubscription(ctx, sub)
+}
+
+func (s *service) ListWebhooks(ctx context.Context, tenant kernel.TenantID) ([]domain.WebhookSubscription, error) {
+	return s.repo.ListWebhookSubscriptions(ctx, tenant)
+}
+
+func (s *service) DeleteWebhook(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	return s.repo.DeleteWebhookSubscription(ctx, tenant, id)
 }
 
 func (s *service) CreateKey(ctx context.Context, cmd ports.CreateApiKeyCommand) (ports.ApiKeyCreated, error) {
@@ -106,6 +190,14 @@ func generateApiKey() (plain, prefix, hash string, err error) {
 	sum := sha256.Sum256([]byte(plain))
 	hash = fmt.Sprintf("%x", sum)
 	return plain, prefix, hash, nil
+}
+
+func randomSecret() (string, error) {
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
 }
 
 var (

@@ -23,6 +23,10 @@ func RegisterRoutes(r chi.Router, svc ports.IntegrationService, keys ports.ApiKe
 		pr.Get("/integrations/api-keys", listApiKeys(keys, authorizer))
 		pr.Post("/integrations/api-keys", createApiKey(keys, authorizer))
 		pr.Delete("/integrations/api-keys/{id}", revokeApiKey(keys, authorizer))
+		pr.Get("/integrations/sync-logs", listSyncLogs(svc, authorizer))
+		pr.Get("/integrations/webhooks", listWebhooks(svc, authorizer))
+		pr.Post("/integrations/webhooks", createWebhook(svc, authorizer))
+		pr.Delete("/integrations/webhooks/{id}", deleteWebhook(svc, authorizer))
 	})
 }
 
@@ -190,5 +194,87 @@ func revokeApiKey(keys ports.ApiKeyService, authorizer authx.Authorizer) http.Ha
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "revoked"})
+	}
+}
+
+func listSyncLogs(svc ports.IntegrationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := svc.ListSyncLogs(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func listWebhooks(svc ports.IntegrationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := svc.ListWebhooks(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func createWebhook(svc ports.IntegrationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			URL    string   `json:"url"`
+			Events []string `json:"events"`
+			Secret string   `json:"secret"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		sub, err := svc.CreateWebhook(r.Context(), ports.CreateWebhookCommand{
+			TenantID: identity.TenantID,
+			URL:      req.URL,
+			Events:   req.Events,
+			Secret:   req.Secret,
+		})
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusCreated, sub)
+	}
+}
+
+func deleteWebhook(svc ports.IntegrationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		if err := svc.DeleteWebhook(r.Context(), identity.TenantID, id); err != nil {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
 	}
 }

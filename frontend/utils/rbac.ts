@@ -1,5 +1,5 @@
 /** Miroir de internal/modules/org/app/service.go DefaultPermissions — garder synchronisé. */
-export type RbacModule = 'org' | 'cra' | 'conges' | 'budget' | 'tma' | 'workflow' | 'billing' | 'notifications' | 'reporting'
+export type RbacModule = 'org' | 'cra' | 'conges' | 'budget' | 'tma' | 'workflow' | 'billing' | 'notifications' | 'reporting' | 'support' | 'maintenance'
 export type RbacAction = 'L' | 'E' | 'V'
 
 type ProfilePerms = Partial<Record<RbacModule, Partial<Record<RbacAction, boolean>>>>
@@ -17,7 +17,9 @@ const mvpAdmin: ProfilePerms = {
   workflow: readWriteValidate,
   billing: readWrite,
   notifications: readWrite,
-  reporting: read
+  reporting: read,
+  support: readWriteValidate,
+  maintenance: readWriteValidate
 }
 
 const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {

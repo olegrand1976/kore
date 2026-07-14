@@ -16,10 +16,11 @@ type service struct {
 	craPlanning ports.CRAPlanningReader
 	leavePlan   ports.LeavePlanningReader
 	invoicing   ports.InvoicingBillingReader
+	tmaDemands  ports.TMADemandReader
 }
 
-func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader, craPlanning ports.CRAPlanningReader, invoicing ports.InvoicingBillingReader, leavePlan ports.LeavePlanningReader) ports.ReportingService {
-	return &service{repo: repo, craBillable: craBillable, craPlanning: craPlanning, invoicing: invoicing, leavePlan: leavePlan}
+func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader, craPlanning ports.CRAPlanningReader, invoicing ports.InvoicingBillingReader, leavePlan ports.LeavePlanningReader, tmaDemands ports.TMADemandReader) ports.ReportingService {
+	return &service{repo: repo, craBillable: craBillable, craPlanning: craPlanning, invoicing: invoicing, leavePlan: leavePlan, tmaDemands: tmaDemands}
 }
 
 func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code string) (domain.Dashboard, error) {
@@ -73,9 +74,18 @@ func (s *service) RunReport(ctx context.Context, cmd ports.RunReportCommand) (do
 	}
 	rows := []map[string]any{}
 	if def.Code == "tma_summary" {
+		openDemands := 0
+		validatedMonth := 0
+		if s.tmaDemands != nil {
+			stats, statsErr := s.tmaDemands.SummaryStats(ctx, cmd.TenantID, time.Now().UTC())
+			if statsErr == nil {
+				openDemands = stats.OpenDemands
+				validatedMonth = stats.ValidatedMonth
+			}
+		}
 		rows = []map[string]any{
-			{"metric": "open_demands", "value": 0},
-			{"metric": "validated_month", "value": 0},
+			{"metric": "open_demands", "value": openDemands},
+			{"metric": "validated_month", "value": validatedMonth},
 		}
 	}
 	return domain.ReportResult{

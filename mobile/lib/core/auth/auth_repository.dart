@@ -209,6 +209,16 @@ class AuthRepository {
   void dispose() => _http.close();
 }
 
+extension AuthSessionRbac on AuthSession {
+  bool get canValidateLeave {
+    final profile = this.profile?.toLowerCase() ?? '';
+    return profile.contains('admin') ||
+        profile.contains('manager') ||
+        profile.contains('responsable') ||
+        profile.contains('chef');
+  }
+}
+
 class PkceChallenge {
   const PkceChallenge({
     required this.verifier,

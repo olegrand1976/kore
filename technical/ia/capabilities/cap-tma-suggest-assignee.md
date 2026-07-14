@@ -7,7 +7,7 @@
 | Code | `tma.suggest_assignee` |
 | Module | 05 TMA |
 | Vague | 2 — P1 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

@@ -7,7 +7,7 @@
 | Code | `publicsite.lead_scoring` |
 | Module | 15 Public |
 | Vague | 3 — P3 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

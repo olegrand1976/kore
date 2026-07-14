@@ -14,6 +14,17 @@
       </p>
     </AppCard>
 
+    <AppCard padding="lg" class="ia-deployer">
+      <h3 class="ia-deployer__title">{{ $t('settings.ia.deployer_title') }}</h3>
+      <p class="ia-deployer__text">{{ $t('settings.ia.deployer_intro') }}</p>
+      <ul class="ia-deployer__list">
+        <li>{{ $t('settings.ia.deployer_supervision') }}</li>
+        <li>{{ $t('settings.ia.deployer_transparency') }}</li>
+        <li>{{ $t('settings.ia.deployer_logging') }}</li>
+        <li>{{ $t('settings.ia.notice_duties') }}</li>
+      </ul>
+    </AppCard>
+
     <AppCard v-if="!enabled" padding="lg" class="ia-notice">
       <h3 class="ia-notice__title">{{ $t('settings.ia.notice_title') }}</h3>
       <p class="ia-notice__text">{{ $t('settings.ia.notice_intro') }}</p>
@@ -116,6 +127,22 @@ watch(pending, (isPending) => {
 
 <style scoped>
 .ia-status { margin-bottom: var(--kore-space-lg); }
+.ia-deployer { margin-bottom: var(--kore-space-lg); }
+.ia-deployer__title {
+  margin: 0 0 var(--kore-space-sm);
+  font-size: var(--kore-text-h3);
+}
+.ia-deployer__text,
+.ia-deployer__list {
+  margin: 0 0 var(--kore-space-md);
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+  line-height: 1.5;
+}
+.ia-deployer__list {
+  padding-left: 1.25rem;
+  margin-bottom: 0;
+}
 .ia-status__row {
   display: flex;
   flex-wrap: wrap;

@@ -139,6 +139,7 @@ const { theme, toggleTheme } = useTheme()
 const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
+const { can } = usePermissions()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
 const { apiFetch } = useApiFetch()
 const drawerOpen = ref(false)
@@ -247,6 +248,7 @@ type NavItem = {
   adminOnly?: boolean
   platformOnly?: boolean
   module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
+  rbacModule?: 'support' | 'maintenance'
   activePrefix?: string
 }
 
@@ -258,12 +260,18 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), module: 'ett' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
+  { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), module: 'invoicing' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },
+  { to: '/support', icon: 'confirmation_number', label: t('nav.support'), rbacModule: 'support' },
+  { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), rbacModule: 'maintenance' },
   { to: '/platform', icon: 'hub', label: t('nav.platform'), platformOnly: true, activePrefix: '/platform' },
   { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
   { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
   { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true },
+  { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), adminOnly: true },
+  { to: '/admin/integrations', icon: 'hub', label: t('nav.integrations'), adminOnly: true, module: 'integrations' },
+  { to: '/admin/workflows', icon: 'account_tree', label: t('nav.workflows'), adminOnly: true },
   { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), adminOnly: true, activePrefix: '/admin/parametres' }
 ])
 
@@ -272,6 +280,7 @@ const navItems = computed(() =>
     if (item.platformOnly && !isPlatformAdmin.value) return false
     if (item.adminOnly && !isAdmin.value) return false
     if (item.module && !hasModule(item.module)) return false
+    if (item.rbacModule && !can(item.rbacModule, 'L')) return false
     return true
   })
 )
@@ -284,6 +293,8 @@ const mainNavItems = computed(() =>
         '/admin/notifications',
         '/admin/organisation',
         '/admin/users',
+        '/admin/identity-providers',
+        '/admin/workflows',
         '/admin/parametres',
         '/platform',
         '/billing/abonnement'
@@ -299,6 +310,9 @@ const settingsNavItems = computed(() => {
     byTo.get('/admin/notifications'),
     byTo.get('/admin/organisation'),
     byTo.get('/admin/users'),
+    byTo.get('/admin/identity-providers'),
+    byTo.get('/admin/integrations'),
+    byTo.get('/admin/workflows'),
     byTo.get('/admin/parametres'),
     byTo.get('/platform'),
     byTo.get('/billing/abonnement')

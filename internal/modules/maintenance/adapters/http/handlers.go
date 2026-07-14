@@ -2,10 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	cradomain "github.com/kore/kore/internal/modules/cra/domain"
+	"github.com/kore/kore/internal/modules/maintenance/domain"
 	"github.com/kore/kore/internal/modules/maintenance/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
@@ -166,9 +169,20 @@ func completeWorkRequest(svc ports.MaintenanceService, authorizer authx.Authoriz
 		identity, _ := authx.FromContext(r.Context())
 		wr, err := svc.Complete(r.Context(), identity.TenantID, id)
 		if err != nil {
-			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			writeMaintenanceError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, wr)
+	}
+}
+
+func writeMaintenanceError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrInvalidWorkState):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, cradomain.ErrCRAAlreadyValidated):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyValidated, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}
 }

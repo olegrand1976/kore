@@ -7,7 +7,7 @@
 | Code | `cra.comment_summary` |
 | Module | 02 CRA |
 | Vague | 2 — P2 |
-| Statut | planifié |
+| Statut | livré |
 
 ## Finalité métier
 

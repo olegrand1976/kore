@@ -2,10 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	cradomain "github.com/kore/kore/internal/modules/cra/domain"
+	"github.com/kore/kore/internal/modules/support/domain"
 	"github.com/kore/kore/internal/modules/support/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
@@ -160,9 +163,20 @@ func resolveTicket(svc ports.SupportService, authorizer authx.Authorizer) http.H
 		identity, _ := authx.FromContext(r.Context())
 		t, err := svc.Resolve(r.Context(), identity.TenantID, id)
 		if err != nil {
-			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			writeSupportError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, t)
+	}
+}
+
+func writeSupportError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrInvalidTicketState):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, cradomain.ErrCRAAlreadyValidated):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyValidated, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}
 }
