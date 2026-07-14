@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import { computed, onMounted, reactive, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
 
 export type SortDir = 'asc' | 'desc'
 export type ListView = 'table' | 'kanban'
@@ -43,8 +43,8 @@ export type ListControlsOptions<T> = {
   defaultSort?: { key: string; dir: SortDir }
   defaultView?: ListView
   kanbanEnabled?: boolean
-  filters?: Record<string, FilterDef<T>>
-  sortKeys: SortKeyDef<T>[]
+  filters?: MaybeRefOrGetter<Record<string, FilterDef<T>> | undefined>
+  sortKeys: MaybeRefOrGetter<SortKeyDef<T>[]>
 }
 
 type StoredState = {
@@ -135,17 +135,23 @@ function writeStoredState(storageKey: string | undefined, state: StoredState) {
 }
 
 export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions<T>) {
-  const defaultSortKey = options.defaultSort?.key ?? options.sortKeys[0]?.key ?? ''
+  const defaultSortKey = options.defaultSort?.key ?? toValue(options.sortKeys)?.[0]?.key ?? ''
   const defaultSortDir = options.defaultSort?.dir ?? 'asc'
+
+  const filterDefs = computed(() => toValue(options.filters))
 
   const stored = readStoredState(options.storageKey)
   const initialFilters = {
-    ...defaultFilterValues(options.filters),
+    ...defaultFilterValues(filterDefs.value),
     ...(stored?.filters ?? {})
   }
 
   const filterValues = reactive<Record<string, string>>(initialFilters)
-  const sortKey = ref(stored?.sortKey && options.sortKeys.some((s) => s.key === stored.sortKey) ? stored.sortKey : defaultSortKey)
+  const sortKey = ref(
+    stored?.sortKey && toValue(options.sortKeys).some((s) => s.key === stored.sortKey)
+      ? stored.sortKey
+      : defaultSortKey
+  )
   const sortDir = ref<SortDir>(stored?.sortDir === 'desc' || stored?.sortDir === 'asc' ? stored.sortDir : defaultSortDir)
   const view = ref<ListView>(
     options.kanbanEnabled && (stored?.view === 'kanban' || stored?.view === 'table')
@@ -153,11 +159,13 @@ export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions
       : (options.defaultView ?? 'table')
   )
 
-  const activeSort = computed(() => options.sortKeys.find((s) => s.key === sortKey.value) ?? options.sortKeys[0])
+  const activeSort = computed(
+    () => toValue(options.sortKeys).find((s) => s.key === sortKey.value) ?? toValue(options.sortKeys)[0]
+  )
 
   const filteredItems = computed(() => {
     let result = items.value
-    const filters = options.filters
+    const filters = filterDefs.value
     if (!filters) return result
 
     for (const [key, def] of Object.entries(filters)) {
@@ -188,7 +196,7 @@ export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions
   })
 
   const hasActiveFilters = computed(() => {
-    const defaults = defaultFilterValues(options.filters)
+    const defaults = defaultFilterValues(filterDefs.value)
     return Object.entries(filterValues).some(([key, value]) => (value ?? '') !== (defaults[key] ?? ''))
   })
 
@@ -211,7 +219,7 @@ export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions
   }
 
   function resetFilters() {
-    const defaults = defaultFilterValues(options.filters)
+    const defaults = defaultFilterValues(filterDefs.value)
     for (const key of Object.keys(defaults)) {
       filterValues[key] = defaults[key] ?? ''
     }
@@ -239,6 +247,7 @@ export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions
 
   return {
     filterValues,
+    filterDefs,
     sortKey,
     sortDir,
     view,
@@ -253,4 +262,23 @@ export function useListControls<T>(items: Ref<T[]>, options: ListControlsOptions
     resetFilters,
     resetAll
   }
+}
+
+/** Aligne une ref `month` (YYYY-MM) avec le filtre mois persisté, puis recharge les données. */
+export function syncListMonthFilter(
+  filterValues: Record<string, string>,
+  month: Ref<string>,
+  refresh: () => Promise<void>
+) {
+  onMounted(async () => {
+    const stored = filterValues.month?.trim()
+    if (stored && stored !== month.value) {
+      month.value = stored
+      await refresh()
+      return
+    }
+    if (!filterValues.month) {
+      filterValues.month = month.value
+    }
+  })
 }

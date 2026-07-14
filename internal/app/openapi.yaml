@@ -1239,7 +1239,12 @@ paths:
           in: query
           schema: { type: string, enum: ['60'] }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GanttView'
   /planning:
     get:
       summary: Planning 60j
@@ -1255,7 +1260,12 @@ paths:
           in: query
           schema: { type: string, enum: ['60'] }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanningView'
   /dashboards/{code}:
     get:
       summary: Dashboard applicatif
@@ -1273,8 +1283,23 @@ paths:
     get:
       summary: Statistiques CA
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: start
+          in: query
+          schema: { type: string, format: date }
+        - name: end
+          in: query
+          schema: { type: string, format: date }
+        - name: window
+          in: query
+          schema: { type: string, enum: ['60'] }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingStats'
   /missions:
     get:
       summary: Liste missions SSII
@@ -1449,6 +1474,68 @@ components:
                 - WEEK_INCOMPLETE
             message:
               type: string
+    GanttView:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GanttItem'
+    GanttItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        progress: { type: number, format: float }
+    PlanningView:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningRow'
+    PlanningRow:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        userName: { type: string }
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningSlot'
+    PlanningSlot:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        label: { type: string }
+        hours: { type: number, format: float }
+    BillingStats:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/ReportingPeriod'
+        totalAmount: { type: integer, format: int64 }
+        invoiceCount: { type: integer }
+        currency: { type: string }
+        billableHours: { type: number, format: float }
+    ReportingPeriod:
+      type: object
+      properties:
+        start: { type: string, format: date }
+        end: { type: string, format: date }
+    InvoiceDraftResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [created, skipped, unavailable]
+        reason: { type: string }
   securitySchemes:
     bearerAuth:
       type: http

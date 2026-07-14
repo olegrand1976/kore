@@ -66,11 +66,25 @@
         <div class="fiche-table-head">
           <h3 class="fiche-section-title">{{ $t('fiche.section_contacts') }}</h3>
         </div>
+        <div class="fiche-table-toolbar">
+          <AppListToolbar
+            :filters="contactListFilters"
+            :filter-values="contactFilterValues"
+            :sort-keys="contactSortKeys"
+            :sort-key="contactSortKey"
+            :sort-dir="contactSortDir"
+            :has-active-filters="contactHasActiveFilters"
+            @update:filter="setContactFilter"
+            @update:sort-key="setContactSort($event)"
+            @update:sort-dir="setContactSortDir"
+            @reset="resetContactFilters"
+          />
+        </div>
         <AppTable
           :columns="contactColumns"
-          :rows="contactRows"
+          :rows="contactDisplayRows"
           row-key="email"
-          :empty-title="$t('fiche.contacts_empty')"
+          :empty-title="contactHasActiveFilters ? $t('common.list.no_results') : $t('fiche.contacts_empty')"
         >
           <template #cell-name="{ row }">
             <span class="fiche-strong">{{ row.name }}</span>
@@ -86,12 +100,26 @@
         <div class="fiche-table-head">
           <h3 class="fiche-section-title">{{ $t('fiche.section_missions') }}</h3>
         </div>
+        <div class="fiche-table-toolbar">
+          <AppListToolbar
+            :filters="missionListFilters"
+            :filter-values="missionFilterValues"
+            :sort-keys="missionSortKeys"
+            :sort-key="missionSortKey"
+            :sort-dir="missionSortDir"
+            :has-active-filters="missionHasActiveFilters"
+            @update:filter="setMissionFilter"
+            @update:sort-key="setMissionSort($event)"
+            @update:sort-dir="setMissionSortDir"
+            @reset="resetMissionFilters"
+          />
+        </div>
         <AppTable
           :columns="missionColumns"
-          :rows="missionRows"
+          :rows="missionDisplayRows"
           row-key="id"
           :loading="missionsPending"
-          :empty-title="$t('fiche.missions_empty')"
+          :empty-title="missionHasActiveFilters ? $t('common.list.no_results') : $t('fiche.missions_empty')"
         >
           <template #cell-status="{ value }">
             <AppBadge :variant="missionStatusVariant(String(value))">
@@ -116,6 +144,8 @@
 </template>
 
 <script setup lang="ts">
+import { applyTextSearch, useListControls } from '~/composables/useListControls'
+
 definePageMeta({ layout: 'default' })
 
 type ClientContact = {
@@ -184,6 +214,39 @@ const contactRows = computed(() =>
   }))
 )
 
+const contactListFilters = computed(() => ({
+  q: {
+    type: 'search' as const,
+    label: t('common.list.search'),
+    placeholder: t('fiche.col_contact_name'),
+    match: (row: { name: string; role: string; email: string }, query: string) =>
+      applyTextSearch(query, row.name, row.role, row.email)
+  }
+}))
+
+const contactSortKeys = computed(() => [
+  { key: 'name', label: t('fiche.col_contact_name'), type: 'string' as const, accessor: (row: { name: string }) => row.name }
+])
+
+const {
+  filterValues: contactFilterValues,
+  sortKey: contactSortKey,
+  sortDir: contactSortDir,
+  sortedItems: contactSortedItems,
+  hasActiveFilters: contactHasActiveFilters,
+  setFilter: setContactFilter,
+  setSort: setContactSort,
+  setSortDir: setContactSortDir,
+  resetFilters: resetContactFilters
+} = useListControls(contactRows, {
+  storageKey: 'client-contacts',
+  defaultSort: { key: 'name', dir: 'asc' },
+  filters: contactListFilters,
+  sortKeys: contactSortKeys
+})
+
+const contactDisplayRows = computed(() => contactSortedItems.value)
+
 const missions = computed((): MissionSummary[] => {
   const payload = (missionsData.value as { data?: MissionSummary[] })?.data ?? missionsData.value
   if (!Array.isArray(payload)) return []
@@ -210,9 +273,42 @@ const missionRows = computed(() =>
     period: formatPeriod(m.startDate, m.endDate),
     status: m.status ?? '',
     tjm: formatMoney(Number(m.tjmAmount ?? 0), m.currency ?? 'EUR'),
-    actions: ''
+    actions: '',
+    searchText: `${formatPeriod(m.startDate, m.endDate)} ${m.status ?? ''}`
   }))
 )
+
+const missionListFilters = computed(() => ({
+  q: {
+    type: 'search' as const,
+    label: t('common.list.search'),
+    placeholder: t('fiche.section_missions'),
+    match: (row: { searchText: string }, query: string) => applyTextSearch(query, row.searchText)
+  }
+}))
+
+const missionSortKeys = computed(() => [
+  { key: 'period', label: t('fiche.col_period'), type: 'string' as const, accessor: (row: { period: string }) => row.period }
+])
+
+const {
+  filterValues: missionFilterValues,
+  sortKey: missionSortKey,
+  sortDir: missionSortDir,
+  sortedItems: missionSortedItems,
+  hasActiveFilters: missionHasActiveFilters,
+  setFilter: setMissionFilter,
+  setSort: setMissionSort,
+  setSortDir: setMissionSortDir,
+  resetFilters: resetMissionFilters
+} = useListControls(missionRows, {
+  storageKey: 'client-missions',
+  defaultSort: { key: 'period', dir: 'asc' },
+  filters: missionListFilters,
+  sortKeys: missionSortKeys
+})
+
+const missionDisplayRows = computed(() => missionSortedItems.value)
 </script>
 
 <style scoped>
@@ -263,6 +359,13 @@ const missionRows = computed(() =>
 
 .fiche-table-head {
   padding: var(--kore-space-lg) var(--kore-space-lg) 0;
+}
+
+.fiche-table-toolbar :deep(.list-toolbar) {
+  margin-bottom: 0;
+  border: none;
+  box-shadow: none;
+  padding-top: 0;
 }
 
 .fiche-strong { font-weight: 600; }

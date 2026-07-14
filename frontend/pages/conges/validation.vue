@@ -5,11 +5,23 @@
       <AppEmptyState icon="lock" :title="$t('conges.validation_forbidden')" />
     </AppCard>
     <AppCard v-else padding="lg">
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @reset="resetFilters"
+      />
       <AppTable
         :columns="columns"
-        :rows="rows"
+        :rows="displayRows"
         :loading="pending"
-        :empty-title="$t('conges.validation_empty')"
+        :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('conges.validation_empty')"
       >
         <template #cell-requester="{ value }">
           <span class="requester">{{ value }}</span>
@@ -39,13 +51,33 @@
 
 <script setup lang="ts">
 import type { LeaveRequest } from '~/composables/useLeave'
+import {
+  pickLeaveTypeCode,
+  pickLeaveTypeLabel,
+  useLeave,
+  useLeaveLabels,
+  useLeaveTypeConfigs
+} from '~/composables/useLeave'
+import { useListControls } from '~/composables/useListControls'
 
 const { t } = useI18n()
 const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()
 const { extractFetchError } = useApiError()
-const { list, pending: pendingFn, approve, reject, pickId, pickFrom, pickTo, pickType, pickMotif, pickUserId, formatLeaveUserLogin } = useLeave()
-const { fetchMine } = useLeaveTypeConfigs()
+const {
+  list,
+  pending: pendingFn,
+  approve,
+  reject,
+  pickId,
+  pickFrom,
+  pickTo,
+  pickType,
+  pickMotif,
+  pickUserId,
+  formatLeaveUserLogin
+} = useLeave()
+const { fetchMine, activeTypes } = useLeaveTypeConfigs()
 const { typeLabel } = useLeaveLabels()
 const { fetchManagerContext } = useAi()
 
@@ -126,7 +158,17 @@ const columns = computed(() => [
   { key: 'actions', label: '' }
 ])
 
-const rows = computed(() => {
+type ValidationRow = {
+  id: string
+  requester: string
+  type: string
+  typeCode: string
+  from: string
+  to: string
+  motif: string
+}
+
+const listItems = computed((): ValidationRow[] => {
   const payload = data.value
   const items = payload?.items ?? []
   const logins = payload?.logins ?? {}
@@ -134,11 +176,48 @@ const rows = computed(() => {
     id: pickId(item),
     requester: resolveRequester(item, logins),
     type: typeLabel(pickType(item)),
+    typeCode: pickType(item),
     from: pickFrom(item),
     to: pickTo(item),
     motif: pickMotif(item) || '—'
   }))
 })
+
+const listFilters = computed(() => ({
+  type: {
+    type: 'select' as const,
+    label: t('conges.col_type'),
+    options: activeTypes.value.map((lt) => ({
+      value: pickLeaveTypeCode(lt),
+      label: pickLeaveTypeLabel(lt)
+    })),
+    match: (row: ValidationRow, value: string) => row.typeCode === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  { key: 'from', label: t('conges.from'), type: 'date' as const, accessor: (row: ValidationRow) => row.from },
+  { key: 'requester', label: t('conges.col_requester'), type: 'string' as const, accessor: (row: ValidationRow) => row.requester }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'leave-validation',
+  defaultSort: { key: 'from', dir: 'asc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
 
 const decide = async (id: string, action: 'approve' | 'reject') => {
   busyId.value = id

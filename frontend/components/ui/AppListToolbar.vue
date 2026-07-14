@@ -3,13 +3,14 @@ import type { FilterDef, ListView, SortDir, SortKeyDef } from '~/composables/use
 
 const props = defineProps<{
   filters?: Record<string, FilterDef<unknown>>
-  filterValues: Record<string, string>
+  filterValues?: Record<string, string>
   sortKeys: SortKeyDef<unknown>[]
   sortKey: string
   sortDir: SortDir
   view?: ListView
   kanbanEnabled?: boolean
   hasActiveFilters?: boolean
+  disabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,15 +31,16 @@ function onFilterChange(key: string, event: Event) {
 </script>
 
 <template>
-  <AppCard padding="lg" class="list-toolbar">
+  <AppCard padding="lg" class="list-toolbar" :class="{ 'list-toolbar--disabled': disabled }">
     <div class="list-toolbar__grid">
       <template v-for="[key, def] in filterEntries" :key="key">
         <AppInput
           v-if="def.type === 'search'"
           :id="`list-filter-${key}`"
-          :model-value="filterValues[key] ?? ''"
+          :model-value="filterValues?.[key] ?? ''"
           :label="def.label"
           :placeholder="def.placeholder"
+          :disabled="disabled"
           @update:model-value="emit('update:filter', key, $event)"
         />
         <div v-else-if="def.type === 'month'" class="list-toolbar__field">
@@ -47,7 +49,8 @@ function onFilterChange(key: string, event: Event) {
             :id="`list-filter-${key}`"
             type="month"
             class="list-toolbar__month"
-            :value="filterValues[key] ?? ''"
+            :value="filterValues?.[key] ?? ''"
+            :disabled="disabled"
             @change="onFilterChange(key, $event)"
           >
         </div>
@@ -56,7 +59,8 @@ function onFilterChange(key: string, event: Event) {
           <select
             :id="`list-filter-${key}`"
             class="list-toolbar__select"
-            :value="filterValues[key] ?? ''"
+            :value="filterValues?.[key] ?? ''"
+            :disabled="disabled"
             @change="onFilterChange(key, $event)"
           >
             <option value="">{{ t('common.list.filter_all') }}</option>
@@ -74,6 +78,7 @@ function onFilterChange(key: string, event: Event) {
             id="list-sort-key"
             class="list-toolbar__select"
             :value="sortKey"
+            :disabled="disabled"
             @change="emit('update:sortKey', ($event.target as HTMLSelectElement).value)"
           >
             <option v-for="opt in sortKeys" :key="opt.key" :value="opt.key">
@@ -84,6 +89,7 @@ function onFilterChange(key: string, event: Event) {
             id="list-sort-dir"
             class="list-toolbar__select list-toolbar__select--dir"
             :value="sortDir"
+            :disabled="disabled"
             @change="emit('update:sortDir', ($event.target as HTMLSelectElement).value as SortDir)"
           >
             <option value="asc">{{ t('common.list.sort_asc') }}</option>
@@ -99,6 +105,7 @@ function onFilterChange(key: string, event: Event) {
             type="button"
             class="list-toolbar__view-btn"
             :class="{ 'list-toolbar__view-btn--active': view === 'table' }"
+            :disabled="disabled"
             @click="emit('update:view', 'table')"
           >
             {{ t('common.list.view_table') }}
@@ -107,6 +114,7 @@ function onFilterChange(key: string, event: Event) {
             type="button"
             class="list-toolbar__view-btn"
             :class="{ 'list-toolbar__view-btn--active': view === 'kanban' }"
+            :disabled="disabled"
             @click="emit('update:view', 'kanban')"
           >
             {{ t('common.list.view_kanban') }}
@@ -115,7 +123,7 @@ function onFilterChange(key: string, event: Event) {
       </div>
     </div>
 
-    <div v-if="hasActiveFilters" class="list-toolbar__actions">
+    <div v-if="hasActiveFilters && !disabled" class="list-toolbar__actions">
       <AppButton variant="ghost" size="sm" type="button" @click="emit('reset')">
         {{ t('common.list.reset_filters') }}
       </AppButton>
@@ -126,6 +134,21 @@ function onFilterChange(key: string, event: Event) {
 <style scoped>
 .list-toolbar {
   margin-bottom: var(--kore-space-lg);
+}
+
+.list-toolbar--disabled {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.list-toolbar__select:disabled,
+.list-toolbar__month:disabled {
+  cursor: not-allowed;
+}
+
+.list-toolbar__view-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .list-toolbar__grid {

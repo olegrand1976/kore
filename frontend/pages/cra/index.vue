@@ -59,8 +59,34 @@
       <p class="muted">{{ $t('cra.loading') }}</p>
     </AppCard>
 
-    <AppCard v-else-if="rows.length" padding="none" class="cra-table-wrap">
-      <AppTable :columns="columns" :rows="rows" row-key="id">
+    <template v-else>
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @reset="resetFilters"
+      />
+
+      <AppCard v-if="!displayRows.length" padding="lg">
+        <AppEmptyState
+          icon="schedule"
+          :title="hasActiveFilters ? $t('common.list.no_results') : $t('cra.empty')"
+          :description="hasActiveFilters ? undefined : $t('cra.empty_desc')"
+        >
+          <AppButton v-if="!hasActiveFilters" variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">
+            {{ $t('cra.new') }}
+          </AppButton>
+        </AppEmptyState>
+      </AppCard>
+
+      <AppCard v-else padding="none" class="cra-table-wrap">
+        <AppTable :columns="columns" :rows="displayRows" row-key="id">
         <template #cell-month="{ value }">
           <span class="cra-month">{{ formatMonth(String(value)) }}</span>
         </template>
@@ -119,13 +145,8 @@
           <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">{{ $t('cra.open') }}</AppButton>
         </template>
       </AppTable>
-    </AppCard>
-
-    <AppCard v-else padding="lg">
-      <AppEmptyState icon="schedule" :title="$t('cra.empty')" :description="$t('cra.empty_desc')">
-        <AppButton variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">{{ $t('cra.new') }}</AppButton>
-      </AppEmptyState>
-    </AppCard>
+      </AppCard>
+    </template>
 
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
   </div>
@@ -133,9 +154,29 @@
 
 <script setup lang="ts">
 import { countCraByStatus } from '~/composables/useKpiMetrics'
+import { useCraError } from '~/composables/useCraError'
+import { currentMonthKey, useCraStatus } from '~/composables/useCraStatus'
+import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default' })
+
+const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
+
+type CraRow = {
+  id: string
+  month: string
+  userId: string
+  userDisplay: string
+  client: string
+  mission: string
+  clientId: string
+  missionId: string
+  hours: number
+  status: string
+  updatedAt: string
+  actions: string
+}
 
 type CraSummary = {
   id: string
@@ -154,7 +195,8 @@ type CraSummary = {
 }
 
 const { t, locale } = useI18n()
-const { statusLabel, statusVariant, currentMonthKey } = useCraStatus()
+const { statusLabel, statusVariant } = useCraStatus()
+const { mapCraError } = useCraError()
 const { canValidateCra, canReadReporting } = usePermissions()
 
 const creating = ref(false)
@@ -182,23 +224,7 @@ const rawItems = computed((): CraSummary[] => {
   }))
 })
 
-const columns = computed(() => {
-  const cols = [{ key: 'month', label: t('cra.col_period') }]
-  if (canValidateCra.value) {
-    cols.push({ key: 'user', label: t('cra.col_user') })
-  }
-  cols.push(
-    { key: 'client', label: t('cra.col_client') },
-    { key: 'mission', label: t('cra.col_mission') },
-    { key: 'hours', label: t('cra.col_hours') },
-    { key: 'status', label: t('cra.col_status') },
-    { key: 'updatedAt', label: t('cra.col_updated') },
-    { key: 'actions', label: '' }
-  )
-  return cols
-})
-
-const rows = computed(() =>
+const listItems = computed((): CraRow[] =>
   rawItems.value.map((ts) => ({
     id: ts.id,
     month: ts.month,
@@ -214,6 +240,82 @@ const rows = computed(() =>
     actions: ''
   }))
 )
+
+const listFilters = computed(() => ({
+  status: {
+    type: 'select' as const,
+    label: t('cra.col_status'),
+    options: CRA_STATUSES.map((status) => ({
+      value: status,
+      label: statusLabel(status)
+    })),
+    match: (row: CraRow, value: string) => row.status === value
+  },
+  month: {
+    type: 'month' as const,
+    label: t('cra.col_period'),
+    match: (row: CraRow, value: string) => row.month === value
+  },
+  q: {
+    type: 'search' as const,
+    label: t('common.list.search'),
+    placeholder: t('cra.search_placeholder'),
+    match: (row: CraRow, query: string) =>
+      applyTextSearch(query, row.userDisplay, row.client, row.mission)
+  }
+}))
+
+const sortKeys = computed(() => {
+  const keys = [
+    { key: 'month', label: t('cra.col_period'), type: 'date' as const, accessor: (row: CraRow) => row.month },
+    { key: 'updatedAt', label: t('cra.col_updated'), type: 'date' as const, accessor: (row: CraRow) => row.updatedAt },
+    { key: 'hours', label: t('cra.col_hours'), type: 'number' as const, accessor: (row: CraRow) => row.hours }
+  ]
+  if (canValidateCra.value) {
+    keys.splice(1, 0, {
+      key: 'user',
+      label: t('cra.col_user'),
+      type: 'string' as const,
+      accessor: (row: CraRow) => row.userDisplay
+    })
+  }
+  return keys
+})
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'cra-recent',
+  defaultSort: { key: 'month', dir: 'desc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
+
+const columns = computed(() => {
+  const cols = [{ key: 'month', label: t('cra.col_period') }]
+  if (canValidateCra.value) {
+    cols.push({ key: 'user', label: t('cra.col_user') })
+  }
+  cols.push(
+    { key: 'client', label: t('cra.col_client') },
+    { key: 'mission', label: t('cra.col_mission') },
+    { key: 'hours', label: t('cra.col_hours') },
+    { key: 'status', label: t('cra.col_status') },
+    { key: 'updatedAt', label: t('cra.col_updated') },
+    { key: 'actions', label: '' }
+  )
+  return cols
+})
 
 const kpi = computed(() => {
   const items = rawItems.value
@@ -270,8 +372,8 @@ const openCurrentMonth = async () => {
       return
     }
     await refresh()
-  } catch {
-    errorMsg.value = t('cra.download_error')
+  } catch (err) {
+    errorMsg.value = mapCraError(err, t('cra.open_error'))
   } finally {
     creating.value = false
   }

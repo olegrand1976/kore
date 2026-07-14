@@ -26,6 +26,12 @@
           <option value="none">{{ $t('settings.cra.submit_policy_none') }}</option>
         </select>
 
+        <label for="cra-gate-mode">{{ $t('settings.cra.cra_gate_mode') }}</label>
+        <select id="cra-gate-mode" v-model="craGateMode">
+          <option value="warn">{{ $t('settings.cra.gate_mode_warn') }}</option>
+          <option value="block">{{ $t('settings.cra.gate_mode_block') }}</option>
+        </select>
+
         <label class="cra-settings-form__check">
           <input v-model="craMailAuto" type="checkbox">
           {{ $t('settings.cra.cra_mail_auto') }}
@@ -70,6 +76,7 @@ type SocieteRow = {
   craMailAuto?: boolean
   craMailRecipients?: string[]
   weekSubmitPolicy?: string
+  craGateMode?: string
   taskTypesEnabled?: string[]
 }
 
@@ -80,6 +87,7 @@ const dayCapacityMinutes = ref(480)
 const craMailAuto = ref(false)
 const craMailRecipientsText = ref('')
 const weekSubmitPolicy = ref('warn')
+const craGateMode = ref('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const saving = ref(false)
 const message = ref('')
@@ -108,6 +116,7 @@ const applyRow = (row?: SocieteRow) => {
   craMailAuto.value = row?.craMailAuto ?? false
   craMailRecipientsText.value = (row?.craMailRecipients ?? []).join('\n')
   weekSubmitPolicy.value = row?.weekSubmitPolicy ?? 'warn'
+  craGateMode.value = row?.craGateMode ?? 'warn'
   taskTypesEnabled.value = row?.taskTypesEnabled?.length
     ? [...row.taskTypesEnabled]
     : ['manual', 'interne', 'formation', 'mission']
@@ -123,6 +132,7 @@ const loadSocietes = async () => {
     craMailAuto: s.craMailAuto ?? false,
     craMailRecipients: s.craMailRecipients ?? [],
     weekSubmitPolicy: s.weekSubmitPolicy ?? 'warn',
+    craGateMode: s.craGateMode ?? 'warn',
     taskTypesEnabled: s.taskTypesEnabled ?? []
   }))
   if (!selectedSocieteId.value && societes.value.length > 0) {
@@ -152,6 +162,7 @@ const save = async () => {
           .map((entry) => entry.trim())
           .filter(Boolean),
         weekSubmitPolicy: weekSubmitPolicy.value,
+        craGateMode: craGateMode.value,
         taskTypesEnabled: taskTypesEnabled.value
       }
     })

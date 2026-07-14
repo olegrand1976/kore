@@ -105,7 +105,9 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 | POST | `/api/v1/timesheets/{id}/pdf` | CRA (E) | Générer le PDF mensuel |
 | POST | `/api/v1/timesheets/{id}/validate` | CRA (V) | Validation manager (définitif) |
 
-Erreurs : `409 CRA_ALREADY_VALIDATED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`.
+Erreurs : `409 CRA_ALREADY_VALIDATED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`, `422 WEEK_INCOMPLETE`.
+
+Réponse `POST /timesheets/{id}/validate` : inclut `invoiceDraft` (`created` | `skipped` | `unavailable` + `reason`).
 
 ## 7. Schéma de données (schéma `cra`)
 
@@ -153,12 +155,13 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Élément | Détail |
 | --- | --- |
-| Pages | `cra/index` (grille hebdo/mensuelle), `cra/[month]`, aperçu mensuel |
-| Composants | `TimesheetGrid`, `WeekEditor`, `CommercialInfoForm`, `CraPdfButton` |
-| Composables | `useCra()` (chargement, sauvegarde, soumission, PDF) |
+| Pages | `cra/index`, `cra/[id]` (saisie hebdo + infos commerciales), `cra/planning`, `cra/gantt`, `prestations/index`, `reporting/facturation` |
+| Composants | `WeekMatrix`, `CommercialInfoForm`, `CraPdfPreview`, `CraGanttChart`, `DayActivityBlock` |
+| Composables | `useCra()` (chargement, sauvegarde, soumission, validation, RBAC `cra:E`), `useCraError()` (mapping codes `CRA_*`), `useCraGate()` |
 | Store Pinia | `cra` (CRA courant, statut, dirty state) |
-| Routes BFF | `server/api/timesheets/*` |
-| Permissions UI | Validation visible profils Responsable ; grille masquée profil Utilisateur (RBAC §3.3) |
+| Routes BFF | `server/api/timesheets/*`, `server/api/billing-stats`, `server/api/gantt`, `server/api/planning` |
+| Middleware | `cra-gate.ts` — mode `warn` (bannière) ou `block` (redirect) selon `cra_gate_mode` société |
+| Permissions UI | `canEdit` = statut ≠ Définitif **et** `cra:E` ; validation masquée si `!canValidateCra` |
 
 ## 10bis. Client Flutter (Phase 1bis)
 

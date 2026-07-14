@@ -103,3 +103,68 @@ func TestCRA_FindConsumption_BillableApplicationLines(t *testing.T) {
 	require.Len(t, items, 1)
 	require.Equal(t, 240, items[0].Duration.Minutes)
 }
+
+func TestCRA_ListSummariesWithoutSSIISchema(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	ctx := context.Background()
+	repo := postgres.NewRepository(pool)
+
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	month := domain.Month("2026-07")
+	require.NoError(t, repo.Save(ctx, domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    month,
+		Status:   domain.StatusBrouillon,
+	}))
+
+	_, err := pool.Exec(ctx, `DROP SCHEMA IF EXISTS ssii CASCADE`)
+	require.NoError(t, err)
+
+	repo = postgres.NewRepository(pool)
+	_, err = repo.ListSummariesByTenant(ctx, tenant, 10)
+	require.NoError(t, err)
+}
+
+func TestCRA_SaveAndGetWithoutRejectReasonColumn(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	ctx := context.Background()
+	repo := postgres.NewRepository(pool)
+
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	month := domain.Month("2026-08")
+	tsID := uuid.New()
+
+	require.NoError(t, repo.Save(ctx, domain.Timesheet{
+		ID:       tsID,
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    month,
+		Status:   domain.StatusBrouillon,
+	}))
+
+	_, err := pool.Exec(ctx, `
+		ALTER TABLE cra.timesheets
+			DROP COLUMN IF EXISTS reject_reason,
+			DROP COLUMN IF EXISTS rejected_at,
+			DROP COLUMN IF EXISTS rejected_by
+	`)
+	require.NoError(t, err)
+
+	repo = postgres.NewRepository(pool)
+	newID := uuid.New()
+	require.NoError(t, repo.Save(ctx, domain.Timesheet{
+		ID:       newID,
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    month,
+		Status:   domain.StatusValideSemaine,
+	}))
+
+	got, err := repo.Get(ctx, tenant, userID, month)
+	require.NoError(t, err)
+	require.Equal(t, domain.StatusValideSemaine, got.Status)
+}

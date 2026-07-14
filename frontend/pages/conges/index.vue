@@ -108,37 +108,84 @@
       <p class="conges-muted">{{ $t('conges.loading') }}</p>
     </AppCard>
 
-    <AppCard v-else-if="rows.length" padding="none" class="conges-table-wrap">
-      <AppTable :columns="columns" :rows="rows" row-key="id">
-        <template #cell-type="{ value }">
-          <span class="conges-type">{{ typeLabel(String(value)) }}</span>
-        </template>
-        <template #cell-from="{ value }">
-          <span class="conges-date">{{ formatDate(String(value)) }}</span>
-        </template>
-        <template #cell-to="{ value }">
-          <span class="conges-date">{{ formatDate(String(value)) }}</span>
-        </template>
-        <template #cell-days="{ value }">
-          <span class="conges-days">{{ $t('conges.days_value', { n: value }) }}</span>
-        </template>
-        <template #cell-motif="{ value }">
-          <span class="conges-motif" :title="String(value)">{{ value || $t('conges.motif_empty') }}</span>
-        </template>
-        <template #cell-status="{ value }">
-          <AppBadge :variant="statusVariant(String(value))">{{ statusLabel(String(value)) }}</AppBadge>
-        </template>
-        <template #cell-decidedAt="{ value }">
-          <span class="conges-date conges-date--muted">{{ formatDate(String(value)) }}</span>
-        </template>
-      </AppTable>
-    </AppCard>
+    <template v-else>
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :view="view"
+        kanban-enabled
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @update:view="setView"
+        @reset="resetFilters"
+      />
 
-    <AppCard v-else padding="lg">
-      <AppEmptyState icon="event_busy" :title="$t('conges.empty')" :description="$t('conges.empty_desc')">
-        <AppButton variant="primary" size="sm" @click="showForm = true">{{ $t('conges.new_request') }}</AppButton>
-      </AppEmptyState>
-    </AppCard>
+      <AppCard v-if="!displayRows.length" padding="lg">
+        <AppEmptyState
+          icon="event_busy"
+          :title="hasActiveFilters ? $t('common.list.no_results') : $t('conges.empty')"
+          :description="hasActiveFilters ? undefined : $t('conges.empty_desc')"
+        >
+          <AppButton v-if="!hasActiveFilters" variant="primary" size="sm" @click="showForm = true">
+            {{ $t('conges.new_request') }}
+          </AppButton>
+        </AppEmptyState>
+      </AppCard>
+
+      <AppCard v-else-if="view === 'table'" padding="none" class="conges-table-wrap">
+        <AppTable :columns="columns" :rows="displayRows" row-key="id">
+          <template #cell-type="{ value }">
+            <span class="conges-type">{{ typeLabel(String(value)) }}</span>
+          </template>
+          <template #cell-from="{ value }">
+            <span class="conges-date">{{ formatDate(String(value)) }}</span>
+          </template>
+          <template #cell-to="{ value }">
+            <span class="conges-date">{{ formatDate(String(value)) }}</span>
+          </template>
+          <template #cell-days="{ value }">
+            <span class="conges-days">{{ $t('conges.days_value', { n: value }) }}</span>
+          </template>
+          <template #cell-motif="{ value }">
+            <span class="conges-motif" :title="String(value)">{{ value || $t('conges.motif_empty') }}</span>
+          </template>
+          <template #cell-status="{ value }">
+            <AppBadge :variant="statusVariant(String(value))">{{ statusLabel(String(value)) }}</AppBadge>
+          </template>
+          <template #cell-decidedAt="{ value }">
+            <span class="conges-date conges-date--muted">{{ formatDate(String(value)) }}</span>
+          </template>
+        </AppTable>
+      </AppCard>
+
+      <AppCard v-else padding="lg">
+        <AppKanbanBoard
+          :columns="kanbanColumns"
+          :items="displayRows"
+          :column-key="(row) => String((row as LeaveRow).status)"
+          :item-key="(row) => String((row as LeaveRow).id)"
+          :empty-label="$t('common.list.no_results')"
+        >
+          <template #card="{ item }">
+            <div class="conges-kanban-card">
+              <p class="conges-kanban-card__type">{{ typeLabel(String((item as LeaveRow).type)) }}</p>
+              <p class="conges-kanban-card__dates">
+                {{ formatDate(String((item as LeaveRow).from)) }} → {{ formatDate(String((item as LeaveRow).to)) }}
+              </p>
+              <p class="conges-kanban-card__motif">{{ (item as LeaveRow).motif || $t('conges.motif_empty') }}</p>
+              <AppBadge :variant="statusVariant(String((item as LeaveRow).status))">
+                {{ statusLabel(String((item as LeaveRow).status)) }}
+              </AppBadge>
+            </div>
+          </template>
+        </AppKanbanBoard>
+      </AppCard>
+    </template>
 
     <p v-if="errorMsg" class="conges-flash conges-flash--error" role="alert">{{ errorMsg }}</p>
   </div>
@@ -148,6 +195,7 @@
 definePageMeta({ layout: 'default', middleware: 'cra-gate' })
 
 import { leaveMetrics, leaveStatusSeries } from '~/composables/useKpiMetrics'
+import { useListControls } from '~/composables/useListControls'
 import {
   pickLeaveTypeCode,
   pickLeaveTypeLabel,
@@ -155,6 +203,19 @@ import {
   useLeaveLabels,
   useLeaveTypeConfigs
 } from '~/composables/useLeave'
+
+const LEAVE_STATUSES = ['en_attente', 'valide', 'refuse'] as const
+
+type LeaveRow = {
+  id: string
+  type: string
+  from: string
+  to: string
+  days: number
+  motif: string
+  status: string
+  decidedAt: string
+}
 
 const { t, locale } = useI18n()
 const { extractFetchError } = useApiError()
@@ -239,17 +300,7 @@ const balanceRows = computed(() =>
   }))
 )
 
-const columns = computed(() => [
-  { key: 'type', label: t('conges.col_type') },
-  { key: 'from', label: t('conges.from') },
-  { key: 'to', label: t('conges.to') },
-  { key: 'days', label: t('conges.col_days') },
-  { key: 'motif', label: t('conges.motif') },
-  { key: 'status', label: t('conges.col_status') },
-  { key: 'decidedAt', label: t('conges.col_decided') }
-])
-
-const rows = computed(() =>
+const listItems = computed((): LeaveRow[] =>
   items.value.map((item) => {
     const from = pickFrom(item)
     const to = pickTo(item)
@@ -266,6 +317,71 @@ const rows = computed(() =>
     }
   })
 )
+
+const listFilters = computed(() => ({
+  status: {
+    type: 'select' as const,
+    label: t('conges.col_status'),
+    options: LEAVE_STATUSES.map((status) => ({
+      value: status,
+      label: statusLabel(status)
+    })),
+    match: (row: LeaveRow, value: string) => row.status === value
+  },
+  type: {
+    type: 'select' as const,
+    label: t('conges.col_type'),
+    options: activeLeaveTypes.value.map((lt) => ({
+      value: pickLeaveTypeCode(lt),
+      label: pickLeaveTypeLabel(lt)
+    })),
+    match: (row: LeaveRow, value: string) => row.type === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  { key: 'from', label: t('conges.from'), type: 'date' as const, accessor: (row: LeaveRow) => row.from },
+  { key: 'days', label: t('conges.col_days'), type: 'number' as const, accessor: (row: LeaveRow) => row.days },
+  { key: 'type', label: t('conges.col_type'), type: 'string' as const, accessor: (row: LeaveRow) => typeLabel(row.type) }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  view,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  setView,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'leave-requests',
+  defaultSort: { key: 'from', dir: 'desc' },
+  kanbanEnabled: true,
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
+
+const kanbanColumns = computed(() => [
+  { id: 'en_attente', label: statusLabel('en_attente'), tone: 'warn' as const },
+  { id: 'valide', label: statusLabel('valide'), tone: 'success' as const },
+  { id: 'refuse', label: statusLabel('refuse'), tone: 'muted' as const }
+])
+
+const columns = computed(() => [
+  { key: 'type', label: t('conges.col_type') },
+  { key: 'from', label: t('conges.from') },
+  { key: 'to', label: t('conges.to') },
+  { key: 'days', label: t('conges.col_days') },
+  { key: 'motif', label: t('conges.motif') },
+  { key: 'status', label: t('conges.col_status') },
+  { key: 'decidedAt', label: t('conges.col_decided') }
+])
 
 const formatBalance = (value: number | null | undefined) => {
   if (value == null || Number.isNaN(value)) return '—'
@@ -433,6 +549,33 @@ const submitRequest = async () => {
 
 .conges-flash--error {
   color: var(--kore-error);
+}
+
+.conges-kanban-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.conges-kanban-card__type {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+}
+
+.conges-kanban-card__dates,
+.conges-kanban-card__motif {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.conges-kanban-card__motif {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {

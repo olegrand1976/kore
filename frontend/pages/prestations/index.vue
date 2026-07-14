@@ -11,10 +11,22 @@
       </template>
     </AppPageHeader>
 
-    <AppCard padding="lg" class="prestations-filters">
-      <label for="prestations-month">{{ $t('prestations.month') }}</label>
-      <input id="prestations-month" v-model="month" type="month" @change="refresh">
-    </AppCard>
+    <AppListToolbar
+      v-if="!pending"
+      :filters="listFilters"
+      :filter-values="filterValues"
+      :sort-keys="sortKeys"
+      :sort-key="sortKey"
+      :sort-dir="sortDir"
+      :view="view"
+      kanban-enabled
+      :has-active-filters="hasActiveFilters"
+      @update:filter="onFilterUpdate"
+      @update:sort-key="setSort($event)"
+      @update:sort-dir="setSortDir"
+      @update:view="setView"
+      @reset="onResetFilters"
+    />
 
     <p v-if="actionMsg" class="flash" :class="{ 'flash--error': actionError }" role="status">{{ actionMsg }}</p>
 
@@ -22,24 +34,28 @@
       <CraSkeleton />
     </AppCard>
 
-    <AppCard v-else-if="!rows.length" padding="lg">
-      <AppEmptyState icon="schedule" :title="$t('prestations.empty')" />
+    <AppCard v-else-if="!displayRows.length" padding="lg">
+      <AppEmptyState
+        icon="schedule"
+        :title="hasActiveFilters ? $t('common.list.no_results') : $t('prestations.empty')"
+      />
     </AppCard>
 
-    <AppCard v-else padding="none" class="prestations-table-wrap">
+    <AppCard v-else-if="view === 'table'" padding="none" class="prestations-table-wrap">
       <table class="prestations-table">
         <thead>
           <tr>
             <th>{{ $t('prestations.col_user') }}</th>
             <th>{{ $t('prestations.col_hours') }}</th>
             <th>{{ $t('prestations.col_weeks') }}</th>
+            <th>{{ $t('prestations.col_ett') }}</th>
             <th>{{ $t('prestations.col_status') }}</th>
             <th>{{ $t('prestations.col_reject_reason') }}</th>
             <th>{{ $t('prestations.col_actions') }}</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
+          <tr v-for="row in displayRows" :key="row.id">
             <td>{{ userLabel(row) }}</td>
             <td>{{ $t('cra.hours_value', { n: Math.round((row.totalMinutes ?? 0) / 60) }) }}</td>
             <td>
@@ -48,7 +64,18 @@
                 {{ anomalyLabel(row) }}
               </AppBadge>
             </td>
-            <td><AppBadge :variant="statusVariant(row.status)">{{ row.status }}</AppBadge></td>
+            <td class="prestations-table__ett">
+              <span>{{ ettDeltaLabel(row) }}</span>
+              <AppButton
+                v-if="hasEttAlert(row)"
+                variant="ghost"
+                size="sm"
+                @click="openEttReconciliation(row)"
+              >
+                {{ $t('prestations.ett_reconcile') }}
+              </AppButton>
+            </td>
+            <td><AppBadge :variant="statusVariant(row.status)">{{ statusLabel(row.status) }}</AppBadge></td>
             <td class="prestations-table__reason">{{ row.rejectReason?.trim() || '—' }}</td>
             <td class="prestations-table__actions">
               <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">
@@ -80,6 +107,60 @@
       </table>
     </AppCard>
 
+    <AppCard v-else padding="lg">
+      <AppKanbanBoard
+        :columns="kanbanColumns"
+        :items="displayRows"
+        :column-key="(row) => String((row as PrestationRow).status)"
+        :item-key="(row) => String((row as PrestationRow).id)"
+        :empty-label="$t('common.list.no_results')"
+      >
+        <template #card="{ item }">
+          <div class="prestations-kanban-card">
+            <p class="prestations-kanban-card__user">{{ userLabel(item as PrestationRow) }}</p>
+            <p class="prestations-kanban-card__meta">
+              {{ $t('cra.hours_value', { n: Math.round(((item as PrestationRow).totalMinutes ?? 0) / 60) }) }}
+              · {{ weeksLabel(item as PrestationRow) }}
+            </p>
+            <p v-if="ettDeltaLabel(item as PrestationRow) !== '—'" class="prestations-kanban-card__ett">
+              {{ ettDeltaLabel(item as PrestationRow) }}
+            </p>
+            <div v-if="hasAnomaly(item as PrestationRow)" class="prestations-kanban-card__badges">
+              <AppBadge variant="warning">{{ anomalyLabel(item as PrestationRow) }}</AppBadge>
+            </div>
+            <AppBadge :variant="statusVariant((item as PrestationRow).status)">
+              {{ statusLabel((item as PrestationRow).status) }}
+            </AppBadge>
+            <div class="prestations-kanban-card__actions">
+              <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${(item as PrestationRow).id}`)">
+                {{ $t('prestations.open_cra') }}
+              </AppButton>
+              <AppButton variant="ghost" size="sm" @click="downloadPdf(item as PrestationRow)">
+                {{ $t('prestations.download_pdf') }}
+              </AppButton>
+              <AppButton
+                v-if="(item as PrestationRow).status === 'ValidéSemaine'"
+                variant="primary"
+                size="sm"
+                :disabled="rowActionId === (item as PrestationRow).id"
+                @click="validateRow(item as PrestationRow)"
+              >
+                {{ $t('prestations.validate') }}
+              </AppButton>
+              <AppButton
+                v-if="(item as PrestationRow).status !== 'Définitif'"
+                variant="secondary"
+                size="sm"
+                @click="openReject(item as PrestationRow)"
+              >
+                {{ $t('prestations.reject') }}
+              </AppButton>
+            </div>
+          </div>
+        </template>
+      </AppKanbanBoard>
+    </AppCard>
+
     <AppModal v-model:open="rejectOpen" width="md" :title-id="rejectTitleId" :aria-label="$t('prestations.reject')">
       <form class="reject-form" @submit.prevent="confirmReject">
         <label :for="rejectReasonId">{{ $t('prestations.reject_reason') }}</label>
@@ -98,10 +179,14 @@
 </template>
 
 <script setup lang="ts">
+import { syncListMonthFilter, useListControls } from '~/composables/useListControls'
+
 definePageMeta({ layout: 'default' })
 
+const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
+
 const { t } = useI18n()
-const { statusVariant } = useCraStatus()
+const { statusVariant, statusLabel } = useCraStatus()
 
 type PrestationRow = {
   id: string
@@ -120,6 +205,9 @@ type PrestationRow = {
 type EttReport = {
   userId?: string
   alert?: boolean
+  deltaHours?: number
+  ettHours?: number
+  craHours?: number
 }
 
 type ValidateResponse = {
@@ -158,12 +246,113 @@ const { data: ettData } = await useFetch<{ data?: EttReport[] }>(
 
 const rows = computed(() => data.value?.data ?? [])
 
-const ettAlertByUser = computed(() => {
-  const map = new Map<string, boolean>()
+const listFilters = computed(() => ({
+  month: {
+    type: 'month' as const,
+    label: t('prestations.month'),
+    defaultValue: month.value,
+    match: (_row: PrestationRow, _value: string) => true
+  },
+  status: {
+    type: 'select' as const,
+    label: t('prestations.col_status'),
+    options: CRA_STATUSES.map((status) => ({
+      value: status,
+      label: statusLabel(status)
+    })),
+    match: (row: PrestationRow, value: string) => row.status === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  {
+    key: 'user',
+    label: t('prestations.col_user'),
+    type: 'string' as const,
+    accessor: (row: PrestationRow) => userLabel(row)
+  },
+  {
+    key: 'hours',
+    label: t('prestations.col_hours'),
+    type: 'number' as const,
+    accessor: (row: PrestationRow) => row.totalMinutes ?? 0
+  },
+  {
+    key: 'status',
+    label: t('prestations.col_status'),
+    type: 'string' as const,
+    accessor: (row: PrestationRow) => row.status
+  }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  view,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  setView,
+  resetFilters
+} = useListControls(rows, {
+  storageKey: 'prestations-list',
+  defaultSort: { key: 'user', dir: 'asc' },
+  kanbanEnabled: true,
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
+
+const kanbanColumns = computed(() =>
+  CRA_STATUSES.map((status) => ({
+    id: status,
+    label: statusLabel(status),
+    tone: status === 'Définitif' ? 'success' as const : status === 'ValidéSemaine' ? 'warn' as const : 'muted' as const
+  }))
+)
+
+const onFilterUpdate = (key: string, value: string) => {
+  setFilter(key, value)
+  if (key === 'month' && value && value !== month.value) {
+    month.value = value
+    refresh()
+  }
+}
+
+const onResetFilters = () => {
+  resetFilters()
+  if (filterValues.month && filterValues.month !== month.value) {
+    month.value = filterValues.month
+    refresh()
+  }
+}
+
+watch(month, (next) => {
+  if (filterValues.month !== next) {
+    filterValues.month = next
+  }
+})
+
+syncListMonthFilter(filterValues, month, refresh)
+
+const ettReportByUser = computed(() => {
+  const map = new Map<string, EttReport>()
   for (const report of ettData.value?.data ?? []) {
     if (report.userId) {
-      map.set(String(report.userId), Boolean(report.alert))
+      map.set(String(report.userId), report)
     }
+  }
+  return map
+})
+
+const ettAlertByUser = computed(() => {
+  const map = new Map<string, boolean>()
+  for (const [userId, report] of ettReportByUser.value.entries()) {
+    map.set(userId, Boolean(report.alert))
   }
   return map
 })
@@ -177,6 +366,24 @@ const weeksLabel = (row: PrestationRow) => {
   const submitted = row.weeksSubmitted ?? 0
   const total = row.weeksTotal ?? submitted
   return t('prestations.weeks_ratio', { submitted, total })
+}
+
+const hasEttAlert = (row: PrestationRow) =>
+  Boolean(row.userId && ettAlertByUser.value.get(String(row.userId)))
+
+const ettDeltaLabel = (row: PrestationRow) => {
+  if (!row.userId) return '—'
+  const report = ettReportByUser.value.get(String(row.userId))
+  if (!report) return '—'
+  const delta = Number(report.deltaHours ?? 0)
+  if (Math.abs(delta) < 0.05) return t('prestations.ett_ok')
+  return t('prestations.ett_delta', { delta: delta.toFixed(1) })
+}
+
+const openEttReconciliation = (row: PrestationRow) => {
+  const query = new URLSearchParams({ month: month.value })
+  if (row.userId) query.set('userId', row.userId)
+  navigateTo(`/ett/reconciliation?${query.toString()}`)
 }
 
 const hasAnomaly = (row: PrestationRow) => {
@@ -288,18 +495,6 @@ const confirmReject = async () => {
 </script>
 
 <style scoped>
-.prestations-filters {
-  display: flex;
-  align-items: center;
-  gap: var(--kore-space-md);
-  margin-bottom: var(--kore-space-lg);
-}
-
-.prestations-filters label {
-  font-size: var(--kore-text-small);
-  color: var(--kore-text-muted);
-}
-
 .prestations-table-wrap {
   overflow-x: auto;
 }
@@ -361,6 +556,43 @@ const confirmReject = async () => {
 
 .flash--error {
   color: var(--kore-error);
+}
+
+.prestations-kanban-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+}
+
+.prestations-kanban-card__user {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+}
+
+.prestations-kanban-card__meta {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.prestations-kanban-card__ett {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.prestations-kanban-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
+}
+
+.prestations-kanban-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
 }
 
 @media (max-width: 768px) {

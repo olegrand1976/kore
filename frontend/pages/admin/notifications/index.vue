@@ -10,11 +10,23 @@
 
     <AppCard padding="lg" class="mb">
       <h3 class="section-title">{{ $t('notifications.rules') }}</h3>
+      <AppListToolbar
+        :filters="ruleListFilters"
+        :filter-values="ruleFilterValues"
+        :sort-keys="ruleSortKeys"
+        :sort-key="ruleSortKey"
+        :sort-dir="ruleSortDir"
+        :has-active-filters="ruleHasActiveFilters"
+        @update:filter="setRuleFilter"
+        @update:sort-key="setRuleSort($event)"
+        @update:sort-dir="setRuleSortDir"
+        @reset="resetRuleFilters"
+      />
       <AppTable
         :columns="ruleColumns"
-        :rows="ruleRows"
+        :rows="ruleDisplayRows"
         :loading="rulesPending"
-        :empty-title="$t('notifications.rules_empty')"
+        :empty-title="ruleHasActiveFilters ? $t('common.list.no_results') : $t('notifications.rules_empty')"
         row-key="code"
       >
         <template #cell-frequency="{ value }">
@@ -147,6 +159,8 @@
 </template>
 
 <script setup lang="ts">
+import { useListControls } from '~/composables/useListControls'
+
 type NotificationRule = {
   id?: string
   ID?: string
@@ -237,6 +251,42 @@ const ruleRows = computed(() => {
   const items = (rulesData.value as { data?: NotificationRule[] })?.data ?? []
   return items.map(toRuleRow)
 })
+
+const ruleListFilters = computed(() => ({
+  frequency: {
+    type: 'select' as const,
+    label: t('notifications.col_frequency'),
+    options: FREQUENCIES.map((freq) => ({
+      value: freq,
+      label: frequencyLabel(freq)
+    })),
+    match: (row: RuleRow, value: string) => row.frequency === value
+  }
+}))
+
+const ruleSortKeys = computed(() => [
+  { key: 'code', label: t('notifications.col_code'), type: 'string' as const, accessor: (row: RuleRow) => row.code },
+  { key: 'trigger', label: t('notifications.col_trigger'), type: 'string' as const, accessor: (row: RuleRow) => row.trigger }
+])
+
+const {
+  filterValues: ruleFilterValues,
+  sortKey: ruleSortKey,
+  sortDir: ruleSortDir,
+  sortedItems: ruleSortedItems,
+  hasActiveFilters: ruleHasActiveFilters,
+  setFilter: setRuleFilter,
+  setSort: setRuleSort,
+  setSortDir: setRuleSortDir,
+  resetFilters: resetRuleFilters
+} = useListControls(ruleRows, {
+  storageKey: 'notification-rules',
+  defaultSort: { key: 'code', dir: 'asc' },
+  filters: ruleListFilters,
+  sortKeys: ruleSortKeys
+})
+
+const ruleDisplayRows = computed(() => ruleSortedItems.value)
 
 const journalRows = computed(() => {
   const items = (journalData.value as { data?: Array<{ subject?: string; Subject?: string; status?: string; Status?: string }> })?.data ?? []

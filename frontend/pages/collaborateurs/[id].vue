@@ -99,11 +99,25 @@
         <div class="fiche-table-head">
           <h3 class="fiche-section-title">{{ $t('fiche.section_cra') }}</h3>
         </div>
+        <div class="fiche-table-toolbar">
+          <AppListToolbar
+            :filters="craListFilters"
+            :filter-values="craFilterValues"
+            :sort-keys="craSortKeys"
+            :sort-key="craSortKey"
+            :sort-dir="craSortDir"
+            :has-active-filters="craHasActiveFilters"
+            @update:filter="setCraFilter"
+            @update:sort-key="setCraSort($event)"
+            @update:sort-dir="setCraSortDir"
+            @reset="resetCraFilters"
+          />
+        </div>
         <AppTable
           :columns="craColumns"
-          :rows="craRows"
+          :rows="craDisplayRows"
           row-key="id"
-          :empty-title="$t('fiche.cra_empty')"
+          :empty-title="craHasActiveFilters ? $t('common.list.no_results') : $t('fiche.cra_empty')"
         >
           <template #cell-month="{ value }">
             <span class="fiche-strong">{{ formatMonth(String(value)) }}</span>
@@ -127,8 +141,11 @@
 
 <script setup lang="ts">
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
+import { useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default' })
+
+const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 
 type UserDetail = {
   id?: string
@@ -192,9 +209,40 @@ const craItems = computed((): CraRow[] => {
   if (!showCraSection.value) return []
   const payload = (craData.value as { data?: CraRow[] })?.data ?? craData.value
   if (!Array.isArray(payload)) return []
-  return payload
-    .filter((ts) => String(ts.userId ?? '') === id.value)
-    .slice(0, 6)
+  return payload.filter((ts) => String(ts.userId ?? '') === id.value)
+})
+
+const craListFilters = computed(() => ({
+  status: {
+    type: 'select' as const,
+    label: t('cra.col_status'),
+    options: CRA_STATUSES.map((status) => ({
+      value: status,
+      label: statusLabel(status)
+    })),
+    match: (row: { status: string }, value: string) => row.status === value
+  }
+}))
+
+const craSortKeys = computed(() => [
+  { key: 'month', label: t('cra.col_period'), type: 'date' as const, accessor: (row: { month: string }) => row.month }
+])
+
+const {
+  filterValues: craFilterValues,
+  sortKey: craSortKey,
+  sortDir: craSortDir,
+  sortedItems: craSortedItems,
+  hasActiveFilters: craHasActiveFilters,
+  setFilter: setCraFilter,
+  setSort: setCraSort,
+  setSortDir: setCraSortDir,
+  resetFilters: resetCraFilters
+} = useListControls(craItems, {
+  storageKey: 'collaborateur-cra',
+  defaultSort: { key: 'month', dir: 'desc' },
+  filters: craListFilters,
+  sortKeys: craSortKeys
 })
 
 const craColumns = computed(() => [
@@ -204,8 +252,8 @@ const craColumns = computed(() => [
   { key: 'actions', label: '' }
 ])
 
-const craRows = computed(() =>
-  craItems.value.map((ts) => ({
+const craDisplayRows = computed(() =>
+  craSortedItems.value.map((ts) => ({
     id: ts.id,
     month: ts.month,
     client: ts.commercialInfo?.client ?? '',
@@ -323,6 +371,13 @@ const formatMonth = (raw: string) => {
 
 .fiche-table-head {
   padding: var(--kore-space-lg) var(--kore-space-lg) 0;
+}
+
+.fiche-table-toolbar :deep(.list-toolbar) {
+  margin-bottom: 0;
+  border: none;
+  box-shadow: none;
+  padding-top: 0;
 }
 
 .fiche-strong { font-weight: 600; }

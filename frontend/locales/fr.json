@@ -20,7 +20,8 @@
       "view_kanban": "Kanban",
       "reset_filters": "Réinitialiser les filtres",
       "filter_all": "Tous",
-      "no_results": "Aucun résultat pour ces filtres"
+      "no_results": "Aucun résultat pour ces filtres",
+      "kanban_unknown": "Autre"
     }
   },
   "nav": {
@@ -192,6 +193,9 @@
     "tma_total_hint": "{n} demande(s) au total",
     "budget_consumption": "Consommation budget",
     "budget_overrun_hint": "{n} budget(s) en dépassement",
+    "billing_amount": "CA facturé (60 j)",
+    "billable_hours": "Heures facturables",
+    "invoice_count": "Factures réelles",
     "modules_panel": {
       "title": "Votre abonnement",
       "active_title": "Modules actifs",
@@ -273,6 +277,7 @@
     "col_hours": "Heures",
     "col_updated": "Mise à jour",
     "context_empty": "Non renseigné",
+    "search_placeholder": "Collaborateur, client, mission…",
     "hours_value": "{n} h",
     "kpi_submitted": "Soumis",
     "loading": "Chargement…",
@@ -292,10 +297,15 @@
     "commercial_saved": "Informations enregistrées",
     "download_hint": "Complétez les informations commerciales pour activer le téléchargement.",
     "download_error": "Impossible de générer le document.",
+    "open_error": "Impossible d'ouvrir le CRA du mois en cours.",
     "status_draft": "Brouillon",
     "status_submitted": "Soumis",
     "status_validated": "Validé",
     "download": "Télécharger le CRA",
+    "preview_pdf": "Aperçu PDF",
+    "pdf_preview": "Aperçu du CRA PDF",
+    "mission_select": "Mission SSII",
+    "mission_manual": "Saisie manuelle",
     "prefill_holidays": "Préremplir fériés",
     "prefill_holidays_result": "{n} jour(s) férié(s) ajouté(s).",
     "not_found": "CRA introuvable",
@@ -377,7 +387,15 @@
     "facturation_error": "Impossible de charger les statistiques.",
     "billable_hours": "Heures facturables CRA",
     "invoice_count": "Factures réelles",
-    "total_amount": "Montant facturé"
+    "total_amount": "Montant facturé",
+    "dashboard_title": "Dashboard {code}",
+    "dashboard_error": "Dashboard indisponible.",
+    "tma_title": "Reporting TMA",
+    "tma_subtitle": "Synthèse des demandes ouvertes",
+    "tma_error": "Impossible d'exécuter le rapport.",
+    "tma_empty": "Aucune donnée",
+    "tma_col_metric": "Indicateur",
+    "tma_col_value": "Valeur"
   },
   "prestations": {
     "title": "Suivi des prestations",
@@ -406,7 +424,11 @@
     "col_hours": "Heures",
     "col_weeks": "Semaines",
     "col_status": "Statut CRA",
-    "col_actions": "Actions"
+    "col_actions": "Actions",
+    "col_ett": "Écart ETT",
+    "ett_delta": "Δ {delta} h",
+    "ett_ok": "OK",
+    "ett_reconcile": "Réconciliation"
   },
   "ett": {
     "reconciliation_title": "Réconciliation ETT / CRA",
@@ -583,6 +605,7 @@
     "kpi_open": "Ouvertes",
     "kpi_resolved": "Résolues",
     "kpi_awaiting": "En attente création",
+    "sort_created": "Date de création",
     "gantt": "Planning Gantt",
     "gantt_title": "Planning TMA",
     "gantt_subtitle": "Vue chronologique lecture seule des demandes",
@@ -899,6 +922,9 @@
       "submit_policy_warn": "Avertir si jours incomplets",
       "submit_policy_block": "Bloquer si jours incomplets",
       "submit_policy_none": "Aucune vérification",
+      "cra_gate_mode": "Gate CRA (congés / TMA)",
+      "gate_mode_warn": "Avertissement (bannière)",
+      "gate_mode_block": "Blocage (redirection)",
       "cra_mail_auto": "Rappel e-mail automatique CRA",
       "cra_mail_recipients": "Destinataires e-mail CRA",
       "cra_mail_recipients_hint": "admin{'@'}example.com, un e-mail par ligne",

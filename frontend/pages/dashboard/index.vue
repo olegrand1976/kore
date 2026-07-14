@@ -36,6 +36,34 @@
         to="/conges/validation"
       />
       <AppKpiCard
+        v-if="showModule('cra') && canReadReporting"
+        icon="payments"
+        tone="gold"
+        :loading="statsPending"
+        :error="statErrors.billing"
+        :value="billingAmountDisplay"
+        :label="$t('dashboard.billing_amount')"
+        to="/reporting/facturation"
+      />
+      <AppKpiCard
+        v-if="showModule('cra') && canReadReporting"
+        icon="timeline"
+        tone="blue"
+        :loading="statsPending"
+        :value="Math.round(stats.billableHoursMonth)"
+        :label="$t('dashboard.billable_hours')"
+        to="/cra/planning"
+      />
+      <AppKpiCard
+        v-if="showModule('cra') && canReadReporting"
+        icon="dashboard"
+        tone="success"
+        :loading="statsPending"
+        :value="stats.billingInvoiceCount"
+        :label="$t('dashboard.invoice_count')"
+        to="/reporting/dashboards/cra"
+      />
+      <AppKpiCard
         v-if="showModule('cra') && stats.craRequired"
         icon="schedule"
         tone="blue"
@@ -129,6 +157,7 @@ const { fetchSession } = useAuth()
 const { load, craCurrentLabel, showModule, currentMonthKey, canValidateConges, emptyStats, emptyCharts } =
   useDashboardStats()
 const { fetchBriefing } = useAi()
+const { canReadReporting } = usePermissions()
 
 await Promise.all([fetchEntitlements(), fetchSession()])
 
@@ -187,6 +216,15 @@ const budgetOverrunHint = computed(() =>
 )
 
 const budgetConsumptionDisplay = computed(() => `${stats.value.budgetConsumptionPct}%`)
+
+const billingAmountDisplay = computed(() => {
+  const cents = stats.value.billingAmountCents
+  if (!cents) return '—'
+  return new Intl.NumberFormat(locale.value === 'en' ? 'en-US' : 'fr-FR', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(cents / 100)
+})
 </script>
 
 <style scoped>

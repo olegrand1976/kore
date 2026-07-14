@@ -70,6 +70,26 @@ func TestBuildPlanningView_GroupsByUser(t *testing.T) {
 	}
 }
 
+func TestBuildPlanningView_LeaveSlot(t *testing.T) {
+	userID := uuid.New()
+	day := time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
+	period, _ := kernel.NewPeriod(day, day)
+	view := BuildPlanningView(period, []reportports.PlanningActivityRow{
+		{
+			UserID:       userID,
+			Day:          day,
+			Minutes:      0,
+			MissionLabel: "Congé",
+		},
+	})
+	if len(view.Rows) != 1 || len(view.Rows[0].Slots) != 1 {
+		t.Fatalf("unexpected planning view: %+v", view)
+	}
+	if view.Rows[0].Slots[0].Label != "Congé" {
+		t.Fatalf("expected leave label, got %s", view.Rows[0].Slots[0].Label)
+	}
+}
+
 func TestGanttLabelFallback(t *testing.T) {
 	if got := ganttLabel("", "", "abcdef12-3456"); got != "Mission abcdef12" {
 		t.Fatalf("unexpected fallback label: %s", got)

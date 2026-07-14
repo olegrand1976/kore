@@ -14,12 +14,6 @@ export function useCra(timesheetId?: Ref<string> | string) {
 
   const canEdit = computed(() => store.canEdit && can('cra', 'E'))
 
-  const idRef = computed(() => {
-    if (typeof timesheetId === 'string') return timesheetId
-    if (timesheetId) return timesheetId.value
-    return timesheet.value?.id ?? ''
-  })
-
   const load = async (id?: string) => {
     const target = id ?? idRef.value
     if (!target) return

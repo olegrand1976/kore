@@ -39,14 +39,28 @@
       <AppEmptyState icon="error" :title="loadError" />
     </AppCard>
 
-    <AppCard v-else padding="lg">
-      <AppTable
-        :columns="columns"
-        :rows="rows"
-        :loading="pending"
-        :empty-title="$t('budget.empty')"
-        :empty-description="$t('budget.empty_desc')"
-      >
+    <template v-else>
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @reset="resetFilters"
+      />
+
+      <AppCard padding="lg">
+        <AppTable
+          :columns="columns"
+          :rows="displayRows"
+          :loading="pending"
+          :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('budget.empty')"
+          :empty-description="hasActiveFilters ? undefined : $t('budget.empty_desc')"
+        >
         <template #cell-application="{ row }">
           <button type="button" class="row-link" @click="navigateTo(`/budget/${row.id}`)">
             {{ row.application }}
@@ -80,14 +94,28 @@
           </AppButton>
         </template>
       </AppTable>
-    </AppCard>
+      </AppCard>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { budgetMetrics, consumptionPct } from '~/composables/useKpiMetrics'
+import { useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default' })
+
+type BudgetRow = {
+  id: string
+  application: string
+  client: string
+  typeLabel: string
+  type: string
+  planned: number
+  consumed: number
+  consumptionPct: number
+  status: string
+}
 
 const { t } = useI18n()
 const { list, pickId, tripleValue } = useBudget()
@@ -121,16 +149,7 @@ const kpi = computed(() => {
   }
 })
 
-const columns = computed(() => [
-  { key: 'application', label: t('budget.col_application') },
-  { key: 'client', label: t('budget.col_client') },
-  { key: 'type', label: t('budget.col_type') },
-  { key: 'consumption', label: t('budget.col_consumption') },
-  { key: 'days', label: t('budget.col_days') },
-  { key: 'actions', label: '' }
-])
-
-const rows = computed(() =>
+const listItems = computed((): BudgetRow[] =>
   (data.value?.budgets ?? []).map((b) => {
     const id = pickId(b)
     const appId = b.applicationId ?? b.ApplicationID ?? ''
@@ -152,6 +171,85 @@ const rows = computed(() =>
     }
   })
 )
+
+const budgetTypes = computed(() => {
+  const types = new Set<string>()
+  for (const row of listItems.value) {
+    if (row.type) types.add(row.type)
+  }
+  return [...types]
+})
+
+const listFilters = computed(() => ({
+  type: {
+    type: 'select' as const,
+    label: t('budget.col_type'),
+    options: budgetTypes.value.map((type) => ({
+      value: type,
+      label: budgetTypeLabel(type)
+    })),
+    match: (row: BudgetRow, value: string) => row.type === value
+  },
+  consumption: {
+    type: 'select' as const,
+    label: t('budget.col_consumption'),
+    options: [
+      { value: 'ok', label: t('budget.status_ok') },
+      { value: 'warn', label: t('budget.status_warn') },
+      { value: 'overrun', label: t('budget.status_overrun') }
+    ],
+    match: (row: BudgetRow, value: string) => row.status === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  {
+    key: 'consumptionPct',
+    label: t('budget.col_consumption'),
+    type: 'number' as const,
+    accessor: (row: BudgetRow) => row.consumptionPct
+  },
+  {
+    key: 'application',
+    label: t('budget.col_application'),
+    type: 'string' as const,
+    accessor: (row: BudgetRow) => row.application
+  },
+  {
+    key: 'client',
+    label: t('budget.col_client'),
+    type: 'string' as const,
+    accessor: (row: BudgetRow) => row.client
+  }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'budget-list',
+  defaultSort: { key: 'consumptionPct', dir: 'desc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
+
+const columns = computed(() => [
+  { key: 'application', label: t('budget.col_application') },
+  { key: 'client', label: t('budget.col_client') },
+  { key: 'type', label: t('budget.col_type') },
+  { key: 'consumption', label: t('budget.col_consumption') },
+  { key: 'days', label: t('budget.col_days') },
+  { key: 'actions', label: '' }
+])
 </script>
 
 <style scoped>

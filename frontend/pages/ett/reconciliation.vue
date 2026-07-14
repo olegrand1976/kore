@@ -2,7 +2,21 @@
   <div>
     <AppPageHeader :title="$t('ett.reconciliation_title')" />
 
-    <AppCard padding="lg" class="ett-filters">
+    <AppListToolbar
+      v-if="canValidateEtt && !pending"
+      :filters="listFilters"
+      :filter-values="filterValues"
+      :sort-keys="sortKeys"
+      :sort-key="sortKey"
+      :sort-dir="sortDir"
+      :has-active-filters="hasActiveFilters"
+      @update:filter="onFilterUpdate"
+      @update:sort-key="setSort($event)"
+      @update:sort-dir="setSortDir"
+      @reset="onResetFilters"
+    />
+
+    <AppCard v-else padding="lg" class="ett-filters">
       <label for="ett-month">{{ $t('prestations.month') }}</label>
       <input id="ett-month" v-model="month" type="month" @change="refresh">
     </AppCard>
@@ -15,7 +29,7 @@
       <p class="flash flash--error">{{ errorMsg }}</p>
     </AppCard>
 
-    <AppCard v-else-if="teamReports.length > 0" padding="lg" class="ett-team">
+    <AppCard v-else-if="displayTeamReports.length > 0" padding="lg" class="ett-team">
       <div class="table-wrap">
         <table class="ett-team__table">
           <thead>
@@ -29,7 +43,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in teamReports" :key="row.userId">
+            <tr v-for="row in displayTeamReports" :key="row.userId">
               <td>{{ row.userName || row.userLogin || row.userId }}</td>
               <td>{{ formatHours(row.craHours) }}</td>
               <td>{{ formatHours(row.ettHours) }}</td>
@@ -74,6 +88,8 @@
 </template>
 
 <script setup lang="ts">
+import { syncListMonthFilter, useListControls } from '~/composables/useListControls'
+
 definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
@@ -115,6 +131,91 @@ const teamReports = computed(() => {
   }
   return []
 })
+
+type EttTeamRow = ReconciliationReport & { userId: string }
+
+const listItems = computed((): EttTeamRow[] =>
+  teamReports.value.filter((row): row is EttTeamRow => Boolean(row.userId)).map((row) => ({
+    ...row,
+    userId: String(row.userId)
+  }))
+)
+
+const listFilters = computed(() => ({
+  month: {
+    type: 'month' as const,
+    label: t('prestations.month'),
+    defaultValue: month.value,
+    match: (_row: EttTeamRow, _value: string) => true
+  },
+  alert: {
+    type: 'select' as const,
+    label: t('prestations.col_status'),
+    options: [
+      { value: 'true', label: t('ett.alert') },
+      { value: 'false', label: t('ett.ok') }
+    ],
+    match: (row: EttTeamRow, value: string) => String(Boolean(row.alert)) === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  {
+    key: 'deltaHours',
+    label: t('ett.delta_hours'),
+    type: 'number' as const,
+    accessor: (row: EttTeamRow) => Math.abs(Number(row.deltaHours ?? 0))
+  },
+  {
+    key: 'userName',
+    label: t('prestations.col_user'),
+    type: 'string' as const,
+    accessor: (row: EttTeamRow) => row.userName || row.userLogin || row.userId
+  }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'ett-reconciliation',
+  defaultSort: { key: 'deltaHours', dir: 'desc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayTeamReports = computed(() => sortedItems.value)
+
+const onFilterUpdate = (key: string, value: string) => {
+  setFilter(key, value)
+  if (key === 'month' && value && value !== month.value) {
+    month.value = value
+    refresh()
+  }
+}
+
+const onResetFilters = () => {
+  resetFilters()
+  if (filterValues.month && filterValues.month !== month.value) {
+    month.value = filterValues.month
+    refresh()
+  }
+}
+
+watch(month, (next) => {
+  if (filterValues.month !== next) {
+    filterValues.month = next
+  }
+})
+
+syncListMonthFilter(filterValues, month, refresh)
 
 const report = computed(() => {
   if (canValidateEtt.value) return null

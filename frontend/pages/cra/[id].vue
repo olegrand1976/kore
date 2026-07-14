@@ -192,7 +192,7 @@ const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
-const commercialFormRef = ref<{ local: typeof commercial } | null>(null)
+const commercialFormRef = ref<{ local: Record<string, unknown> } | null>(null)
 const pdfPreviewOpen = ref(false)
 const pdfPreviewLoading = ref(false)
 const pdfPreviewError = ref('')
@@ -489,7 +489,7 @@ const saveCommercial = async () => {
   savingCommercial.value = true
   commercialMsg.value = ''
   commercialError.value = false
-  const local = commercialFormRef.value?.local ?? commercial
+  const local = (commercialFormRef.value?.local ?? commercial) as typeof commercial
   try {
     await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
       method: 'PUT',
@@ -514,12 +514,34 @@ const saveCommercial = async () => {
   }
 }
 
+const fetchPdfBlob = async () =>
+  $fetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
+
+const openPdfPreview = async () => {
+  if (!canDownload.value) return
+  pdfPreviewOpen.value = true
+  pdfPreviewLoading.value = true
+  pdfPreviewError.value = ''
+  if (pdfPreviewUrl.value) {
+    URL.revokeObjectURL(pdfPreviewUrl.value)
+    pdfPreviewUrl.value = ''
+  }
+  try {
+    const blob = await fetchPdfBlob()
+    pdfPreviewUrl.value = URL.createObjectURL(blob)
+  } catch (err) {
+    pdfPreviewError.value = mapCraError(err, t('cra.download_error'))
+  } finally {
+    pdfPreviewLoading.value = false
+  }
+}
+
 const downloadPdf = async () => {
   if (!canDownload.value) return
   downloading.value = true
   downloadError.value = ''
   try {
-    const blob = await $fetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
+    const blob = await fetchPdfBlob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

@@ -5,28 +5,50 @@ export type KanbanColumn = {
   tone?: 'gold' | 'blue' | 'success' | 'warn' | 'muted'
 }
 
+const UNKNOWN_COLUMN_ID = 'unknown'
+
 const props = defineProps<{
   columns: KanbanColumn[]
   items: unknown[]
   columnKey: (item: unknown) => string
+  itemKey?: (item: unknown) => string
+  unknownColumnLabel?: string
   emptyLabel?: string
 }>()
 
+const { t } = useI18n()
+
+const columnIds = computed(() => new Set(props.columns.map((col) => col.id)))
+
+const hasUnknownItems = computed(() =>
+  props.items.some((item) => {
+    const key = props.columnKey(item) || UNKNOWN_COLUMN_ID
+    return !columnIds.value.has(key)
+  })
+)
+
+const displayColumns = computed((): KanbanColumn[] => {
+  if (!hasUnknownItems.value) return props.columns
+  return [
+    ...props.columns,
+    {
+      id: UNKNOWN_COLUMN_ID,
+      label: props.unknownColumnLabel ?? t('common.list.kanban_unknown'),
+      tone: 'muted' as const
+    }
+  ]
+})
+
 const grouped = computed(() => {
   const map = new Map<string, unknown[]>()
-  for (const col of props.columns) {
+  for (const col of displayColumns.value) {
     map.set(col.id, [])
   }
   for (const item of props.items) {
-    const key = props.columnKey(item)
+    const rawKey = props.columnKey(item) || UNKNOWN_COLUMN_ID
+    const key = columnIds.value.has(rawKey) || rawKey === UNKNOWN_COLUMN_ID ? rawKey : UNKNOWN_COLUMN_ID
     const bucket = map.get(key)
-    if (bucket) {
-      bucket.push(item)
-    } else {
-      const fallback = map.get('unknown') ?? []
-      if (!map.has('unknown')) map.set('unknown', fallback)
-      fallback.push(item)
-    }
+    if (bucket) bucket.push(item)
   }
   return map
 })
@@ -38,12 +60,17 @@ function countForColumn(id: string) {
 function itemsForColumn(id: string) {
   return grouped.value.get(id) ?? []
 }
+
+function keyForItem(item: unknown, idx: number) {
+  const key = props.itemKey?.(item)
+  return key && key.length > 0 ? key : `item-${idx}`
+}
 </script>
 
 <template>
   <div class="kanban-board">
     <div
-      v-for="col in columns"
+      v-for="col in displayColumns"
       :key="col.id"
       class="kanban-board__column"
       :class="col.tone ? `kanban-board__column--${col.tone}` : undefined"
@@ -55,7 +82,7 @@ function itemsForColumn(id: string) {
       <div class="kanban-board__cards">
         <article
           v-for="(item, idx) in itemsForColumn(col.id)"
-          :key="idx"
+          :key="keyForItem(item, idx)"
           class="kanban-board__card"
         >
           <slot name="card" :item="item" :column="col" />
@@ -90,9 +117,9 @@ function itemsForColumn(id: string) {
 }
 
 .kanban-board__column--gold { border-top: 3px solid var(--kore-gold); }
-.kanban-board__column--blue { border-top: 3px solid var(--kore-blue, #3b82f6); }
-.kanban-board__column--success { border-top: 3px solid var(--kore-success, #16a34a); }
-.kanban-board__column--warn { border-top: 3px solid var(--kore-warning, #d97706); }
+.kanban-board__column--blue { border-top: 3px solid var(--kore-brand-blue); }
+.kanban-board__column--success { border-top: 3px solid var(--kore-success); }
+.kanban-board__column--warn { border-top: 3px solid var(--kore-brand-gold); }
 .kanban-board__column--muted { border-top: 3px solid var(--kore-border); }
 
 .kanban-board__header {

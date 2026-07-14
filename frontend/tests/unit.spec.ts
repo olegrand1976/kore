@@ -1,11 +1,13 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { computed, reactive, ref, toValue } from 'vue'
 import { currentMonthKey, useCraStatus } from '../composables/useCraStatus'
 import { useCraMonthStats } from '../composables/useCraMonthStats'
 import { minEditionPrice, matchEdition, parsePricingEditions, parsePricingModules, suggestUpgradeEdition } from '../composables/usePricingCatalog'
 import { ALL_MODULES, useEntitlements } from '../composables/useEntitlements'
 import { fetchWithRefresh } from '../composables/useApiFetch'
 import { mapCraApiError } from '../composables/useCraError'
+import { useReporting } from '../composables/useReporting'
+import { buildKey, useWeekRows } from '../composables/useWeekRows'
 import {
   applyTextSearch,
   compareValues,
@@ -46,6 +48,13 @@ describe('useCraStatus', () => {
     expect(statusLabel('ValidéSemaine')).toBe('cra.status_submitted')
     expect(statusLabel('Définitif')).toBe('cra.status_validated')
     expect(statusLabel('Unknown')).toBe('Unknown')
+  })
+
+  it('exposes currentMonthKey from the composable', () => {
+    const { currentMonthKey: fromComposable } = useCraStatus()
+    expect(typeof fromComposable).toBe('function')
+    expect(fromComposable()).toMatch(/^\d{4}-\d{2}$/)
+    expect(fromComposable()).toBe(currentMonthKey())
   })
 
   it('maps status to badge variants', () => {
@@ -213,6 +222,16 @@ describe('auth session shape', () => {
   })
 })
 
+describe('rollingWindow60', () => {
+  it('returns a 60-day inclusive window', () => {
+    const { rollingWindow60 } = useReporting()
+    const period = rollingWindow60(new Date('2026-07-15T12:00:00Z'))
+    expect(period.window).toBe('60')
+    expect(period.start).toBe('2026-07-15')
+    expect(period.end).toBe('2026-09-12')
+  })
+})
+
 describe('mapCraApiError', () => {
   it('maps CRA business error codes', () => {
     const err = {
@@ -220,6 +239,50 @@ describe('mapCraApiError', () => {
       data: { error: { code: 'COMMERCIAL_INFO_REQUIRED', message: 'commercial info required' } }
     }
     expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.commercial_required')
+  })
+})
+
+describe('useWeekRows toSaveLines', () => {
+  it('skips empty rows without existing lines and persists edited hours', () => {
+    const week = ref({
+      weekNumber: 1,
+      lines: [{
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        duration: 240,
+        comment: '',
+        origin: 'manual',
+        billable: true
+      }],
+      submittedAt: null
+    })
+    const { toSaveLines } = useWeekRows(week, ref(1), ref('2026-07'), ref(1))
+    const lines = toSaveLines([
+      {
+        key: buildKey('manual', 'default', '2026-07-07'),
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        hours: '7.5',
+        comment: 'done',
+        origin: 'manual',
+        billable: true
+      },
+      {
+        key: buildKey('manual', 'extra', '2026-07-08'),
+        sourceType: 'manual',
+        sourceId: 'extra',
+        day: '2026-07-08',
+        hours: '',
+        comment: '',
+        origin: 'manual',
+        billable: true
+      }
+    ])
+    expect(lines).toHaveLength(1)
+    expect(lines[0].duration).toBe(450)
+    expect(lines[0].comment).toBe('done')
   })
 })
 
@@ -311,6 +374,7 @@ describe('useListControls', () => {
 
     controls.setFilter('q', 'beta')
     expect(controls.filteredItems.value).toHaveLength(1)
+    controls.setFilter('q', '')
     controls.setSort('title', 'desc')
     expect(controls.sortedItems.value[0]?.title).toBe('Gamma')
   })

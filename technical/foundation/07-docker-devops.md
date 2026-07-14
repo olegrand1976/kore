@@ -91,6 +91,16 @@ Le déploiement cloud (Cloud Build, Artifact Registry, Cloud Run, Secret Manager
 - Endpoints `GET /health` (liveness) et `GET /ready` (readiness : **PostgreSQL + Redis** joignables).
 - Métriques/traces : **Cloud Monitoring / Error Reporting** en prod.
 
+### Smoke PDF CRA (staging / Cloud Run)
+
+L'image API inclut Chromium (`CHROME_PATH=/usr/bin/chromium`, cf. Dockerfile §3). Vérification staging :
+
+```bash
+curl -X POST "$API/timesheets/{id}/pdf" -H "Authorization: Bearer $TOKEN" -o cra.pdf
+```
+
+Prérequis : infos commerciales complètes (RG-CRA-02), CRA non vide. Échec typique si Chromium absent → vérifier logs `PDFRenderer`.
+
 ## 8. Definition of Done (fondation docker/devops)
 
 - [x] `docker-compose.yml` dev fonctionnel (api + frontend + db + **redis** + migrate + mailhog + **stripe-mock**).

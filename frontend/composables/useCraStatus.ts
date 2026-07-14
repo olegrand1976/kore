@@ -27,7 +27,7 @@ export function useCraStatus() {
     }
   }
 
-  return { statusLabel, statusVariant }
+  return { statusLabel, statusVariant, currentMonthKey }
 }
 
 export function currentMonthKey(): string {

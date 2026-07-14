@@ -51,6 +51,7 @@
     </AppCard>
 
     <AppListToolbar
+      v-if="!pending"
       :filters="listFilters"
       :filter-values="filterValues"
       :sort-keys="sortKeys"
@@ -95,6 +96,7 @@
         :columns="kanbanColumns"
         :items="displayRows"
         :column-key="(row) => String((row as TmaRow).status)"
+        :item-key="(row) => String((row as TmaRow).id)"
         :empty-label="$t('common.list.no_results')"
       >
         <template #card="{ item }">
@@ -115,7 +117,6 @@
 import type { KanbanColumn } from '~/components/ui/AppKanbanBoard.vue'
 import { countTmaByStatus, countTmaOpen } from '~/composables/useKpiMetrics'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
-import type { TmaDemand } from '~/composables/useTma'
 
 definePageMeta({ layout: 'default', middleware: 'cra-gate' })
 
@@ -199,13 +200,8 @@ const {
   storageKey: 'tma-demands',
   defaultSort: { key: 'createdAt', dir: 'desc' },
   kanbanEnabled: true,
-  filters: listFilters.value,
-  sortKeys: sortKeys.value
-})
-
-watch(listFilters, (next) => {
-  // filters config is reactive via computed labels; values persist in filterValues
-  void next
+  filters: listFilters,
+  sortKeys
 })
 
 const kpi = computed(() => {

@@ -78,13 +78,26 @@
         />
       </AppKpiGrid>
 
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @reset="resetFilters"
+      />
+
       <AppCard padding="lg" class="platform-page__table">
         <h3 class="platform-page__section-title">{{ $t('platform.tenants_title') }}</h3>
         <AppTable
           :columns="columns"
-          :rows="rows"
+          :rows="displayRows"
           row-key="id"
-          :empty-title="$t('platform.empty')"
+          :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('platform.empty')"
         >
           <template #cell-societeName="{ value }">
             <span class="platform-page__tenant-name">{{ value }}</span>
@@ -114,6 +127,8 @@
 </template>
 
 <script setup lang="ts">
+import { useListControls } from '~/composables/useListControls'
+
 definePageMeta({
   middleware: ['platform']
 })
@@ -168,6 +183,60 @@ const seatsHint = computed(() => {
 
 const trialCount = computed(() => overview.value?.summary.tenantsByStatus?.trial ?? 0)
 
+const listItems = computed(() =>
+  (overview.value?.tenants ?? []).map((tenant) => ({
+    ...tenant,
+    societeName: tenant.societeName || tenant.name
+  }))
+)
+
+const listFilters = computed(() => ({
+  subscriptionStatus: {
+    type: 'select' as const,
+    label: t('platform.col.status'),
+    options: ['trial', 'active', 'past_due', 'suspended', 'canceled', 'none'].map((status) => ({
+      value: status,
+      label: statusLabel(status)
+    })),
+    match: (row: { subscriptionStatus?: string }, value: string) =>
+      String(row.subscriptionStatus ?? 'none') === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  {
+    key: 'societeName',
+    label: t('platform.col.tenant'),
+    type: 'string' as const,
+    accessor: (row: { societeName?: string }) => row.societeName ?? ''
+  },
+  {
+    key: 'lastActivityAt',
+    label: t('platform.col.last_activity'),
+    type: 'date' as const,
+    accessor: (row: { lastActivityAt?: string }) => row.lastActivityAt ?? ''
+  }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(listItems, {
+  storageKey: 'platform-tenants',
+  defaultSort: { key: 'societeName', dir: 'asc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
+
 const columns = computed(() => [
   { key: 'societeName', label: t('platform.col.tenant') },
   { key: 'subscriptionStatus', label: t('platform.col.status'), nowrap: true },
@@ -180,13 +249,6 @@ const columns = computed(() => [
   { key: 'activeLast30d', label: t('platform.col.active'), nowrap: true },
   { key: 'lastActivityAt', label: t('platform.col.last_activity'), nowrap: true }
 ])
-
-const rows = computed(() =>
-  (overview.value?.tenants ?? []).map((tenant) => ({
-    ...tenant,
-    societeName: tenant.societeName || tenant.name
-  }))
-)
 
 function statusLabel(status: unknown): string {
   const key = String(status ?? 'none')

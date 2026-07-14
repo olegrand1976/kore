@@ -16,13 +16,26 @@
       <AppEmptyState icon="lock" :title="$t('users.forbidden')" />
     </AppCard>
 
-    <AppCard v-else padding="lg">
-      <AppTable
-        :columns="columns"
-        :rows="rows"
-        :empty-title="$t('users.empty')"
-        row-key="id"
-      >
+    <template v-else>
+      <AppListToolbar
+        :filters="listFilters"
+        :filter-values="filterValues"
+        :sort-keys="sortKeys"
+        :sort-key="sortKey"
+        :sort-dir="sortDir"
+        :has-active-filters="hasActiveFilters"
+        @update:filter="setFilter"
+        @update:sort-key="setSort($event)"
+        @update:sort-dir="setSortDir"
+        @reset="resetFilters"
+      />
+      <AppCard padding="lg">
+        <AppTable
+          :columns="columns"
+          :rows="displayRows"
+          :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('users.empty')"
+          row-key="id"
+        >
         <template #cell-profil="{ value }">
           <AppBadge variant="default">{{ value }}</AppBadge>
         </template>
@@ -55,7 +68,8 @@
           </div>
         </template>
       </AppTable>
-    </AppCard>
+      </AppCard>
+    </template>
 
     <AppCard v-if="showForm" padding="lg" class="users-form">
       <h3 class="users-form__title">
@@ -116,6 +130,7 @@
 
 <script setup lang="ts">
 import { USER_PROFILES } from '~/composables/useUsers'
+import { applyTextSearch, useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
@@ -158,6 +173,54 @@ const columns = computed(() => [
 ])
 
 const rows = computed(() => users.value)
+
+const listFilters = computed(() => ({
+  q: {
+    type: 'search' as const,
+    label: t('common.list.search'),
+    placeholder: t('users.login'),
+    match: (row: UserRow, query: string) => applyTextSearch(query, row.login)
+  },
+  profil: {
+    type: 'select' as const,
+    label: t('users.profile'),
+    options: USER_PROFILES.map((p) => ({ value: p, label: p })),
+    match: (row: UserRow, value: string) => row.profil === value
+  },
+  active: {
+    type: 'select' as const,
+    label: t('users.status'),
+    options: [
+      { value: 'true', label: t('users.active') },
+      { value: 'false', label: t('users.inactive') }
+    ],
+    match: (row: UserRow, value: string) => String(row.active) === value
+  }
+}))
+
+const sortKeys = computed(() => [
+  { key: 'login', label: t('users.login'), type: 'string' as const, accessor: (row: UserRow) => row.login },
+  { key: 'profil', label: t('users.profile'), type: 'string' as const, accessor: (row: UserRow) => row.profil }
+])
+
+const {
+  filterValues,
+  sortKey,
+  sortDir,
+  sortedItems,
+  hasActiveFilters,
+  setFilter,
+  setSort,
+  setSortDir,
+  resetFilters
+} = useListControls(rows, {
+  storageKey: 'admin-users',
+  defaultSort: { key: 'login', dir: 'asc' },
+  filters: listFilters,
+  sortKeys
+})
+
+const displayRows = computed(() => sortedItems.value)
 
 const mapUsers = (items: Awaited<ReturnType<typeof list>>) =>
   items.map((item) => ({

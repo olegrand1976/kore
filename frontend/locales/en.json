@@ -20,7 +20,8 @@
       "view_kanban": "Kanban",
       "reset_filters": "Reset filters",
       "filter_all": "All",
-      "no_results": "No results for these filters"
+      "no_results": "No results for these filters",
+      "kanban_unknown": "Other"
     }
   },
   "nav": {
@@ -192,6 +193,9 @@
     "tma_total_hint": "{n} request(s) total",
     "budget_consumption": "Budget consumption",
     "budget_overrun_hint": "{n} budget(s) over limit",
+    "billing_amount": "Invoiced revenue (60d)",
+    "billable_hours": "Billable hours",
+    "invoice_count": "Real invoices",
     "modules_panel": {
       "title": "Your subscription",
       "active_title": "Active modules",
@@ -273,6 +277,7 @@
     "col_hours": "Hours",
     "col_updated": "Updated",
     "context_empty": "Not set",
+    "search_placeholder": "User, client, mission…",
     "hours_value": "{n} h",
     "kpi_submitted": "Submitted",
     "loading": "Loading…",
@@ -292,10 +297,15 @@
     "commercial_saved": "Information saved",
     "download_hint": "Complete commercial information to enable download.",
     "download_error": "Unable to generate document.",
+    "open_error": "Unable to open the current month's timesheet.",
     "status_draft": "Draft",
     "status_submitted": "Submitted",
     "status_validated": "Validated",
     "download": "Download timesheet",
+    "preview_pdf": "Preview PDF",
+    "pdf_preview": "Timesheet PDF preview",
+    "mission_select": "SSII mission",
+    "mission_manual": "Manual entry",
     "prefill_holidays": "Prefill public holidays",
     "prefill_holidays_result": "{n} public holiday day(s) added.",
     "not_found": "Timesheet not found",
@@ -377,7 +387,15 @@
     "facturation_error": "Unable to load statistics.",
     "billable_hours": "Billable CRA hours",
     "invoice_count": "Real invoices",
-    "total_amount": "Invoiced amount"
+    "total_amount": "Invoiced amount",
+    "dashboard_title": "Dashboard {code}",
+    "dashboard_error": "Dashboard unavailable.",
+    "tma_title": "TMA reporting",
+    "tma_subtitle": "Open requests summary",
+    "tma_error": "Could not run report.",
+    "tma_empty": "No data",
+    "tma_col_metric": "Metric",
+    "tma_col_value": "Value"
   },
   "prestations": {
     "title": "Service tracking",
@@ -406,7 +424,11 @@
     "col_hours": "Hours",
     "col_weeks": "Weeks",
     "col_status": "Timesheet status",
-    "col_actions": "Actions"
+    "col_actions": "Actions",
+    "col_ett": "ETT delta",
+    "ett_delta": "Δ {delta} h",
+    "ett_ok": "OK",
+    "ett_reconcile": "Reconciliation"
   },
   "ett": {
     "reconciliation_title": "ETT / timesheet reconciliation",
@@ -583,6 +605,7 @@
     "kpi_open": "Open",
     "kpi_resolved": "Resolved",
     "kpi_awaiting": "Awaiting creation",
+    "sort_created": "Created date",
     "gantt": "Gantt planning",
     "gantt_title": "TMA planning",
     "gantt_subtitle": "Read-only timeline of maintenance requests",
@@ -899,6 +922,9 @@
       "submit_policy_warn": "Warn on incomplete days",
       "submit_policy_block": "Block on incomplete days",
       "submit_policy_none": "No check",
+      "cra_gate_mode": "CRA gate (leave / TMA)",
+      "gate_mode_warn": "Warning (banner)",
+      "gate_mode_block": "Block (redirect)",
       "cra_mail_auto": "Automatic CRA email reminder",
       "cra_mail_recipients": "CRA email recipients",
       "cra_mail_recipients_hint": "admin{'@'}example.com, one email per line",

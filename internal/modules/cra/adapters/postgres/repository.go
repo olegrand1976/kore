@@ -15,11 +15,15 @@ import (
 )
 
 type Repository struct {
-	pool *db.Pool
+	pool   *db.Pool
+	schema craSchema
 }
 
 func NewRepository(pool *db.Pool) *Repository {
-	return &Repository{pool: pool}
+	return &Repository{
+		pool:   pool,
+		schema: probeCraSchema(context.Background(), pool),
+	}
 }
 
 func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
@@ -28,23 +32,7 @@ func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
 		if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `
-			INSERT INTO cra.timesheets (
-				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
-				rejected_at, rejected_by, reject_reason, updated_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-			ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
-				status = EXCLUDED.status,
-				commercial_info = EXCLUDED.commercial_info,
-				validated_at = EXCLUDED.validated_at,
-				validated_by = EXCLUDED.validated_by,
-				rejected_at = EXCLUDED.rejected_at,
-				rejected_by = EXCLUDED.rejected_by,
-				reject_reason = EXCLUDED.reject_reason,
-				updated_at = NOW()
-		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
-			commercial, ts.ValidatedAt, ts.ValidatedBy, ts.RejectedAt, ts.RejectedBy, ts.RejectReason)
-		if err != nil {
+		if err := r.execSaveTimesheet(ctx, tx, ts, commercial); err != nil {
 			return err
 		}
 
@@ -79,23 +67,75 @@ func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
 				return err
 			}
 			for _, line := range week.Lines {
-				lineID := line.ID
-				if lineID == uuid.Nil {
-					lineID = uuid.New()
-				}
-				_, err = tx.Exec(ctx, `
-					INSERT INTO cra.time_lines (
-						id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin, billable
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-				`, lineID, ts.TenantID.UUID(), weekID, line.Source.Type, line.Source.ID,
-					line.Day, line.Duration.Minutes, line.Comment, string(line.Origin), line.Billable)
-				if err != nil {
+				if err := r.execSaveTimeLine(ctx, tx, ts.TenantID, weekID, line); err != nil {
 					return err
 				}
 			}
 		}
 		return nil
 	})
+}
+
+func (r *Repository) execSaveTimesheet(ctx context.Context, tx pgx.Tx, ts domain.Timesheet, commercial []byte) error {
+	if r.schema.hasRejectReason {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.timesheets (
+				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+				rejected_at, rejected_by, reject_reason, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+			ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
+				status = EXCLUDED.status,
+				commercial_info = EXCLUDED.commercial_info,
+				validated_at = EXCLUDED.validated_at,
+				validated_by = EXCLUDED.validated_by,
+				rejected_at = EXCLUDED.rejected_at,
+				rejected_by = EXCLUDED.rejected_by,
+				reject_reason = EXCLUDED.reject_reason,
+				updated_at = NOW()
+		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
+			commercial, ts.ValidatedAt, ts.ValidatedBy, ts.RejectedAt, ts.RejectedBy, ts.RejectReason)
+		return err
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO cra.timesheets (
+			id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+		ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
+			status = EXCLUDED.status,
+			commercial_info = EXCLUDED.commercial_info,
+			validated_at = EXCLUDED.validated_at,
+			validated_by = EXCLUDED.validated_by,
+			updated_at = NOW()
+	`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
+		commercial, ts.ValidatedAt, ts.ValidatedBy)
+	return err
+}
+
+func (r *Repository) execSaveTimeLine(ctx context.Context, tx pgx.Tx, tenant kernel.TenantID, weekID uuid.UUID, line domain.TimeLine) error {
+	lineID := line.ID
+	if lineID == uuid.Nil {
+		lineID = uuid.New()
+	}
+	if r.schema.hasLineBillable {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.time_lines (
+				id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin, billable
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
+			line.Day, line.Duration.Minutes, line.Comment, string(line.Origin), line.Billable)
+		return err
+	}
+	origin := string(line.Origin)
+	if origin == "" {
+		origin = string(domain.OriginManual)
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO cra.time_lines (
+			id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
+		line.Day, line.Duration.Minutes, line.Comment, origin)
+	return err
 }
 
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, error) {
@@ -118,17 +158,30 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 	var commercial []byte
 	var month string
 	var status string
-	err := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
-			rejected_at, rejected_by, COALESCE(reject_reason, '')
-		FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
-	`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy,
-		&ts.RejectedAt, &ts.RejectedBy, &ts.RejectReason)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Timesheet{}, domain.ErrTimesheetNotFound
+	if r.schema.hasRejectReason {
+		err := r.pool.QueryRow(ctx, `
+			SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+				rejected_at, rejected_by, COALESCE(reject_reason, '')
+			FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
+		`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy,
+			&ts.RejectedAt, &ts.RejectedBy, &ts.RejectReason)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Timesheet{}, domain.ErrTimesheetNotFound
+			}
+			return domain.Timesheet{}, err
 		}
-		return domain.Timesheet{}, err
+	} else {
+		err := r.pool.QueryRow(ctx, `
+			SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by
+			FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
+		`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Timesheet{}, domain.ErrTimesheetNotFound
+			}
+			return domain.Timesheet{}, err
+		}
 	}
 	ts.TenantID = kernel.NewTenantID(tenantID)
 	ts.Month = domain.Month(month)
@@ -154,10 +207,15 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 		week.TimesheetID = ts.ID
 		week.WeekNumber = domain.WeekNumber(weekNum)
 
-		lineRows, err := r.pool.Query(ctx, `
+		lineQuery := `
 			SELECT id, source_type, source_id, day, duration, comment, origin, billable
-			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day
-		`, week.ID)
+			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day`
+		if !r.schema.hasLineBillable {
+			lineQuery = `
+			SELECT id, source_type, source_id, day, duration, comment, origin
+			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day`
+		}
+		lineRows, err := r.pool.Query(ctx, lineQuery, week.ID)
 		if err != nil {
 			return domain.Timesheet{}, err
 		}
@@ -166,9 +224,17 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 			var origin string
 			var minutes int
 			var billable bool
-			if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin, &billable); err != nil {
-				lineRows.Close()
-				return domain.Timesheet{}, err
+			if r.schema.hasLineBillable {
+				if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin, &billable); err != nil {
+					lineRows.Close()
+					return domain.Timesheet{}, err
+				}
+			} else {
+				if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin); err != nil {
+					lineRows.Close()
+					return domain.Timesheet{}, err
+				}
+				billable = true
 			}
 			line.TenantID = ts.TenantID
 			line.WeekEntryID = week.ID
@@ -215,39 +281,33 @@ func (r *Repository) ListByTenant(ctx context.Context, tenant kernel.TenantID, l
 }
 
 func (r *Repository) ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, limit int) ([]domain.TimesheetSummary, error) {
-	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
+	return r.queryTimesheetSummaries(ctx, `
 		WHERE t.tenant_id = $1 AND t.user_id = $2
 		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY t.month DESC, u.login ASC
 		LIMIT $3
 	`, tenant.UUID(), userID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanTimesheetSummaries(rows)
 }
 
 func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error) {
-	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
+	return r.queryTimesheetSummaries(ctx, `
 		WHERE t.tenant_id = $1
 		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY t.month DESC, u.login ASC
 		LIMIT $2
 	`, tenant.UUID(), limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return scanTimesheetSummaries(rows)
 }
 
 func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error) {
-	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
+	return r.queryTimesheetSummaries(ctx, `
 		WHERE t.tenant_id = $1 AND t.month = $2 AND u.cra_requis = TRUE
 		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY u.nom ASC, u.prenom ASC
 	`, tenant.UUID(), string(month))
+}
+
+func (r *Repository) queryTimesheetSummaries(ctx context.Context, suffix string, args ...any) ([]domain.TimesheetSummary, error) {
+	rows, err := r.pool.Query(ctx, r.timesheetSummarySelect()+suffix, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +315,42 @@ func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kern
 	return scanTimesheetSummaries(rows)
 }
 
-const timesheetSummarySelect = `
+func (r *Repository) timesheetSummarySelect() string {
+	rejectReasonCol := `''`
+	if r.schema.hasRejectReason {
+		rejectReasonCol = `COALESCE(t.reject_reason, '')`
+	}
+	prefillCol := `0 AS prefill_minutes`
+	if r.schema.hasLineOrigin {
+		prefillCol = `COALESCE(SUM(tl.duration) FILTER (WHERE tl.duration > 0 AND tl.origin = 'prefill'), 0) AS prefill_minutes`
+	}
+	missionCol := `NULL::uuid AS mission_id`
+	if r.schema.hasSSMissions {
+		missionCol = timesheetSummaryMissionLookup
+	}
+	return timesheetSummarySelectBase(rejectReasonCol, prefillCol) + missionCol + timesheetSummaryFrom
+}
+
+const timesheetSummaryFrom = `
+		FROM cra.timesheets t
+		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
+		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+`
+
+const timesheetSummaryMissionLookup = `
+			(
+				SELECT m.id FROM ssii.missions m
+				INNER JOIN ssii.mission_collaborators mc ON mc.mission_id = m.id AND mc.user_id = t.user_id
+				INNER JOIN org.clients c ON c.id = m.client_id
+				  AND c.raison_sociale = (t.commercial_info->>'client')
+				WHERE m.tenant_id = t.tenant_id
+				ORDER BY m.created_at DESC
+				LIMIT 1
+			) AS mission_id`
+
+func timesheetSummarySelectBase(rejectReasonCol, prefillCol string) string {
+	return `
 		SELECT
 			t.id,
 			t.user_id,
@@ -265,9 +360,9 @@ const timesheetSummarySelect = `
 			t.month,
 			t.status,
 			t.commercial_info,
-			COALESCE(t.reject_reason, ''),
+			` + rejectReasonCol + `,
 			t.updated_at,
-			COALESCE(SUM(tl.duration) FILTER (WHERE tl.duration > 0 AND tl.origin = 'prefill'), 0) AS prefill_minutes,
+			` + prefillCol + `,
 			COALESCE(SUM(tl.duration), 0) AS total_minutes,
 			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
 			COUNT(DISTINCT we.id) AS weeks_total,
@@ -278,20 +373,8 @@ const timesheetSummarySelect = `
 				  AND NOT c.archived
 				LIMIT 1
 			) AS client_id,
-			(
-				SELECT m.id FROM ssii.missions m
-				INNER JOIN ssii.mission_collaborators mc ON mc.mission_id = m.id AND mc.user_id = t.user_id
-				INNER JOIN org.clients c ON c.id = m.client_id
-				  AND c.raison_sociale = (t.commercial_info->>'client')
-				WHERE m.tenant_id = t.tenant_id
-				ORDER BY m.created_at DESC
-				LIMIT 1
-			) AS mission_id
-		FROM cra.timesheets t
-		JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
-		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
-		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
 `
+}
 
 func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 	var out []domain.TimesheetSummary

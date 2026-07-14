@@ -2,7 +2,6 @@ package conges
 
 import (
 	"context"
-	"time"
 
 	congesdomain "github.com/kore/kore/internal/modules/conges/domain"
 	congesports "github.com/kore/kore/internal/modules/conges/ports"

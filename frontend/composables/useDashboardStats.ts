@@ -30,6 +30,9 @@ export type DashboardStats = {
   budgetOverrun: number
   budgetConsumptionPct: number
   pendingValidations: number
+  billingAmountCents: number
+  billingInvoiceCount: number
+  billableHoursMonth: number
 }
 
 export type DashboardCharts = {
@@ -44,6 +47,7 @@ export type DashboardStatErrors = {
   conges?: boolean
   tma?: boolean
   budget?: boolean
+  billing?: boolean
 }
 
 export type DashboardLoadResult = {
@@ -63,7 +67,10 @@ const emptyStats = (): DashboardStats => ({
   tmaTotal: 0,
   budgetOverrun: 0,
   budgetConsumptionPct: 0,
-  pendingValidations: 0
+  pendingValidations: 0,
+  billingAmountCents: 0,
+  billingInvoiceCount: 0,
+  billableHoursMonth: 0
 })
 
 const emptyCharts = (): DashboardCharts => ({
@@ -75,7 +82,7 @@ const emptyCharts = (): DashboardCharts => ({
 
 export function useDashboardStats() {
   const { hasModule } = useEntitlements()
-  const { canValidateConges } = usePermissions()
+  const { canValidateConges, can } = usePermissions()
   const { statusLabel: craStatusLabel } = useCraStatus()
   const { list: listLeaves } = useLeave()
   const { list: listTma } = useTma()
@@ -100,6 +107,21 @@ export function useDashboardStats() {
     const charts = emptyCharts()
     const errors: DashboardStatErrors = {}
     const tasks: Promise<void>[] = []
+    const { fetchBillingStats } = useReporting()
+
+    if (hasModule('cra') && (can('reporting', 'L') || can('cra', 'V'))) {
+      tasks.push(
+        fetchBillingStats({ window: '60' })
+          .then((billing) => {
+            stats.billingAmountCents = billing.totalAmount
+            stats.billingInvoiceCount = billing.invoiceCount
+            stats.billableHoursMonth = billing.billableHours
+          })
+          .catch(() => {
+            errors.billing = true
+          })
+      )
+    }
 
     if (hasModule('cra')) {
       tasks.push(
