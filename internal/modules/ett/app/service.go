@@ -22,10 +22,10 @@ type service struct {
 	users userProfileReader
 }
 
-func NewService(repo ports.ETTRepository, cra craports.CRAReader, users userProfileReader) ports.ETTService {
+func NewService(repo ports.ETTRepository, craReader craports.CRAReader, craSvc craports.CRAService, users userProfileReader) ports.ETTService {
 	return &service{
 		repo:  repo,
-		recon: NewReconciliationService(repo, cra),
+		recon: NewReconciliationService(repo, craReader, craSvc, users),
 		users: users,
 	}
 }
@@ -112,6 +112,10 @@ func (s *service) GetAuditTrail(ctx context.Context, tenant kernel.TenantID, rec
 
 func (s *service) CompareCRA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ports.ReconciliationReport, error) {
 	return s.recon.CompareMonth(ctx, tenant, userID, month)
+}
+
+func (s *service) CompareCRATeam(ctx context.Context, tenant kernel.TenantID, month string) ([]ports.ReconciliationReport, error) {
+	return s.recon.CompareTenant(ctx, tenant, month)
 }
 
 var _ ports.ETTService = (*service)(nil)

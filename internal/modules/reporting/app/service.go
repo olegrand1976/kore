@@ -10,20 +10,13 @@ import (
 )
 
 type service struct {
-	repo        ports.ReportingRepository
-	craBillable ports.CRABillableReader
+	repo         ports.ReportingRepository
+	craBillable  ports.CRABillableReader
+	craPlanning  ports.CRAPlanningReader
 }
 
-func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader) ports.ReportingService {
-	return &service{repo: repo, craBillable: craBillable}
-}
-
-func (s *service) GetGantt(ctx context.Context, q ports.GanttQuery) (domain.GanttView, error) {
-	return domain.GanttView{Period: q.Period, Items: []domain.GanttItem{}}, nil
-}
-
-func (s *service) GetPlanning(ctx context.Context, q ports.PlanningQuery) (domain.PlanningView, error) {
-	return domain.PlanningView{Period: q.Period, Rows: []domain.PlanningRow{}}, nil
+func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader, craPlanning ports.CRAPlanningReader) ports.ReportingService {
+	return &service{repo: repo, craBillable: craBillable, craPlanning: craPlanning}
 }
 
 func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code string) (domain.Dashboard, error) {

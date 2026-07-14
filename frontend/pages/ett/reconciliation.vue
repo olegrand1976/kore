@@ -15,6 +15,37 @@
       <p class="flash flash--error">{{ errorMsg }}</p>
     </AppCard>
 
+    <AppCard v-else-if="teamReports.length > 0" padding="lg" class="ett-team">
+      <div class="table-wrap">
+        <table class="ett-team__table">
+          <thead>
+            <tr>
+              <th>{{ $t('prestations.col_user') }}</th>
+              <th>{{ $t('ett.cra_hours') }}</th>
+              <th>{{ $t('ett.ett_hours') }}</th>
+              <th>{{ $t('ett.delta_hours') }}</th>
+              <th>{{ $t('ett.missing_ett_days') }}</th>
+              <th>{{ $t('prestations.col_status') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in teamReports" :key="row.userId">
+              <td>{{ row.userName || row.userLogin || row.userId }}</td>
+              <td>{{ formatHours(row.craHours) }}</td>
+              <td>{{ formatHours(row.ettHours) }}</td>
+              <td>{{ formatHours(row.deltaHours) }}</td>
+              <td>{{ row.missingEttDays ?? 0 }}</td>
+              <td>
+                <AppBadge :variant="row.alert ? 'warning' : 'success'">
+                  {{ row.alert ? $t('ett.alert') : $t('ett.ok') }}
+                </AppBadge>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AppCard>
+
     <AppCard v-else-if="report" padding="lg" class="ett-report">
       <AppBadge :variant="report.alert ? 'warning' : 'success'">
         {{ report.alert ? $t('ett.alert') : $t('ett.ok') }}
@@ -32,6 +63,10 @@
           <dt>{{ $t('ett.delta_hours') }}</dt>
           <dd>{{ formatHours(report.deltaHours) }}</dd>
         </div>
+        <div>
+          <dt>{{ $t('ett.missing_ett_days') }}</dt>
+          <dd>{{ report.missingEttDays ?? 0 }}</dd>
+        </div>
       </dl>
       <p v-if="report.alertMessage" class="ett-report__message">{{ report.alertMessage }}</p>
     </AppCard>
@@ -42,11 +77,16 @@
 definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
+const { canValidateEtt } = usePermissions()
 
 type ReconciliationReport = {
+  userId?: string
+  userLogin?: string
+  userName?: string
   craHours?: number
   ettHours?: number
   deltaHours?: number
+  missingEttDays?: number
   alert?: boolean
   alertMessage?: string
 }
@@ -54,15 +94,33 @@ type ReconciliationReport = {
 const month = ref(new Date().toISOString().slice(0, 7))
 const errorMsg = ref('')
 
-const { data, pending, refresh, error } = await useFetch<{ data?: ReconciliationReport }>(
-  () => `/api/ett/reconciliation?month=${month.value}`
-)
+const endpoint = computed(() => {
+  const params = new URLSearchParams({ month: month.value })
+  if (canValidateEtt.value) {
+    params.set('scope', 'team')
+  }
+  return `/api/ett/reconciliation?${params.toString()}`
+})
+
+const { data, pending, refresh, error } = await useFetch<{ data?: ReconciliationReport | ReconciliationReport[] }>(endpoint)
 
 watch(error, (err) => {
   errorMsg.value = err ? t('ett.load_error') : ''
 })
 
-const report = computed(() => data.value?.data ?? null)
+const teamReports = computed(() => {
+  const payload = data.value?.data
+  if (canValidateEtt.value && Array.isArray(payload)) {
+    return payload
+  }
+  return []
+})
+
+const report = computed(() => {
+  if (canValidateEtt.value) return null
+  const payload = data.value?.data
+  return payload && !Array.isArray(payload) ? payload : null
+})
 
 const formatHours = (value?: number) => {
   if (value == null) return '—'
@@ -91,7 +149,7 @@ const formatHours = (value?: number) => {
 
 @media (min-width: 769px) {
   .ett-report__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -109,6 +167,23 @@ const formatHours = (value?: number) => {
 .ett-report__message {
   margin-top: var(--kore-space-md);
   color: var(--kore-text-muted);
+}
+
+.ett-team__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ett-team__table th,
+.ett-team__table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--kore-border);
+  text-align: left;
+  font-size: var(--kore-text-small);
+}
+
+.table-wrap {
+  overflow-x: auto;
 }
 
 .flash--error {

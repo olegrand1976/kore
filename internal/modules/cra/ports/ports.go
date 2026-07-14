@@ -73,6 +73,32 @@ type ProposedLine struct {
 	Comment    string
 }
 
+type ValidationInvoiceCommand struct {
+	TenantID       kernel.TenantID
+	TimesheetID    TimesheetID
+	ClientID       uuid.UUID
+	Month          domain.Month
+	BillableHours  float64
+	MissionLabel   string
+	UserLabel      string
+	Currency       string
+	UnitPriceCents int64
+	TaxRate        float64
+}
+
+type InvoiceDraftPublisher interface {
+	PublishCRAValidationDraft(ctx context.Context, cmd ValidationInvoiceCommand) error
+}
+
+type DailyActivityRow struct {
+	UserID     uuid.UUID
+	UserPrenom string
+	UserNom    string
+	Day        time.Time
+	Minutes    int
+	MissionID  string
+}
+
 type CRAService interface {
 	GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
 	GetByID(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Timesheet, error)
@@ -89,6 +115,7 @@ type CRAService interface {
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	ExportPrestationsXML(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]PrestationExportRow, error)
 	BillableSummary(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]BillableUserSummary, error)
+	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
 }
 
 type PrestationExportRow struct {
@@ -147,6 +174,7 @@ type CRARepository interface {
 	ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
+	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
 

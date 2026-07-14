@@ -187,6 +187,20 @@ func compareCRA(svc ports.ETTService, authorizer authx.Authorizer) http.HandlerF
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
+		scope := r.URL.Query().Get("scope")
+		if scope == "team" {
+			if !authorizer.Can(r.Context(), "ett", authx.ActionValidate) {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+				return
+			}
+			reports, err := svc.CompareCRATeam(r.Context(), identity.TenantID, month)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+				return
+			}
+			httpx.WriteData(w, http.StatusOK, reports)
+			return
+		}
 		userID := identity.UserID
 		if raw := r.URL.Query().Get("userId"); raw != "" {
 			id, err := uuid.Parse(raw)

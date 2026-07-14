@@ -43,16 +43,20 @@ type ETTService interface {
 	CorrectRecord(ctx context.Context, cmd CorrectRecordCommand) (domain.WorkTimeRecord, error)
 	GetAuditTrail(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error)
 	CompareCRA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ReconciliationReport, error)
+	CompareCRATeam(ctx context.Context, tenant kernel.TenantID, month string) ([]ReconciliationReport, error)
 }
 
 type ReconciliationReport struct {
-	UserID       uuid.UUID `json:"userId"`
-	Month        string    `json:"month"`
-	CRAHours     float64   `json:"craHours"`
-	ETTHours     float64   `json:"ettHours"`
-	DeltaHours   float64   `json:"deltaHours"`
-	Alert        bool      `json:"alert"`
-	AlertMessage string    `json:"alertMessage,omitempty"`
+	UserID         uuid.UUID `json:"userId"`
+	UserLogin      string    `json:"userLogin,omitempty"`
+	UserName       string    `json:"userName,omitempty"`
+	Month          string    `json:"month"`
+	CRAHours       float64   `json:"craHours"`
+	ETTHours       float64   `json:"ettHours"`
+	DeltaHours     float64   `json:"deltaHours"`
+	MissingETTDays int       `json:"missingEttDays"`
+	Alert          bool      `json:"alert"`
+	AlertMessage   string    `json:"alertMessage,omitempty"`
 }
 
 type ETTRepository interface {

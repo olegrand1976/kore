@@ -11,6 +11,7 @@ export function usePermissions() {
   const canValidateConges = computed(() => can('conges', 'V'))
   const canValidateTma = computed(() => can('tma', 'V'))
   const canValidateCra = computed(() => can('cra', 'V'))
+  const canValidateEtt = computed(() => can('ett', 'V'))
 
-  return { can, canValidateConges, canValidateTma, canValidateCra }
+  return { can, canValidateConges, canValidateTma, canValidateCra, canValidateEtt }
 }

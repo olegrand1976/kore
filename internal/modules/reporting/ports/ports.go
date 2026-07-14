@@ -2,7 +2,9 @@ package ports
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/reporting/domain"
 	"github.com/kore/kore/pkg/kernel"
 )
@@ -30,6 +32,19 @@ type BillingStatsQuery struct {
 
 type CRABillableReader interface {
 	BillableHoursForMonth(ctx context.Context, tenant kernel.TenantID, month string) (float64, error)
+}
+
+type CRAPlanningReader interface {
+	ListDailyActivity(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]PlanningActivityRow, error)
+}
+
+type PlanningActivityRow struct {
+	UserID     uuid.UUID
+	UserPrenom string
+	UserNom    string
+	Day        time.Time
+	Minutes    int
+	MissionID  string
 }
 
 type ReportingService interface {

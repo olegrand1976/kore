@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -112,6 +113,20 @@ func (r *Repository) SavePDPQueueItem(ctx context.Context, item domain.PDPQueueI
 	`, item.ID, item.TenantID.UUID(), item.InvoiceID, payload,
 		item.Status, item.Attempts, item.LastError, item.CreatedAt, item.NextRetryAt)
 	return err
+}
+
+func (r *Repository) InvoiceExistsForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error) {
+	prefix := fmt.Sprintf("CRA/%s/%%", timesheetID)
+	var exists bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM invoicing.invoice_lines il
+			INNER JOIN invoicing.invoices i ON i.id = il.invoice_id
+			WHERE i.tenant_id = $1 AND il.description LIKE $2
+		)
+	`, tenant.UUID(), prefix).Scan(&exists)
+	return exists, err
 }
 
 func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {

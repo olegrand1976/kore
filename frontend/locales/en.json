@@ -356,6 +356,7 @@
     "cra_hours": "Timesheet hours",
     "ett_hours": "ETT hours",
     "delta_hours": "Delta",
+    "missing_ett_days": "Missing ETT days",
     "alert": "Mismatch detected",
     "ok": "Consistent",
     "load_error": "Could not load reconciliation."

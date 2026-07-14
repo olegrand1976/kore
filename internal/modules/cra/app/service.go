@@ -26,6 +26,7 @@ type Service struct {
 	calendar ports.SocieteCalendarReader
 	notifier notifports.TransactionalNotifier
 	emails   ports.UserEmailResolver
+	invoices ports.InvoiceDraftPublisher
 }
 
 func NewService(repo ports.CRARepository, appCache cache.Cache, keys cache.KeyBuilder) *Service {
@@ -261,6 +262,7 @@ func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCo
 		return err
 	}
 	s.invalidateConsumptionCache(ctx, cmd.TenantID)
+	s.publishValidationInvoice(ctx, ts)
 	return nil
 }
 

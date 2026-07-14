@@ -399,4 +399,32 @@ func (r *Repository) DeleteFutureLines(ctx context.Context, tenant kernel.Tenant
 	return err
 }
 
+func (r *Repository) ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]ports.DailyActivityRow, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT t.user_id, COALESCE(u.prenom, ''), COALESCE(u.nom, ''), tl.day,
+		       SUM(tl.duration)::int,
+		       COALESCE(MAX(CASE WHEN tl.source_type = 'mission' THEN tl.source_id ELSE '' END), '')
+		FROM cra.time_lines tl
+		INNER JOIN cra.week_entries we ON we.id = tl.week_entry_id
+		INNER JOIN cra.timesheets t ON t.id = we.timesheet_id
+		INNER JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		WHERE t.tenant_id = $1 AND tl.day >= $2 AND tl.day <= $3 AND tl.duration > 0
+		GROUP BY t.user_id, u.prenom, u.nom, tl.day
+		ORDER BY tl.day, u.nom, u.prenom
+	`, tenant.UUID(), period.Start, period.End)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.DailyActivityRow
+	for rows.Next() {
+		var row ports.DailyActivityRow
+		if err := rows.Scan(&row.UserID, &row.UserPrenom, &row.UserNom, &row.Day, &row.Minutes, &row.MissionID); err != nil {
+			return nil, err
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 var _ ports.CRARepository = (*Repository)(nil)

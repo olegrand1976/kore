@@ -33,6 +33,7 @@ import (
 	congesapp "github.com/kore/kore/internal/modules/conges/app"
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
 	craorg "github.com/kore/kore/internal/modules/cra/adapters/org"
+	crainvoicing "github.com/kore/kore/internal/modules/cra/adapters/invoicing"
 	crapdf "github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
 	craapp "github.com/kore/kore/internal/modules/cra/app"
@@ -180,10 +181,12 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
+	invoicingService := invoicingapp.NewService(invoicingRepo)
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
-		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo))
+		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).
+		WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
 	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)
@@ -215,16 +218,19 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	integrationsService := integrationsapp.NewService(integrationsRepo)
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
-	invoicingService := invoicingapp.NewService(invoicingRepo)
 	adminService := adminapp.NewService(adminRepo)
-	reportingService := reportingapp.NewService(reportingRepo, reportingcra.NewBillableReader(craService))
+	reportingService := reportingapp.NewService(
+		reportingRepo,
+		reportingcra.NewBillableReader(craService),
+		reportingcra.NewPlanningReader(craService),
+	)
 	ssiiService := ssiiapp.NewService(
 		ssiiRepo,
 		ssiicra.NewFeederAdapter(craService),
 		ssiicra.NewCleanerAdapter(craService),
 		ssiicalendar.NewGateway(congesRepo),
 	)
-	ettService := ettapp.NewService(ettRepo, craService, orgRepo)
+	ettService := ettapp.NewService(ettRepo, craService, craService, orgRepo)
 	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService))
 	maintenanceService := maintenanceapp.NewService(maintenanceRepo)
 

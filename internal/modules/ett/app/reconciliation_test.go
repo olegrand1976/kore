@@ -44,7 +44,11 @@ func (f *fakeETTRepo) FindRecordByUserDate(context.Context, kernel.TenantID, uui
 func (f *fakeETTRepo) ListRecords(_ context.Context, _ ports.RecordsQuery) ([]domain.WorkTimeRecord, error) {
 	in := time.Date(2026, 7, 7, 9, 0, 0, 0, time.UTC)
 	out := in.Add(time.Duration(f.hours * float64(time.Hour)))
-	return []domain.WorkTimeRecord{{ClockIn: &in, ClockOut: &out}}, nil
+	return []domain.WorkTimeRecord{{
+		WorkDate: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
+		ClockIn:  &in,
+		ClockOut: &out,
+	}}, nil
 }
 func (f *fakeETTRepo) AppendAuditEntry(context.Context, domain.AuditEntry) error { return nil }
 func (f *fakeETTRepo) ListAuditEntries(context.Context, kernel.TenantID, uuid.UUID) ([]domain.AuditEntry, error) {
@@ -55,7 +59,7 @@ func (f *fakeETTRepo) GetCountryRule(context.Context, kernel.TenantID, string) (
 }
 
 func TestReconciliation_AlertOnDelta(t *testing.T) {
-	svc := NewReconciliationService(&fakeETTRepo{hours: 1}, &fakeCRAReader{minutes: 480})
+	svc := NewReconciliationService(&fakeETTRepo{hours: 1}, &fakeCRAReader{minutes: 480}, nil, nil)
 	report, err := svc.CompareMonth(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New(), "2026-07")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

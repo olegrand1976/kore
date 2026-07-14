@@ -356,6 +356,7 @@
     "cra_hours": "Heures CRA",
     "ett_hours": "Heures ETT",
     "delta_hours": "Écart",
+    "missing_ett_days": "Jours ETT manquants",
     "alert": "Écart détecté",
     "ok": "Cohérent",
     "load_error": "Impossible de charger la réconciliation."

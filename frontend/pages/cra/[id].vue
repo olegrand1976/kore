@@ -52,6 +52,9 @@
     </AppCard>
 
     <div v-else-if="timesheet" class="cra-detail">
+      <AppCard v-if="saving" padding="lg" class="cra-detail__saving">
+        <CraSkeleton />
+      </AppCard>
       <AppCard padding="lg" class="cra-detail__meta">
         <dl class="meta">
           <div><dt>{{ $t('cra.period') }}</dt><dd>{{ formatMonth(timesheet.month) }}</dd></div>

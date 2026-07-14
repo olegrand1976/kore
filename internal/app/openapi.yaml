@@ -55,6 +55,54 @@ paths:
       responses:
         "200":
           description: Session invalidée
+  /auth/2fa/verify:
+    post:
+      summary: Valider un challenge 2FA TOTP après login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeToken, code]
+              properties:
+                challengeToken: { type: string }
+                code: { type: string }
+      responses:
+        "200":
+          description: Tokens émis
+  /auth/2fa/enrollment/setup:
+    post:
+      summary: Démarrer l'enrôlement 2FA (token post-login)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentToken]
+              properties:
+                enrollmentToken: { type: string }
+      responses:
+        "200":
+          description: Secret TOTP et QR code
+  /auth/2fa/enrollment/confirm:
+    post:
+      summary: Confirmer l'enrôlement 2FA (token post-login)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentToken, code]
+              properties:
+                enrollmentToken: { type: string }
+                code: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Tokens émis
   /societes:
     get:
       summary: Liste des sociétés
@@ -157,6 +205,54 @@ paths:
       responses:
         "200":
           description: Profil
+  /users/me/2fa:
+    get:
+      summary: Statut 2FA TOTP (utilisateur courant)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Statut 2FA
+  /users/me/2fa/setup:
+    post:
+      summary: Démarrer l'activation 2FA (utilisateur courant)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Secret TOTP et QR code
+  /users/me/2fa/confirm:
+    post:
+      summary: Confirmer l'activation 2FA (utilisateur courant)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Codes de secours
+  /users/me/2fa/disable:
+    post:
+      summary: Désactiver le 2FA (utilisateur courant)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, code]
+              properties:
+                password: { type: string }
+                code: { type: string }
+      responses:
+        "200":
+          description: 2FA désactivé
   /users/me/calendar-settings:
     get:
       summary: Paramètres calendrier CRA (utilisateur courant)
