@@ -324,7 +324,7 @@ func (r *Repository) timesheetSummarySelect() string {
 	if r.schema.hasLineOrigin {
 		prefillCol = `COALESCE(SUM(tl.duration) FILTER (WHERE tl.duration > 0 AND tl.origin = 'prefill'), 0) AS prefill_minutes`
 	}
-	missionCol := `NULL::uuid AS mission_id`
+	missionCol := commercialInfoMissionUUID + ` AS mission_id`
 	if r.schema.hasSSMissions {
 		missionCol = timesheetSummaryMissionLookup
 	}
@@ -338,15 +338,30 @@ const timesheetSummaryFrom = `
 		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
 `
 
+const commercialInfoClientUUID = `
+			CASE
+				WHEN (t.commercial_info->>'clientId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+				THEN (t.commercial_info->>'clientId')::uuid
+			END`
+
+const commercialInfoMissionUUID = `
+			CASE
+				WHEN (t.commercial_info->>'missionId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+				THEN (t.commercial_info->>'missionId')::uuid
+			END`
+
 const timesheetSummaryMissionLookup = `
-			(
-				SELECT m.id FROM ssii.missions m
-				INNER JOIN ssii.mission_collaborators mc ON mc.mission_id = m.id AND mc.user_id = t.user_id
-				INNER JOIN org.clients c ON c.id = m.client_id
-				  AND c.raison_sociale = (t.commercial_info->>'client')
-				WHERE m.tenant_id = t.tenant_id
-				ORDER BY m.created_at DESC
-				LIMIT 1
+			COALESCE(
+				` + commercialInfoMissionUUID + `,
+				(
+					SELECT m.id FROM ssii.missions m
+					INNER JOIN ssii.mission_collaborators mc ON mc.mission_id = m.id AND mc.user_id = t.user_id
+					INNER JOIN org.clients c ON c.id = m.client_id
+					  AND c.raison_sociale = (t.commercial_info->>'client')
+					WHERE m.tenant_id = t.tenant_id
+					ORDER BY m.created_at DESC
+					LIMIT 1
+				)
 			) AS mission_id`
 
 func timesheetSummarySelectBase(rejectReasonCol, prefillCol string) string {
@@ -366,12 +381,15 @@ func timesheetSummarySelectBase(rejectReasonCol, prefillCol string) string {
 			COALESCE(SUM(tl.duration), 0) AS total_minutes,
 			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
 			COUNT(DISTINCT we.id) AS weeks_total,
-			(
-				SELECT c.id FROM org.clients c
-				WHERE c.tenant_id = t.tenant_id
-				  AND c.raison_sociale = (t.commercial_info->>'client')
-				  AND NOT c.archived
-				LIMIT 1
+			COALESCE(
+				` + commercialInfoClientUUID + `,
+				(
+					SELECT c.id FROM org.clients c
+					WHERE c.tenant_id = t.tenant_id
+					  AND c.raison_sociale = (t.commercial_info->>'client')
+					  AND NOT c.archived
+					LIMIT 1
+				)
 			) AS client_id,
 `
 }
@@ -413,6 +431,12 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 		}
 		summary.ClientID = clientID
 		summary.MissionID = missionID
+		if summary.ClientID == nil && summary.CommercialInfo.ClientID != nil {
+			summary.ClientID = summary.CommercialInfo.ClientID
+		}
+		if summary.MissionID == nil && summary.CommercialInfo.MissionID != nil {
+			summary.MissionID = summary.CommercialInfo.MissionID
+		}
 		if summary.TotalMinutes > 0 {
 			summary.PrefillRatio = int((float64(prefillMinutes) / float64(summary.TotalMinutes)) * 100)
 		}

@@ -66,10 +66,13 @@
         :sort-keys="sortKeys"
         :sort-key="sortKey"
         :sort-dir="sortDir"
+        :view="view"
+        kanban-enabled
         :has-active-filters="hasActiveFilters"
         @update:filter="setFilter"
         @update:sort-key="setSort($event)"
         @update:sort-dir="setSortDir"
+        @update:view="setView"
         @reset="resetFilters"
       />
 
@@ -85,7 +88,7 @@
         </AppEmptyState>
       </AppCard>
 
-      <AppCard v-else padding="none" class="cra-table-wrap">
+      <AppCard v-else-if="view === 'table'" padding="none" class="cra-table-wrap">
         <AppTable :columns="columns" :rows="displayRows" row-key="id">
         <template #cell-month="{ value }">
           <span class="cra-month">{{ formatMonth(String(value)) }}</span>
@@ -102,11 +105,11 @@
         </template>
         <template #cell-client="{ row }">
           <NuxtLink
-            v-if="row.clientId && row.client"
+            v-if="row.clientId"
             :to="`/clients/${row.clientId}`"
             class="cra-link cra-link--truncate"
           >
-            {{ row.client }}
+            {{ row.client || $t('cra.context_empty') }}
           </NuxtLink>
           <span
             v-else
@@ -118,11 +121,11 @@
         </template>
         <template #cell-mission="{ row }">
           <NuxtLink
-            v-if="row.missionId && row.mission"
+            v-if="row.missionId"
             :to="`/missions/${row.missionId}`"
             class="cra-link cra-link--truncate"
           >
-            {{ row.mission }}
+            {{ row.mission || $t('cra.context_empty') }}
           </NuxtLink>
           <span
             v-else
@@ -146,6 +149,59 @@
         </template>
       </AppTable>
       </AppCard>
+
+      <AppCard v-else padding="lg">
+        <AppKanbanBoard
+          :columns="kanbanColumns"
+          :items="displayRows"
+          :column-key="(row) => String((row as CraRow).status)"
+          :item-key="(row) => String((row as CraRow).id)"
+          :empty-label="$t('common.list.no_results')"
+        >
+          <template #card="{ item }">
+            <div class="cra-kanban-card">
+              <p class="cra-kanban-card__title">{{ formatMonth(String((item as CraRow).month)) }}</p>
+              <p v-if="canValidateCra" class="cra-kanban-card__meta">
+                <NuxtLink
+                  v-if="(item as CraRow).userId"
+                  :to="`/collaborateurs/${(item as CraRow).userId}`"
+                  class="cra-link"
+                >
+                  {{ (item as CraRow).userDisplay }}
+                </NuxtLink>
+                <span v-else>{{ (item as CraRow).userDisplay }}</span>
+              </p>
+              <p class="cra-kanban-card__meta">
+                <NuxtLink
+                  v-if="(item as CraRow).clientId"
+                  :to="`/clients/${(item as CraRow).clientId}`"
+                  class="cra-link"
+                >
+                  {{ (item as CraRow).client || $t('cra.context_empty') }}
+                </NuxtLink>
+                <span v-else>{{ (item as CraRow).client || $t('cra.context_empty') }}</span>
+                · {{ $t('cra.hours_value', { n: formatHours(Number((item as CraRow).hours)) }) }}
+              </p>
+              <p v-if="(item as CraRow).missionId || (item as CraRow).mission" class="cra-kanban-card__meta">
+                <NuxtLink
+                  v-if="(item as CraRow).missionId"
+                  :to="`/missions/${(item as CraRow).missionId}`"
+                  class="cra-link"
+                >
+                  {{ (item as CraRow).mission || $t('cra.context_empty') }}
+                </NuxtLink>
+                <span v-else>{{ (item as CraRow).mission }}</span>
+              </p>
+              <AppBadge :variant="statusVariant(String((item as CraRow).status))">
+                {{ statusLabel(String((item as CraRow).status)) }}
+              </AppBadge>
+              <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${(item as CraRow).id}`)">
+                {{ $t('cra.open') }}
+              </AppButton>
+            </div>
+          </template>
+        </AppKanbanBoard>
+      </AppCard>
     </template>
 
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
@@ -153,6 +209,7 @@
 </template>
 
 <script setup lang="ts">
+import type { KanbanColumn } from '~/components/ui/AppKanbanBoard.vue'
 import { countCraByStatus } from '~/composables/useKpiMetrics'
 import { useCraError } from '~/composables/useCraError'
 import { currentMonthKey, useCraStatus } from '~/composables/useCraStatus'
@@ -186,7 +243,7 @@ type CraSummary = {
   userNom?: string
   month: string
   status: string
-  commercialInfo?: { client?: string; mission?: string }
+  commercialInfo?: { client?: string; mission?: string; missionId?: string; clientId?: string }
   clientId?: string
   missionId?: string
   totalMinutes?: number
@@ -207,7 +264,9 @@ const { data, pending, refresh } = await useFetch('/api/cra/timesheets/recent')
 const rawItems = computed((): CraSummary[] => {
   const payload = (data.value as { data?: unknown[] })?.data ?? data.value
   if (!Array.isArray(payload)) return []
-  return payload.map((ts: Record<string, unknown>) => ({
+  return payload.map((ts: Record<string, unknown>) => {
+    const commercialInfo = (ts.commercialInfo as CraSummary['commercialInfo']) ?? undefined
+    return {
     id: String(ts.id ?? ''),
     userId: ts.userId ? String(ts.userId) : undefined,
     userLogin: ts.userLogin ? String(ts.userLogin) : undefined,
@@ -215,13 +274,21 @@ const rawItems = computed((): CraSummary[] => {
     userNom: ts.userNom ? String(ts.userNom) : undefined,
     month: String(ts.month ?? ''),
     status: String(ts.status ?? ''),
-    commercialInfo: (ts.commercialInfo as CraSummary['commercialInfo']) ?? undefined,
-    clientId: ts.clientId ? String(ts.clientId) : undefined,
-    missionId: ts.missionId ? String(ts.missionId) : undefined,
+    commercialInfo,
+    clientId: ts.clientId
+      ? String(ts.clientId)
+      : commercialInfo?.clientId
+        ? String(commercialInfo.clientId)
+        : undefined,
+    missionId: ts.missionId
+      ? String(ts.missionId)
+      : commercialInfo?.missionId
+        ? String(commercialInfo.missionId)
+        : undefined,
     totalMinutes: Number(ts.totalMinutes ?? 0),
     weeksSubmitted: Number(ts.weeksSubmitted ?? 0),
     updatedAt: ts.updatedAt ? String(ts.updatedAt) : undefined
-  }))
+  }})
 })
 
 const listItems = computed((): CraRow[] =>
@@ -286,20 +353,31 @@ const {
   filterValues,
   sortKey,
   sortDir,
+  view,
   sortedItems,
   hasActiveFilters,
   setFilter,
   setSort,
   setSortDir,
+  setView,
   resetFilters
 } = useListControls(listItems, {
   storageKey: 'cra-recent',
   defaultSort: { key: 'month', dir: 'desc' },
+  kanbanEnabled: true,
   filters: listFilters,
   sortKeys
 })
 
 const displayRows = computed(() => sortedItems.value)
+
+const kanbanColumns = computed((): KanbanColumn[] =>
+  CRA_STATUSES.map((status) => ({
+    id: status,
+    label: statusLabel(status),
+    tone: status === 'Définitif' ? 'success' : status === 'ValidéSemaine' ? 'warn' : 'muted'
+  }))
+)
 
 const columns = computed(() => {
   const cols = [{ key: 'month', label: t('cra.col_period') }]
@@ -446,6 +524,23 @@ const openCurrentMonth = async () => {
 }
 
 .flash--error { color: var(--kore-error); }
+
+.cra-kanban-card {
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.cra-kanban-card__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--kore-text);
+}
+
+.cra-kanban-card__meta {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
 
 @media (max-width: 768px) {
   .cra-link--truncate,
