@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Postdeploy Kore : jobs + smoke (+ migrate/seed optionnels).
-# Usage: ./infra/gcp/postdeploy.sh [--migrate] [--seed]
+# Usage: ./infra/gcp/postdeploy.sh [--migrate] [--seed | --seed-reset]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,11 +9,13 @@ source "${SCRIPT_DIR}/lib/gcp-env.sh"
 
 RUN_MIGRATE=false
 RUN_SEED=false
+RUN_SEED_RESET=false
 for arg in "$@"; do
   case "$arg" in
     --migrate) RUN_MIGRATE=true ;;
     --seed) RUN_SEED=true ;;
-    --skip-seed) RUN_SEED=false ;;
+    --seed-reset) RUN_SEED_RESET=true ;;
+    --skip-seed) RUN_SEED=false; RUN_SEED_RESET=false ;;
   esac
 done
 
@@ -35,7 +37,9 @@ if $RUN_MIGRATE; then
   run_job "kore-migrate"
 fi
 
-if $RUN_SEED; then
+if $RUN_SEED_RESET; then
+  run_job "kore-seed-reset"
+elif $RUN_SEED; then
   run_job "kore-seed"
 fi
 

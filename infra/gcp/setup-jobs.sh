@@ -43,4 +43,15 @@ gcloud run jobs deploy kore-seed \
   --command=/kore-api --args=seed \
   --quiet
 
-echo "Jobs déployés : kore-migrate, kore-seed"
+gcloud run jobs deploy kore-seed-reset \
+  --project="$GCP_PROJECT_ID" --image="$IMAGE" --region="$GCP_RUN_REGION" \
+  --service-account="$SA" \
+  --memory=512Mi --cpu=1 --task-timeout=1800 --max-retries=0 \
+  --set-cloudsql-instances="$CLOUDSQL_INSTANCE" \
+  --vpc-connector="$CONNECTOR" --vpc-egress=private-ranges-only \
+  --env-vars-file="$API_ENV_FILE" \
+  --set-secrets="$(kore_migrate_secrets)" \
+  --command=/kore-api --args=seed,reset \
+  --quiet
+
+echo "Jobs déployés : kore-migrate, kore-seed, kore-seed-reset"

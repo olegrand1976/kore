@@ -27,7 +27,7 @@ KORE_REDIS_PORT    ?= 6381
 
 .PHONY: help env up up-infra up-front front down migrate seed seed-reset logs ps restart ready smoke \
         build api test test-integration lint sqlc frontend-dev frontend-install \
-        gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-smoke gcp-domain gcp-github-deploy
+        gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-postdeploy-staging gcp-smoke gcp-domain gcp-github-deploy
 
 ## Affiche les cibles disponibles
 help:
@@ -54,8 +54,9 @@ help:
 	@echo "  make gcp-github-deploy  Workload Identity Federation GitHub Actions"
 	@echo "  make gcp-deploy         Cloud Build → API + frontend"
 	@echo "  make gcp-deploy-jobs    Cloud Run Jobs (migrate, seed)"
-	@echo "  make gcp-postdeploy     Smoke test après deploy CI"
-	@echo "  make gcp-postdeploy-full Première install : migrate + seed + smoke"
+	@echo "  make gcp-postdeploy         Smoke test après deploy CI"
+	@echo "  make gcp-postdeploy-staging Seed reset + smoke (branche staging)"
+	@echo "  make gcp-postdeploy-full    Première install : migrate + seed + smoke"
 	@echo "  make gcp-domain         Domaine custom kore.ll-it-sc.be"
 	@echo "  make gcp-smoke          Smoke test services déployés"
 	@echo ""
@@ -195,6 +196,11 @@ gcp-deploy-jobs:
 gcp-postdeploy:
 	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
 	bash infra/gcp/postdeploy.sh
+
+## Postdeploy staging : seed reset + smoke (CI branche staging)
+gcp-postdeploy-staging:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/postdeploy.sh --seed-reset
 
 ## Postdeploy complet (première install : migrate + seed + smoke)
 gcp-postdeploy-full:

@@ -1,8 +1,8 @@
-name: Deploy GCP production
+name: Deploy GCP staging
 
 on:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 
 concurrency:
@@ -52,9 +52,9 @@ jobs:
             --config=infra/gcp/cloudbuild.yaml \
             --project="${GCP_PROJECT_ID}"
 
-      - name: Postdeploy (migrate + seed + smoke)
+      - name: Postdeploy (seed reset + smoke)
         run: |
-          bash infra/gcp/postdeploy.sh
+          bash infra/gcp/postdeploy.sh --seed-reset
 
       - name: Summary
         run: |
@@ -74,4 +74,4 @@ jobs:
             echo "| Frontend Cloud Run | ${FE_URL} |"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-  # Le wiki est synchronisé à chaque push sur main via .github/workflows/wiki-sync.yml
+  # Le wiki est synchronisé à chaque push sur main via .github/workflows/wiki-sync.yml (hors deploy GCP)

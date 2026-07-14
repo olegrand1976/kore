@@ -38,7 +38,8 @@ make gcp-domain
 ## CI/CD
 
 - **CI** : `.github/workflows/ci.yml` (tests sur chaque PR)
-- **Deploy** : `.github/workflows/deploy-gcp.yml` (push `main` → Cloud Build → smoke → sync wiki GitHub)
+- **Deploy** : `.github/workflows/deploy-gcp.yml` (push `staging` → Cloud Build → seed reset → smoke sur `kore.ll-it-sc.be`)
+- **Main** : pas de déploiement GCP automatique pour l'instant
 - **Wiki** : job `sync-wiki` — publie `documentation/`, `technical/` et `db/migrations/README.md` sur [le wiki du projet](https://github.com/olegrand1976/kore/wiki) via `scripts/sync-github-wiki.sh`
 
 Secret GitHub requis pour le wiki (le `GITHUB_TOKEN` ne peut pas pousser vers le dépôt `.wiki`) :
@@ -55,7 +56,8 @@ Secrets GitHub (configurés via WIF, pas de clé JSON) :
 ```bash
 make gcp-deploy          # Rebuild + migrate + deploy API + frontend
 make gcp-deploy-jobs     # Redéployer les Cloud Run Jobs uniquement
-make gcp-postdeploy      # Smoke test (après deploy CI)
+make gcp-postdeploy          # Smoke test (après deploy CI)
+make gcp-postdeploy-staging  # Seed reset + smoke (staging)
 make gcp-smoke           # Vérifier /health et /ready
 ```
 

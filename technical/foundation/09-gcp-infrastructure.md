@@ -89,12 +89,13 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Git["Merge sur main"] --> CB["Cloud Build"]
+  Git["Push sur staging"] --> CB["Cloud Build"]
   CB --> Test["Lint + tests (unit + integration)"]
   Test --> Img["Build images -> Artifact Registry"]
   Img --> Migrate["Job migrations Cloud SQL (golang-migrate)"]
   Migrate --> Deploy["Deploy Cloud Run (API + frontend)"]
-  Deploy --> Smoke["Smoke test /health /ready"]
+  Deploy --> SeedReset["Job seed reset (données demo)"]
+  SeedReset --> Smoke["Smoke test /health /ready"]
 ```
 
 - Les **migrations** s'exécutent dans un **job dédié** (Cloud Run Job ou étape Cloud Build) **avant** le basculement de trafic, jamais au boot en production (cf. [03-database.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/03-database.md) et [07-docker-devops.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/07-docker-devops.md)).
