@@ -403,13 +403,19 @@ func (r *Repository) ListDailyActivityInPeriod(ctx context.Context, tenant kerne
 	rows, err := r.pool.Query(ctx, `
 		SELECT t.user_id, COALESCE(u.prenom, ''), COALESCE(u.nom, ''), tl.day,
 		       SUM(tl.duration)::int,
-		       COALESCE(MAX(CASE WHEN tl.source_type = 'mission' THEN tl.source_id ELSE '' END), '')
+		       COALESCE(CASE WHEN tl.source_type = 'mission' THEN tl.source_id ELSE '' END, ''),
+		       COALESCE(MAX(c.raison_sociale), ''),
+		       COALESCE(MAX(NULLIF(TRIM(ts.commercial_info->>'mission'), '')), MAX(c.raison_sociale), '')
 		FROM cra.time_lines tl
 		INNER JOIN cra.week_entries we ON we.id = tl.week_entry_id
 		INNER JOIN cra.timesheets t ON t.id = we.timesheet_id
 		INNER JOIN org.users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+		LEFT JOIN ssii.missions m ON tl.source_type = 'mission'
+			AND m.id::text = tl.source_id AND m.tenant_id = t.tenant_id
+		LEFT JOIN org.clients c ON c.id = m.client_id AND c.tenant_id = t.tenant_id
 		WHERE t.tenant_id = $1 AND tl.day >= $2 AND tl.day <= $3 AND tl.duration > 0
-		GROUP BY t.user_id, u.prenom, u.nom, tl.day
+		GROUP BY t.user_id, u.prenom, u.nom, tl.day,
+			COALESCE(CASE WHEN tl.source_type = 'mission' THEN tl.source_id ELSE '' END, '')
 		ORDER BY tl.day, u.nom, u.prenom
 	`, tenant.UUID(), period.Start, period.End)
 	if err != nil {
@@ -419,7 +425,7 @@ func (r *Repository) ListDailyActivityInPeriod(ctx context.Context, tenant kerne
 	var out []ports.DailyActivityRow
 	for rows.Next() {
 		var row ports.DailyActivityRow
-		if err := rows.Scan(&row.UserID, &row.UserPrenom, &row.UserNom, &row.Day, &row.Minutes, &row.MissionID); err != nil {
+		if err := rows.Scan(&row.UserID, &row.UserPrenom, &row.UserNom, &row.Day, &row.Minutes, &row.MissionID, &row.ClientLabel, &row.MissionLabel); err != nil {
 			return nil, err
 		}
 		out = append(out, row)

@@ -10,7 +10,7 @@
           variant="secondary"
           size="sm"
           :disabled="!canEdit || saving"
-          @click="validateFinal"
+          @click="onValidateFinal"
         >
           {{ $t('cra.validate_final') }}
         </AppButton>
@@ -48,6 +48,14 @@
           @click="loadPrefillSuggest"
         >
           {{ $t('ai.cra_prefill') }}
+        </AppButton>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          :disabled="downloading || !canDownload"
+          @click="openPdfPreview"
+        >
+          {{ $t('cra.preview_pdf') }}
         </AppButton>
         <AppButton
           variant="primary"
@@ -115,8 +123,12 @@
       </AppCard>
 
       <CommercialInfoForm
+        ref="commercialFormRef"
         :client="commercial.client"
         :mission="commercial.mission"
+        :client-id="commercial.clientId"
+        :mission-id="commercial.missionId"
+        :missions="missions"
         :description="commercial.description"
         :technologies="commercial.technologies"
         :lieu="commercial.lieu"
@@ -129,6 +141,15 @@
       />
     </div>
 
+    <CraPdfPreview
+      v-model:open="pdfPreviewOpen"
+      :loading="pdfPreviewLoading"
+      :error="pdfPreviewError"
+      :preview-url="pdfPreviewUrl"
+      @download="downloadPdf"
+    />
+
+    <p v-if="validateMsg" class="flash" role="status">{{ validateMsg }}</p>
     <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
     <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
     <p v-if="actionError" class="flash flash--error" role="alert">{{ actionError }}</p>
@@ -170,7 +191,12 @@ const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
-const missions = ref<Array<{ id: string; clientName?: string; clientId?: string }>>([])
+const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
+const commercialFormRef = ref<{ local: typeof commercial } | null>(null)
+const pdfPreviewOpen = ref(false)
+const pdfPreviewLoading = ref(false)
+const pdfPreviewError = ref('')
+const pdfPreviewUrl = ref('')
 
 const loadOrgSettings = async () => {
   try {
@@ -212,11 +238,16 @@ const loadOrgSettings = async () => {
 const loadMissions = async () => {
   try {
     const res = await $fetch<{ data: Array<Record<string, unknown>> }>('/api/ssii/missions')
-    missions.value = (res.data ?? []).map((item) => ({
-      id: String(item.id ?? item.ID ?? ''),
-      clientName: String(item.clientName ?? item.ClientName ?? ''),
-      clientId: String(item.clientId ?? item.ClientID ?? '')
-    })).filter((m) => m.id)
+    missions.value = (res.data ?? []).map((item) => {
+      const clientName = String(item.clientName ?? item.ClientName ?? '')
+      const startDate = String(item.startDate ?? item.StartDate ?? '').slice(0, 10)
+      return {
+        id: String(item.id ?? item.ID ?? ''),
+        clientName,
+        clientId: String(item.clientId ?? item.ClientID ?? ''),
+        label: startDate ? `${clientName || 'Mission'} (${startDate})` : clientName
+      }
+    }).filter((m) => m.id)
   } catch {
     missions.value = []
   }
@@ -230,6 +261,7 @@ const downloadError = ref('')
 const prefillLoading = ref(false)
 const prefillMsg = ref('')
 const actionError = ref('')
+const validateMsg = ref('')
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 const rejecting = ref(false)
@@ -282,6 +314,8 @@ const monthStats = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapa
 const commercial = reactive({
   client: '',
   mission: '',
+  clientId: '' as string,
+  missionId: '' as string,
   description: '',
   technologies: [] as string[],
   lieu: '',
@@ -375,6 +409,8 @@ watch(timesheet, (ts) => {
   if (!ts?.commercialInfo) return
   commercial.client = ts.commercialInfo.client ?? ''
   commercial.mission = ts.commercialInfo.mission ?? ''
+  commercial.clientId = ts.commercialInfo.clientId ?? ''
+  commercial.missionId = ts.commercialInfo.missionId ?? ''
   commercial.description = ts.commercialInfo.description ?? ''
   commercial.technologies = [...(ts.commercialInfo.technologies ?? [])]
   commercial.lieu = ts.commercialInfo.lieu ?? ''
@@ -415,6 +451,24 @@ const onSubmitWeek = async (weekNumber: number) => {
   }
 }
 
+const onValidateFinal = async () => {
+  actionError.value = ''
+  validateMsg.value = ''
+  try {
+    const draft = await validateFinal()
+    if (draft?.status === 'skipped') {
+      validateMsg.value = t('cra.invoice_skipped', { reason: draft.reason ?? 'unknown' })
+    } else if (draft?.status === 'created') {
+      validateMsg.value = t('cra.invoice_created')
+    } else {
+      validateMsg.value = t('cra.validated_ok')
+    }
+    await loadAnomalies()
+  } catch (err) {
+    actionError.value = mapCraError(err)
+  }
+}
+
 const confirmReject = async () => {
   if (!rejectReason.value.trim()) return
   rejecting.value = true
@@ -435,16 +489,19 @@ const saveCommercial = async () => {
   savingCommercial.value = true
   commercialMsg.value = ''
   commercialError.value = false
+  const local = commercialFormRef.value?.local ?? commercial
   try {
     await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
       method: 'PUT',
       body: {
-        client: commercial.client,
-        mission: commercial.mission,
-        description: commercial.description,
-        technologies: commercial.technologies,
-        lieu: commercial.lieu,
-        responsableClient: commercial.responsableClient
+        client: local.client,
+        mission: local.mission,
+        clientId: local.clientId || undefined,
+        missionId: local.missionId || undefined,
+        description: local.description,
+        technologies: local.technologies,
+        lieu: local.lieu,
+        responsableClient: local.responsableClient
       }
     })
     commercialMsg.value = t('cra.commercial_saved')

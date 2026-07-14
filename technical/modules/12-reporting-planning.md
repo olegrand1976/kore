@@ -134,8 +134,8 @@ Cf. [ROADMAP.md](../ROADMAP.md).
 
 ## 11. Definition of Done
 
-- [ ] Gantt, planning 60j, dashboards, reporting TMA, stats CA disponibles en lecture.
-- [ ] Virtuelles exclues des statistiques (testé).
-- [ ] Aucune écriture sur les données sources (garanti par conception).
-- [ ] Respect RBAC et multi-tenant sur les vues.
-- [ ] Endpoints documentés dans `api/openapi.yaml`.
+- [x] Gantt, planning 60j, dashboards, reporting TMA, stats CA disponibles en lecture.
+- [x] Virtuelles exclues des statistiques (testé).
+- [x] Aucune écriture sur les données sources (garanti par conception).
+- [x] Respect RBAC et multi-tenant sur les vues.
+- [x] Endpoints documentés dans `api/openapi.yaml`.

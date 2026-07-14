@@ -482,6 +482,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			CraMailAuto          *bool     `json:"craMailAuto"`
 			CraMailRecipients    *[]string `json:"craMailRecipients"`
 			WeekSubmitPolicy     *string   `json:"weekSubmitPolicy"`
+			CraGateMode          *string   `json:"craGateMode"`
 			TaskTypesEnabled     *[]string `json:"taskTypesEnabled"`
 			TotpDefaultEnabled   *bool     `json:"totpDefaultEnabled"`
 			TotpUserConfigurable *bool     `json:"totpUserConfigurable"`
@@ -499,6 +500,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			CraMailAuto:          req.CraMailAuto,
 			CraMailRecipients:    req.CraMailRecipients,
 			WeekSubmitPolicy:     req.WeekSubmitPolicy,
+			CraGateMode:          req.CraGateMode,
 			TaskTypesEnabled:     req.TaskTypesEnabled,
 			TotpDefaultEnabled:   req.TotpDefaultEnabled,
 			TotpUserConfigurable: req.TotpUserConfigurable,

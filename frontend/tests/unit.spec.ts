@@ -5,6 +5,13 @@ import { useCraMonthStats } from '../composables/useCraMonthStats'
 import { minEditionPrice, matchEdition, parsePricingEditions, parsePricingModules, suggestUpgradeEdition } from '../composables/usePricingCatalog'
 import { ALL_MODULES, useEntitlements } from '../composables/useEntitlements'
 import { fetchWithRefresh } from '../composables/useApiFetch'
+import { mapCraApiError } from '../composables/useCraError'
+import {
+  applyTextSearch,
+  compareValues,
+  groupByKey,
+  useListControls
+} from '../composables/useListControls'
 
 beforeAll(() => {
   vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
@@ -203,5 +210,108 @@ describe('auth session shape', () => {
     const session = { ok: true, profile: 'Administrateur', userId: 'u1', tenantId: 't1' }
     expect(session.ok).toBe(true)
     expect(session.profile).toBe('Administrateur')
+  })
+})
+
+describe('mapCraApiError', () => {
+  it('maps CRA business error codes', () => {
+    const err = {
+      statusCode: 422,
+      data: { error: { code: 'COMMERCIAL_INFO_REQUIRED', message: 'commercial info required' } }
+    }
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.commercial_required')
+  })
+})
+
+describe('useListControls helpers', () => {
+  it('applyTextSearch is case insensitive', () => {
+    expect(applyTextSearch('foo', 'Hello FOO World')).toBe(true)
+    expect(applyTextSearch('bar', 'Hello FOO World')).toBe(false)
+    expect(applyTextSearch('', 'anything')).toBe(true)
+  })
+
+  it('compareValues handles string, number and date', () => {
+    expect(compareValues('b', 'a', 'string')).toBeGreaterThan(0)
+    expect(compareValues(2, 10, 'number')).toBeLessThan(0)
+    expect(compareValues('2026-07-01', '2026-06-01', 'date')).toBeGreaterThan(0)
+    expect(compareValues(null, 'a', 'string')).toBeGreaterThan(0)
+  })
+
+  it('groupByKey buckets items', () => {
+    const grouped = groupByKey(
+      [
+        { id: '1', status: 'open' },
+        { id: '2', status: 'done' },
+        { id: '3', status: 'open' }
+      ],
+      (item) => item.status
+    )
+    expect(grouped.open).toHaveLength(2)
+    expect(grouped.done).toHaveLength(1)
+  })
+})
+
+describe('useListControls', () => {
+  type Row = { id: string; status: string; title: string; month: string; createdAt: string }
+
+  const sample: Row[] = [
+    { id: '1', status: 'open', title: 'Alpha', month: '2026-06', createdAt: '2026-06-10' },
+    { id: '2', status: 'done', title: 'Beta', month: '2026-07', createdAt: '2026-07-01' },
+    { id: '3', status: 'open', title: 'Gamma', month: '2026-07', createdAt: '2026-07-15' }
+  ]
+
+  it('filters by status and sorts by date desc', () => {
+    const items = ref<Row[]>(sample)
+    const controls = useListControls(items, {
+      defaultSort: { key: 'createdAt', dir: 'desc' },
+      filters: {
+        status: {
+          type: 'select',
+          label: 'Status',
+          options: [
+            { value: 'open', label: 'Open' },
+            { value: 'done', label: 'Done' }
+          ],
+          match: (row, value) => row.status === value
+        },
+        month: {
+          type: 'month',
+          label: 'Month',
+          match: (row, value) => row.month === value
+        }
+      },
+      sortKeys: [
+        { key: 'title', label: 'Title', type: 'string', accessor: (row) => row.title },
+        { key: 'createdAt', label: 'Created', type: 'date', accessor: (row) => row.createdAt }
+      ]
+    })
+
+    controls.setFilter('status', 'open')
+    controls.setFilter('month', '2026-07')
+    expect(controls.filteredItems.value).toHaveLength(1)
+    expect(controls.sortedItems.value[0]?.id).toBe('3')
+
+    controls.resetFilters()
+    expect(controls.filteredItems.value).toHaveLength(3)
+    expect(controls.hasActiveFilters.value).toBe(false)
+  })
+
+  it('supports search filter and sort direction', () => {
+    const items = ref<Row[]>(sample)
+    const controls = useListControls(items, {
+      filters: {
+        q: {
+          type: 'search',
+          label: 'Search',
+          match: (row, query) => applyTextSearch(query, row.title)
+        }
+      },
+      sortKeys: [{ key: 'title', label: 'Title', type: 'string', accessor: (row) => row.title }]
+    })
+
+    controls.setFilter('q', 'beta')
+    expect(controls.filteredItems.value).toHaveLength(1)
+    controls.setSort('title', 'desc')
+    expect(controls.sortedItems.value[0]?.title).toBe('Gamma')
   })
 })

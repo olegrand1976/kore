@@ -589,6 +589,33 @@ paths:
       responses:
         "200":
           description: CRA validé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string }
+                      invoiceDraft:
+                        type: object
+                        properties:
+                          status: { type: string, enum: [created, skipped, unavailable] }
+                          reason: { type: string }
+                          invoiceId: { type: string, format: uuid }
+        "409":
+          description: CRA déjà validé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRAError'
+        "422":
+          description: Erreur de validation CRA
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CRAError'
   /timesheets/{id}/reject:
     post:
       summary: Rejeter un CRA (manager)
@@ -1201,12 +1228,32 @@ paths:
     get:
       summary: Données Gantt
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: start
+          in: query
+          schema: { type: string, format: date }
+        - name: end
+          in: query
+          schema: { type: string, format: date }
+        - name: window
+          in: query
+          schema: { type: string, enum: ['60'] }
       responses:
         "200": { description: OK }
   /planning:
     get:
       summary: Planning 60j
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: start
+          in: query
+          schema: { type: string, format: date }
+        - name: end
+          in: query
+          schema: { type: string, format: date }
+        - name: window
+          in: query
+          schema: { type: string, enum: ['60'] }
       responses:
         "200": { description: OK }
   /dashboards/{code}:
@@ -1385,6 +1432,23 @@ paths:
       responses:
         "200": { description: OK }
 components:
+  schemas:
+    CRAError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - CRA_ALREADY_VALIDATED
+                - COMMERCIAL_INFO_REQUIRED
+                - DAY_CAPACITY_EXCEEDED
+                - CRA_CONFLICT_ABSENCE
+                - WEEK_INCOMPLETE
+            message:
+              type: string
   securitySchemes:
     bearerAuth:
       type: http

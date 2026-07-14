@@ -165,6 +165,15 @@ func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd por
 			return domain.Societe{}, fmt.Errorf("weekSubmitPolicy must be block, warn, or none")
 		}
 	}
+	if cmd.CraGateMode != nil {
+		mode := strings.TrimSpace(*cmd.CraGateMode)
+		switch mode {
+		case "block", "warn":
+			societe.CraGateMode = mode
+		default:
+			return domain.Societe{}, fmt.Errorf("craGateMode must be block or warn")
+		}
+	}
 	if cmd.TaskTypesEnabled != nil {
 		types, err := normalizeTaskTypes(*cmd.TaskTypesEnabled)
 		if err != nil {
@@ -245,6 +254,7 @@ func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenan
 		WeekStartDay:       domain.DefaultWeekStartDay,
 		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
 		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
+		CraGateMode:        domain.DefaultCraGateMode,
 		TaskTypesEnabled:   domain.EffectiveTaskTypesEnabled(nil),
 	}
 	societeID, err := s.repo.ResolveSocieteIDForUser(ctx, tenant, userID)
@@ -267,10 +277,15 @@ func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenan
 	if policy != "block" && policy != "warn" && policy != "none" {
 		policy = domain.DefaultWeekSubmitPolicy
 	}
+	gateMode := societe.CraGateMode
+	if gateMode != "block" && gateMode != "warn" {
+		gateMode = domain.DefaultCraGateMode
+	}
 	return ports.UserCalendarSettings{
 		WeekStartDay:       day,
 		DayCapacityMinutes: cap,
 		WeekSubmitPolicy:   policy,
+		CraGateMode:        gateMode,
 		TaskTypesEnabled:   domain.EffectiveTaskTypesEnabled(societe.TaskTypesEnabled),
 	}, nil
 }

@@ -51,3 +51,55 @@ func TestCRA_UnicityTenantUserMonth(t *testing.T) {
 	require.Equal(t, ts1.ID, all[0].ID, "existing row id must be preserved by the upsert")
 	require.Equal(t, domain.StatusValideSemaine, all[0].Status, "upsert must update the status")
 }
+
+func TestCRA_FindConsumption_BillableApplicationLines(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	appID := uuid.New()
+	month := domain.Month("2026-07")
+	weekID := uuid.New()
+	day := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
+
+	ts := domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    month,
+		Status:   domain.StatusBrouillon,
+		Weeks: []domain.WeekEntry{{
+			ID:         weekID,
+			WeekNumber: 2,
+			Lines: []domain.TimeLine{{
+				ID:          uuid.New(),
+				TenantID:    tenant,
+				WeekEntryID: weekID,
+				Source:      domain.SourceRef{Type: "application", ID: appID.String()},
+				Day:         day,
+				Duration:    kernel.Duration{Minutes: 240},
+				Billable:    true,
+				Origin:      domain.OriginManual,
+			}, {
+				ID:          uuid.New(),
+				TenantID:    tenant,
+				WeekEntryID: weekID,
+				Source:      domain.SourceRef{Type: "application", ID: appID.String()},
+				Day:         day,
+				Duration:    kernel.Duration{Minutes: 120},
+				Billable:    false,
+				Origin:      domain.OriginManual,
+			}},
+		}},
+	}
+	require.NoError(t, repo.Save(ctx, ts))
+
+	period, err := kernel.NewPeriod(day, day)
+	require.NoError(t, err)
+	items, err := repo.FindConsumption(ctx, tenant, appID, period)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, 240, items[0].Duration.Minutes)
+}

@@ -49,11 +49,11 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO org.societes (
 			id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
-			day_capacity_minutes, cra_mail_auto, week_submit_policy,
+			day_capacity_minutes, cra_mail_auto, week_submit_policy, cra_gate_mode,
 			adresse, siret, url_tenant, cra_mail_recipients,
 			totp_default_enabled, totp_user_configurable, task_types_enabled
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		ON CONFLICT (id) DO UPDATE SET
 			raison_sociale = EXCLUDED.raison_sociale,
 			devise = EXCLUDED.devise,
@@ -62,6 +62,7 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 			day_capacity_minutes = EXCLUDED.day_capacity_minutes,
 			cra_mail_auto = EXCLUDED.cra_mail_auto,
 			week_submit_policy = EXCLUDED.week_submit_policy,
+			cra_gate_mode = EXCLUDED.cra_gate_mode,
 			adresse = EXCLUDED.adresse,
 			siret = EXCLUDED.siret,
 			url_tenant = EXCLUDED.url_tenant,
@@ -74,6 +75,7 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
+		normalizeCraGateMode(s.CraGateMode),
 		s.Adresse, s.Siret, s.URLTenant, encodeMailRecipients(s.CraMailRecipients),
 		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
 	return err
@@ -84,8 +86,8 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		UPDATE org.societes
 		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
 			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11,
-			cra_mail_recipients = $12, totp_default_enabled = $13, totp_user_configurable = $14,
-			task_types_enabled = $15
+			cra_gate_mode = $12, cra_mail_recipients = $13, totp_default_enabled = $14, totp_user_configurable = $15,
+			task_types_enabled = $16
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
 		s.Adresse, s.Siret, s.URLTenant,
@@ -93,6 +95,7 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
+		normalizeCraGateMode(s.CraGateMode),
 		encodeMailRecipients(s.CraMailRecipients),
 		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
 	return err
@@ -133,6 +136,7 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 		       COALESCE(day_capacity_minutes, 480),
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
+		       COALESCE(cra_gate_mode, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
@@ -149,6 +153,7 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 		       COALESCE(day_capacity_minutes, 480),
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
+		       COALESCE(cra_gate_mode, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
@@ -176,11 +181,11 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
 	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
-	var weekSubmitPolicy string
+	var weekSubmitPolicy, craGateMode string
 	var recipientsRaw []byte
 	var taskTypesRaw []byte
 	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
-		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
 		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw)
 	if err != nil {
 		return domain.Societe{}, err
@@ -194,6 +199,7 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
 	s.TaskTypesEnabled = decodeTaskTypes(taskTypesRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
+	s.CraGateMode = normalizeCraGateMode(craGateMode)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
@@ -208,11 +214,11 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
 	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
-	var weekSubmitPolicy string
+	var weekSubmitPolicy, craGateMode string
 	var recipientsRaw []byte
 	var taskTypesRaw []byte
 	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
-		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
 		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw); err != nil {
 		return domain.Societe{}, err
 	}
@@ -225,6 +231,7 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
 	s.TaskTypesEnabled = decodeTaskTypes(taskTypesRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
+	s.CraGateMode = normalizeCraGateMode(craGateMode)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
@@ -253,6 +260,15 @@ func normalizeWeekSubmitPolicy(policy string) string {
 		return policy
 	default:
 		return domain.DefaultWeekSubmitPolicy
+	}
+}
+
+func normalizeCraGateMode(mode string) string {
+	switch mode {
+	case "block", "warn":
+		return mode
+	default:
+		return domain.DefaultCraGateMode
 	}
 }
 

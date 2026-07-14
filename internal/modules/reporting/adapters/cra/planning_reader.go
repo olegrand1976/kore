@@ -33,12 +33,14 @@ func (r *PlanningReader) ListDailyActivity(ctx context.Context, tenant kernel.Te
 	out := make([]reportports.PlanningActivityRow, len(rows))
 	for i, row := range rows {
 		out[i] = reportports.PlanningActivityRow{
-			UserID:     row.UserID,
-			UserPrenom: row.UserPrenom,
-			UserNom:    row.UserNom,
-			Day:        row.Day,
-			Minutes:    row.Minutes,
-			MissionID:  row.MissionID,
+			UserID:       row.UserID,
+			UserPrenom:   row.UserPrenom,
+			UserNom:      row.UserNom,
+			Day:          row.Day,
+			Minutes:      row.Minutes,
+			MissionID:    row.MissionID,
+			MissionLabel: row.MissionLabel,
+			ClientLabel:  row.ClientLabel,
 		}
 	}
 	return out, nil
@@ -60,9 +62,11 @@ func BuildPlanningView(period kernel.Period, rows []reportports.PlanningActivity
 			order = append(order, key)
 		}
 		hours := float64(row.Minutes) / 60
-		label := fmt.Sprintf("%.1fh", hours)
-		if row.MissionID != "" {
-			label = fmt.Sprintf("mission · %.1fh", hours)
+		label := row.MissionLabel
+		if label == "" {
+			label = fmt.Sprintf("%.1fh", hours)
+		} else if row.Minutes > 0 {
+			label = fmt.Sprintf("%s · %.1fh", label, hours)
 		}
 		entry.Slots = append(entry.Slots, reportdomain.PlanningSlot{
 			Date:  row.Day,
@@ -80,10 +84,12 @@ func BuildPlanningView(period kernel.Period, rows []reportports.PlanningActivity
 
 func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow) reportdomain.GanttView {
 	type missionAgg struct {
-		id      string
-		start   time.Time
-		end     time.Time
-		minutes int
+		id           string
+		start        time.Time
+		end          time.Time
+		minutes      int
+		missionLabel string
+		clientLabel  string
 	}
 	agg := make(map[string]*missionAgg)
 	for _, row := range rows {
@@ -92,7 +98,13 @@ func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow
 		}
 		item, ok := agg[row.MissionID]
 		if !ok {
-			item = &missionAgg{id: row.MissionID, start: row.Day, end: row.Day}
+			item = &missionAgg{
+				id:           row.MissionID,
+				start:        row.Day,
+				end:          row.Day,
+				missionLabel: row.MissionLabel,
+				clientLabel:  row.ClientLabel,
+			}
 			agg[row.MissionID] = item
 		}
 		if row.Day.Before(item.start) {
@@ -102,6 +114,12 @@ func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow
 			item.end = row.Day
 		}
 		item.minutes += row.Minutes
+		if item.missionLabel == "" && row.MissionLabel != "" {
+			item.missionLabel = row.MissionLabel
+		}
+		if item.clientLabel == "" && row.ClientLabel != "" {
+			item.clientLabel = row.ClientLabel
+		}
 	}
 	keys := make([]string, 0, len(agg))
 	for id := range agg {
@@ -111,18 +129,20 @@ func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow
 	items := make([]reportdomain.GanttItem, 0, len(keys))
 	for _, id := range keys {
 		item := agg[id]
-		progress := 0.5
-		if item.minutes >= 480*5 {
+		days := int(item.end.Sub(item.start).Hours()/24) + 1
+		if days < 1 {
+			days = 1
+		}
+		capacityMinutes := days * 480
+		progress := float64(item.minutes) / float64(capacityMinutes)
+		if progress > 1 {
 			progress = 1
 		}
 		missionID, err := uuid.Parse(id)
 		if err != nil {
 			missionID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(id))
 		}
-		label := "Mission " + id
-		if len(id) > 8 {
-			label = "Mission " + id[:8]
-		}
+		label := ganttLabel(item.clientLabel, item.missionLabel, id)
 		items = append(items, reportdomain.GanttItem{
 			ID:        missionID,
 			Label:     label,
@@ -132,6 +152,23 @@ func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow
 		})
 	}
 	return reportdomain.GanttView{Period: period, Items: items}
+}
+
+func ganttLabel(clientLabel, missionLabel, missionID string) string {
+	clientLabel = strings.TrimSpace(clientLabel)
+	missionLabel = strings.TrimSpace(missionLabel)
+	switch {
+	case clientLabel != "" && missionLabel != "":
+		return clientLabel + " · " + missionLabel
+	case missionLabel != "":
+		return missionLabel
+	case clientLabel != "":
+		return clientLabel
+	}
+	if len(missionID) > 8 {
+		return "Mission " + missionID[:8]
+	}
+	return "Mission " + missionID
 }
 
 var _ reportports.CRAPlanningReader = (*PlanningReader)(nil)

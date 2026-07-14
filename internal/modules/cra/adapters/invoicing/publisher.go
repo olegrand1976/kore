@@ -3,6 +3,7 @@ package invoicing
 import (
 	"context"
 
+	"github.com/google/uuid"
 	craports "github.com/kore/kore/internal/modules/cra/ports"
 	invoicingports "github.com/kore/kore/internal/modules/invoicing/ports"
 )
@@ -15,15 +16,15 @@ func NewDraftPublisher(invoicing invoicingports.InvoicingService) craports.Invoi
 	return &DraftPublisher{invoicing: invoicing}
 }
 
-func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd craports.ValidationInvoiceCommand) error {
+func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd craports.ValidationInvoiceCommand) (uuid.UUID, error) {
 	if p.invoicing == nil {
-		return nil
+		return uuid.Nil, nil
 	}
 	currency := cmd.Currency
 	if currency == "" {
 		currency = "EUR"
 	}
-	_, err := p.invoicing.CreateFromCRAValidation(ctx, invoicingports.CreateFromCRACommand{
+	inv, err := p.invoicing.CreateFromCRAValidation(ctx, invoicingports.CreateFromCRACommand{
 		TenantID:       cmd.TenantID,
 		TimesheetID:    cmd.TimesheetID,
 		ClientID:       cmd.ClientID,
@@ -35,7 +36,10 @@ func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd crap
 		UnitPriceCents: cmd.UnitPriceCents,
 		TaxRate:        cmd.TaxRate,
 	})
-	return err
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return inv.ID, nil
 }
 
 var _ craports.InvoiceDraftPublisher = (*DraftPublisher)(nil)

@@ -122,6 +122,7 @@ type Societe struct {
 	CraMailAuto          bool            `json:"craMailAuto"`
 	CraMailRecipients    []string        `json:"craMailRecipients,omitempty"`
 	WeekSubmitPolicy     string          `json:"weekSubmitPolicy"`
+	CraGateMode          string          `json:"craGateMode"`
 	TaskTypesEnabled     []string        `json:"taskTypesEnabled,omitempty"`
 	TotpDefaultEnabled   bool            `json:"totpDefaultEnabled"`
 	TotpUserConfigurable bool            `json:"totpUserConfigurable"`
@@ -133,6 +134,7 @@ type Societe struct {
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
 const DefaultDayCapacityMinutes = 480
 const DefaultWeekSubmitPolicy = "warn"
+const DefaultCraGateMode = "warn"
 
 var DefaultTaskTypesEnabled = []string{"manual", "interne", "formation", "mission"}
 

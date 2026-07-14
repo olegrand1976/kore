@@ -30,20 +30,19 @@ import type { PlanningRow } from '~/composables/useReporting'
 
 definePageMeta({ layout: 'default' })
 
-const { fetchPlanning, monthPeriod } = useReporting()
+const { fetchPlanning, rollingWindow60 } = useReporting()
 const { t } = useI18n()
 
-const { data, pending, error: fetchError } = await useAsyncData('cra-planning', () => fetchPlanning())
+const { data, pending, error: fetchError } = await useAsyncData('cra-planning', () => fetchPlanning({ window: '60' }))
 
 const rows = computed(() => data.value ?? [])
 
 const days = computed(() => {
-  const period = monthPeriod()
+  const period = rollingWindow60()
   const start = new Date(`${period.start}T00:00:00Z`)
   const end = new Date(`${period.end}T00:00:00Z`)
   const out: string[] = []
   for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    if (d.getUTCDay() === 0 || d.getUTCDay() === 6) continue
     out.push(d.toISOString().slice(0, 10))
   }
   return out

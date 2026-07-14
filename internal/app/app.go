@@ -63,7 +63,9 @@ import (
 	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
+	reportingconges "github.com/kore/kore/internal/modules/reporting/adapters/conges"
 	reportingcra "github.com/kore/kore/internal/modules/reporting/adapters/cra"
+	reportinginvoicing "github.com/kore/kore/internal/modules/reporting/adapters/invoicing"
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
 	reportingpostgres "github.com/kore/kore/internal/modules/reporting/adapters/postgres"
 	reportingapp "github.com/kore/kore/internal/modules/reporting/app"
@@ -227,6 +229,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		reportingRepo,
 		reportingcra.NewBillableReader(craService),
 		reportingcra.NewPlanningReader(craService),
+		reportinginvoicing.NewBillingReader(invoicingRepo),
+		reportingconges.NewLeaveReader(congesService),
 	)
 	ssiiService := ssiiapp.NewService(
 		ssiiRepo,

@@ -176,6 +176,7 @@ type UpdateSocieteSettingsCommand struct {
 	CraMailAuto          *bool
 	CraMailRecipients    *[]string
 	WeekSubmitPolicy     *string
+	CraGateMode          *string
 	TaskTypesEnabled     *[]string
 	TotpDefaultEnabled   *bool
 	TotpUserConfigurable *bool
@@ -192,6 +193,7 @@ type UserCalendarSettings struct {
 	WeekStartDay       int      `json:"weekStartDay"`
 	DayCapacityMinutes int      `json:"dayCapacityMinutes"`
 	WeekSubmitPolicy   string   `json:"weekSubmitPolicy"`
+	CraGateMode        string   `json:"craGateMode"`
 	TaskTypesEnabled   []string `json:"taskTypesEnabled"`
 }
 

@@ -30,7 +30,7 @@ definePageMeta({ layout: 'default' })
 const { fetchGantt } = useReporting()
 const { t } = useI18n()
 
-const { data, pending, error: fetchError } = await useAsyncData('cra-gantt', () => fetchGantt())
+const { data, pending, error: fetchError } = await useAsyncData('cra-gantt', () => fetchGantt({ window: '60' }))
 
 const items = computed(() => data.value ?? [])
 const error = computed(() => (fetchError.value ? t('cra.gantt_error') : ''))

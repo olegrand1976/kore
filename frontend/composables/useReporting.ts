@@ -1,6 +1,7 @@
 export type ReportingPeriod = {
   start: string
   end: string
+  window?: string
   Start?: string
   End?: string
 }
@@ -38,9 +39,21 @@ function monthPeriod(date = new Date()) {
   return { start: fmt(start), end: fmt(end) }
 }
 
+function rollingWindow60(date = new Date()) {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  const end = new Date(start)
+  end.setUTCDate(end.getUTCDate() + 59)
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  return { window: '60', start: fmt(start), end: fmt(end) }
+}
+
 export function useReporting() {
-  const fetchGantt = async (params?: { start?: string; end?: string }) => {
-    const period = params?.start && params?.end ? params : monthPeriod()
+  const fetchGantt = async (params?: { start?: string; end?: string; window?: string }) => {
+    const period = params?.window === '60' || (!params?.start && !params?.end)
+      ? rollingWindow60()
+      : params?.start && params?.end
+        ? params
+        : monthPeriod()
     const res = await $fetch<{
       data?: {
         period?: ReportingPeriod
@@ -68,8 +81,12 @@ export function useReporting() {
     return items
   }
 
-  const fetchPlanning = async (params?: { start?: string; end?: string }) => {
-    const period = params?.start && params?.end ? params : monthPeriod()
+  const fetchPlanning = async (params?: { start?: string; end?: string; window?: string }) => {
+    const period = params?.window === '60' || (!params?.start && !params?.end)
+      ? rollingWindow60()
+      : params?.start && params?.end
+        ? params
+        : monthPeriod()
     const res = await $fetch<{
       data?: {
         rows?: Array<Record<string, unknown>>
@@ -92,5 +109,28 @@ export function useReporting() {
     })
   }
 
-  return { fetchGantt, fetchPlanning, monthPeriod }
+  const fetchBillingStats = async (params?: { start?: string; end?: string; window?: string }) => {
+    const period = params?.window === '60' ? rollingWindow60() : monthPeriod()
+    const res = await $fetch<{
+      data?: {
+        totalAmount?: number
+        TotalAmount?: number
+        invoiceCount?: number
+        InvoiceCount?: number
+        billableHours?: number
+        BillableHours?: number
+        currency?: string
+        Currency?: string
+      }
+    }>('/api/billing-stats', { query: period })
+    const data = res.data ?? (res as unknown as Record<string, unknown>)
+    return {
+      totalAmount: Number(data.totalAmount ?? data.TotalAmount ?? 0),
+      invoiceCount: Number(data.invoiceCount ?? data.InvoiceCount ?? 0),
+      billableHours: Number(data.billableHours ?? data.BillableHours ?? 0),
+      currency: String(data.currency ?? data.Currency ?? 'EUR')
+    }
+  }
+
+  return { fetchGantt, fetchPlanning, fetchBillingStats, monthPeriod, rollingWindow60 }
 }

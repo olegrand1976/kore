@@ -1,0 +1,10 @@
+export default defineEventHandler(async (event) => {
+  const headers = apiAuthHeaders(event)
+  const query = getQuery(event)
+  const params = new URLSearchParams()
+  if (query.start) params.set('start', String(query.start))
+  if (query.end) params.set('end', String(query.end))
+  if (query.window) params.set('window', String(query.window))
+  const qs = params.toString()
+  return $fetch(`${apiBase()}/api/v1/billing-stats${qs ? `?${qs}` : ''}`, { headers })
+})

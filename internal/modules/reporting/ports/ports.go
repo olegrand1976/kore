@@ -34,17 +34,27 @@ type CRABillableReader interface {
 	BillableHoursForMonth(ctx context.Context, tenant kernel.TenantID, month string) (float64, error)
 }
 
+type InvoicingBillingReader interface {
+	SumRealInvoicesInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) (totalAmount int64, invoiceCount int, currency string, err error)
+}
+
 type CRAPlanningReader interface {
 	ListDailyActivity(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]PlanningActivityRow, error)
 }
 
+type LeavePlanningReader interface {
+	ListApprovedDays(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]PlanningActivityRow, error)
+}
+
 type PlanningActivityRow struct {
-	UserID     uuid.UUID
-	UserPrenom string
-	UserNom    string
-	Day        time.Time
-	Minutes    int
-	MissionID  string
+	UserID       uuid.UUID
+	UserPrenom   string
+	UserNom      string
+	Day          time.Time
+	Minutes      int
+	MissionID    string
+	MissionLabel string
+	ClientLabel  string
 }
 
 type ReportingService interface {

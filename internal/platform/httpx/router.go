@@ -17,14 +17,19 @@ import (
 type ErrorCode string
 
 const (
-	ErrCodeUnauthorized    ErrorCode = "UNAUTHORIZED"
-	ErrCodeForbidden       ErrorCode = "FORBIDDEN"
-	ErrCodeNotFound        ErrorCode = "NOT_FOUND"
-	ErrCodeValidation      ErrorCode = "VALIDATION_ERROR"
-	ErrCodeConflict        ErrorCode = "CONFLICT"
-	ErrCodePaymentRequired ErrorCode = "PAYMENT_REQUIRED"
-	ErrCodeTooManyRequests ErrorCode = "TOO_MANY_REQUESTS"
-	ErrCodeInternal        ErrorCode = "INTERNAL_ERROR"
+	ErrCodeUnauthorized           ErrorCode = "UNAUTHORIZED"
+	ErrCodeForbidden              ErrorCode = "FORBIDDEN"
+	ErrCodeNotFound               ErrorCode = "NOT_FOUND"
+	ErrCodeValidation             ErrorCode = "VALIDATION_ERROR"
+	ErrCodeConflict               ErrorCode = "CONFLICT"
+	ErrCodePaymentRequired        ErrorCode = "PAYMENT_REQUIRED"
+	ErrCodeTooManyRequests        ErrorCode = "TOO_MANY_REQUESTS"
+	ErrCodeInternal               ErrorCode = "INTERNAL_ERROR"
+	ErrCodeCRAAlreadyValidated    ErrorCode = "CRA_ALREADY_VALIDATED"
+	ErrCodeCommercialInfoRequired ErrorCode = "COMMERCIAL_INFO_REQUIRED"
+	ErrCodeDayCapacityExceeded    ErrorCode = "DAY_CAPACITY_EXCEEDED"
+	ErrCodeCRAConflictAbsence     ErrorCode = "CRA_CONFLICT_ABSENCE"
+	ErrCodeWeekIncomplete         ErrorCode = "WEEK_INCOMPLETE"
 )
 
 type APIError struct {

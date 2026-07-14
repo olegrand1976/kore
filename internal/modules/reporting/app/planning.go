@@ -27,5 +27,12 @@ func (s *service) GetPlanning(ctx context.Context, q ports.PlanningQuery) (domai
 	if err != nil {
 		return domain.PlanningView{}, err
 	}
+	if s.leavePlan != nil {
+		leaveRows, err := s.leavePlan.ListApprovedDays(ctx, q.TenantID, q.Period)
+		if err != nil {
+			return domain.PlanningView{}, err
+		}
+		rows = append(rows, leaveRows...)
+	}
 	return reportingcra.BuildPlanningView(q.Period, rows), nil
 }

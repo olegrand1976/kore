@@ -129,6 +129,23 @@ func (r *Repository) InvoiceExistsForTimesheet(ctx context.Context, tenant kerne
 	return exists, err
 }
 
+func (r *Repository) SumNonVirtualInvoicesInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) (int64, int, string, error) {
+	var total int64
+	var count int
+	var currency string
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(total_amount), 0)::bigint,
+		       COUNT(*)::int,
+		       COALESCE(NULLIF(MAX(currency), ''), 'EUR')
+		FROM invoicing.invoices
+		WHERE tenant_id = $1
+		  AND status <> $2
+		  AND created_at >= $3
+		  AND created_at < ($4::timestamptz + INTERVAL '1 day')
+	`, tenant.UUID(), string(domain.InvoiceStatusVirtuelle), period.Start, period.End).Scan(&total, &count, &currency)
+	return total, count, currency, err
+}
+
 func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	var inv domain.Invoice
 	var tenantID uuid.UUID

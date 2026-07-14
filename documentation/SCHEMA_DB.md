@@ -129,6 +129,7 @@ Index :
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
 | `cra_mail_recipients` | JSONB | NOT NULL, DEFAULT `'[]'` |
 | `week_submit_policy` | TEXT | NOT NULL, DEFAULT `'warn'`, CHECK `block` / `warn` / `none` |
+| `cra_gate_mode` | TEXT | NOT NULL, DEFAULT `'warn'`, CHECK `block` / `warn` |
 | `task_types_enabled` | JSONB | NOT NULL, DEFAULT `'[]'` (catalogue types activité CRA ; vide = défaut manual/interne/formation/mission) |
 | `totp_default_enabled` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
 | `totp_user_configurable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |

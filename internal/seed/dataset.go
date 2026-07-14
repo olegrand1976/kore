@@ -215,11 +215,12 @@ func (r *Runner) seedTimesheet(
 		return err
 	}
 	if finalize {
-		return r.deps.CRA.ValidateFinal(ctx, craports.ManagerValidateCommand{
+		_, err := r.deps.CRA.ValidateFinal(ctx, craports.ManagerValidateCommand{
 			TenantID:    tenant,
 			TimesheetID: ts.ID,
 			ManagerID:   managerID,
 		})
+		return err
 	}
 	return nil
 }

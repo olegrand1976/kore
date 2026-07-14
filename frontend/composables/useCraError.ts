@@ -6,6 +6,7 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
       statusMessage?: string
       message?: string
     }
+    const code = e.data?.error?.code ?? ''
     const message = (
       e.data?.error?.message ??
       e.data?.message ??
@@ -14,6 +15,21 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
       ''
     ).toLowerCase()
     const status = e.statusCode ?? 0
+
+    switch (code) {
+      case 'COMMERCIAL_INFO_REQUIRED':
+        return t('cra.errors.commercial_required')
+      case 'DAY_CAPACITY_EXCEEDED':
+        return t('cra.errors.day_capacity')
+      case 'CRA_CONFLICT_ABSENCE':
+        return t('cra.errors.conflict_absence')
+      case 'CRA_ALREADY_VALIDATED':
+        return t('cra.errors.already_validated')
+      case 'WEEK_INCOMPLETE':
+        return t('cra.errors.week_incomplete')
+      default:
+        break
+    }
 
     if (message.includes('commercial') || message.includes('commercial info')) {
       return t('cra.errors.commercial_required')

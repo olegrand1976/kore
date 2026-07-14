@@ -110,7 +110,7 @@ func TestSubmitWeekThenValidateFinal(t *testing.T) {
 		t.Fatalf("expected ValidéSemaine, got %s", repo.ts.Status)
 	}
 
-	if err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+	if _, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
 		TenantID:    tenant,
 		TimesheetID: repo.ts.ID,
 		ManagerID:   managerID,

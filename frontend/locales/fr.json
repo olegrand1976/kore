@@ -9,7 +9,19 @@
     "edit": "Modifier",
     "delete": "Supprimer",
     "save": "Enregistrer",
-    "close": "Fermer"
+    "close": "Fermer",
+    "list": {
+      "search": "Rechercher",
+      "sort": "Trier par",
+      "sort_asc": "Croissant",
+      "sort_desc": "Décroissant",
+      "view": "Affichage",
+      "view_table": "Tableau",
+      "view_kanban": "Kanban",
+      "reset_filters": "Réinitialiser les filtres",
+      "filter_all": "Tous",
+      "no_results": "Aucun résultat pour ces filtres"
+    }
   },
   "nav": {
     "modules": "Modules",
@@ -294,6 +306,9 @@
     "save_week": "Enregistrer la semaine",
     "submit_week": "Soumettre la semaine",
     "validate_final": "Valider définitivement",
+    "validated_ok": "CRA validé définitivement.",
+    "invoice_created": "CRA validé — brouillon facture créé.",
+    "invoice_skipped": "CRA validé — brouillon facture non créé ({reason}).",
     "week_submitted": "Semaine soumise",
     "add_activity": "Ajouter une activité",
     "activity_type": "Type d'activité",
@@ -356,6 +371,14 @@
       "validation": "Données invalides."
     }
   },
+  "reporting": {
+    "facturation_title": "Statistiques de facturation",
+    "facturation_subtitle": "CA réel et heures facturables (60 jours)",
+    "facturation_error": "Impossible de charger les statistiques.",
+    "billable_hours": "Heures facturables CRA",
+    "invoice_count": "Factures réelles",
+    "total_amount": "Montant facturé"
+  },
   "prestations": {
     "title": "Suivi des prestations",
     "month": "Mois",
@@ -376,6 +399,9 @@
     "col_reject_reason": "Motif rejet",
     "anomaly_incomplete": "Semaines incomplètes",
     "anomaly_rejected": "CRA rejeté",
+    "anomaly_ett": "Écart ETT",
+    "invoice_created": "CRA validé — brouillon facture créé.",
+    "invoice_skipped": "CRA validé — brouillon facture non créé ({reason}).",
     "col_user": "Collaborateur",
     "col_hours": "Heures",
     "col_weeks": "Semaines",

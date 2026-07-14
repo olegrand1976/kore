@@ -39,6 +39,24 @@ type ManagerValidateCommand struct {
 	ManagerID   UserID
 }
 
+type InvoiceDraftStatus string
+
+const (
+	InvoiceDraftCreated      InvoiceDraftStatus = "created"
+	InvoiceDraftSkipped      InvoiceDraftStatus = "skipped"
+	InvoiceDraftUnavailable  InvoiceDraftStatus = "unavailable"
+)
+
+type InvoiceDraftOutcome struct {
+	Status    InvoiceDraftStatus `json:"status"`
+	Reason    string             `json:"reason,omitempty"`
+	InvoiceID *uuid.UUID         `json:"invoiceId,omitempty"`
+}
+
+type ValidateFinalResult struct {
+	InvoiceDraft InvoiceDraftOutcome `json:"invoiceDraft"`
+}
+
 type RejectTimesheetCommand struct {
 	TenantID    kernel.TenantID
 	TimesheetID TimesheetID
@@ -87,7 +105,7 @@ type ValidationInvoiceCommand struct {
 }
 
 type InvoiceDraftPublisher interface {
-	PublishCRAValidationDraft(ctx context.Context, cmd ValidationInvoiceCommand) error
+	PublishCRAValidationDraft(ctx context.Context, cmd ValidationInvoiceCommand) (uuid.UUID, error)
 }
 
 type MissionRate struct {
@@ -109,12 +127,14 @@ type ETTRecordReader interface {
 }
 
 type DailyActivityRow struct {
-	UserID     uuid.UUID
-	UserPrenom string
-	UserNom    string
-	Day        time.Time
-	Minutes    int
-	MissionID  string
+	UserID       uuid.UUID
+	UserPrenom   string
+	UserNom      string
+	Day          time.Time
+	Minutes      int
+	MissionID    string
+	MissionLabel string
+	ClientLabel  string
 }
 
 type CRAService interface {
@@ -127,7 +147,7 @@ type CRAService interface {
 	SubmitWeek(ctx context.Context, cmd SubmitWeekCommand) error
 	CompleteCommercialInfo(ctx context.Context, cmd CommercialCommand) error
 	GeneratePDF(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Document, error)
-	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) error
+	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) (ValidateFinalResult, error)
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)

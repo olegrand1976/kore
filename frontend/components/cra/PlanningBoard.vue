@@ -6,13 +6,25 @@
         <thead>
           <tr>
             <th scope="col">{{ userHeader }}</th>
-            <th v-for="day in days" :key="day" scope="col">{{ formatDay(day) }}</th>
+            <th
+              v-for="day in days"
+              :key="day"
+              scope="col"
+              :class="{ 'planning__weekend': isWeekend(day) }"
+            >
+              {{ formatDay(day) }}
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.userId">
             <th scope="row" class="planning__user">{{ row.userName || row.userId.slice(0, 8) }}</th>
-            <td v-for="day in days" :key="`${row.userId}-${day}`" class="planning__cell">
+            <td
+              v-for="day in days"
+              :key="`${row.userId}-${day}`"
+              class="planning__cell"
+              :class="{ 'planning__weekend': isWeekend(day) }"
+            >
               <span v-if="slotFor(row, day)" class="planning__slot" :title="slotFor(row, day)?.label">
                 {{ slotFor(row, day)?.hours ? `${slotFor(row, day)?.hours}h` : '—' }}
               </span>
@@ -43,6 +55,11 @@ const formatDay = (day: string) => {
     weekday: 'short',
     day: '2-digit'
   })
+}
+
+const isWeekend = (day: string) => {
+  const dow = new Date(`${day}T12:00:00Z`).getUTCDay()
+  return dow === 0 || dow === 6
 }
 
 const slotFor = (row: PlanningRow, day: string) =>
@@ -90,6 +107,10 @@ const slotFor = (row: PlanningRow, day: string) =>
 
 .planning__empty-cell {
   color: var(--kore-text-muted);
+}
+
+.planning__weekend {
+  background: var(--kore-bg-subtle);
 }
 
 .planning__empty {

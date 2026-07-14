@@ -145,6 +145,8 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: 'default', middleware: 'cra-gate' })
+
 import { leaveMetrics, leaveStatusSeries } from '~/composables/useKpiMetrics'
 import {
   pickLeaveTypeCode,

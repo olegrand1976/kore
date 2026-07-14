@@ -73,7 +73,7 @@ func (s *Service) ValidateAll(ctx context.Context, cmd ports.ValidateAllCommand)
 			})
 			continue
 		}
-		if err := s.ValidateFinal(ctx, ports.ManagerValidateCommand{
+		if _, err := s.ValidateFinal(ctx, ports.ManagerValidateCommand{
 			TenantID:    cmd.TenantID,
 			TimesheetID: summary.ID,
 			ManagerID:   cmd.ManagerID,

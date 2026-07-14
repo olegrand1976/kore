@@ -137,6 +137,13 @@ func getBillingStats(svc ports.ReportingService, authorizer authx.Authorizer) ht
 func parsePeriodQuery(r *http.Request) (kernel.Period, error) {
 	startStr := r.URL.Query().Get("start")
 	endStr := r.URL.Query().Get("end")
+	windowStr := r.URL.Query().Get("window")
+	if startStr == "" && endStr == "" && windowStr == "60" {
+		now := time.Now().UTC()
+		start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 0, 59)
+		return kernel.NewPeriod(start, end)
+	}
 	if startStr == "" || endStr == "" {
 		now := time.Now().UTC()
 		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)

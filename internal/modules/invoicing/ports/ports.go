@@ -60,4 +60,5 @@ type InvoicingRepository interface {
 	ListInvoiceLines(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) ([]domain.InvoiceLine, error)
 	SavePDPQueueItem(ctx context.Context, item domain.PDPQueueItem) error
 	InvoiceExistsForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error)
+	SumNonVirtualInvoicesInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) (totalAmount int64, invoiceCount int, currency string, err error)
 }

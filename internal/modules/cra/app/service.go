@@ -269,24 +269,24 @@ func (s *Service) GeneratePDF(ctx context.Context, tenant kernel.TenantID, id po
 	return s.pdf.Render(ctx, ts)
 }
 
-func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCommand) error {
+func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCommand) (ports.ValidateFinalResult, error) {
 	ts, err := s.repo.GetByID(ctx, cmd.TenantID, cmd.TimesheetID)
 	if err != nil {
-		return err
+		return ports.ValidateFinalResult{}, err
 	}
 	if ts.IsFinal() {
-		return domain.ErrCRAAlreadyValidated
+		return ports.ValidateFinalResult{}, domain.ErrCRAAlreadyValidated
 	}
 	now := s.clock.Now().UTC()
 	ts.Status = domain.StatusDefinitif
 	ts.ValidatedAt = &now
 	ts.ValidatedBy = &cmd.ManagerID
 	if err := s.repo.Save(ctx, ts); err != nil {
-		return err
+		return ports.ValidateFinalResult{}, err
 	}
 	s.invalidateConsumptionCache(ctx, cmd.TenantID)
-	s.publishValidationInvoice(ctx, ts)
-	return nil
+	draft := s.tryPublishValidationInvoice(ctx, ts)
+	return ports.ValidateFinalResult{InvoiceDraft: draft}, nil
 }
 
 func (s *Service) ProposeLines(ctx context.Context, lines []ports.ProposedLine) error {

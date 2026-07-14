@@ -3,7 +3,16 @@ import { useCraStore, type CraLine } from '~/stores/cra'
 
 export function useCra(timesheetId?: Ref<string> | string) {
   const store = useCraStore()
-  const { timesheet, loading, saving, error, canEdit, selectedWeeks } = storeToRefs(store)
+  const { timesheet, loading, saving, error, selectedWeeks } = storeToRefs(store)
+  const { can } = usePermissions()
+
+  const idRef = computed(() => {
+    if (typeof timesheetId === 'string') return timesheetId
+    if (timesheetId) return timesheetId.value
+    return timesheet.value?.id ?? ''
+  })
+
+  const canEdit = computed(() => store.canEdit && can('cra', 'E'))
 
   const idRef = computed(() => {
     if (typeof timesheetId === 'string') return timesheetId

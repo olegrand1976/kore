@@ -9,17 +9,32 @@ import (
 	"github.com/kore/kore/internal/modules/cra/ports"
 )
 
-func (s *Service) publishValidationInvoice(ctx context.Context, ts domain.Timesheet) {
+func (s *Service) tryPublishValidationInvoice(ctx context.Context, ts domain.Timesheet) ports.InvoiceDraftOutcome {
 	if s.invoices == nil {
-		return
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftUnavailable,
+			Reason: "invoicing_not_configured",
+		}
 	}
 	clientID := s.resolveClientID(ctx, ts)
 	if clientID == nil || *clientID == uuid.Nil {
-		return
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: "client_unresolved",
+		}
 	}
 	billableMinutes, err := s.BillableMinutesForMonth(ctx, ts.TenantID, ts.UserID, ts.Month)
-	if err != nil || billableMinutes <= 0 {
-		return
+	if err != nil {
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: "billable_hours_error",
+		}
+	}
+	if billableMinutes <= 0 {
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: "no_billable_hours",
+		}
 	}
 	userLabel := userLabelForTimesheet(ctx, s, ts)
 	unitPrice := int64(0)
@@ -27,7 +42,7 @@ func (s *Service) publishValidationInvoice(ctx context.Context, ts domain.Timesh
 	if missionID := s.resolveMissionID(ctx, ts); missionID != nil {
 		unitPrice, currency = s.resolveUnitPriceCents(ctx, ts, *missionID)
 	}
-	_ = s.invoices.PublishCRAValidationDraft(ctx, ports.ValidationInvoiceCommand{
+	invoiceID, err := s.invoices.PublishCRAValidationDraft(ctx, ports.ValidationInvoiceCommand{
 		TenantID:       ts.TenantID,
 		TimesheetID:    ts.ID,
 		ClientID:       *clientID,
@@ -38,6 +53,22 @@ func (s *Service) publishValidationInvoice(ctx context.Context, ts domain.Timesh
 		Currency:       currency,
 		UnitPriceCents: unitPrice,
 	})
+	if err != nil {
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: "publish_failed",
+		}
+	}
+	if invoiceID == uuid.Nil {
+		return ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: "already_exists_or_empty",
+		}
+	}
+	return ports.InvoiceDraftOutcome{
+		Status:    ports.InvoiceDraftCreated,
+		InvoiceID: &invoiceID,
+	}
 }
 
 func userLabelForTimesheet(ctx context.Context, s *Service, ts domain.Timesheet) string {

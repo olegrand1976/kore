@@ -9,7 +9,19 @@
     "edit": "Edit",
     "delete": "Delete",
     "save": "Save",
-    "close": "Close"
+    "close": "Close",
+    "list": {
+      "search": "Search",
+      "sort": "Sort by",
+      "sort_asc": "Ascending",
+      "sort_desc": "Descending",
+      "view": "View",
+      "view_table": "Table",
+      "view_kanban": "Kanban",
+      "reset_filters": "Reset filters",
+      "filter_all": "All",
+      "no_results": "No results for these filters"
+    }
   },
   "nav": {
     "modules": "Modules",
@@ -294,6 +306,9 @@
     "save_week": "Save week",
     "submit_week": "Submit week",
     "validate_final": "Final validation",
+    "validated_ok": "Timesheet finally validated.",
+    "invoice_created": "Validated — invoice draft created.",
+    "invoice_skipped": "Validated — no invoice draft ({reason}).",
     "week_submitted": "Week submitted",
     "add_activity": "Add activity",
     "activity_type": "Activity type",
@@ -356,6 +371,14 @@
       "validation": "Invalid data."
     }
   },
+  "reporting": {
+    "facturation_title": "Billing statistics",
+    "facturation_subtitle": "Real revenue and billable hours (60 days)",
+    "facturation_error": "Unable to load statistics.",
+    "billable_hours": "Billable CRA hours",
+    "invoice_count": "Real invoices",
+    "total_amount": "Invoiced amount"
+  },
   "prestations": {
     "title": "Service tracking",
     "month": "Month",
@@ -376,6 +399,9 @@
     "col_reject_reason": "Reject reason",
     "anomaly_incomplete": "Incomplete weeks",
     "anomaly_rejected": "Timesheet rejected",
+    "anomaly_ett": "ETT mismatch",
+    "invoice_created": "Validated — invoice draft created.",
+    "invoice_skipped": "Validated — no invoice draft ({reason}).",
     "col_user": "Consultant",
     "col_hours": "Hours",
     "col_weeks": "Weeks",

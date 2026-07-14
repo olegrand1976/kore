@@ -105,6 +105,7 @@ const { statusVariant } = useCraStatus()
 
 type PrestationRow = {
   id: string
+  userId?: string
   userPrenom?: string
   userNom?: string
   userLogin?: string
@@ -114,6 +115,17 @@ type PrestationRow = {
   rejectReason?: string
   rejectedAt?: string
   status: string
+}
+
+type EttReport = {
+  userId?: string
+  alert?: boolean
+}
+
+type ValidateResponse = {
+  data?: {
+    invoiceDraft?: { status?: string; reason?: string }
+  }
 }
 
 type ValidateAllResponse = {
@@ -139,7 +151,22 @@ const { data, pending, refresh } = await useFetch<{ data?: PrestationRow[] }>(
   () => `/api/prestations?month=${month.value}`
 )
 
+const { data: ettData } = await useFetch<{ data?: EttReport[] }>(
+  () => `/api/ett/reconciliation?month=${month.value}&scope=team`,
+  { watch: [month] }
+)
+
 const rows = computed(() => data.value?.data ?? [])
+
+const ettAlertByUser = computed(() => {
+  const map = new Map<string, boolean>()
+  for (const report of ettData.value?.data ?? []) {
+    if (report.userId) {
+      map.set(String(report.userId), Boolean(report.alert))
+    }
+  }
+  return map
+})
 
 const userLabel = (row: PrestationRow) => {
   const name = [row.userPrenom, row.userNom].filter(Boolean).join(' ').trim()
@@ -156,14 +183,25 @@ const hasAnomaly = (row: PrestationRow) => {
   const submitted = row.weeksSubmitted ?? 0
   const total = row.weeksTotal ?? 0
   if (row.rejectReason?.trim() || row.rejectedAt) return true
+  if (row.userId && ettAlertByUser.value.get(String(row.userId))) return true
   return total > 0 && submitted < total
 }
 
 const anomalyLabel = (row: PrestationRow) => {
+  if (row.userId && ettAlertByUser.value.get(String(row.userId))) {
+    return t('prestations.anomaly_ett')
+  }
   if (row.rejectReason?.trim() || row.rejectedAt) {
     return t('prestations.anomaly_rejected')
   }
   return t('prestations.anomaly_incomplete')
+}
+
+const invoiceDraftMessage = (draft?: { status?: string; reason?: string }) => {
+  if (!draft?.status || draft.status === 'created') {
+    return draft?.status === 'created' ? t('prestations.invoice_created') : t('prestations.validate_ok')
+  }
+  return t('prestations.invoice_skipped', { reason: draft.reason ?? 'unknown' })
 }
 
 const setActionMsg = (msg: string, isError = false) => {
@@ -194,8 +232,8 @@ const validateRow = async (row: PrestationRow) => {
   rowActionId.value = row.id
   setActionMsg('')
   try {
-    await $fetch(`/api/cra/timesheets/${row.id}/validate`, { method: 'POST' })
-    setActionMsg(t('prestations.validate_ok'))
+    const res = await $fetch<ValidateResponse>(`/api/cra/timesheets/${row.id}/validate`, { method: 'POST' })
+    setActionMsg(invoiceDraftMessage(res?.data?.invoiceDraft))
     await refresh()
   } catch {
     setActionMsg(t('prestations.action_error'), true)

@@ -280,15 +280,19 @@ func validateFinal(svc ports.CRAService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		if err := svc.ValidateFinal(r.Context(), ports.ManagerValidateCommand{
+		result, err := svc.ValidateFinal(r.Context(), ports.ManagerValidateCommand{
 			TenantID:    identity.TenantID,
 			TimesheetID: id,
 			ManagerID:   identity.UserID,
-		}); err != nil {
+		})
+		if err != nil {
 			writeCRAError(w, err)
 			return
 		}
-		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "validated"})
+		httpx.WriteData(w, http.StatusOK, map[string]any{
+			"status":       "validated",
+			"invoiceDraft": result.InvoiceDraft,
+		})
 	}
 }
 
@@ -516,15 +520,15 @@ func parseTimesheetWeek(r *http.Request) (uuid.UUID, domain.WeekNumber, error) {
 func writeCRAError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrCRAAlreadyValidated):
-		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyValidated, err.Error())
 	case errors.Is(err, domain.ErrCommercialInfoRequired):
-		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeCommercialInfoRequired, err.Error())
 	case errors.Is(err, domain.ErrDayCapacityExceeded):
-		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeDayCapacityExceeded, err.Error())
 	case errors.Is(err, domain.ErrCRAConflictAbsence):
-		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAConflictAbsence, err.Error())
 	case errors.Is(err, domain.ErrWeekIncomplete):
-		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeWeekIncomplete, err.Error())
 	case errors.Is(err, domain.ErrTimesheetNotFound), errors.Is(err, domain.ErrWeekNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	default:
