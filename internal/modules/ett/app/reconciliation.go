@@ -11,16 +11,6 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-type ReconciliationReport struct {
-	UserID       uuid.UUID `json:"userId"`
-	Month        string    `json:"month"`
-	CRAHours     float64   `json:"craHours"`
-	ETTHours     float64   `json:"ettHours"`
-	DeltaHours   float64   `json:"deltaHours"`
-	Alert        bool      `json:"alert"`
-	AlertMessage string    `json:"alertMessage,omitempty"`
-}
-
 type ReconciliationService struct {
 	ett ports.ETTRepository
 	cra craports.CRAReader
@@ -30,8 +20,8 @@ func NewReconciliationService(ett ports.ETTRepository, cra craports.CRAReader) *
 	return &ReconciliationService{ett: ett, cra: cra}
 }
 
-func (s *ReconciliationService) CompareMonth(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ReconciliationReport, error) {
-	report := ReconciliationReport{UserID: userID, Month: month}
+func (s *ReconciliationService) CompareMonth(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ports.ReconciliationReport, error) {
+	report := ports.ReconciliationReport{UserID: userID, Month: month}
 	parsed, err := cradomain.ParseMonth(month)
 	if err != nil {
 		return report, err

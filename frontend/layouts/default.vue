@@ -238,6 +238,7 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/compte', icon: 'person', label: t('nav.profile'), activePrefix: '/compte' },
   { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
   { to: '/prestations', icon: 'fact_check', label: t('nav.prestations'), module: 'cra', adminOnly: true },
+  { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), module: 'ett' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },

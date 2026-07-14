@@ -85,10 +85,10 @@ func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
 				}
 				_, err = tx.Exec(ctx, `
 					INSERT INTO cra.time_lines (
-						id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+						id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin, billable
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 				`, lineID, ts.TenantID.UUID(), weekID, line.Source.Type, line.Source.ID,
-					line.Day, line.Duration.Minutes, line.Comment, string(line.Origin))
+					line.Day, line.Duration.Minutes, line.Comment, string(line.Origin), line.Billable)
 				if err != nil {
 					return err
 				}
@@ -155,7 +155,7 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 		week.WeekNumber = domain.WeekNumber(weekNum)
 
 		lineRows, err := r.pool.Query(ctx, `
-			SELECT id, source_type, source_id, day, duration, comment, origin
+			SELECT id, source_type, source_id, day, duration, comment, origin, billable
 			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day
 		`, week.ID)
 		if err != nil {
@@ -165,7 +165,8 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 			var line domain.TimeLine
 			var origin string
 			var minutes int
-			if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin); err != nil {
+			var billable bool
+			if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin, &billable); err != nil {
 				lineRows.Close()
 				return domain.Timesheet{}, err
 			}
@@ -173,6 +174,7 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 			line.WeekEntryID = week.ID
 			line.Duration = kernel.Duration{Minutes: minutes}
 			line.Origin = domain.LineOrigin(origin)
+			line.Billable = billable
 			week.Lines = append(week.Lines, line)
 		}
 		lineRows.Close()
@@ -242,7 +244,7 @@ func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.Te
 
 func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error) {
 	rows, err := r.pool.Query(ctx, timesheetSummarySelect+`
-		WHERE t.tenant_id = $1 AND t.month = $2
+		WHERE t.tenant_id = $1 AND t.month = $2 AND u.cra_requis = TRUE
 		GROUP BY t.id, u.login, u.prenom, u.nom
 		ORDER BY u.nom ASC, u.prenom ASC
 	`, tenant.UUID(), string(month))
@@ -356,6 +358,7 @@ func (r *Repository) FindConsumption(ctx context.Context, tenant kernel.TenantID
 		  AND tl.source_type = 'application'
 		  AND tl.source_id = $2
 		  AND tl.day >= $3 AND tl.day <= $4
+		  AND tl.billable = TRUE
 		ORDER BY tl.day
 	`, tenant.UUID(), appID.String(), period.Start, period.End)
 	if err != nil {

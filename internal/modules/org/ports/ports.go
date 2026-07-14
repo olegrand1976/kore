@@ -108,6 +108,7 @@ type OrganizationRepository interface {
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
 	ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error)
+	ListSocietesCraMailAuto(ctx context.Context) ([]CraMailReminderTarget, error)
 	SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error
 	GetIdentityProvider(ctx context.Context, tenant kernel.TenantID) (domain.IdentityProvider, error)
 	ListIdentityProviders(ctx context.Context, tenant kernel.TenantID) ([]domain.IdentityProvider, error)
@@ -160,7 +161,15 @@ type UpdateSocieteSettingsCommand struct {
 	WeekStartDay       *int
 	DayCapacityMinutes *int
 	CraMailAuto        *bool
+	CraMailRecipients  *[]string
 	WeekSubmitPolicy   *string
+}
+
+type CraMailReminderTarget struct {
+	TenantID   kernel.TenantID
+	SocieteID  uuid.UUID
+	Pays       string
+	Recipients []string
 }
 
 type UserCalendarSettings struct {

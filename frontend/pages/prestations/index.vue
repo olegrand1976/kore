@@ -2,6 +2,9 @@
   <div>
     <AppPageHeader :title="$t('prestations.title')">
       <template #actions>
+        <AppButton variant="secondary" size="sm" @click="exportXml">
+          {{ $t('prestations.export_xml') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" :disabled="validating" @click="validateAll">
           {{ $t('prestations.validate_all') }}
         </AppButton>
@@ -12,6 +15,8 @@
       <label for="prestations-month">{{ $t('prestations.month') }}</label>
       <input id="prestations-month" v-model="month" type="month" @change="refresh">
     </AppCard>
+
+    <p v-if="actionMsg" class="flash" :class="{ 'flash--error': actionError }" role="status">{{ actionMsg }}</p>
 
     <AppCard v-if="pending" padding="lg">
       <CraSkeleton />
@@ -49,11 +54,23 @@
               <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">
                 {{ $t('prestations.open_cra') }}
               </AppButton>
+              <AppButton variant="ghost" size="sm" @click="downloadPdf(row)">
+                {{ $t('prestations.download_pdf') }}
+              </AppButton>
+              <AppButton
+                v-if="row.status === 'ValidéSemaine'"
+                variant="primary"
+                size="sm"
+                :disabled="rowActionId === row.id"
+                @click="validateRow(row)"
+              >
+                {{ $t('prestations.validate') }}
+              </AppButton>
               <AppButton
                 v-if="row.status !== 'Définitif'"
                 variant="secondary"
                 size="sm"
-                @click="rejectRow(row)"
+                @click="openReject(row)"
               >
                 {{ $t('prestations.reject') }}
               </AppButton>
@@ -62,6 +79,21 @@
         </tbody>
       </table>
     </AppCard>
+
+    <AppModal v-model:open="rejectOpen" width="md" :title-id="rejectTitleId" :aria-label="$t('prestations.reject')">
+      <form class="reject-form" @submit.prevent="confirmReject">
+        <label :for="rejectReasonId">{{ $t('prestations.reject_reason') }}</label>
+        <textarea :id="rejectReasonId" v-model="rejectReason" rows="3" required />
+        <div class="reject-form__actions">
+          <AppButton variant="ghost" size="sm" type="button" @click="rejectOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" size="sm" type="submit" :disabled="rejecting">
+            {{ $t('prestations.reject') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -84,8 +116,24 @@ type PrestationRow = {
   status: string
 }
 
+type ValidateAllResponse = {
+  data?: {
+    validated?: number
+    failed?: Array<{ timesheetId?: string; reason?: string }>
+  }
+}
+
 const month = ref(new Date().toISOString().slice(0, 7))
 const validating = ref(false)
+const rowActionId = ref('')
+const actionMsg = ref('')
+const actionError = ref(false)
+const rejectOpen = ref(false)
+const rejectReason = ref('')
+const rejecting = ref(false)
+const rejectTarget = ref<PrestationRow | null>(null)
+const rejectTitleId = 'prestations-reject-title'
+const rejectReasonId = 'prestations-reject-reason'
 
 const { data, pending, refresh } = await useFetch<{ data?: PrestationRow[] }>(
   () => `/api/prestations?month=${month.value}`
@@ -118,21 +166,86 @@ const anomalyLabel = (row: PrestationRow) => {
   return t('prestations.anomaly_incomplete')
 }
 
+const setActionMsg = (msg: string, isError = false) => {
+  actionMsg.value = msg
+  actionError.value = isError
+}
+
 const validateAll = async () => {
   validating.value = true
+  setActionMsg('')
   try {
-    await $fetch('/api/prestations/validate-all', { method: 'POST', body: { month: month.value } })
+    const res = await $fetch<ValidateAllResponse>('/api/prestations/validate-all', {
+      method: 'POST',
+      body: { month: month.value }
+    })
+    const validated = res?.data?.validated ?? 0
+    const failed = res?.data?.failed?.length ?? 0
+    setActionMsg(t('prestations.validate_all_result', { validated, failed }), failed > 0 && validated === 0)
     await refresh()
+  } catch {
+    setActionMsg(t('prestations.action_error'), true)
   } finally {
     validating.value = false
   }
 }
 
-const rejectRow = async (row: PrestationRow) => {
-  const reason = window.prompt(t('prestations.reject_reason'))
-  if (reason === null) return
-  await $fetch(`/api/cra/timesheets/${row.id}/reject`, { method: 'POST', body: { reason } })
-  await refresh()
+const validateRow = async (row: PrestationRow) => {
+  rowActionId.value = row.id
+  setActionMsg('')
+  try {
+    await $fetch(`/api/cra/timesheets/${row.id}/validate`, { method: 'POST' })
+    setActionMsg(t('prestations.validate_ok'))
+    await refresh()
+  } catch {
+    setActionMsg(t('prestations.action_error'), true)
+  } finally {
+    rowActionId.value = ''
+  }
+}
+
+const downloadPdf = async (row: PrestationRow) => {
+  setActionMsg('')
+  try {
+    const res = await $fetch<Blob>(`/api/cra/timesheets/${row.id}/pdf`, { method: 'POST', responseType: 'blob' })
+    const url = URL.createObjectURL(res)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `cra-${month.value}-${row.userLogin ?? row.id}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    setActionMsg(t('prestations.pdf_error'), true)
+  }
+}
+
+const exportXml = () => {
+  window.open(`/api/prestations/export.xml?month=${encodeURIComponent(month.value)}`, '_blank')
+}
+
+const openReject = (row: PrestationRow) => {
+  rejectTarget.value = row
+  rejectReason.value = ''
+  rejectOpen.value = true
+}
+
+const confirmReject = async () => {
+  if (!rejectTarget.value) return
+  rejecting.value = true
+  setActionMsg('')
+  try {
+    await $fetch(`/api/cra/timesheets/${rejectTarget.value.id}/reject`, {
+      method: 'POST',
+      body: { reason: rejectReason.value.trim() }
+    })
+    rejectOpen.value = false
+    setActionMsg(t('prestations.reject_ok'))
+    await refresh()
+  } catch {
+    setActionMsg(t('prestations.action_error'), true)
+  } finally {
+    rejecting.value = false
+  }
 }
 </script>
 
@@ -182,9 +295,55 @@ const rejectRow = async (row: PrestationRow) => {
   color: var(--kore-text-muted);
 }
 
+.reject-form {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.reject-form textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  color: var(--kore-text);
+}
+
+.reject-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--kore-space-sm);
+}
+
+.flash {
+  margin-bottom: var(--kore-space-md);
+  font-size: var(--kore-text-small);
+  color: var(--kore-success);
+}
+
+.flash--error {
+  color: var(--kore-error);
+}
+
 @media (max-width: 768px) {
-  .prestations-table {
-    font-size: var(--kore-text-small);
+  .prestations-table thead {
+    display: none;
+  }
+
+  .prestations-table tr {
+    display: grid;
+    gap: var(--kore-space-xs);
+    padding: var(--kore-space-md);
+    border-bottom: 1px solid var(--kore-border);
+  }
+
+  .prestations-table td {
+    border: none;
+    padding: 0;
+  }
+
+  .prestations-table__actions {
+    margin-top: var(--kore-space-sm);
   }
 }
 </style>

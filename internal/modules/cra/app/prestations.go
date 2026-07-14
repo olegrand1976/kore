@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/kore/kore/internal/modules/cra/domain"
@@ -28,17 +29,21 @@ func (s *Service) RejectTimesheet(ctx context.Context, cmd ports.RejectTimesheet
 	return s.repo.Save(ctx, ts)
 }
 
-func (s *Service) ValidateAll(ctx context.Context, cmd ports.ValidateAllCommand) (int, error) {
+func (s *Service) ValidateAll(ctx context.Context, cmd ports.ValidateAllCommand) (ports.ValidateAllResult, error) {
 	summaries, err := s.ListPrestations(ctx, cmd.TenantID, cmd.Month)
 	if err != nil {
-		return 0, err
+		return ports.ValidateAllResult{}, err
 	}
-	validated := 0
+	result := ports.ValidateAllResult{}
 	for _, summary := range summaries {
 		if summary.Status == domain.StatusDefinitif {
 			continue
 		}
 		if summary.Status != domain.StatusValideSemaine {
+			result.Failed = append(result.Failed, ports.ValidateAllFailure{
+				TimesheetID: summary.ID,
+				Reason:      fmt.Sprintf("statut %s", summary.Status),
+			})
 			continue
 		}
 		if err := s.ValidateFinal(ctx, ports.ManagerValidateCommand{
@@ -46,9 +51,13 @@ func (s *Service) ValidateAll(ctx context.Context, cmd ports.ValidateAllCommand)
 			TimesheetID: summary.ID,
 			ManagerID:   cmd.ManagerID,
 		}); err != nil {
+			result.Failed = append(result.Failed, ports.ValidateAllFailure{
+				TimesheetID: summary.ID,
+				Reason:      err.Error(),
+			})
 			continue
 		}
-		validated++
+		result.Validated++
 	}
-	return validated, nil
+	return result, nil
 }

@@ -153,6 +153,9 @@ func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd por
 	if cmd.CraMailAuto != nil {
 		societe.CraMailAuto = *cmd.CraMailAuto
 	}
+	if cmd.CraMailRecipients != nil {
+		societe.CraMailRecipients = normalizeMailRecipients(*cmd.CraMailRecipients)
+	}
 	if cmd.WeekSubmitPolicy != nil {
 		policy := strings.TrimSpace(*cmd.WeekSubmitPolicy)
 		switch policy {
@@ -166,6 +169,23 @@ func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd por
 		return domain.Societe{}, err
 	}
 	return societe, nil
+}
+
+func normalizeMailRecipients(recipients []string) []string {
+	seen := make(map[string]struct{}, len(recipients))
+	out := make([]string, 0, len(recipients))
+	for _, raw := range recipients {
+		email := strings.ToLower(strings.TrimSpace(raw))
+		if email == "" {
+			continue
+		}
+		if _, ok := seen[email]; ok {
+			continue
+		}
+		seen[email] = struct{}{}
+		out = append(out, email)
+	}
+	return out
 }
 
 func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ports.UserCalendarSettings, error) {

@@ -15,10 +15,12 @@
         :hours="row.hours"
         :comment="row.comment"
         :origin="row.origin"
+        :billable="row.billable"
         :disabled="disabled"
         :can-remove="localRows.length > 1"
         @update:hours="(v) => updateRow(idx, 'hours', v)"
         @update:comment="(v) => updateRow(idx, 'comment', v)"
+        @update:billable="(v) => updateRowBillable(idx, v)"
         @remove="removeRow(idx)"
         />
       </template>
@@ -107,6 +109,12 @@ const updateRow = (idx: number, field: 'hours' | 'comment', value: string) => {
   const row = localRows.value[idx]
   if (!row) return
   localRows.value[idx] = { ...row, [field]: value, origin: 'manual' }
+}
+
+const updateRowBillable = (idx: number, value: boolean) => {
+  const row = localRows.value[idx]
+  if (!row) return
+  localRows.value[idx] = { ...row, billable: value, origin: 'manual' }
 }
 
 const removeRow = (idx: number) => {

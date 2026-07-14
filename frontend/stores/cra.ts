@@ -7,6 +7,7 @@ export type CraLine = {
   duration: number
   comment?: string
   origin?: string
+  billable?: boolean
 }
 
 export type CraWeek = {
@@ -19,7 +20,14 @@ export type CraTimesheet = {
   id: string
   month: string
   status: string
-  commercialInfo?: { client?: string; mission?: string }
+  commercialInfo?: {
+    client?: string
+    mission?: string
+    description?: string
+    technologies?: string[]
+    lieu?: string
+    responsableClient?: string
+  }
   weeks?: CraWeek[]
 }
 
@@ -36,7 +44,8 @@ function normalizeWeek(raw: Record<string, unknown>): CraWeek {
       day: day.slice(0, 10),
       duration: Number(duration.minutes ?? duration.Minutes ?? line.duration ?? 0),
       comment: String(line.comment ?? line.Comment ?? ''),
-      origin: String(line.origin ?? line.Origin ?? 'manual')
+      origin: String(line.origin ?? line.Origin ?? 'manual'),
+      billable: line.billable ?? line.Billable ?? true
     }
   })
   return {

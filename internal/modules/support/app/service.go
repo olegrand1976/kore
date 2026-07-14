@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/support/domain"
@@ -10,11 +11,12 @@ import (
 )
 
 type service struct {
-	repo ports.SupportRepository
+	repo   ports.SupportRepository
+	feeder ports.CRAFeeder
 }
 
-func NewService(repo ports.SupportRepository) ports.SupportService {
-	return &service{repo: repo}
+func NewService(repo ports.SupportRepository, feeder ports.CRAFeeder) ports.SupportService {
+	return &service{repo: repo, feeder: feeder}
 }
 
 func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Ticket, error) {
@@ -55,7 +57,22 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, ticketID 
 	if err := t.Resolve(); err != nil {
 		return domain.Ticket{}, err
 	}
-	return t, s.repo.SaveTicket(ctx, t)
+	if err := s.repo.SaveTicket(ctx, t); err != nil {
+		return domain.Ticket{}, err
+	}
+	if s.feeder != nil && t.AssigneeID != nil && t.ResolvedAt != nil {
+		day := time.Date(t.ResolvedAt.Year(), t.ResolvedAt.Month(), t.ResolvedAt.Day(), 0, 0, 0, 0, time.UTC)
+		_ = s.feeder.ProposeLines(ctx, []ports.ProposedLine{{
+			TenantID:   tenant,
+			UserID:     *t.AssigneeID,
+			SourceType: "ticket",
+			SourceID:   t.ID,
+			Day:        day,
+			Duration:   kernel.Duration{Minutes: 60},
+			Comment:    t.Subject,
+		}})
+	}
+	return t, nil
 }
 
 var _ ports.SupportService = (*service)(nil)

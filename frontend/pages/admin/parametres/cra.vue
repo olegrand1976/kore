@@ -31,6 +31,14 @@
           {{ $t('settings.cra.cra_mail_auto') }}
         </label>
 
+        <label for="cra-mail-recipients">{{ $t('settings.cra.cra_mail_recipients') }}</label>
+        <textarea
+          id="cra-mail-recipients"
+          v-model="craMailRecipientsText"
+          rows="3"
+          :placeholder="$t('settings.cra.cra_mail_recipients_hint')"
+        />
+
         <p class="hint">{{ $t('settings.cra.week_start_hint') }}</p>
         <AppButton variant="primary" size="sm" type="submit" :disabled="saving">
           {{ $t('common.save') }}
@@ -52,6 +60,7 @@ type SocieteRow = {
   weekStartDay?: number
   dayCapacityMinutes?: number
   craMailAuto?: boolean
+  craMailRecipients?: string[]
   weekSubmitPolicy?: string
 }
 
@@ -60,6 +69,7 @@ const selectedSocieteId = ref('')
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
 const craMailAuto = ref(false)
+const craMailRecipientsText = ref('')
 const weekSubmitPolicy = ref('warn')
 const saving = ref(false)
 const message = ref('')
@@ -79,6 +89,7 @@ const applyRow = (row?: SocieteRow) => {
   weekStartDay.value = row?.weekStartDay ?? 1
   dayCapacityMinutes.value = row?.dayCapacityMinutes ?? 480
   craMailAuto.value = row?.craMailAuto ?? false
+  craMailRecipientsText.value = (row?.craMailRecipients ?? []).join('\n')
   weekSubmitPolicy.value = row?.weekSubmitPolicy ?? 'warn'
 }
 
@@ -90,6 +101,7 @@ const loadSocietes = async () => {
     weekStartDay: s.weekStartDay ?? 1,
     dayCapacityMinutes: s.dayCapacityMinutes ?? 480,
     craMailAuto: s.craMailAuto ?? false,
+    craMailRecipients: s.craMailRecipients ?? [],
     weekSubmitPolicy: s.weekSubmitPolicy ?? 'warn'
   }))
   if (!selectedSocieteId.value && societes.value.length > 0) {
@@ -114,6 +126,10 @@ const save = async () => {
         weekStartDay: weekStartDay.value,
         dayCapacityMinutes: dayCapacityMinutes.value,
         craMailAuto: craMailAuto.value,
+        craMailRecipients: craMailRecipientsText.value
+          .split(/[\n,;]+/)
+          .map((entry) => entry.trim())
+          .filter(Boolean),
         weekSubmitPolicy: weekSubmitPolicy.value
       }
     })
@@ -148,7 +164,8 @@ await loadSocietes()
 }
 
 .cra-settings-form select,
-.cra-settings-form input[type='number'] {
+.cra-settings-form input[type='number'],
+.cra-settings-form textarea {
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-md);

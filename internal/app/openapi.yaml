@@ -150,6 +150,13 @@ paths:
       responses:
         "200":
           description: Préférences
+  /users/me/profile:
+    get:
+      summary: Profil utilisateur courant (craRequis, salarieEtt)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Profil
   /users/me/calendar-settings:
     get:
       summary: Paramètres calendrier CRA (utilisateur courant)
@@ -505,6 +512,21 @@ paths:
       responses:
         "200":
           description: CRA rejeté
+  /timesheets/{id}/prefill-holidays:
+    post:
+      summary: Préremplir jours fériés du mois
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: country
+          in: query
+          schema: { type: string, example: FR }
+      responses:
+        "200":
+          description: Lignes ajoutées
   /prestations:
     get:
       summary: Suivi prestations CRA (manager)
@@ -517,6 +539,30 @@ paths:
       responses:
         "200":
           description: Liste des CRA du mois
+  /prestations/export.xml:
+    get:
+      summary: Export XML prestations CRA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: "2026-07" }
+      responses:
+        "200":
+          description: XML prestations
+  /prestations/billable-summary:
+    get:
+      summary: Synthèse heures facturables CRA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: "2026-07" }
+      responses:
+        "200":
+          description: Heures facturables par utilisateur
   /prestations/validate-all:
     post:
       summary: Valider tous les CRA soumis du mois
@@ -1138,6 +1184,20 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: OK }
+  /ett/reconciliation:
+    get:
+      summary: Réconciliation CRA ↔ ETT
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema: { type: string, example: "2026-07" }
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Rapport de réconciliation }
   /tickets:
     get:
       summary: Liste tickets support

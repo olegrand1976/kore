@@ -165,7 +165,8 @@ const onAddActivity = ({ sourceType, sourceId }: { sourceType: string; sourceId:
     day,
     hours: '',
     comment: '',
-    origin: 'manual'
+    origin: 'manual',
+    billable: true
   })
   setDayRows(day, rows)
 }

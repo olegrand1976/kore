@@ -32,7 +32,7 @@ func TestApplyProposedLines_PreservesManual(t *testing.T) {
 		Duration: kernel.Duration{Minutes: 240},
 	}}
 
-	if err := ApplyProposedLines(week, proposed); err != nil {
+	if err := ApplyProposedLines(week, proposed, DefaultDayCapacityMinutes); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if week.Lines[0].Duration.Minutes != 480 {
@@ -47,7 +47,7 @@ func TestValidateDayCapacity_Exceeded(t *testing.T) {
 		{Day: day, Duration: kernel.Duration{Minutes: 300}, Source: SourceRef{Type: "manual", ID: "a"}},
 		{Day: day, Duration: kernel.Duration{Minutes: 200}, Source: SourceRef{Type: "manual", ID: "b"}},
 	}
-	if err := ValidateDayCapacity(lines); err != ErrDayCapacityExceeded {
+	if err := ValidateDayCapacity(lines, DefaultDayCapacityMinutes); err != ErrDayCapacityExceeded {
 		t.Fatalf("expected ErrDayCapacityExceeded, got %v", err)
 	}
 }
@@ -109,6 +109,21 @@ func TestReject_ClearsSubmittedWeeks(t *testing.T) {
 		if week.SubmittedAt != nil {
 			t.Fatalf("week %d should have submittedAt cleared", week.WeekNumber)
 		}
+	}
+}
+
+func TestIncompleteDaysInWeek(t *testing.T) {
+	month := Month("2026-07")
+	day := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC)
+	lines := []TimeLine{
+		{Day: day, Duration: kernel.Duration{Minutes: 480}, Source: SourceRef{Type: "manual", ID: "a"}},
+	}
+	missing, err := IncompleteDaysInWeek(month, 1, DefaultWeekStartDay, lines)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(missing) == 0 {
+		t.Fatal("expected incomplete days in week")
 	}
 }
 

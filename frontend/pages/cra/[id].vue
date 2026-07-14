@@ -19,6 +19,15 @@
           variant="secondary"
           size="sm"
           :disabled="prefillLoading"
+          @click="loadPrefillHolidays"
+        >
+          {{ $t('cra.prefill_holidays') }}
+        </AppButton>
+        <AppButton
+          v-if="canEdit"
+          variant="secondary"
+          size="sm"
+          :disabled="prefillLoading"
           @click="loadPrefillSuggest"
         >
           {{ $t('ai.cra_prefill') }}
@@ -78,6 +87,10 @@
       <CommercialInfoForm
         :client="commercial.client"
         :mission="commercial.mission"
+        :description="commercial.description"
+        :technologies="commercial.technologies"
+        :lieu="commercial.lieu"
+        :responsable-client="commercial.responsableClient"
         :disabled="!canEdit"
         :saving="savingCommercial"
         :message="commercialMsg"
@@ -162,7 +175,14 @@ const weekStartDayRef = computed(() => weekStartDay.value)
 const weeksRef = computed(() => selectedWeeks.value)
 const monthStats = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapacityMinutes)
 
-const commercial = reactive({ client: '', mission: '' })
+const commercial = reactive({
+  client: '',
+  mission: '',
+  description: '',
+  technologies: [] as string[],
+  lieu: '',
+  responsableClient: ''
+})
 const savingCommercial = ref(false)
 const commercialMsg = ref('')
 const commercialError = ref(false)
@@ -207,6 +227,23 @@ const mergePrefillLines = (existing: CraLine[], suggestions: Array<{ day: string
   return result
 }
 
+const loadPrefillHolidays = async () => {
+  if (!timesheet.value) return
+  prefillLoading.value = true
+  prefillMsg.value = ''
+  try {
+    const res = await $fetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-holidays`, {
+      method: 'POST'
+    })
+    await load(id.value)
+    prefillMsg.value = t('cra.prefill_holidays_result', { n: res?.data?.added ?? 0 })
+  } catch (err) {
+    downloadError.value = aiError(err)
+  } finally {
+    prefillLoading.value = false
+  }
+}
+
 const loadPrefillSuggest = async () => {
   if (!timesheet.value) return
   prefillLoading.value = true
@@ -242,6 +279,10 @@ watch(timesheet, (ts) => {
   if (!ts?.commercialInfo) return
   commercial.client = ts.commercialInfo.client ?? ''
   commercial.mission = ts.commercialInfo.mission ?? ''
+  commercial.description = ts.commercialInfo.description ?? ''
+  commercial.technologies = [...(ts.commercialInfo.technologies ?? [])]
+  commercial.lieu = ts.commercialInfo.lieu ?? ''
+  commercial.responsableClient = ts.commercialInfo.responsableClient ?? ''
 }, { immediate: true })
 
 const canDownload = computed(() => Boolean(commercial.client.trim() && commercial.mission.trim()))
@@ -273,7 +314,14 @@ const saveCommercial = async () => {
   try {
     await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
       method: 'PUT',
-      body: { client: commercial.client, mission: commercial.mission }
+      body: {
+        client: commercial.client,
+        mission: commercial.mission,
+        description: commercial.description,
+        technologies: commercial.technologies,
+        lieu: commercial.lieu,
+        responsableClient: commercial.responsableClient
+      }
     })
     commercialMsg.value = t('cra.commercial_saved')
     await load()
@@ -294,7 +342,7 @@ const downloadPdf = async () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cra-${timesheet.value?.month ?? id.value}.html`
+    a.download = `cra-${timesheet.value?.month ?? id.value}.pdf`
     a.click()
     URL.revokeObjectURL(url)
   } catch {
@@ -309,6 +357,18 @@ const downloadPdf = async () => {
 .cra-detail {
   display: grid;
   gap: var(--kore-space-lg);
+}
+
+@media (max-width: 768px) {
+  .cra-detail :deep(.app-page-header__actions) {
+    flex-wrap: wrap;
+    gap: var(--kore-space-xs);
+  }
+
+  .cra-detail :deep(.app-page-header__actions .app-btn) {
+    flex: 1 1 calc(50% - var(--kore-space-xs));
+    min-width: 0;
+  }
 }
 
 .meta {

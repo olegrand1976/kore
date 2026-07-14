@@ -102,6 +102,9 @@ func (s *oidcRepoStub) ResolveUserEmails(context.Context, kernel.TenantID, []uui
 func (s *oidcRepoStub) ResolveSocieteIDForUser(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
+func (s *oidcRepoStub) ListSocietesCraMailAuto(context.Context) ([]ports.CraMailReminderTarget, error) {
+	return nil, nil
+}
 func (s *oidcRepoStub) SaveIdentityProvider(_ context.Context, idp domain.IdentityProvider) error {
 	s.idp = idp
 	return nil

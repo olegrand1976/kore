@@ -89,6 +89,9 @@ func (r refreshUserRepo) ResolveUserEmails(context.Context, kernel.TenantID, []u
 func (r refreshUserRepo) ResolveSocieteIDForUser(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
+func (r refreshUserRepo) ListSocietesCraMailAuto(context.Context) ([]ports.CraMailReminderTarget, error) {
+	return nil, nil
+}
 func (r refreshUserRepo) SaveIdentityProvider(context.Context, domain.IdentityProvider) error {
 	return nil
 }

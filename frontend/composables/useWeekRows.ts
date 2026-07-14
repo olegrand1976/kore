@@ -9,6 +9,7 @@ export type ActivityRow = {
   hours: string
   comment: string
   origin: string
+  billable: boolean
 }
 
 export const buildKey = (sourceType: string, sourceId: string, day: string) => `${sourceType}:${sourceId}:${day}`
@@ -36,7 +37,8 @@ export function useWeekRows(
         day,
         hours: line.duration > 0 ? minutesToHoursLabel(line.duration) : '',
         comment: line.comment ?? '',
-        origin: line.origin ?? 'manual'
+        origin: line.origin ?? 'manual',
+        billable: line.billable ?? true
       })
     }
     for (const [day, rows] of map) {
@@ -48,7 +50,8 @@ export function useWeekRows(
           day,
           hours: '',
           comment: '',
-          origin: 'manual'
+          origin: 'manual',
+          billable: true
         }])
       }
     }
@@ -86,7 +89,8 @@ export function useWeekRows(
         day: r.day,
         duration,
         comment: r.comment,
-        origin: 'manual'
+        origin: 'manual',
+        billable: r.billable
       }]
     })
   }

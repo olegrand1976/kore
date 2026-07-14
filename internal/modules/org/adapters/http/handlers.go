@@ -53,6 +53,7 @@ func RegisterRoutes(
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Get("/users/me/release-notes", getReleaseNotesPreferences(users))
+		pr.Get("/users/me/profile", getMeProfile(users))
 		pr.Get("/users/me/calendar-settings", getUserCalendarSettings(org))
 		pr.Post("/users/me/release-notes/auto-show", setReleaseNotesAutoShow(users))
 		pr.Post("/users/me/release-notes/seen", markReleaseNotesSeen(users))
@@ -469,10 +470,11 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			return
 		}
 		var req struct {
-			WeekStartDay       *int    `json:"weekStartDay"`
-			DayCapacityMinutes *int    `json:"dayCapacityMinutes"`
-			CraMailAuto        *bool   `json:"craMailAuto"`
-			WeekSubmitPolicy   *string `json:"weekSubmitPolicy"`
+			WeekStartDay       *int      `json:"weekStartDay"`
+			DayCapacityMinutes *int      `json:"dayCapacityMinutes"`
+			CraMailAuto        *bool     `json:"craMailAuto"`
+			CraMailRecipients  *[]string `json:"craMailRecipients"`
+			WeekSubmitPolicy   *string   `json:"weekSubmitPolicy"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -485,6 +487,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			WeekStartDay:       req.WeekStartDay,
 			DayCapacityMinutes: req.DayCapacityMinutes,
 			CraMailAuto:        req.CraMailAuto,
+			CraMailRecipients:  req.CraMailRecipients,
 			WeekSubmitPolicy:   req.WeekSubmitPolicy,
 		})
 		if err != nil {
@@ -672,6 +675,29 @@ func deleteUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
+	}
+}
+
+func getMeProfile(users ports.UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := authx.FromContext(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "unauthorized")
+			return
+		}
+		detail, err := users.GetUser(r.Context(), identity.TenantID, identity.UserID)
+		if err != nil {
+			writeUserMutationError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]any{
+			"id":         detail.ID,
+			"login":      detail.Login,
+			"prenom":     detail.Prenom,
+			"nom":        detail.Nom,
+			"craRequis":  detail.CraRequis,
+			"salarieEtt": detail.SalarieETT,
+		})
 	}
 }
 

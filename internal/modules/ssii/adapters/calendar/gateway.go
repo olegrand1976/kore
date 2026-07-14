@@ -8,6 +8,7 @@ import (
 	congesdomain "github.com/kore/kore/internal/modules/conges/domain"
 	congesports "github.com/kore/kore/internal/modules/conges/ports"
 	"github.com/kore/kore/internal/modules/ssii/ports"
+	"github.com/kore/kore/pkg/calendar"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -47,31 +48,5 @@ func truncateDay(t time.Time) time.Time {
 }
 
 func isPublicHoliday(day time.Time, countryCode string) bool {
-	if countryCode == "" {
-		countryCode = "FR"
-	}
-	key := day.Format("2006-01-02")
-	holidays, ok := publicHolidays[countryCode]
-	if !ok {
-		return false
-	}
-	_, found := holidays[key]
-	return found
-}
-
-// publicHolidays — jours fériés fixes FR (mobile + Pâques simplifié 2026).
-var publicHolidays = map[string]map[string]struct{}{
-	"FR": {
-		"2026-01-01": {},
-		"2026-05-01": {},
-		"2026-05-08": {},
-		"2026-07-14": {},
-		"2026-08-15": {},
-		"2026-11-01": {},
-		"2026-11-11": {},
-		"2026-12-25": {},
-		"2026-04-06": {}, // Lundi de Pâques 2026
-		"2026-05-25": {}, // Ascension 2026
-		"2026-06-05": {}, // Pentecôte 2026
-	},
+	return calendar.IsPublicHoliday(day, countryCode)
 }

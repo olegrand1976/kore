@@ -36,7 +36,7 @@
         to="/conges/validation"
       />
       <AppKpiCard
-        v-if="showModule('cra')"
+        v-if="showModule('cra') && stats.craRequired"
         icon="schedule"
         tone="blue"
         :loading="statsPending"
@@ -78,6 +78,11 @@
         :hint="budgetOverrunHint"
         to="/budget"
       />
+      <AppCard v-if="showModule('cra') && stats.craRequired && stats.craAlert" padding="lg" class="dashboard__cra-alert">
+        <p class="dashboard__cra-alert-text">{{ $t('dashboard.cra_alert') }}</p>
+        <AppButton variant="primary" size="sm" to="/cra">{{ $t('dashboard.quick_cra') }}</AppButton>
+      </AppCard>
+
       <AppCard v-if="showModule('cra')" padding="lg" hoverable class="kpi-card kpi-card--action">
         <div class="feature-card__icon"><AppIcon name="edit_calendar" /></div>
         <p class="kpi-card__label">{{ $t('nav.cra') }}</p>
@@ -253,6 +258,21 @@ const budgetConsumptionDisplay = computed(() => `${stats.value.budgetConsumption
 
 .kpi-card--action .kpi-card__label {
   margin-bottom: auto;
+}
+
+.dashboard__cra-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-md);
+  margin-bottom: var(--kore-space-lg);
+  border-left: 4px solid var(--kore-warning);
+}
+
+.dashboard__cra-alert-text {
+  margin: 0;
+  color: var(--kore-text);
 }
 
 @media (max-width: 768px) {

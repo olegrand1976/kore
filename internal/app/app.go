@@ -68,6 +68,7 @@ import (
 	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
 	ssiipostgres "github.com/kore/kore/internal/modules/ssii/adapters/postgres"
 	ssiiapp "github.com/kore/kore/internal/modules/ssii/app"
+	supportcra "github.com/kore/kore/internal/modules/support/adapters/cra"
 	supporthttp "github.com/kore/kore/internal/modules/support/adapters/http"
 	supportpostgres "github.com/kore/kore/internal/modules/support/adapters/postgres"
 	supportapp "github.com/kore/kore/internal/modules/support/app"
@@ -174,7 +175,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
-		WithPDFRenderer(crapdf.NewTenantRenderer(orgService)).
+		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
@@ -216,8 +217,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		ssiicra.NewCleanerAdapter(craService),
 		ssiicalendar.NewGateway(congesRepo),
 	)
-	ettService := ettapp.NewService(ettRepo)
-	supportService := supportapp.NewService(supportRepo)
+	ettService := ettapp.NewService(ettRepo, craService, orgRepo)
+	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService))
 	maintenanceService := maintenanceapp.NewService(maintenanceRepo)
 
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
@@ -302,14 +303,20 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		migrator:   migrator,
 		seed:       seedRunner,
 	}
-	app.startNotificationWorker(notifService)
+	app.startBackgroundWorkers(notifService, craService, orgRepo, log)
 	return app, nil
 }
 
-func (a *Application) startNotificationWorker(notifService *notifapp.Service) {
+func (a *Application) startBackgroundWorkers(
+	notifService *notifapp.Service,
+	craService *craapp.Service,
+	orgRepo *orgpostgres.Repository,
+	log *logging.Logger,
+) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.workerStop = cancel
-	notifapp.StartWorker(ctx, notifService, a.log, 60*time.Second)
+	notifapp.StartWorker(ctx, notifService, log, 60*time.Second)
+	craapp.StartReminderWorker(ctx, craapp.NewReminderWorker(craService, orgRepo, notifService, log), craapp.ReminderWorkerInterval)
 }
 
 func (a *Application) Migrate(ctx context.Context) error {

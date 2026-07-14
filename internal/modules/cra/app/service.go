@@ -56,15 +56,33 @@ func (s *Service) WithCalendarReader(reader ports.SocieteCalendarReader) *Servic
 	return s
 }
 
-func (s *Service) weekStartDayForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) int {
+func (s *Service) settingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ports.SocieteCraSettings {
+	defaults := ports.SocieteCraSettings{
+		WeekStartDay:       domain.DefaultWeekStartDay,
+		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
+		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
+	}
 	if s.calendar == nil {
-		return domain.DefaultWeekStartDay
+		return defaults
 	}
-	day, err := s.calendar.WeekStartDayForUser(ctx, tenant, userID)
-	if err != nil || day < 0 || day > 6 {
-		return domain.DefaultWeekStartDay
+	settings, err := s.calendar.SettingsForUser(ctx, tenant, userID)
+	if err != nil {
+		return defaults
 	}
-	return day
+	if settings.WeekStartDay < 0 || settings.WeekStartDay > 6 {
+		settings.WeekStartDay = domain.DefaultWeekStartDay
+	}
+	if settings.DayCapacityMinutes <= 0 || settings.DayCapacityMinutes > 1440 {
+		settings.DayCapacityMinutes = domain.DefaultDayCapacityMinutes
+	}
+	if settings.WeekSubmitPolicy != "block" && settings.WeekSubmitPolicy != "warn" && settings.WeekSubmitPolicy != "none" {
+		settings.WeekSubmitPolicy = domain.DefaultWeekSubmitPolicy
+	}
+	return settings
+}
+
+func (s *Service) weekStartDayForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) int {
+	return s.settingsForUser(ctx, tenant, userID).WeekStartDay
 }
 
 func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, error) {
@@ -142,7 +160,7 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 			week.Lines = append(week.Lines, line)
 		}
 	}
-	if err := domain.ValidateDayCapacity(week.Lines); err != nil {
+	if err := domain.ValidateDayCapacity(week.Lines, s.settingsForUser(ctx, cmd.TenantID, ts.UserID).DayCapacityMinutes); err != nil {
 		return domain.Timesheet{}, err
 	}
 	if err := s.repo.Save(ctx, ts); err != nil {
@@ -163,6 +181,21 @@ func (s *Service) SubmitWeek(ctx context.Context, cmd ports.SubmitWeekCommand) e
 	week, _ := ts.Week(cmd.WeekNumber)
 	if week == nil {
 		return domain.ErrWeekNotFound
+	}
+	settings := s.settingsForUser(ctx, cmd.TenantID, ts.UserID)
+	missing, err := domain.IncompleteDaysInWeek(ts.Month, cmd.WeekNumber, settings.WeekStartDay, week.Lines)
+	if err != nil {
+		return err
+	}
+	if len(missing) > 0 {
+		switch settings.WeekSubmitPolicy {
+		case "block":
+			return domain.ErrWeekIncomplete
+		case "warn", "none":
+			// frontend warns; backend allows submit
+		default:
+			return domain.ErrWeekIncomplete
+		}
 	}
 	now := s.clock.Now().UTC()
 	week.SubmittedAt = &now
@@ -274,7 +307,7 @@ func (s *Service) ProposeLines(ctx context.Context, lines []ports.ProposedLine) 
 					Origin:      domain.OriginPrefill,
 				})
 			}
-			if err := domain.ApplyProposedLines(week, proposed); err != nil {
+			if err := domain.ApplyProposedLines(week, proposed, s.settingsForUser(ctx, key.tenant, key.userID).DayCapacityMinutes); err != nil {
 				return err
 			}
 		}
@@ -312,8 +345,11 @@ func (s *Service) TimesheetOf(ctx context.Context, tenant kernel.TenantID, userI
 }
 
 func (s *Service) invalidateConsumptionCache(ctx context.Context, tenant kernel.TenantID) {
-	_ = ctx
-	_ = tenant
+	if s.cache == nil || s.keys == nil {
+		return
+	}
+	prefix := s.keys.Key(tenant, "cra", "consumption")
+	_ = s.cache.DeleteByPrefix(ctx, prefix)
 }
 
 var (

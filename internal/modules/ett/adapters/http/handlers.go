@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/ett/domain"
 	"github.com/kore/kore/internal/modules/ett/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
@@ -20,6 +22,7 @@ func RegisterRoutes(r chi.Router, svc ports.ETTService, tokens *authx.TokenIssue
 		pr.Get("/ett/records", listRecords(svc, authorizer))
 		pr.Post("/ett/records/{id}/correct", correctRecord(svc, authorizer))
 		pr.Get("/ett/records/{id}/audit", getAuditTrail(svc, authorizer))
+		pr.Get("/ett/reconciliation", compareCRA(svc, authorizer))
 	})
 }
 
@@ -46,6 +49,10 @@ func clockIn(svc ports.ETTService, authorizer authx.Authorizer) http.HandlerFunc
 			At:       req.At,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrNotSalarieETT) {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -76,6 +83,10 @@ func clockOut(svc ports.ETTService, authorizer authx.Authorizer) http.HandlerFun
 			At:       req.At,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrNotSalarieETT) {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -161,5 +172,39 @@ func getAuditTrail(svc ports.ETTService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func compareCRA(svc ports.ETTService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ett", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		month := r.URL.Query().Get("month")
+		if month == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month query required (YYYY-MM)")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		userID := identity.UserID
+		if raw := r.URL.Query().Get("userId"); raw != "" {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid userId")
+				return
+			}
+			if !authorizer.Can(r.Context(), "ett", authx.ActionValidate) && id != identity.UserID {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+				return
+			}
+			userID = id
+		}
+		report, err := svc.CompareCRA(r.Context(), identity.TenantID, userID, month)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, report)
 	}
 }

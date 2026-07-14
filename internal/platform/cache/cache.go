@@ -16,6 +16,7 @@ type Cache interface {
 	Get(ctx context.Context, key string, dest any) (found bool, err error)
 	Set(ctx context.Context, key string, value any, ttl time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
+	DeleteByPrefix(ctx context.Context, prefix string) error
 	GetOrLoad(ctx context.Context, key string, ttl time.Duration, load func(ctx context.Context) (any, error), dest any) error
 }
 
@@ -101,6 +102,29 @@ func (r *RedisCache) Delete(ctx context.Context, keys ...string) error {
 	return r.client.Del(ctx, keys...).Err()
 }
 
+func (r *RedisCache) DeleteByPrefix(ctx context.Context, prefix string) error {
+	if prefix == "" {
+		return nil
+	}
+	var cursor uint64
+	for {
+		keys, next, err := r.client.Scan(ctx, cursor, prefix+"*", 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			if err := r.client.Del(ctx, keys...).Err(); err != nil {
+				return err
+			}
+		}
+		cursor = next
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
+}
+
 func (r *RedisCache) GetOrLoad(ctx context.Context, key string, ttl time.Duration, load func(ctx context.Context) (any, error), dest any) error {
 	found, err := r.Get(ctx, key, dest)
 	if err != nil {
@@ -166,6 +190,20 @@ func (m *InMemoryCache) Delete(_ context.Context, keys ...string) error {
 	m.mu.Lock()
 	for _, key := range keys {
 		delete(m.items, key)
+	}
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *InMemoryCache) DeleteByPrefix(_ context.Context, prefix string) error {
+	if prefix == "" {
+		return nil
+	}
+	m.mu.Lock()
+	for key := range m.items {
+		if strings.HasPrefix(key, prefix) {
+			delete(m.items, key)
+		}
 	}
 	m.mu.Unlock()
 	return nil

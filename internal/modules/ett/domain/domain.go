@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrRecordNotFound = errors.New("work time record not found")
+	ErrNotSalarieETT  = errors.New("user is not an ETT employee")
 )
 
 type WorkTimeRecord struct {

@@ -5,20 +5,49 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
 	"github.com/kore/kore/internal/modules/ett/domain"
 	"github.com/kore/kore/internal/modules/ett/ports"
+	orgports "github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
-type service struct {
-	repo ports.ETTRepository
+type userProfileReader interface {
+	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (orgports.UserDetail, error)
 }
 
-func NewService(repo ports.ETTRepository) ports.ETTService {
-	return &service{repo: repo}
+type service struct {
+	repo  ports.ETTRepository
+	recon *ReconciliationService
+	users userProfileReader
+}
+
+func NewService(repo ports.ETTRepository, cra craports.CRAReader, users userProfileReader) ports.ETTService {
+	return &service{
+		repo:  repo,
+		recon: NewReconciliationService(repo, cra),
+		users: users,
+	}
+}
+
+func (s *service) ensureSalarieETT(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) error {
+	if s.users == nil {
+		return nil
+	}
+	detail, err := s.users.FindUserDetailByID(ctx, tenant, userID)
+	if err != nil {
+		return err
+	}
+	if !detail.SalarieETT {
+		return domain.ErrNotSalarieETT
+	}
+	return nil
 }
 
 func (s *service) ClockIn(ctx context.Context, cmd ports.ClockInCommand) (domain.WorkTimeRecord, error) {
+	if err := s.ensureSalarieETT(ctx, cmd.TenantID, cmd.UserID); err != nil {
+		return domain.WorkTimeRecord{}, err
+	}
 	workDate := cmd.At.UTC().Truncate(24 * time.Hour)
 	rec, err := s.repo.FindRecordByUserDate(ctx, cmd.TenantID, cmd.UserID, workDate)
 	if err != nil {
@@ -33,6 +62,9 @@ func (s *service) ClockIn(ctx context.Context, cmd ports.ClockInCommand) (domain
 }
 
 func (s *service) ClockOut(ctx context.Context, cmd ports.ClockOutCommand) (domain.WorkTimeRecord, error) {
+	if err := s.ensureSalarieETT(ctx, cmd.TenantID, cmd.UserID); err != nil {
+		return domain.WorkTimeRecord{}, err
+	}
 	workDate := cmd.At.UTC().Truncate(24 * time.Hour)
 	rec, err := s.repo.FindRecordByUserDate(ctx, cmd.TenantID, cmd.UserID, workDate)
 	if err != nil {
@@ -76,6 +108,10 @@ func (s *service) CorrectRecord(ctx context.Context, cmd ports.CorrectRecordComm
 
 func (s *service) GetAuditTrail(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error) {
 	return s.repo.ListAuditEntries(ctx, tenant, recordID)
+}
+
+func (s *service) CompareCRA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ports.ReconciliationReport, error) {
+	return s.recon.CompareMonth(ctx, tenant, userID, month)
 }
 
 var _ ports.ETTService = (*service)(nil)

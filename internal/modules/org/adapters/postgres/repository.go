@@ -77,15 +77,45 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE org.societes
 		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
-			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11
+			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11,
+			cra_mail_recipients = $12
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
 		s.Adresse, s.Siret, s.URLTenant,
 		normalizeWeekStartDay(s.WeekStartDay),
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
-		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy))
+		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
+		encodeMailRecipients(s.CraMailRecipients))
 	return err
+}
+
+func (r *Repository) ListSocietesCraMailAuto(ctx context.Context) ([]ports.CraMailReminderTarget, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT tenant_id, id, COALESCE(pays, 'FR'), COALESCE(cra_mail_recipients, '[]')
+		FROM org.societes
+		WHERE cra_mail_auto = TRUE
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.CraMailReminderTarget
+	for rows.Next() {
+		var target ports.CraMailReminderTarget
+		var tenantID, societeID uuid.UUID
+		var pays string
+		var recipientsRaw []byte
+		if err := rows.Scan(&tenantID, &societeID, &pays, &recipientsRaw); err != nil {
+			return nil, err
+		}
+		target.TenantID = kernel.NewTenantID(tenantID)
+		target.SocieteID = societeID
+		target.Pays = pays
+		target.Recipients = decodeMailRecipients(recipientsRaw)
+		out = append(out, target)
+	}
+	return out, rows.Err()
 }
 
 func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error) {
@@ -95,6 +125,7 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 		       COALESCE(day_capacity_minutes, 480),
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
+		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
@@ -108,6 +139,7 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 		       COALESCE(day_capacity_minutes, 480),
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
+		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
 		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
 	`, tenant.UUID())
@@ -133,8 +165,9 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var weekStartDay, dayCapacity int
 	var craMailAuto bool
 	var weekSubmitPolicy string
+	var recipientsRaw []byte
 	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
-		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
 		&adresse, &siret, &urlTenant)
 	if err != nil {
 		return domain.Societe{}, err
@@ -145,6 +178,7 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	s.WeekStartDay = normalizeWeekStartDay(weekStartDay)
 	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
 	s.CraMailAuto = craMailAuto
+	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
@@ -159,8 +193,9 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var weekStartDay, dayCapacity int
 	var craMailAuto bool
 	var weekSubmitPolicy string
+	var recipientsRaw []byte
 	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
-		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy,
+		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
 		&adresse, &siret, &urlTenant); err != nil {
 		return domain.Societe{}, err
 	}
@@ -170,6 +205,7 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	s.WeekStartDay = normalizeWeekStartDay(weekStartDay)
 	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
 	s.CraMailAuto = craMailAuto
+	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
@@ -833,6 +869,25 @@ func (r *Repository) ConsumeAccessToken(ctx context.Context, tokenHash string, n
 	}
 	row.TenantID = kernel.NewTenantID(tenantID)
 	return row, true, nil
+}
+
+func decodeMailRecipients(raw []byte) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var out []string
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+func encodeMailRecipients(recipients []string) []byte {
+	if recipients == nil {
+		recipients = []string{}
+	}
+	data, _ := json.Marshal(recipients)
+	return data
 }
 
 var _ ports.OrganizationRepository = (*Repository)(nil)

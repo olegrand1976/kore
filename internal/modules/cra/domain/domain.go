@@ -16,9 +16,13 @@ var (
 	ErrCRAConflictAbsence     = errors.New("cra conflict absence")
 	ErrTimesheetNotFound      = errors.New("timesheet not found")
 	ErrWeekNotFound           = errors.New("week not found")
+	ErrWeekIncomplete         = errors.New("week has days without hours")
 )
 
-const DefaultDayCapacityMinutes = 480
+const (
+	DefaultDayCapacityMinutes = 480
+	DefaultWeekSubmitPolicy   = "warn"
+)
 
 type TimesheetStatus string
 
@@ -158,7 +162,7 @@ func FindLine(lines []TimeLine, source SourceRef, day time.Time) (*TimeLine, int
 }
 
 // ApplyProposedLines merges proposed lines without overwriting manual entries (RG-CRA-01).
-func ApplyProposedLines(week *WeekEntry, proposed []TimeLine) error {
+func ApplyProposedLines(week *WeekEntry, proposed []TimeLine, dayCapacityMinutes int) error {
 	for _, p := range proposed {
 		existing, _ := FindLine(week.Lines, p.Source, p.Day)
 		if existing != nil {
@@ -173,22 +177,48 @@ func ApplyProposedLines(week *WeekEntry, proposed []TimeLine) error {
 		if p.ID == uuid.Nil {
 			p.ID = uuid.New()
 		}
+		p.Billable = true
 		p.Origin = OriginPrefill
 		week.Lines = append(week.Lines, p)
 	}
-	return ValidateDayCapacity(week.Lines)
+	return ValidateDayCapacity(week.Lines, dayCapacityMinutes)
 }
 
-func ValidateDayCapacity(lines []TimeLine) error {
+func ValidateDayCapacity(lines []TimeLine, dayCapacityMinutes int) error {
+	if dayCapacityMinutes <= 0 {
+		dayCapacityMinutes = DefaultDayCapacityMinutes
+	}
 	totals := make(map[string]int)
 	for _, line := range lines {
 		key := line.Day.Format("2006-01-02")
 		totals[key] += line.Duration.Minutes
-		if totals[key] > DefaultDayCapacityMinutes {
+		if totals[key] > dayCapacityMinutes {
 			return ErrDayCapacityExceeded
 		}
 	}
 	return DetectAbsenceConflict(lines)
+}
+
+// IncompleteDaysInWeek returns in-month days in the week tab with zero total minutes.
+func IncompleteDaysInWeek(month Month, weekNumber WeekNumber, weekStartDay int, lines []TimeLine) ([]string, error) {
+	days, err := WeekDaysInMonth(month, weekNumber, weekStartDay)
+	if err != nil {
+		return nil, err
+	}
+	totals := make(map[string]int)
+	for _, line := range lines {
+		if line.Duration.Minutes <= 0 {
+			continue
+		}
+		totals[line.Day.Format("2006-01-02")] += line.Duration.Minutes
+	}
+	var missing []string
+	for _, day := range days {
+		if totals[day] <= 0 {
+			missing = append(missing, day)
+		}
+	}
+	return missing, nil
 }
 
 func DetectAbsenceConflict(lines []TimeLine) error {

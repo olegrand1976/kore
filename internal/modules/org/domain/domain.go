@@ -107,6 +107,7 @@ type Societe struct {
 	WeekStartDay       int             `json:"weekStartDay"`
 	DayCapacityMinutes int             `json:"dayCapacityMinutes"`
 	CraMailAuto        bool            `json:"craMailAuto"`
+	CraMailRecipients  []string        `json:"craMailRecipients,omitempty"`
 	WeekSubmitPolicy   string          `json:"weekSubmitPolicy"`
 	Adresse            string          `json:"adresse,omitempty"`
 	Siret              string          `json:"siret,omitempty"`

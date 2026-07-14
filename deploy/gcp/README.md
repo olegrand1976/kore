@@ -59,6 +59,10 @@ make gcp-postdeploy      # Smoke test (après deploy CI)
 make gcp-smoke           # Vérifier /health et /ready
 ```
 
+## PDF CRA (Chromium)
+
+L'image API (`deploy/Dockerfile.api`) embarque Chromium (`CHROME_PATH=/usr/bin/chromium`) pour la génération PDF CRA. En local sans Chrome, la génération PDF renvoie une erreur explicite (pas de fallback HTML).
+
 ## Infra partagée (repo `projets/infra`)
 
 Kore est enregistré dans :

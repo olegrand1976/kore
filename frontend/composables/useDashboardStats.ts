@@ -18,6 +18,8 @@ import type { ModuleCode } from '~/composables/useEntitlements'
 
 export type DashboardStats = {
   craCurrentStatus: string | null
+  craRequired: boolean
+  craAlert: boolean
   leavePending: number
   tmaOpen: number
   tmaTotal: number
@@ -48,6 +50,8 @@ export type DashboardLoadResult = {
 
 const emptyStats = (): DashboardStats => ({
   craCurrentStatus: null,
+  craRequired: false,
+  craAlert: false,
   leavePending: 0,
   tmaOpen: 0,
   tmaTotal: 0,
@@ -93,15 +97,31 @@ export function useDashboardStats() {
 
     if (hasModule('cra')) {
       tasks.push(
-        $fetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
-          .then((res) => {
+        (async () => {
+          let required = false
+          try {
+            const profile = await $fetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
+            required = profile?.data?.craRequis ?? false
+            stats.craRequired = required
+          } catch {
+            errors.cra = true
+            return
+          }
+          try {
+            const res = await $fetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
             const items = (res?.data ?? []) as Array<{ status?: string; Status?: string; month?: string; Month?: string }>
             stats.craCurrentStatus = craCurrentMonthStatus(items)
             charts.craMonths = craMonthSeries(items, locale.value)
-          })
-          .catch(() => {
+            if (required) {
+              const month = currentMonthKey()
+              const current = items.find((item) => (item.month ?? item.Month) === month)
+              const status = current?.status ?? current?.Status ?? 'Brouillon'
+              stats.craAlert = status !== 'Définitif'
+            }
+          } catch {
             errors.cra = true
-          })
+          }
+        })()
       )
     }
 

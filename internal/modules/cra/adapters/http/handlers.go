@@ -3,10 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,7 +33,10 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Post("/timesheets/{id}/validate", validateFinal(svc, authorizer))
 		pr.Post("/timesheets/{id}/reject", rejectTimesheet(svc, authorizer))
 		pr.Get("/prestations", listPrestations(svc, authorizer))
+		pr.Get("/prestations/export.xml", exportPrestationsXML(svc, authorizer))
+		pr.Get("/prestations/billable-summary", billableSummary(svc, authorizer))
 		pr.Post("/prestations/validate-all", validateAllPrestations(svc, authorizer))
+		pr.Post("/timesheets/{id}/prefill-holidays", prefillHolidays(svc, authorizer))
 	})
 }
 
@@ -79,6 +84,7 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 				Day        string `json:"day"`
 				Duration   int    `json:"duration"`
 				Comment    string `json:"comment"`
+				Billable   *bool  `json:"billable"`
 			} `json:"lines"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -93,11 +99,16 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid day format")
 				return
 			}
+			billable := true
+			if l.Billable != nil {
+				billable = *l.Billable
+			}
 			lines = append(lines, domain.TimeLine{
 				Source:   domain.SourceRef{Type: l.SourceType, ID: l.SourceID},
 				Day:      day,
 				Duration: kernel.Duration{Minutes: l.Duration},
 				Comment:  l.Comment,
+				Billable: billable,
 			})
 		}
 		ts, err := svc.SaveWeek(r.Context(), ports.SaveWeekCommand{
@@ -351,14 +362,111 @@ func validateAllPrestations(svc ports.CRAService, authorizer authx.Authorizer) h
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		count, err := svc.ValidateAll(r.Context(), ports.ValidateAllCommand{
+		result, err := svc.ValidateAll(r.Context(), ports.ValidateAllCommand{
 			TenantID: identity.TenantID, ManagerID: identity.UserID, Month: month,
 		})
 		if err != nil {
 			writeCRAError(w, err)
 			return
 		}
-		httpx.WriteData(w, http.StatusOK, map[string]int{"validated": count})
+		httpx.WriteData(w, http.StatusOK, result)
+	}
+}
+
+type prestationsXMLExport struct {
+	Rows []ports.PrestationExportRow `xml:"row"`
+}
+
+func exportPrestationsXML(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		monthRaw := r.URL.Query().Get("month")
+		if monthRaw == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month query required (YYYY-MM)")
+			return
+		}
+		month, err := domain.ParseMonth(monthRaw)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		rows, err := svc.ExportPrestationsXML(r.Context(), identity.TenantID, month)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		payload, err := xml.Marshal(prestationsXMLExport{Rows: rows})
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(append([]byte(xml.Header), payload...))
+	}
+}
+
+func billableSummary(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		monthRaw := r.URL.Query().Get("month")
+		if monthRaw == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month query required (YYYY-MM)")
+			return
+		}
+		month, err := domain.ParseMonth(monthRaw)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := svc.BillableSummary(r.Context(), identity.TenantID, month)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func prefillHolidays(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		ts, err := svc.GetByID(r.Context(), identity.TenantID, id)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		if !canAccessTimesheet(r.Context(), authorizer, identity, ts) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		country := strings.TrimSpace(r.URL.Query().Get("country"))
+		if country == "" {
+			country = "FR"
+		}
+		added, err := svc.PrefillPublicHolidays(r.Context(), identity.TenantID, ts.UserID, ts.Month, country)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]int{"added": added})
 	}
 }
 
@@ -384,6 +492,8 @@ func writeCRAError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrCRAConflictAbsence):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+	case errors.Is(err, domain.ErrWeekIncomplete):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrTimesheetNotFound), errors.Is(err, domain.ErrWeekNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	default:

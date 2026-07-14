@@ -21,6 +21,10 @@
         <button type="button" class="stepper-btn" :disabled="disabled" :aria-label="$t('cra.increase_hours')" @click="step(0.5)">+</button>
       </div>
       <AppInput v-model="localComment" :label="$t('cra.comment')" :disabled="disabled" />
+      <label class="activity-line__billable">
+        <input v-model="localBillable" type="checkbox" :disabled="disabled">
+        {{ $t('cra.billable') }}
+      </label>
       <AppButton
         v-if="canRemove"
         variant="ghost"
@@ -43,6 +47,7 @@ const props = defineProps<{
   hours: string
   comment: string
   origin: string
+  billable: boolean
   disabled?: boolean
   canRemove?: boolean
 }>()
@@ -50,6 +55,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:hours': [value: string]
   'update:comment': [value: string]
+  'update:billable': [value: boolean]
   remove: []
 }>()
 
@@ -61,6 +67,11 @@ const localHours = computed({
 const localComment = computed({
   get: () => props.comment,
   set: (v: string) => emit('update:comment', v)
+})
+
+const localBillable = computed({
+  get: () => props.billable,
+  set: (v: boolean) => emit('update:billable', v)
 })
 
 const step = (delta: number) => {
@@ -126,6 +137,14 @@ const step = (delta: number) => {
 .stepper-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.activity-line__billable {
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
 }
 
 @media (max-width: 768px) {
