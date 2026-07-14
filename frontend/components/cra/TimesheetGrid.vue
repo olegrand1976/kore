@@ -31,6 +31,8 @@
       :saving="saving"
       :missions="missions"
       :task-types="taskTypes"
+      :work-ref-options="workRefOptions"
+      :work-ref-label-for="workRefLabelFor"
       @save="onSave"
       @submit="onSubmit"
     />
@@ -42,6 +44,8 @@ import type { CraLine, CraWeek } from '~/stores/cra'
 import type { MissionSummary } from '~/composables/useCraSourceLabels'
 import { computeMonthWeeks } from '~/composables/useWeekCalendar'
 
+import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
+
 const props = defineProps<{
   weeks: CraWeek[]
   month: string
@@ -52,6 +56,8 @@ const props = defineProps<{
   saving?: boolean
   missions?: MissionSummary[]
   taskTypes?: string[]
+  workRefOptions?: CraWorkRefOption[]
+  workRefLabelFor?: (type: string, id: string) => string
 }>()
 
 const emit = defineEmits<{

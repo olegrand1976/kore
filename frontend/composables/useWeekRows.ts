@@ -3,6 +3,7 @@ import { computeWeekDays, hoursToMinutes, minutesToHoursLabel } from '~/composab
 
 export type ActivityRow = {
   key: string
+  id?: string
   sourceType: string
   sourceId: string
   day: string
@@ -10,9 +11,16 @@ export type ActivityRow = {
   comment: string
   origin: string
   billable: boolean
+  workRefType?: string
+  workRefId?: string
 }
 
 export const buildKey = (sourceType: string, sourceId: string, day: string) => `${sourceType}:${sourceId}:${day}`
+
+export const newRowKey = () => crypto.randomUUID()
+
+export const rowKeyFromLine = (line: Pick<CraLine, 'id' | 'sourceType' | 'sourceId' | 'day'>, index: number) =>
+  line.id || `${line.sourceType}:${line.sourceId}:${line.day}:${index}`
 
 export function useWeekRows(
   week: Ref<CraWeek | undefined>,
@@ -27,18 +35,21 @@ export function useWeekRows(
     for (const day of weekDays.value) {
       map.set(day, [])
     }
-    for (const line of week.value?.lines ?? []) {
+    for (const [index, line] of (week.value?.lines ?? []).entries()) {
       const day = line.day.slice(0, 10)
       if (!map.has(day)) continue
       map.get(day)!.push({
-        key: buildKey(line.sourceType, line.sourceId, day),
+        key: rowKeyFromLine(line, index),
+        id: line.id,
         sourceType: line.sourceType,
         sourceId: line.sourceId,
         day,
         hours: line.duration > 0 ? minutesToHoursLabel(line.duration) : '',
         comment: line.comment ?? '',
         origin: line.origin ?? 'manual',
-        billable: line.billable ?? true
+        billable: line.billable ?? true,
+        workRefType: line.workRefType,
+        workRefId: line.workRefId
       })
     }
     for (const [day, rows] of map) {
@@ -72,28 +83,23 @@ export function useWeekRows(
     return total
   })
 
-  const toSaveLines = (rows: ActivityRow[]): CraLine[] => {
-    const existing = week.value?.lines ?? []
-    return rows.flatMap((r) => {
+  const toSaveLines = (rows: ActivityRow[]): CraLine[] =>
+    rows.flatMap((r) => {
       const duration = hoursToMinutes(r.hours)
-      const hadLine = existing.some(
-        (line) =>
-          line.sourceType === r.sourceType &&
-          line.sourceId === r.sourceId &&
-          line.day.slice(0, 10) === r.day
-      )
-      if (duration <= 0 && !hadLine) return []
+      if (duration <= 0) return []
       return [{
+        id: r.id,
         sourceType: r.sourceType,
         sourceId: r.sourceId,
         day: r.day,
         duration,
         comment: r.comment,
-        origin: 'manual',
-        billable: r.billable
+        origin: r.origin ?? 'manual',
+        billable: r.billable,
+        workRefType: r.workRefType,
+        workRefId: r.workRefId
       }]
     })
-  }
 
   return { weekDays, rowsByDay, dayTotals, weekTotalMinutes, toSaveLines, buildKey }
 }

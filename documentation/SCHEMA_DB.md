@@ -415,8 +415,10 @@ Comptes rendus d'activité (pivot temps).
 | `comment` | TEXT | NOT NULL, DEFAULT `''` |
 | `origin` | TEXT | NOT NULL, DEFAULT `'manual'` |
 | `billable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |
+| `work_ref_type` | TEXT | Référence optionnelle (`tma`, `ticket`, `work_request`) |
+| `work_ref_id` | TEXT | ID de la demande liée |
 
-**Contraintes** : `UNIQUE (week_entry_id, source_type, source_id, day)` — index `idx_cra_time_lines_source`
+**Contraintes** : index `idx_cra_time_lines_source` (plusieurs lignes même source/jour autorisées depuis migration `0003`)
 
 ---
 

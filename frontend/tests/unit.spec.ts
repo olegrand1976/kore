@@ -8,6 +8,7 @@ import { fetchWithRefresh } from '../composables/useApiFetch'
 import { mapCraApiError } from '../composables/useCraError'
 import { useReporting } from '../composables/useReporting'
 import { buildKey, useWeekRows } from '../composables/useWeekRows'
+import { decodeWorkRef, encodeWorkRef } from '../composables/useCraWorkRefs'
 import {
   applyTextSearch,
   compareValues,
@@ -305,7 +306,7 @@ describe('craDayState', () => {
 })
 
 describe('useWeekRows toSaveLines', () => {
-  it('skips empty rows without existing lines and persists edited hours', () => {
+  it('skips empty rows and persists edited hours', () => {
     const week = ref({
       weekNumber: 1,
       lines: [{
@@ -345,6 +346,69 @@ describe('useWeekRows toSaveLines', () => {
     expect(lines).toHaveLength(1)
     expect(lines[0].duration).toBe(450)
     expect(lines[0].comment).toBe('done')
+  })
+
+  it('persists duplicate activity types on the same day', () => {
+    const week = ref({
+      weekNumber: 1,
+      lines: [],
+      submittedAt: null
+    })
+    const { toSaveLines } = useWeekRows(week, ref(1), ref('2026-07'), ref(1))
+    const lines = toSaveLines([
+      {
+        key: 'row-1',
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        hours: '5',
+        comment: '',
+        origin: 'manual',
+        billable: true
+      },
+      {
+        key: 'row-2',
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        hours: '3',
+        comment: 'interne',
+        origin: 'manual',
+        billable: false
+      }
+    ])
+    expect(lines).toHaveLength(2)
+    expect(lines[0].duration).toBe(300)
+    expect(lines[1].duration).toBe(180)
+    expect(lines[1].comment).toBe('interne')
+    expect(lines[1].billable).toBe(false)
+  })
+
+  it('persists work reference on a line', () => {
+    const week = ref({ weekNumber: 1, lines: [], submittedAt: null })
+    const { toSaveLines } = useWeekRows(week, ref(1), ref('2026-07'), ref(1))
+    const lines = toSaveLines([{
+      key: 'row-1',
+      sourceType: 'manual',
+      sourceId: 'default',
+      day: '2026-07-07',
+      hours: '5',
+      comment: '',
+      origin: 'manual',
+      billable: true,
+      workRefType: 'tma',
+      workRefId: 'abc-123'
+    }])
+    expect(lines[0].workRefType).toBe('tma')
+    expect(lines[0].workRefId).toBe('abc-123')
+  })
+})
+
+describe('useCraWorkRefs encoding', () => {
+  it('round-trips work ref values', () => {
+    const encoded = encodeWorkRef('ticket', 'uuid-1')
+    expect(decodeWorkRef(encoded)).toEqual({ type: 'ticket', id: 'uuid-1' })
+    expect(decodeWorkRef('')).toEqual({ type: '', id: '' })
   })
 })
 

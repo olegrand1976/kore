@@ -116,26 +116,44 @@ func (r *Repository) execSaveTimeLine(ctx context.Context, tx pgx.Tx, tenant ker
 	if lineID == uuid.Nil {
 		lineID = uuid.New()
 	}
-	if r.schema.hasLineBillable {
+	origin := string(line.Origin)
+	if origin == "" {
+		origin = string(domain.OriginManual)
+	}
+	workRefType := line.WorkRefType
+	workRefID := line.WorkRefID
+	if workRefType == "" || workRefID == "" {
+		workRefType = ""
+		workRefID = ""
+	}
+
+	switch {
+	case r.schema.hasLineBillable && r.schema.hasLineWorkRef:
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.time_lines (
+				id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin, billable,
+				work_ref_type, work_ref_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULLIF($11, ''), NULLIF($12, ''))
+		`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
+			line.Day, line.Duration.Minutes, line.Comment, origin, line.Billable, workRefType, workRefID)
+		return err
+	case r.schema.hasLineBillable:
 		_, err := tx.Exec(ctx, `
 			INSERT INTO cra.time_lines (
 				id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin, billable
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
-			line.Day, line.Duration.Minutes, line.Comment, string(line.Origin), line.Billable)
+			line.Day, line.Duration.Minutes, line.Comment, origin, line.Billable)
+		return err
+	default:
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.time_lines (
+				id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
+			line.Day, line.Duration.Minutes, line.Comment, origin)
 		return err
 	}
-	origin := string(line.Origin)
-	if origin == "" {
-		origin = string(domain.OriginManual)
-	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO cra.time_lines (
-			id, tenant_id, week_entry_id, source_type, source_id, day, duration, comment, origin
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, lineID, tenant.UUID(), weekID, line.Source.Type, line.Source.ID,
-		line.Day, line.Duration.Minutes, line.Comment, origin)
-	return err
 }
 
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, error) {
@@ -208,9 +226,14 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 		week.WeekNumber = domain.WeekNumber(weekNum)
 
 		lineQuery := `
+			SELECT id, source_type, source_id, day, duration, comment, origin, billable,
+			       COALESCE(work_ref_type, ''), COALESCE(work_ref_id, '')
+			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day`
+		if !r.schema.hasLineWorkRef && r.schema.hasLineBillable {
+			lineQuery = `
 			SELECT id, source_type, source_id, day, duration, comment, origin, billable
 			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day`
-		if !r.schema.hasLineBillable {
+		} else if !r.schema.hasLineBillable {
 			lineQuery = `
 			SELECT id, source_type, source_id, day, duration, comment, origin
 			FROM cra.time_lines WHERE week_entry_id = $1 ORDER BY day`
@@ -224,12 +247,21 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 			var origin string
 			var minutes int
 			var billable bool
-			if r.schema.hasLineBillable {
+			var workRefType, workRefID string
+			switch {
+			case r.schema.hasLineBillable && r.schema.hasLineWorkRef:
+				if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin, &billable, &workRefType, &workRefID); err != nil {
+					lineRows.Close()
+					return domain.Timesheet{}, err
+				}
+				line.WorkRefType = workRefType
+				line.WorkRefID = workRefID
+			case r.schema.hasLineBillable:
 				if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin, &billable); err != nil {
 					lineRows.Close()
 					return domain.Timesheet{}, err
 				}
-			} else {
+			default:
 				if err := lineRows.Scan(&line.ID, &line.Source.Type, &line.Source.ID, &line.Day, &minutes, &line.Comment, &origin); err != nil {
 					lineRows.Close()
 					return domain.Timesheet{}, err

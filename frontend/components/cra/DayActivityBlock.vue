@@ -37,6 +37,10 @@
           :comment="row.comment"
           :origin="row.origin"
           :billable="row.billable"
+          :work-ref-type="row.workRefType"
+          :work-ref-id="row.workRefId"
+          :work-ref-options="workRefOptions"
+          :work-ref-label-for="workRefLabelFor"
           :absence="isAbsenceSourceType(row.sourceType)"
           :day-capacity-minutes="capacityMinutes"
           :disabled="disabled"
@@ -44,6 +48,7 @@
           @update:hours="(v) => updateRow(idx, 'hours', v)"
           @update:comment="(v) => updateRow(idx, 'comment', v)"
           @update:billable="(v) => updateRowBillable(idx, v)"
+          @update:work-ref="(v) => updateRowWorkRef(idx, v)"
           @remove="removeRow(idx)"
         />
       </template>
@@ -68,6 +73,8 @@ import { isFullAbsenceDay, rowsSnapshot, withManualOrigin } from '~/utils/craDay
 
 import type { OriginFilter } from '~/components/cra/CraWeekSummary.vue'
 
+import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
+
 const props = defineProps<{
   day: string
   rows: ActivityRow[]
@@ -77,6 +84,8 @@ const props = defineProps<{
   originFilter?: OriginFilter
   labelFor: (sourceType: string, sourceId: string) => string
   iconFor: (sourceType: string) => string
+  workRefOptions?: CraWorkRefOption[]
+  workRefLabelFor?: (type: string, id: string) => string
 }>()
 
 const emit = defineEmits<{
@@ -179,6 +188,16 @@ const updateRowBillable = (idx: number, value: boolean) => {
   const row = localRows.value[idx]
   if (!row) return
   localRows.value[idx] = withManualOrigin({ ...row, billable: value })
+}
+
+const updateRowWorkRef = (idx: number, value: { type: string; id: string }) => {
+  const row = localRows.value[idx]
+  if (!row) return
+  localRows.value[idx] = withManualOrigin({
+    ...row,
+    workRefType: value.type || undefined,
+    workRefId: value.id || undefined
+  })
 }
 
 const removeRow = (idx: number) => {

@@ -176,27 +176,22 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 		return domain.Timesheet{}, domain.ErrCRAAlreadyValidated
 	}
 	week := ts.EnsureWeek(cmd.WeekNumber)
+	lines := make([]domain.TimeLine, 0, len(cmd.Lines))
 	for _, line := range cmd.Lines {
+		if line.Duration.Minutes <= 0 {
+			continue
+		}
 		line.TenantID = cmd.TenantID
 		line.WeekEntryID = week.ID
-		line.Origin = domain.OriginManual
+		if line.Origin == "" {
+			line.Origin = domain.OriginManual
+		}
 		if line.ID == uuid.Nil {
 			line.ID = uuid.New()
 		}
-		if line.Duration.Minutes <= 0 {
-			existing, idx := domain.FindLine(week.Lines, line.Source, line.Day)
-			if existing != nil {
-				week.Lines = append(week.Lines[:idx], week.Lines[idx+1:]...)
-			}
-			continue
-		}
-		existing, idx := domain.FindLine(week.Lines, line.Source, line.Day)
-		if existing != nil {
-			week.Lines[idx] = line
-		} else {
-			week.Lines = append(week.Lines, line)
-		}
+		lines = append(lines, line)
 	}
+	week.Lines = lines
 	if err := domain.ValidateDayCapacity(week.Lines, s.settingsForUser(ctx, cmd.TenantID, ts.UserID).DayCapacityMinutes); err != nil {
 		return domain.Timesheet{}, err
 	}

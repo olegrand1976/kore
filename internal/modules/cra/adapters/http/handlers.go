@@ -80,12 +80,14 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 		}
 		var req struct {
 			Lines []struct {
-				SourceType string `json:"sourceType"`
-				SourceID   string `json:"sourceId"`
-				Day        string `json:"day"`
-				Duration   int    `json:"duration"`
-				Comment    string `json:"comment"`
-				Billable   *bool  `json:"billable"`
+				SourceType  string `json:"sourceType"`
+				SourceID    string `json:"sourceId"`
+				Day         string `json:"day"`
+				Duration    int    `json:"duration"`
+				Comment     string `json:"comment"`
+				Billable    *bool  `json:"billable"`
+				WorkRefType string `json:"workRefType"`
+				WorkRefID   string `json:"workRefId"`
 			} `json:"lines"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -105,11 +107,13 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 				billable = *l.Billable
 			}
 			lines = append(lines, domain.TimeLine{
-				Source:   domain.SourceRef{Type: l.SourceType, ID: l.SourceID},
-				Day:      day,
-				Duration: kernel.Duration{Minutes: l.Duration},
-				Comment:  l.Comment,
-				Billable: billable,
+				Source:      domain.SourceRef{Type: l.SourceType, ID: l.SourceID},
+				Day:         day,
+				Duration:    kernel.Duration{Minutes: l.Duration},
+				Comment:     l.Comment,
+				Billable:    billable,
+				WorkRefType: l.WorkRefType,
+				WorkRefID:   l.WorkRefID,
 			})
 		}
 		ts, err := svc.SaveWeek(r.Context(), ports.SaveWeekCommand{

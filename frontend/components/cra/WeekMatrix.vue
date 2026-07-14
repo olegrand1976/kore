@@ -27,6 +27,8 @@
         :default-open="isMobile ? idx === 0 : true"
         :label-for="labelFor"
         :icon-for="iconFor"
+        :work-ref-options="workRefOptions"
+        :work-ref-label-for="workRefLabelFor"
         @update:rows="(rows) => setDayRows(day, rows)"
         @add-activity="openAddModal"
       />
@@ -56,8 +58,10 @@ import type { MissionSummary } from '~/composables/useCraSourceLabels'
 import type { ActivityRow } from '~/composables/useWeekRows'
 import { hoursToMinutes } from '~/composables/useWeekCalendar'
 import { useCraSourceLabels } from '~/composables/useCraSourceLabels'
-import { useWeekRows } from '~/composables/useWeekRows'
+import { newRowKey, useWeekRows } from '~/composables/useWeekRows'
 import { unlockHolidayPrefillRows } from '~/utils/craDayState'
+
+import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
 
 const props = defineProps<{
   weekNumber: number
@@ -71,6 +75,8 @@ const props = defineProps<{
   saving?: boolean
   missions?: MissionSummary[]
   taskTypes?: string[]
+  workRefOptions?: CraWorkRefOption[]
+  workRefLabelFor?: (type: string, id: string) => string
 }>()
 
 const emit = defineEmits<{
@@ -87,7 +93,7 @@ const missionsRef = computed(() => props.missions ?? [])
 const taskTypes = computed(() => props.taskTypes ?? ['manual', 'interne', 'formation', 'mission'])
 
 const { labelFor, iconFor } = useCraSourceLabels(missionsRef)
-const { weekDays, rowsByDay, toSaveLines, buildKey } = useWeekRows(
+const { weekDays, rowsByDay, toSaveLines } = useWeekRows(
   weekRef,
   weekNumberRef,
   monthRef,
@@ -160,10 +166,8 @@ const onAddActivity = ({ sourceType, sourceId }: { sourceType: string; sourceId:
   const day = addTargetDay.value
   if (!day) return
   const rows = unlockHolidayPrefillRows(editableRows.value.get(day) ?? [])
-  const key = buildKey(sourceType, sourceId, day)
-  if (rows.some((r) => r.key === key)) return
   rows.push({
-    key,
+    key: newRowKey(),
     sourceType,
     sourceId,
     day,

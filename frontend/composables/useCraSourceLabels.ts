@@ -10,6 +10,7 @@ const SOURCE_LABELS: Record<string, string> = {
   leave: 'cra.source_leave',
   tma: 'cra.source_tma',
   ticket: 'cra.source_ticket',
+  work_request: 'cra.source_work_request',
   holiday: 'cra.source_holiday',
   interne: 'cra.source_internal',
   formation: 'cra.source_training'
@@ -33,7 +34,7 @@ export function useCraSourceLabels(missions: Ref<MissionSummary[]>) {
     }
     const key = SOURCE_LABELS[sourceType] ?? SOURCE_LABELS.manual
     const base = t(key)
-    if (sourceType === 'tma' || sourceType === 'ticket') {
+    if (sourceType === 'tma' || sourceType === 'ticket' || sourceType === 'work_request') {
       return `${base} #${sourceId.slice(0, 8)}`
     }
     if (sourceType === 'manual' && sourceId !== 'default') {
@@ -50,6 +51,7 @@ export function useCraSourceLabels(missions: Ref<MissionSummary[]>) {
         return 'event_busy'
       case 'tma':
       case 'ticket':
+      case 'work_request':
         return 'support'
       case 'holiday':
         return 'celebration'

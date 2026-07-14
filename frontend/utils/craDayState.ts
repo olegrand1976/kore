@@ -39,6 +39,11 @@ export function partialAbsenceHoursLabel(capacityMinutes: number): string {
 
 export function rowsSnapshot(rows: DayRowLike[]): string {
   return rows
-    .map((row) => `${row.key ?? row.sourceType}:${row.hours}:${row.origin ?? ''}`)
+    .map((row) => {
+      const workRef = 'workRefType' in row && 'workRefId' in row
+        ? `${(row as { workRefType?: string }).workRefType ?? ''}:${(row as { workRefId?: string }).workRefId ?? ''}`
+        : ''
+      return `${row.key ?? row.sourceType}:${row.hours}:${row.origin ?? ''}:${workRef}`
+    })
     .join('|')
 }

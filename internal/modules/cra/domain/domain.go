@@ -80,6 +80,8 @@ type TimeLine struct {
 	Comment     string
 	Origin      LineOrigin
 	Billable    bool
+	WorkRefType string
+	WorkRefID   string
 }
 
 type WeekEntry struct {

@@ -223,3 +223,65 @@ func TestValidateFinal_RequiresCommercialInfo(t *testing.T) {
 		t.Fatalf("expected ErrCommercialInfoRequired, got %v", err)
 	}
 }
+
+func TestSaveWeek_AllowsDuplicateActivityTypesOnSameDay(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	weekID := uuid.New()
+	day := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	source := domain.SourceRef{Type: "manual", ID: "default"}
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+		Weeks: []domain.WeekEntry{{
+			ID:         weekID,
+			WeekNumber: 1,
+			Lines: []domain.TimeLine{{
+				ID:          uuid.New(),
+				TenantID:    tenant,
+				WeekEntryID: weekID,
+				Source:      source,
+				Day:         day,
+				Duration:    kernel.Duration{Minutes: 300},
+				Origin:      domain.OriginManual,
+			}},
+		}},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	if _, err := svc.SaveWeek(context.Background(), ports.SaveWeekCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		WeekNumber:  1,
+		Lines: []domain.TimeLine{
+			{
+				Source:   source,
+				Day:      day,
+				Duration: kernel.Duration{Minutes: 300},
+				Comment:  "prestation 1",
+			},
+			{
+				Source:   source,
+				Day:      day,
+				Duration: kernel.Duration{Minutes: 180},
+				Comment:  "prestation 2",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("SaveWeek: %v", err)
+	}
+
+	week, _ := repo.ts.Week(1)
+	if week == nil {
+		t.Fatal("week not found after save")
+	}
+	if len(week.Lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d", len(week.Lines))
+	}
+	if week.Lines[0].Comment != "prestation 1" || week.Lines[1].Comment != "prestation 2" {
+		t.Fatalf("unexpected comments: %q, %q", week.Lines[0].Comment, week.Lines[1].Comment)
+	}
+}

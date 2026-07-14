@@ -109,6 +109,8 @@
         :saving="saving"
         :missions="missions"
         :task-types="taskTypesEnabled"
+        :work-ref-options="workRefOptions"
+        :work-ref-label-for="workRefLabelFor"
         @save="onSaveWeek"
         @submit="onSubmitWeek"
       />
@@ -175,6 +177,7 @@
 import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
+import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
 
 definePageMeta({ layout: 'default' })
 
@@ -186,6 +189,8 @@ const { mapCraError, mapInvoiceDraftMessage: mapInvoiceDraft } = useCraError()
 const id = computed(() => String(route.params.id))
 
 const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal, rejectTimesheet } = useCra(id)
+const { user, fetchSession } = useAuth()
+const { options: workRefOptions, load: loadWorkRefs, labelFor: workRefLabelFor } = useCraWorkRefs()
 
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
@@ -309,7 +314,11 @@ const loadPrefillETT = async () => {
   }
 }
 
-await Promise.all([load(id.value), loadOrgSettings(), loadMissions()])
+await Promise.all([load(id.value), loadOrgSettings(), loadMissions(), fetchSession()])
+const userId = user.value?.userId ?? ''
+if (userId) {
+  await loadWorkRefs(userId)
+}
 await loadAnomalies()
 
 const monthRef = computed(() => timesheet.value?.month ?? '')

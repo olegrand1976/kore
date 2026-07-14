@@ -37,7 +37,41 @@
         <span class="activity-line__hours-placeholder-label">{{ $t('cra.hours') }}</span>
         <span class="activity-line__hours-placeholder-value">{{ $t('cra.full_day_absence') }}</span>
       </div>
-      <AppInput v-model="localComment" :label="$t('cra.comment')" :disabled="disabled" />
+      <div class="activity-line__meta">
+        <AppInput v-model="localComment" :label="$t('cra.comment')" :disabled="disabled" />
+        <div v-if="showWorkRef" class="activity-line__work-ref">
+          <label class="activity-line__work-ref-label" :for="workRefSelectId">{{ $t('cra.work_ref') }}</label>
+          <select
+            :id="workRefSelectId"
+            v-model="localWorkRef"
+            class="activity-line__work-ref-select"
+            :disabled="disabled"
+          >
+            <option value="">{{ $t('cra.work_ref_none') }}</option>
+            <optgroup v-if="groupedOptions.tma.length" :label="$t('cra.source_tma')">
+              <option v-for="opt in groupedOptions.tma" :key="`${opt.type}:${opt.id}`" :value="encodeWorkRef(opt.type, opt.id)">
+                {{ opt.label }}
+              </option>
+            </optgroup>
+            <optgroup v-if="groupedOptions.ticket.length" :label="$t('cra.source_ticket')">
+              <option v-for="opt in groupedOptions.ticket" :key="`${opt.type}:${opt.id}`" :value="encodeWorkRef(opt.type, opt.id)">
+                {{ opt.label }}
+              </option>
+            </optgroup>
+            <optgroup v-if="groupedOptions.work_request.length" :label="$t('cra.source_work_request')">
+              <option v-for="opt in groupedOptions.work_request" :key="`${opt.type}:${opt.id}`" :value="encodeWorkRef(opt.type, opt.id)">
+                {{ opt.label }}
+              </option>
+            </optgroup>
+            <option
+              v-if="orphanWorkRef"
+              :value="encodeWorkRef(workRefType, workRefId)"
+            >
+              {{ orphanWorkRef }}
+            </option>
+          </select>
+        </div>
+      </div>
       <label v-if="!absence" class="activity-line__billable">
         <input v-model="localBillable" type="checkbox" :disabled="disabled">
         {{ $t('cra.billable') }}
@@ -57,6 +91,8 @@
 </template>
 
 <script setup lang="ts">
+import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
+import { decodeWorkRef, encodeWorkRef } from '~/composables/useCraWorkRefs'
 import { partialAbsenceHoursLabel } from '~/utils/craDayState'
 
 const props = withDefaults(defineProps<{
@@ -68,20 +104,64 @@ const props = withDefaults(defineProps<{
   comment: string
   origin: string
   billable: boolean
+  workRefType?: string
+  workRefId?: string
+  workRefOptions?: CraWorkRefOption[]
+  workRefLabelFor?: (type: string, id: string) => string
   absence?: boolean
   dayCapacityMinutes?: number
   disabled?: boolean
   canRemove?: boolean
 }>(), {
-  dayCapacityMinutes: 8 * 60
+  dayCapacityMinutes: 8 * 60,
+  workRefType: '',
+  workRefId: '',
+  workRefOptions: () => []
 })
 
 const emit = defineEmits<{
   'update:hours': [value: string]
   'update:comment': [value: string]
   'update:billable': [value: boolean]
+  'update:workRef': [payload: { type: string; id: string }]
   remove: []
 }>()
+
+const workRefSelectId = computed(() => `${props.inputId}-work-ref`)
+
+const showWorkRef = computed(() => {
+  if (props.absence) return false
+  switch (props.sourceType) {
+    case 'tma':
+    case 'ticket':
+    case 'work_request':
+      return false
+    default:
+      return true
+  }
+})
+
+const groupedOptions = computed(() => {
+  const groups = {
+    tma: [] as CraWorkRefOption[],
+    ticket: [] as CraWorkRefOption[],
+    work_request: [] as CraWorkRefOption[]
+  }
+  for (const opt of props.workRefOptions) {
+    if (opt.type === 'tma' || opt.type === 'ticket' || opt.type === 'work_request') {
+      groups[opt.type].push(opt)
+    }
+  }
+  return groups
+})
+
+const orphanWorkRef = computed(() => {
+  const type = props.workRefType ?? ''
+  const id = props.workRefId ?? ''
+  if (!type || !id) return ''
+  if (props.workRefOptions.some((opt) => opt.type === type && opt.id === id)) return ''
+  return props.workRefLabelFor?.(type, id) ?? `${type} #${id.slice(0, 8)}`
+})
 
 const hasHours = computed(() => {
   const value = Number(props.hours)
@@ -118,6 +198,14 @@ const localComment = computed({
 const localBillable = computed({
   get: () => props.billable,
   set: (v: boolean) => emit('update:billable', v)
+})
+
+const localWorkRef = computed({
+  get: () => encodeWorkRef(props.workRefType ?? '', props.workRefId ?? ''),
+  set: (value: string) => {
+    const decoded = decodeWorkRef(value)
+    emit('update:workRef', decoded)
+  }
 })
 
 const step = (delta: number) => {
@@ -184,8 +272,33 @@ const startPartialAbsence = () => {
 .activity-line__fields {
   display: grid;
   gap: var(--kore-space-sm);
-  grid-template-columns: minmax(10rem, 14rem) 1fr auto;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr) auto;
   align-items: end;
+}
+
+.activity-line__meta {
+  display: grid;
+  gap: var(--kore-space-sm);
+  min-width: 0;
+}
+
+.activity-line__work-ref {
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.activity-line__work-ref-label {
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.activity-line__work-ref-select {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  color: var(--kore-text);
 }
 
 .activity-line__hours {
