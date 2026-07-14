@@ -42,9 +42,9 @@ type ManagerValidateCommand struct {
 type InvoiceDraftStatus string
 
 const (
-	InvoiceDraftCreated      InvoiceDraftStatus = "created"
-	InvoiceDraftSkipped      InvoiceDraftStatus = "skipped"
-	InvoiceDraftUnavailable  InvoiceDraftStatus = "unavailable"
+	InvoiceDraftCreated     InvoiceDraftStatus = "created"
+	InvoiceDraftSkipped     InvoiceDraftStatus = "skipped"
+	InvoiceDraftUnavailable InvoiceDraftStatus = "unavailable"
 )
 
 type InvoiceDraftOutcome struct {

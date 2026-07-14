@@ -87,7 +87,7 @@ func TestCRA_FindConsumption_BillableApplicationLines(t *testing.T) {
 				TenantID:    tenant,
 				WeekEntryID: weekID,
 				Source:      domain.SourceRef{Type: "application", ID: appID.String()},
-				Day:         day,
+				Day:         day.AddDate(0, 0, 1),
 				Duration:    kernel.Duration{Minutes: 120},
 				Billable:    false,
 				Origin:      domain.OriginManual,

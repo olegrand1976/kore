@@ -49,13 +49,13 @@ func TestCreateFromCRAValidation_Idempotent(t *testing.T) {
 	svc := NewService(repo)
 	tenant := kernel.NewTenantID(uuid.New())
 	inv, err := svc.CreateFromCRAValidation(context.Background(), ports.CreateFromCRACommand{
-		TenantID:      tenant,
-		TimesheetID:   uuid.New(),
-		ClientID:      uuid.New(),
-		Month:         "2026-07",
-		BillableHours: 8,
-		MissionLabel:  "Mission",
-		UserLabel:     "User",
+		TenantID:       tenant,
+		TimesheetID:    uuid.New(),
+		ClientID:       uuid.New(),
+		Month:          "2026-07",
+		BillableHours:  8,
+		MissionLabel:   "Mission",
+		UserLabel:      "User",
 		UnitPriceCents: 10000,
 	})
 	if err != nil {
