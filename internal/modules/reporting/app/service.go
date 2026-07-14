@@ -10,9 +10,9 @@ import (
 )
 
 type service struct {
-	repo         ports.ReportingRepository
-	craBillable  ports.CRABillableReader
-	craPlanning  ports.CRAPlanningReader
+	repo        ports.ReportingRepository
+	craBillable ports.CRABillableReader
+	craPlanning ports.CRAPlanningReader
 }
 
 func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader, craPlanning ports.CRAPlanningReader) ports.ReportingService {

@@ -110,10 +110,7 @@ func (s *userService) canSetupTotp(policy ports.TotpPolicy) bool {
 }
 
 func (s *userService) canDisableTotp(policy ports.TotpPolicy) bool {
-	if !policy.UserConfigurable {
-		return false
-	}
-	return true
+	return policy.UserConfigurable
 }
 
 func (s *userService) issueAuthResult(user domain.User) (ports.AuthResult, error) {

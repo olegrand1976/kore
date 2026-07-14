@@ -70,16 +70,16 @@ type CreateClientCommand struct {
 }
 
 type AuthResult struct {
-	AccessToken           string         `json:"accessToken"`
-	RefreshToken          string         `json:"refreshToken"`
-	UserID                uuid.UUID      `json:"userId"`
+	AccessToken           string          `json:"accessToken"`
+	RefreshToken          string          `json:"refreshToken"`
+	UserID                uuid.UUID       `json:"userId"`
 	TenantID              kernel.TenantID `json:"tenantId"`
-	Profile               domain.Profile `json:"profile"`
-	Requires2FA           bool           `json:"requires2FA,omitempty"`
-	ChallengeToken        string         `json:"challengeToken,omitempty"`
-	Requires2FAEnrollment bool           `json:"requires2FAEnrollment,omitempty"`
-	EnrollmentToken       string         `json:"enrollmentToken,omitempty"`
-	BackupCodes           []string       `json:"backupCodes,omitempty"`
+	Profile               domain.Profile  `json:"profile"`
+	Requires2FA           bool            `json:"requires2FA,omitempty"`
+	ChallengeToken        string          `json:"challengeToken,omitempty"`
+	Requires2FAEnrollment bool            `json:"requires2FAEnrollment,omitempty"`
+	EnrollmentToken       string          `json:"enrollmentToken,omitempty"`
+	BackupCodes           []string        `json:"backupCodes,omitempty"`
 }
 
 type OrganizationRepository interface {

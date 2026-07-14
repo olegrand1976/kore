@@ -3,8 +3,8 @@ package cra
 import (
 	"context"
 
-	craports "github.com/kore/kore/internal/modules/cra/ports"
 	cradomain "github.com/kore/kore/internal/modules/cra/domain"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
 	reportports "github.com/kore/kore/internal/modules/reporting/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
