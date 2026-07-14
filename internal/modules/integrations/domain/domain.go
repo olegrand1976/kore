@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrConnectionNotFound    = errors.New("integration connection not found")
-	ErrApiKeyNotFound        = errors.New("api key not found")
-	ErrConnectionInactive    = errors.New("integration connection inactive")
-	ErrWebhookNotFound       = errors.New("webhook subscription not found")
+	ErrConnectionNotFound = errors.New("integration connection not found")
+	ErrApiKeyNotFound     = errors.New("api key not found")
+	ErrConnectionInactive = errors.New("integration connection inactive")
+	ErrWebhookNotFound    = errors.New("webhook subscription not found")
 )
 
 type ConnectionType string

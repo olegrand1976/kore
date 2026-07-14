@@ -170,10 +170,10 @@ type SuggestAssigneeCommand struct {
 }
 
 type SuggestAssigneeResult struct {
-	SuggestedUserID uuid.UUID `json:"suggestedUserId"`
-	Rationale       string    `json:"rationale"`
+	SuggestedUserID uuid.UUID   `json:"suggestedUserId"`
+	Rationale       string      `json:"rationale"`
 	Alternatives    []uuid.UUID `json:"alternatives"`
-	RequestID       uuid.UUID `json:"requestId"`
+	RequestID       uuid.UUID   `json:"requestId"`
 }
 
 type ExecutiveSummaryCommand struct {
@@ -183,8 +183,8 @@ type ExecutiveSummaryCommand struct {
 }
 
 type ExecutiveSummaryResult struct {
-	Summary    string   `json:"summary"`
-	Highlights []string `json:"highlights"`
+	Summary    string    `json:"summary"`
+	Highlights []string  `json:"highlights"`
 	RequestID  uuid.UUID `json:"requestId"`
 }
 
@@ -240,19 +240,19 @@ type LeadScoringCommand struct {
 }
 
 type LeadScoringResult struct {
-	Score     int      `json:"score"`
-	Tier      string   `json:"tier"`
-	Factors   []string `json:"factors"`
+	Score     int       `json:"score"`
+	Tier      string    `json:"tier"`
+	Factors   []string  `json:"factors"`
 	RequestID uuid.UUID `json:"requestId"`
 }
 
 type NotificationsDigestCommand struct {
-	TenantID   kernel.TenantID
-	UserID     uuid.UUID
-	Period     string
-	UnreadTma  int
-	UnreadLeave int
-	UnreadCra  int
+	TenantID       kernel.TenantID
+	UserID         uuid.UUID
+	Period         string
+	UnreadTma      int
+	UnreadLeave    int
+	UnreadCra      int
 	UnreadWorkflow int
 }
 

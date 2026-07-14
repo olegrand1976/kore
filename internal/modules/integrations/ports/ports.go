@@ -34,11 +34,11 @@ type CreateWebhookCommand struct {
 }
 
 type OutboundEvent struct {
-	ID        uuid.UUID
-	TenantID  kernel.TenantID
-	Type      string
+	ID         uuid.UUID
+	TenantID   kernel.TenantID
+	Type       string
 	OccurredAt time.Time
-	Data      map[string]any
+	Data       map[string]any
 }
 
 type ApiKeyCreated struct {
