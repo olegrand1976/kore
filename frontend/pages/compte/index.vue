@@ -78,6 +78,34 @@
           </dl>
         </AppCard>
       </div>
+
+      <AppCard v-if="show2faSection" padding="lg" class="profile-2fa">
+        <h3 class="profile-section-title">{{ $t('profile.2fa.section_title') }}</h3>
+        <p v-if="totpStatus?.enabled" class="profile-2fa__status">{{ $t('profile.2fa.enabled') }}</p>
+        <p v-else-if="totpStatus?.enrollmentRequired" class="profile-2fa__status">{{ $t('profile.2fa.required_policy') }}</p>
+        <p v-else class="profile-2fa__status">{{ $t('profile.2fa.disabled') }}</p>
+
+        <div v-if="wizardOpen" class="profile-2fa__wizard">
+          <img v-if="qrCodeDataUrl" :src="qrCodeDataUrl" width="200" height="200" class="profile-2fa__qr" :alt="$t('profile.2fa.section_title')" />
+          <p v-if="manualSecret" class="profile-2fa__secret"><code>{{ manualSecret }}</code></p>
+          <AppInput id="2fa-code" v-model="totpCode" :label="$t('profile.2fa.code_label')" inputmode="numeric" maxlength="8" />
+          <AppInput v-if="wizardMode === 'enable'" id="2fa-password" v-model="confirmPassword" type="password" :label="$t('profile.2fa.password_label')" />
+          <AppInput v-else id="2fa-disable-password" v-model="confirmPassword" type="password" :label="$t('profile.2fa.password_label')" />
+          <AppButton variant="primary" @click="confirmWizard">{{ wizardConfirmLabel }}</AppButton>
+          <div v-if="backupCodes.length" class="profile-2fa__backup">
+            <p>{{ $t('profile.2fa.backup_title') }}</p>
+            <ul>
+              <li v-for="code in backupCodes" :key="code"><code>{{ code }}</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div v-else class="profile-2fa__actions">
+          <AppButton v-if="canEnable" variant="primary" size="sm" @click="startEnable">{{ $t('profile.2fa.enable') }}</AppButton>
+          <AppButton v-if="canDisable" variant="ghost" size="sm" @click="startDisable">{{ $t('profile.2fa.disable') }}</AppButton>
+        </div>
+        <p v-if="totpMessage" class="profile-2fa__msg" :class="{ 'profile-2fa__msg--error': totpError }" role="status">{{ totpMessage }}</p>
+      </AppCard>
     </template>
   </div>
 </template>
@@ -135,6 +163,99 @@ const accountTypeLabel = (type?: string) => {
       return t('profile.account_type_prestataire')
     default:
       return type || t('profile.none')
+  }
+}
+
+type TotpStatus = {
+  enabled?: boolean
+  enrollmentRequired?: boolean
+  userConfigurable?: boolean
+  orgDefaultEnabled?: boolean
+  passwordLogin?: boolean
+}
+
+const { data: totpData, refresh: refreshTotp } = await useFetch<{ data?: TotpStatus }>('/api/org/users/me/2fa', { immediate: canLoad })
+const totpStatus = computed(() => totpData.value?.data ?? null)
+
+const show2faSection = computed(() => {
+  const s = totpStatus.value
+  if (!s?.passwordLogin) return false
+  if (!s.userConfigurable && !s.orgDefaultEnabled) return false
+  return true
+})
+
+const canEnable = computed(() => !totpStatus.value?.enabled && (totpStatus.value?.userConfigurable || totpStatus.value?.enrollmentRequired))
+const canDisable = computed(() => Boolean(totpStatus.value?.enabled && totpStatus.value?.userConfigurable))
+
+const wizardOpen = ref(false)
+const wizardMode = ref<'enable' | 'disable'>('enable')
+const confirmPassword = ref('')
+const totpMessage = ref('')
+const totpError = ref(false)
+
+const {
+  manualSecret,
+  totpCode,
+  backupCodes,
+  qrCodeDataUrl,
+  loadSetup,
+  reset: resetTotpSetup
+} = useTwoFactorSetup()
+
+const wizardConfirmLabel = computed(() =>
+  wizardMode.value === 'enable' ? t('profile.2fa.confirm_enable') : t('profile.2fa.confirm_disable')
+)
+
+const startEnable = async () => {
+  wizardMode.value = 'enable'
+  totpMessage.value = ''
+  totpError.value = false
+  resetTotpSetup()
+  wizardOpen.value = true
+  try {
+    await loadSetup('/api/org/users/me/2fa/setup')
+  } catch {
+    totpError.value = true
+    totpMessage.value = t('profile.2fa.error')
+  }
+}
+
+const startDisable = () => {
+  wizardMode.value = 'disable'
+  totpMessage.value = ''
+  totpError.value = false
+  resetTotpSetup()
+  confirmPassword.value = ''
+  wizardOpen.value = true
+}
+
+const confirmWizard = async () => {
+  totpMessage.value = ''
+  totpError.value = false
+  try {
+    if (wizardMode.value === 'enable') {
+      const res = await $fetch<{ data?: { backupCodes?: string[] } }>('/api/org/users/me/2fa/confirm', {
+        method: 'POST',
+        body: { code: totpCode.value, password: confirmPassword.value }
+      })
+      backupCodes.value = res?.data?.backupCodes ?? []
+      totpMessage.value = t('profile.2fa.saved')
+      if (backupCodes.value.length === 0) {
+        wizardOpen.value = false
+        await refreshTotp()
+      }
+    } else {
+      await $fetch('/api/org/users/me/2fa/disable', {
+        method: 'POST',
+        body: { code: totpCode.value, password: confirmPassword.value }
+      })
+      wizardOpen.value = false
+      totpMessage.value = t('profile.2fa.saved')
+      await refreshTotp()
+    }
+  } catch {
+    totpError.value = true
+    totpMessage.value = t('profile.2fa.error')
   }
 }
 </script>
@@ -228,5 +349,51 @@ const accountTypeLabel = (type?: string) => {
     grid-template-columns: 1fr;
     gap: var(--kore-space-2xs);
   }
+}
+
+.profile-2fa {
+  margin-top: var(--kore-space-lg);
+}
+
+.profile-2fa__status {
+  margin: 0 0 var(--kore-space-md);
+  color: var(--kore-text-muted);
+}
+
+.profile-2fa__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+}
+
+.profile-2fa__wizard {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.profile-2fa__qr {
+  margin: 0 auto;
+}
+
+.profile-2fa__secret {
+  text-align: center;
+  word-break: break-all;
+}
+
+.profile-2fa__backup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.profile-2fa__msg {
+  margin: var(--kore-space-sm) 0 0;
+  font-size: var(--kore-text-small);
+}
+
+.profile-2fa__msg--error {
+  color: var(--kore-error);
 }
 </style>

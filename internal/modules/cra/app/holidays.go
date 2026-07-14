@@ -28,7 +28,6 @@ func (s *Service) PrefillPublicHolidays(ctx context.Context, tenant kernel.Tenan
 		return 0, err
 	}
 	holidays := calendar.PublicHolidayDates(year, countryCode)
-	capacity := s.settingsForUser(ctx, tenant, userID).DayCapacityMinutes
 	weekStartDay := s.weekStartDayForUser(ctx, tenant, userID)
 
 	var proposed []domain.TimeLine
@@ -50,14 +49,16 @@ func (s *Service) PrefillPublicHolidays(ctx context.Context, tenant kernel.Tenan
 			WeekEntryID: week.ID,
 			Source:      domain.SourceRef{Type: "holiday", ID: day.Format("2006-01-02")},
 			Day:         day,
-			Duration:    kernel.Duration{Minutes: capacity},
+			Duration:    kernel.Duration{Minutes: 0},
 			Comment:     "Jour férié",
+			Billable:    false,
 			Origin:      domain.OriginPrefill,
 		})
 	}
 	if len(proposed) == 0 {
 		return 0, nil
 	}
+	capacity := s.settingsForUser(ctx, tenant, userID).DayCapacityMinutes
 	byWeek := map[domain.WeekNumber][]domain.TimeLine{}
 	for _, line := range proposed {
 		weekNum, err := domain.MonthWeekNumber(line.Day.UTC(), month, weekStartDay)

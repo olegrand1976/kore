@@ -39,6 +39,14 @@
           :placeholder="$t('settings.cra.cra_mail_recipients_hint')"
         />
 
+        <fieldset class="cra-settings-form__types">
+          <legend>{{ $t('settings.cra.task_types_enabled') }}</legend>
+          <label v-for="opt in taskTypeOptions" :key="opt.value" class="cra-settings-form__check">
+            <input v-model="taskTypesEnabled" type="checkbox" :value="opt.value">
+            {{ opt.label }}
+          </label>
+        </fieldset>
+
         <p class="hint">{{ $t('settings.cra.week_start_hint') }}</p>
         <AppButton variant="primary" size="sm" type="submit" :disabled="saving">
           {{ $t('common.save') }}
@@ -62,6 +70,7 @@ type SocieteRow = {
   craMailAuto?: boolean
   craMailRecipients?: string[]
   weekSubmitPolicy?: string
+  taskTypesEnabled?: string[]
 }
 
 const societes = ref<SocieteRow[]>([])
@@ -71,6 +80,7 @@ const dayCapacityMinutes = ref(480)
 const craMailAuto = ref(false)
 const craMailRecipientsText = ref('')
 const weekSubmitPolicy = ref('warn')
+const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const saving = ref(false)
 const message = ref('')
 const isError = ref(false)
@@ -85,12 +95,22 @@ const weekDayOptions = computed(() => [
   { value: 0, label: t('settings.cra.weekday_sun') }
 ])
 
+const taskTypeOptions = computed(() => [
+  { value: 'manual', label: t('cra.source_manual') },
+  { value: 'interne', label: t('cra.source_internal') },
+  { value: 'formation', label: t('cra.source_training') },
+  { value: 'mission', label: t('cra.source_mission') }
+])
+
 const applyRow = (row?: SocieteRow) => {
   weekStartDay.value = row?.weekStartDay ?? 1
   dayCapacityMinutes.value = row?.dayCapacityMinutes ?? 480
   craMailAuto.value = row?.craMailAuto ?? false
   craMailRecipientsText.value = (row?.craMailRecipients ?? []).join('\n')
   weekSubmitPolicy.value = row?.weekSubmitPolicy ?? 'warn'
+  taskTypesEnabled.value = row?.taskTypesEnabled?.length
+    ? [...row.taskTypesEnabled]
+    : ['manual', 'interne', 'formation', 'mission']
 }
 
 const loadSocietes = async () => {
@@ -102,7 +122,8 @@ const loadSocietes = async () => {
     dayCapacityMinutes: s.dayCapacityMinutes ?? 480,
     craMailAuto: s.craMailAuto ?? false,
     craMailRecipients: s.craMailRecipients ?? [],
-    weekSubmitPolicy: s.weekSubmitPolicy ?? 'warn'
+    weekSubmitPolicy: s.weekSubmitPolicy ?? 'warn',
+    taskTypesEnabled: s.taskTypesEnabled ?? []
   }))
   if (!selectedSocieteId.value && societes.value.length > 0) {
     selectedSocieteId.value = societes.value[0].id
@@ -130,7 +151,8 @@ const save = async () => {
           .split(/[\n,;]+/)
           .map((entry) => entry.trim())
           .filter(Boolean),
-        weekSubmitPolicy: weekSubmitPolicy.value
+        weekSubmitPolicy: weekSubmitPolicy.value,
+        taskTypesEnabled: taskTypesEnabled.value
       }
     })
     message.value = t('settings.cra.saved')
@@ -177,6 +199,20 @@ await loadSocietes()
   display: flex;
   align-items: center;
   gap: var(--kore-space-sm);
+}
+
+.cra-settings-form__types {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.cra-settings-form__types legend {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  margin-bottom: var(--kore-space-xs);
 }
 
 .hint {

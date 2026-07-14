@@ -27,6 +27,15 @@ var (
 	ErrAccessTokenExpired        = errors.New("expired access token")
 	ErrAccessTokenUsed           = errors.New("used access token")
 	ErrInvalidEmail              = errors.New("invalid email")
+	Err2FANotEnabled             = errors.New("2fa not enabled")
+	Err2FAAlreadyEnabled         = errors.New("2fa already enabled")
+	Err2FAInvalidCode            = errors.New("invalid 2fa code")
+	Err2FAChallengeExpired       = errors.New("2fa challenge expired")
+	Err2FAPasswordRequired       = errors.New("password required")
+	Err2FAPolicyForbidden        = errors.New("2fa policy forbids this action")
+	Err2FAEnrollmentRequired     = errors.New("2fa enrollment required")
+	Err2FAEnrollmentTokenInvalid = errors.New("invalid 2fa enrollment token")
+	Err2FARateLimited            = errors.New("too many 2fa attempts")
 )
 
 var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)
@@ -61,18 +70,22 @@ func (a ActivationPeriod) IsActive(now time.Time) bool {
 }
 
 type User struct {
-	ID           uuid.UUID
-	TenantID     kernel.TenantID
-	EquipeID     *uuid.UUID
-	Login        Login
-	Prenom       string
-	Nom          string
-	Email        string
-	PasswordHash string
-	Profile      Profile
-	Active       bool
-	Period       ActivationPeriod
-	DeletedAt    *time.Time
+	ID                    uuid.UUID
+	TenantID              kernel.TenantID
+	EquipeID              *uuid.UUID
+	Login                 Login
+	Prenom                string
+	Nom                   string
+	Email                 string
+	PasswordHash          string
+	Profile               Profile
+	Active                bool
+	Period                ActivationPeriod
+	DeletedAt             *time.Time
+	TotpEnabled           bool
+	TotpEnrollmentRequired bool
+	TotpSecretEncrypted   string
+	TotpEnabledAt         *time.Time
 }
 
 type IdentityProvider struct {
@@ -108,8 +121,11 @@ type Societe struct {
 	DayCapacityMinutes int             `json:"dayCapacityMinutes"`
 	CraMailAuto        bool            `json:"craMailAuto"`
 	CraMailRecipients  []string        `json:"craMailRecipients,omitempty"`
-	WeekSubmitPolicy   string          `json:"weekSubmitPolicy"`
-	Adresse            string          `json:"adresse,omitempty"`
+	WeekSubmitPolicy      string   `json:"weekSubmitPolicy"`
+	TaskTypesEnabled      []string `json:"taskTypesEnabled,omitempty"`
+	TotpDefaultEnabled    bool     `json:"totpDefaultEnabled"`
+	TotpUserConfigurable  bool   `json:"totpUserConfigurable"`
+	Adresse               string `json:"adresse,omitempty"`
 	Siret              string          `json:"siret,omitempty"`
 	URLTenant          string          `json:"urlTenant,omitempty"`
 }
@@ -117,6 +133,15 @@ type Societe struct {
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
 const DefaultDayCapacityMinutes = 480
 const DefaultWeekSubmitPolicy = "warn"
+
+var DefaultTaskTypesEnabled = []string{"manual", "interne", "formation", "mission"}
+
+func EffectiveTaskTypesEnabled(types []string) []string {
+	if len(types) == 0 {
+		return append([]string(nil), DefaultTaskTypesEnabled...)
+	}
+	return types
+}
 
 type Site struct {
 	ID        uuid.UUID

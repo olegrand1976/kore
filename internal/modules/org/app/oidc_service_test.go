@@ -102,6 +102,9 @@ func (s *oidcRepoStub) ResolveUserEmails(context.Context, kernel.TenantID, []uui
 func (s *oidcRepoStub) ResolveSocieteIDForUser(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
+func (s *oidcRepoStub) ResolveSocieteIDForEquipe(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
 func (s *oidcRepoStub) ListSocietesCraMailAuto(context.Context) ([]ports.CraMailReminderTarget, error) {
 	return nil, nil
 }
@@ -142,6 +145,25 @@ func (s *oidcRepoStub) SaveAccessToken(context.Context, string, kernel.TenantID,
 }
 func (s *oidcRepoStub) ConsumeAccessToken(context.Context, string, time.Time) (ports.AccessTokenRow, bool, error) {
 	return ports.AccessTokenRow{}, false, nil
+}
+func (s *oidcRepoStub) UpdateUserTotp(context.Context, domain.User) error { return nil }
+func (s *oidcRepoStub) SaveTotpBackupCodes(context.Context, kernel.TenantID, uuid.UUID, []string) error {
+	return nil
+}
+func (s *oidcRepoStub) ConsumeTotpBackupCode(context.Context, kernel.TenantID, uuid.UUID, string, time.Time) (bool, error) {
+	return false, nil
+}
+func (s *oidcRepoStub) DeleteTotpBackupCodes(context.Context, kernel.TenantID, uuid.UUID) error {
+	return nil
+}
+func (s *oidcRepoStub) ListUnusedTotpBackupCodeHashes(context.Context, kernel.TenantID, uuid.UUID) ([]string, error) {
+	return nil, nil
+}
+func (s *oidcRepoStub) MarkTotpEnrollmentRequiredForSocieteUsers(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (s *oidcRepoStub) ClearTotpEnrollmentRequiredForSocieteUsers(context.Context, kernel.TenantID, uuid.UUID) error {
+	return nil
 }
 
 type entitlementStub struct {

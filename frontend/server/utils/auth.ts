@@ -3,6 +3,18 @@ type AuthTokenPayload = {
   refreshToken?: string
   AccessToken?: string
   RefreshToken?: string
+  requires2FA?: boolean
+  Requires2FA?: boolean
+  requires2FAEnrollment?: boolean
+  Requires2FAEnrollment?: boolean
+}
+
+export function isPartialAuth(data: AuthTokenPayload | undefined): boolean {
+  if (!data) return false
+  return Boolean(
+    data.requires2FA || data.Requires2FA ||
+    data.requires2FAEnrollment || data.Requires2FAEnrollment
+  )
 }
 
 export function extractAuthTokens(data: AuthTokenPayload | undefined) {

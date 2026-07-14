@@ -13,6 +13,7 @@
     table { width: 100%; border-collapse: collapse; margin: 16px 0; }
     th, td { border: 1px solid var(--kore-border); padding: 8px; text-align: left; }
     th { background: #f1f3f6; color: var(--kore-brand-navy); font-size: 9pt; }
+    .info-table th { width: 28%; font-weight: 600; }
     .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--kore-border); font-size: 8pt; color: var(--kore-text-muted); }
     .kore-badge { color: var(--kore-brand-gold); font-weight: bold; }
   </style>
@@ -26,6 +27,17 @@
       Période : {{ .Month }} · Statut : {{ .Status }}
     </div>
   </div>
+  <h2 class="title">Informations commerciales</h2>
+  <table class="info-table">
+    <tbody>
+      {{ if .Client }}<tr><th>Client</th><td>{{ .Client }}</td></tr>{{ end }}
+      {{ if .Mission }}<tr><th>Mission</th><td>{{ .Mission }}</td></tr>{{ end }}
+      {{ if .Description }}<tr><th>Description</th><td>{{ .Description }}</td></tr>{{ end }}
+      {{ if .Technologies }}<tr><th>Technologies</th><td>{{ .Technologies }}</td></tr>{{ end }}
+      {{ if .Lieu }}<tr><th>Lieu</th><td>{{ .Lieu }}</td></tr>{{ end }}
+      {{ if .ResponsableClient }}<tr><th>Responsable client</th><td>{{ .ResponsableClient }}</td></tr>{{ end }}
+    </tbody>
+  </table>
   <h2 class="title">Détail des prestations</h2>
   <table>
     <thead>

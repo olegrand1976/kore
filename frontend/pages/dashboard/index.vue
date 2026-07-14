@@ -47,6 +47,17 @@
         to="/cra"
       />
       <AppKpiCard
+        v-if="showModule('cra') && stats.craRequired && stats.craPrefillRatio != null"
+        icon="auto_fix_high"
+        :tone="stats.craPrefillLow ? 'warn' : 'success'"
+        :loading="statsPending"
+        :error="statErrors.cra"
+        :value="`${stats.craPrefillRatio}%`"
+        :label="$t('dashboard.cra_prefill_ratio')"
+        :hint="stats.craPrefillLow ? $t('dashboard.cra_prefill_low') : $t('dashboard.cra_prefill_ok')"
+        to="/cra"
+      />
+      <AppKpiCard
         v-if="showModule('conges') && !canValidateConges"
         icon="event"
         tone="warn"

@@ -9,6 +9,7 @@ import (
 	"github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
+	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/pkg/kernel"
@@ -23,6 +24,8 @@ type Service struct {
 	pdf      ports.PDFRenderer
 	clock    ports.Clock
 	calendar ports.SocieteCalendarReader
+	notifier notifports.TransactionalNotifier
+	emails   ports.UserEmailResolver
 }
 
 func NewService(repo ports.CRARepository, appCache cache.Cache, keys cache.KeyBuilder) *Service {
@@ -52,6 +55,16 @@ func (s *Service) WithClock(clock ports.Clock) *Service {
 func (s *Service) WithCalendarReader(reader ports.SocieteCalendarReader) *Service {
 	if reader != nil {
 		s.calendar = reader
+	}
+	return s
+}
+
+func (s *Service) WithRejectNotifier(notifier notifports.TransactionalNotifier, resolver ports.UserEmailResolver) *Service {
+	if notifier != nil {
+		s.notifier = notifier
+	}
+	if resolver != nil {
+		s.emails = resolver
 	}
 	return s
 }

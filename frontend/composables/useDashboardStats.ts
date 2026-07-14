@@ -4,6 +4,8 @@ import {
   consumptionPct,
   craCurrentMonthStatus,
   craMonthSeries,
+  craPrefillRatioForMonth,
+  isCraMonthIncomplete,
   countLeaveByStatus,
   countTmaOpen,
   leaveStatusSeries,
@@ -20,6 +22,8 @@ export type DashboardStats = {
   craCurrentStatus: string | null
   craRequired: boolean
   craAlert: boolean
+  craPrefillRatio: number | null
+  craPrefillLow: boolean
   leavePending: number
   tmaOpen: number
   tmaTotal: number
@@ -52,6 +56,8 @@ const emptyStats = (): DashboardStats => ({
   craCurrentStatus: null,
   craRequired: false,
   craAlert: false,
+  craPrefillRatio: null,
+  craPrefillLow: false,
   leavePending: 0,
   tmaOpen: 0,
   tmaTotal: 0,
@@ -109,14 +115,26 @@ export function useDashboardStats() {
           }
           try {
             const res = await $fetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
-            const items = (res?.data ?? []) as Array<{ status?: string; Status?: string; month?: string; Month?: string }>
+            const items = (res?.data ?? []) as Array<{
+              status?: string
+              Status?: string
+              month?: string
+              Month?: string
+              totalMinutes?: number
+              TotalMinutes?: number
+              weeksSubmitted?: number
+              WeeksSubmitted?: number
+              weeksTotal?: number
+              WeeksTotal?: number
+              prefillRatio?: number
+              PrefillRatio?: number
+            }>
             stats.craCurrentStatus = craCurrentMonthStatus(items)
             charts.craMonths = craMonthSeries(items, locale.value)
+            stats.craPrefillRatio = craPrefillRatioForMonth(items)
+            stats.craPrefillLow = stats.craPrefillRatio != null && stats.craPrefillRatio < 70
             if (required) {
-              const month = currentMonthKey()
-              const current = items.find((item) => (item.month ?? item.Month) === month)
-              const status = current?.status ?? current?.Status ?? 'Brouillon'
-              stats.craAlert = status !== 'Définitif'
+              stats.craAlert = isCraMonthIncomplete(items)
             }
           } catch {
             errors.cra = true

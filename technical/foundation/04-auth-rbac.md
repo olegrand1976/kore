@@ -24,6 +24,25 @@ Kore supporte un **dual-mode** (et plus) selon le client :
 - **Rate-limiting** (login, endpoints sensibles) : compteurs Redis à fenêtre glissante, préfixés `kore:{tenant}:ratelimit:...`.
 - Le service reste **stateless** (compatible autoscaling Cloud Run) : tout état de session partagé vit dans Redis, pas en mémoire locale.
 
+#### 2FA TOTP (login mot de passe)
+
+- **Périmètre v1** : login mot de passe web uniquement ; le SSO OIDC (§1.2) n'est pas modifié.
+- Après mot de passe valide :
+  - si 2FA activée → challenge TOTP (`requires2FA` + `challengeToken`, TTL Redis 5 min) ;
+  - si enrollment obligatoire (politique société) → wizard QR (`requires2FAEnrollment` + `enrollmentToken`, TTL 30 min).
+- Endpoints publics : `POST /api/v1/auth/2fa/verify`, `/auth/2fa/enrollment/setup`, `/auth/2fa/enrollment/confirm`.
+- Endpoints profil (JWT) : `GET/POST /api/v1/users/me/2fa/*` (setup, confirm, disable, status).
+- **Codes de secours** : 8 codes générés à l'activation (hash argon2id) ; utilisables à la place du TOTP au login.
+- **Politique société** (admin) : `totp_default_enabled`, `totp_user_configurable` via `PUT /api/v1/societes/{id}/settings`.
+- **Rate-limit** : 5 tentatives / 15 min par token (challenge ou enrollment).
+- **Chiffrement secrets TOTP** : AES-256-GCM ; clé `TOTP_ENCRYPTION_KEY` (32 octets, base64).
+
+| Variable | Description |
+| --- | --- |
+| `TOTP_ENCRYPTION_KEY` | Clé AES-256 (32 octets encodés base64). **Obligatoire** si `DEV_SEED_ENABLED=false`. |
+| | En dev local (`DEV_SEED_ENABLED=true`), dérivée de `JWT_SIGNING_KEY` si absente. |
+| | Génération : `openssl rand -base64 32` |
+
 ```mermaid
 sequenceDiagram
   participant U as Navigateur

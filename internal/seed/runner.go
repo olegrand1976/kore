@@ -486,13 +486,6 @@ func (r *Runner) ensureNotificationRules(ctx context.Context, tenant kernel.Tena
 			Frequency: notifdomain.FrequencyMorning,
 			Template:  "Nouvelle demande TMA : {{subject}}.",
 		},
-		{
-			TenantID:  tenant,
-			Code:      "cra-reminder",
-			Trigger:   "cra.reminder",
-			Frequency: notifdomain.FrequencyLastMondayOfMonth,
-			Template:  "Rappel : finalisez votre CRA du mois en cours.",
-		},
 	}
 	for _, rule := range rules {
 		existing, err := r.deps.Notifications.ListRules(ctx, tenant)

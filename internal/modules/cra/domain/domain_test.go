@@ -127,6 +127,23 @@ func TestIncompleteDaysInWeek(t *testing.T) {
 	}
 }
 
+func TestIncompleteDaysInWeek_SkipsHoliday(t *testing.T) {
+	month := Month("2026-07")
+	holiday := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
+	lines := []TimeLine{
+		{Day: holiday, Duration: kernel.Duration{Minutes: 0}, Source: SourceRef{Type: "holiday", ID: "2026-07-14"}},
+	}
+	missing, err := IncompleteDaysInWeek(month, 3, DefaultWeekStartDay, lines)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, day := range missing {
+		if day == "2026-07-14" {
+			t.Fatalf("holiday should not be incomplete: %v", missing)
+		}
+	}
+}
+
 func TestReject_FinalTimesheetFails(t *testing.T) {
 	ts := Timesheet{Status: StatusDefinitif}
 	if err := ts.Reject(time.Now(), uuid.New(), "too late"); err != ErrCRAAlreadyValidated {

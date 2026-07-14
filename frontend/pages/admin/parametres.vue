@@ -27,6 +27,14 @@
       >
         {{ $t('settings.tab_ia') }}
       </NuxtLink>
+      <NuxtLink
+        to="/admin/parametres/securite"
+        role="tab"
+        class="parametres-tab"
+        :class="{ 'parametres-tab--active': route.path.startsWith('/admin/parametres/securite') }"
+      >
+        {{ $t('settings.tab_securite') }}
+      </NuxtLink>
     </nav>
 
     <NuxtPage />

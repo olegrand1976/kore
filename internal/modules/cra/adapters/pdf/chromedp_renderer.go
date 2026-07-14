@@ -47,6 +47,7 @@ func htmlToPDF(ctx context.Context, html string) ([]byte, error) {
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
 	)
 	if chromePath := strings.TrimSpace(os.Getenv("CHROME_PATH")); chromePath != "" {
 		opts = append(opts, chromedp.ExecPath(chromePath))

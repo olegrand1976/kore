@@ -52,7 +52,25 @@
     "field_profile": "Profile",
     "account_type_interne": "Internal",
     "account_type_client": "Customer",
-    "account_type_prestataire": "Contractor"
+    "account_type_prestataire": "Contractor",
+    "2fa": {
+      "section_title": "Security",
+      "enabled": "Two-factor authentication enabled",
+      "disabled": "Two-factor authentication disabled",
+      "required_policy": "Required (company policy)",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "manual_secret": "Manual key",
+      "code_label": "6-digit code",
+      "password_label": "Current password",
+      "backup_title": "Backup codes — store them safely",
+      "continue": "Continue",
+      "confirm_enable": "Confirm activation",
+      "confirm_disable": "Confirm deactivation",
+      "saved": "2FA settings updated",
+      "error": "2FA error",
+      "not_available": "Not available for your account"
+    }
   },
   "brand": {
     "name": "Kore",
@@ -104,7 +122,20 @@
     "find_org": "Find my organization",
     "send_link": "Send me a link",
     "discovery_sent": "If this email is known, a link has been sent.",
-    "discovery_dev_hint": "Locally, emails are captured by"
+    "discovery_dev_hint": "Locally, emails are captured by",
+    "2fa": {
+      "title": "2FA verification",
+      "subtitle": "Enter the code from your authenticator app",
+      "code_label": "6-digit code",
+      "verify": "Verify",
+      "back": "Back",
+      "error": "Invalid or expired code",
+      "enrollment_title": "Set up 2FA",
+      "enrollment_subtitle": "Scan the QR code with your authenticator app",
+      "enrollment_intro": "Two-factor authentication is required for your organization.",
+      "enrollment_confirm": "Enable 2FA",
+      "setup_error": "Could not start 2FA setup"
+    }
   },
   "release_notes": {
     "open": "Open what's new",
@@ -141,6 +172,9 @@
     "cra_alert": "Your current month timesheet is not finalized. Please complete it.",
     "pending_validations": "Pending validations",
     "cra_current": "Current month timesheet",
+    "cra_prefill_ratio": "CRA prefill ratio",
+    "cra_prefill_low": "Below 70% target",
+    "cra_prefill_ok": "70% target met",
     "leave_pending": "My pending requests",
     "tma_open": "Open TMA requests",
     "tma_total_hint": "{n} request(s) total",
@@ -757,6 +791,7 @@
     "tab_conges": "Leave",
     "tab_cra": "Timesheets",
     "tab_ia": "Artificial intelligence",
+    "tab_securite": "Security",
     "ia": {
       "status_enabled": "AI enabled",
       "status_disabled": "AI disabled",
@@ -809,6 +844,7 @@
       "cra_mail_auto": "Automatic CRA email reminder",
       "cra_mail_recipients": "CRA email recipients",
       "cra_mail_recipients_hint": "admin{'@'}example.com, one email per line",
+      "task_types_enabled": "Enabled activity types",
       "weekday_mon": "Monday",
       "weekday_tue": "Tuesday",
       "weekday_wed": "Wednesday",
@@ -818,6 +854,16 @@
       "weekday_sun": "Sunday",
       "saved": "Timesheet settings saved",
       "save_error": "Could not save timesheet settings"
+    },
+    "securite": {
+      "societe": "Company",
+      "intro": "Configure two-factor authentication (TOTP) for company users.",
+      "totp_default_enabled": "Enable 2FA by default",
+      "totp_default_warning": "Users without 2FA will need to set up an authenticator app on next sign-in.",
+      "totp_user_configurable": "User can change setting",
+      "totp_user_configurable_hint": "When 2FA is not enabled by default, users can still opt in from their profile.",
+      "saved": "Security settings saved",
+      "error_save": "Could not save security settings"
     }
   },
   "fiche": {

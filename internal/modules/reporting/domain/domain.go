@@ -61,10 +61,11 @@ type PlanningSlot struct {
 }
 
 type BillingStats struct {
-	Period       kernel.Period
-	TotalAmount  int64
-	InvoiceCount int
-	Currency     string
+	Period        kernel.Period
+	TotalAmount   int64
+	InvoiceCount  int
+	Currency      string
+	BillableHours float64
 }
 
 type ReportResult struct {

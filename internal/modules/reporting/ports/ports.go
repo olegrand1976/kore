@@ -28,6 +28,10 @@ type BillingStatsQuery struct {
 	Period   kernel.Period
 }
 
+type CRABillableReader interface {
+	BillableHoursForMonth(ctx context.Context, tenant kernel.TenantID, month string) (float64, error)
+}
+
 type ReportingService interface {
 	GetGantt(ctx context.Context, q GanttQuery) (domain.GanttView, error)
 	GetPlanning(ctx context.Context, q PlanningQuery) (domain.PlanningView, error)

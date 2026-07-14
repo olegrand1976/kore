@@ -80,6 +80,7 @@
         :can-edit="canEdit"
         :saving="saving"
         :missions="missions"
+        :task-types="taskTypesEnabled"
         @save="onSaveWeek"
         @submit="onSubmitWeek"
       />
@@ -122,6 +123,7 @@ const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWee
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
+const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const missions = ref<Array<{ id: string; clientName?: string; clientId?: string }>>([])
 
 const loadOrgSettings = async () => {
@@ -131,10 +133,12 @@ const loadOrgSettings = async () => {
         weekStartDay?: number
         dayCapacityMinutes?: number
         weekSubmitPolicy?: string
+        taskTypesEnabled?: string[]
       }
       weekStartDay?: number
       dayCapacityMinutes?: number
       weekSubmitPolicy?: string
+      taskTypesEnabled?: string[]
     }>('/api/org/users/me/calendar-settings')
     const data = res.data ?? res
     const day = data.weekStartDay
@@ -148,10 +152,14 @@ const loadOrgSettings = async () => {
     if (policy === 'block' || policy === 'warn' || policy === 'none') {
       weekSubmitPolicy.value = policy
     }
+    if (Array.isArray(data.taskTypesEnabled) && data.taskTypesEnabled.length > 0) {
+      taskTypesEnabled.value = data.taskTypesEnabled
+    }
   } catch {
     weekStartDay.value = 1
     dayCapacityMinutes.value = 480
     weekSubmitPolicy.value = 'warn'
+    taskTypesEnabled.value = ['manual', 'interne', 'formation', 'mission']
   }
 }
 

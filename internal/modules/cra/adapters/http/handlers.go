@@ -319,7 +319,7 @@ func rejectTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.Han
 
 func listPrestations(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "cra", authx.ActionRead) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
+	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -26,7 +28,32 @@ func (s *Service) RejectTimesheet(ctx context.Context, cmd ports.RejectTimesheet
 	if err := ts.Reject(s.clock.Now(), cmd.ManagerID, reason); err != nil {
 		return err
 	}
-	return s.repo.Save(ctx, ts)
+	if err := s.repo.Save(ctx, ts); err != nil {
+		return err
+	}
+	s.notifyTimesheetRejected(ctx, ts, reason)
+	return nil
+}
+
+func (s *Service) notifyTimesheetRejected(ctx context.Context, ts domain.Timesheet, reason string) {
+	if s.notifier == nil || s.emails == nil {
+		return
+	}
+	recipients, err := s.emails.ResolveUserEmails(ctx, ts.TenantID, []uuid.UUID{ts.UserID})
+	if err != nil || len(recipients) == 0 {
+		return
+	}
+	subject := fmt.Sprintf("CRA %s rejeté", ts.Month)
+	body := fmt.Sprintf(
+		"Votre compte-rendu d'activité pour %s a été rejeté par votre manager.\n\nMotif : %s\n\nVous pouvez le corriger et le soumettre à nouveau.",
+		ts.Month,
+		reason,
+	)
+	_ = s.notifier.NotifyTransactional(ctx, notifports.TransactionalMessage{
+		Subject:    subject,
+		Body:       body,
+		Recipients: recipients,
+	})
 }
 
 func (s *Service) ValidateAll(ctx context.Context, cmd ports.ValidateAllCommand) (ports.ValidateAllResult, error) {

@@ -9,6 +9,7 @@ import (
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
+	"github.com/kore/kore/internal/platform/cryptox"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -89,6 +90,9 @@ func (r refreshUserRepo) ResolveUserEmails(context.Context, kernel.TenantID, []u
 func (r refreshUserRepo) ResolveSocieteIDForUser(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
+func (r refreshUserRepo) ResolveSocieteIDForEquipe(context.Context, kernel.TenantID, uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
 func (r refreshUserRepo) ListSocietesCraMailAuto(context.Context) ([]ports.CraMailReminderTarget, error) {
 	return nil, nil
 }
@@ -117,6 +121,25 @@ func (r refreshUserRepo) SaveAccessToken(context.Context, string, kernel.TenantI
 }
 func (r refreshUserRepo) ConsumeAccessToken(context.Context, string, time.Time) (ports.AccessTokenRow, bool, error) {
 	return ports.AccessTokenRow{}, false, nil
+}
+func (r refreshUserRepo) UpdateUserTotp(context.Context, domain.User) error { return nil }
+func (r refreshUserRepo) SaveTotpBackupCodes(context.Context, kernel.TenantID, uuid.UUID, []string) error {
+	return nil
+}
+func (r refreshUserRepo) ConsumeTotpBackupCode(context.Context, kernel.TenantID, uuid.UUID, string, time.Time) (bool, error) {
+	return false, nil
+}
+func (r refreshUserRepo) DeleteTotpBackupCodes(context.Context, kernel.TenantID, uuid.UUID) error {
+	return nil
+}
+func (r refreshUserRepo) ListUnusedTotpBackupCodeHashes(context.Context, kernel.TenantID, uuid.UUID) ([]string, error) {
+	return nil, nil
+}
+func (r refreshUserRepo) MarkTotpEnrollmentRequiredForSocieteUsers(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (r refreshUserRepo) ClearTotpEnrollmentRequiredForSocieteUsers(context.Context, kernel.TenantID, uuid.UUID) error {
+	return nil
 }
 
 func TestRefreshSession_reappliesPlatformAdminRole(t *testing.T) {
@@ -149,6 +172,7 @@ func TestRefreshSession_reappliesPlatformAdminRole(t *testing.T) {
 		nil,
 		nil,
 		[]string{"ADM_admin"},
+		cryptox.DevKeyFromJWTSigningKey("test-signing-key"),
 	)
 
 	pair, err := svc.RefreshSession(context.Background(), initial.RefreshToken)

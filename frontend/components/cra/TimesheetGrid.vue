@@ -30,6 +30,7 @@
       :disabled="!canEdit"
       :saving="saving"
       :missions="missions"
+      :task-types="taskTypes"
       @save="onSave"
       @submit="onSubmit"
     />
@@ -50,6 +51,7 @@ const props = defineProps<{
   canEdit: boolean
   saving?: boolean
   missions?: MissionSummary[]
+  taskTypes?: string[]
 }>()
 
 const emit = defineEmits<{

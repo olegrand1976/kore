@@ -32,6 +32,9 @@ func RegisterRoutes(
 	leaveBootstrap ports.LeaveTypeBootstrapper,
 ) {
 	r.Post("/auth/login", loginHandler(users))
+	r.Post("/auth/2fa/verify", verify2FAHandler(users))
+	r.Post("/auth/2fa/enrollment/setup", setup2FAEnrollmentHandler(users))
+	r.Post("/auth/2fa/enrollment/confirm", verify2FAEnrollmentHandler(users))
 	r.Post("/auth/refresh", refreshHandler(users))
 	r.Post("/auth/logout", logoutHandler())
 	r.Post("/auth/tenant-discovery/request", tenantDiscoveryRequestHandler(tenantAccess))
@@ -52,6 +55,10 @@ func RegisterRoutes(
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
+		pr.Get("/users/me/2fa", get2FAStatusHandler(users))
+		pr.Post("/users/me/2fa/setup", setup2FAHandler(users))
+		pr.Post("/users/me/2fa/confirm", confirm2FAHandler(users))
+		pr.Post("/users/me/2fa/disable", disable2FAHandler(users))
 		pr.Get("/users/me/release-notes", getReleaseNotesPreferences(users))
 		pr.Get("/users/me/profile", getMeProfile(users))
 		pr.Get("/users/me/calendar-settings", getUserCalendarSettings(org))
@@ -470,11 +477,14 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			return
 		}
 		var req struct {
-			WeekStartDay       *int      `json:"weekStartDay"`
-			DayCapacityMinutes *int      `json:"dayCapacityMinutes"`
-			CraMailAuto        *bool     `json:"craMailAuto"`
-			CraMailRecipients  *[]string `json:"craMailRecipients"`
-			WeekSubmitPolicy   *string   `json:"weekSubmitPolicy"`
+			WeekStartDay         *int      `json:"weekStartDay"`
+			DayCapacityMinutes   *int      `json:"dayCapacityMinutes"`
+			CraMailAuto          *bool     `json:"craMailAuto"`
+			CraMailRecipients    *[]string `json:"craMailRecipients"`
+			WeekSubmitPolicy     *string   `json:"weekSubmitPolicy"`
+			TaskTypesEnabled     *[]string `json:"taskTypesEnabled"`
+			TotpDefaultEnabled   *bool     `json:"totpDefaultEnabled"`
+			TotpUserConfigurable *bool     `json:"totpUserConfigurable"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -482,13 +492,16 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 		}
 		identity, _ := authx.FromContext(r.Context())
 		societe, err := org.UpdateSocieteSettings(r.Context(), ports.UpdateSocieteSettingsCommand{
-			TenantID:           identity.TenantID,
-			SocieteID:          societeID,
-			WeekStartDay:       req.WeekStartDay,
-			DayCapacityMinutes: req.DayCapacityMinutes,
-			CraMailAuto:        req.CraMailAuto,
-			CraMailRecipients:  req.CraMailRecipients,
-			WeekSubmitPolicy:   req.WeekSubmitPolicy,
+			TenantID:             identity.TenantID,
+			SocieteID:            societeID,
+			WeekStartDay:         req.WeekStartDay,
+			DayCapacityMinutes:   req.DayCapacityMinutes,
+			CraMailAuto:          req.CraMailAuto,
+			CraMailRecipients:    req.CraMailRecipients,
+			WeekSubmitPolicy:     req.WeekSubmitPolicy,
+			TaskTypesEnabled:     req.TaskTypesEnabled,
+			TotpDefaultEnabled:   req.TotpDefaultEnabled,
+			TotpUserConfigurable: req.TotpUserConfigurable,
 		})
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())

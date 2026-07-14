@@ -121,6 +121,7 @@ type TimesheetSummary struct {
 	WeeksSubmitted int             `json:"weeksSubmitted"`
 	WeeksTotal     int             `json:"weeksTotal"`
 	RejectReason   string          `json:"rejectReason,omitempty"`
+	PrefillRatio   int             `json:"prefillRatio"`
 	UpdatedAt      time.Time       `json:"updatedAt"`
 }
 
@@ -171,13 +172,16 @@ func ApplyProposedLines(week *WeekEntry, proposed []TimeLine, dayCapacityMinutes
 			}
 			existing.Duration = p.Duration
 			existing.Comment = p.Comment
+			existing.Billable = p.Billable
 			existing.Origin = OriginPrefill
 			continue
 		}
 		if p.ID == uuid.Nil {
 			p.ID = uuid.New()
 		}
-		p.Billable = true
+		if p.Source.Type != "holiday" {
+			p.Billable = true
+		}
 		p.Origin = OriginPrefill
 		week.Lines = append(week.Lines, p)
 	}
@@ -206,7 +210,11 @@ func IncompleteDaysInWeek(month Month, weekNumber WeekNumber, weekStartDay int, 
 		return nil, err
 	}
 	totals := make(map[string]int)
+	holidayDays := make(map[string]struct{})
 	for _, line := range lines {
+		if line.Source.Type == "holiday" {
+			holidayDays[line.Day.Format("2006-01-02")] = struct{}{}
+		}
 		if line.Duration.Minutes <= 0 {
 			continue
 		}
@@ -214,6 +222,9 @@ func IncompleteDaysInWeek(month Month, weekNumber WeekNumber, weekStartDay int, 
 	}
 	var missing []string
 	for _, day := range days {
+		if _, ok := holidayDays[day]; ok {
+			continue
+		}
 		if totals[day] <= 0 {
 			missing = append(missing, day)
 		}
@@ -249,7 +260,7 @@ func DetectAbsenceConflict(lines []TimeLine) error {
 
 func isAbsenceSource(s SourceRef) bool {
 	switch s.Type {
-	case "absence", "conge", "leave":
+	case "absence", "conge", "leave", "holiday":
 		return true
 	default:
 		return false

@@ -3,6 +3,7 @@ package pdf
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
@@ -35,6 +36,15 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 	}
 
 	brand.Lines = buildLinesFromTimesheet(ts)
+	info := ts.CommercialInfo
+	brand.Client = info.Client
+	brand.Mission = info.Mission
+	brand.Description = info.Description
+	brand.Lieu = info.Lieu
+	brand.ResponsableClient = info.ResponsableClient
+	if len(info.Technologies) > 0 {
+		brand.Technologies = strings.Join(info.Technologies, ", ")
+	}
 	content, err := r.inner.Render(ctx, ts, brand)
 	if err != nil {
 		return domain.Document{}, err

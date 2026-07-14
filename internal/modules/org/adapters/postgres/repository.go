@@ -50,9 +50,10 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		INSERT INTO org.societes (
 			id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
 			day_capacity_minutes, cra_mail_auto, week_submit_policy,
-			adresse, siret, url_tenant
+			adresse, siret, url_tenant, cra_mail_recipients,
+			totp_default_enabled, totp_user_configurable, task_types_enabled
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		ON CONFLICT (id) DO UPDATE SET
 			raison_sociale = EXCLUDED.raison_sociale,
 			devise = EXCLUDED.devise,
@@ -63,13 +64,18 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 			week_submit_policy = EXCLUDED.week_submit_policy,
 			adresse = EXCLUDED.adresse,
 			siret = EXCLUDED.siret,
-			url_tenant = EXCLUDED.url_tenant
+			url_tenant = EXCLUDED.url_tenant,
+			cra_mail_recipients = EXCLUDED.cra_mail_recipients,
+			totp_default_enabled = EXCLUDED.totp_default_enabled,
+			totp_user_configurable = EXCLUDED.totp_user_configurable,
+			task_types_enabled = EXCLUDED.task_types_enabled
 	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise, pays,
 		normalizeWeekStartDay(s.WeekStartDay),
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
-		s.Adresse, s.Siret, s.URLTenant)
+		s.Adresse, s.Siret, s.URLTenant, encodeMailRecipients(s.CraMailRecipients),
+		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
 	return err
 }
 
@@ -78,7 +84,8 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		UPDATE org.societes
 		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
 			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11,
-			cra_mail_recipients = $12
+			cra_mail_recipients = $12, totp_default_enabled = $13, totp_user_configurable = $14,
+			task_types_enabled = $15
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
 		s.Adresse, s.Siret, s.URLTenant,
@@ -86,7 +93,8 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
-		encodeMailRecipients(s.CraMailRecipients))
+		encodeMailRecipients(s.CraMailRecipients),
+		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
 	return err
 }
 
@@ -126,7 +134,9 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
-		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
+		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
+		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
+		       COALESCE(task_types_enabled, '[]')
 		FROM org.societes WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
 	return scanSociete(row)
@@ -140,7 +150,9 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 		       COALESCE(cra_mail_auto, FALSE),
 		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
-		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, '')
+		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
+		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
+		       COALESCE(task_types_enabled, '[]')
 		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
 	`, tenant.UUID())
 	if err != nil {
@@ -163,12 +175,13 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
-	var craMailAuto bool
+	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
 	var weekSubmitPolicy string
 	var recipientsRaw []byte
+	var taskTypesRaw []byte
 	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
-		&adresse, &siret, &urlTenant)
+		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw)
 	if err != nil {
 		return domain.Societe{}, err
 	}
@@ -179,10 +192,13 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
 	s.CraMailAuto = craMailAuto
 	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
+	s.TaskTypesEnabled = decodeTaskTypes(taskTypesRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
+	s.TotpDefaultEnabled = totpDefaultEnabled
+	s.TotpUserConfigurable = totpUserConfigurable
 	return s, nil
 }
 
@@ -191,12 +207,13 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
-	var craMailAuto bool
+	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
 	var weekSubmitPolicy string
 	var recipientsRaw []byte
+	var taskTypesRaw []byte
 	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &recipientsRaw,
-		&adresse, &siret, &urlTenant); err != nil {
+		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw); err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
@@ -206,10 +223,13 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	s.DayCapacityMinutes = normalizeDayCapacityMinutes(dayCapacity)
 	s.CraMailAuto = craMailAuto
 	s.CraMailRecipients = decodeMailRecipients(recipientsRaw)
+	s.TaskTypesEnabled = decodeTaskTypes(taskTypesRaw)
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.Adresse = adresse
 	s.Siret = siret
 	s.URLTenant = urlTenant
+	s.TotpDefaultEnabled = totpDefaultEnabled
+	s.TotpUserConfigurable = totpUserConfigurable
 	return s, nil
 }
 
@@ -337,10 +357,12 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO org.users (
-			id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil,
+			date_activation, date_expiration, active,
+			totp_enabled, totp_enrollment_required
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), u.Prenom, u.Nom, nullString(u.Email), u.PasswordHash, string(u.Profile),
-		u.Period.Activation, u.Period.Expiration, u.Active)
+		u.Period.Activation, u.Period.Expiration, u.Active, u.TotpEnabled, u.TotpEnrollmentRequired)
 	return err
 }
 
@@ -700,6 +722,22 @@ func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.
 	return societeID, nil
 }
 
+func (r *Repository) ResolveSocieteIDForEquipe(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) (uuid.UUID, error) {
+	var societeID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.equipes e
+		JOIN org.applications a ON a.id = e.application_id
+		JOIN org.services sv ON sv.id = a.service_id
+		JOIN org.sites st ON st.id = sv.site_id
+		WHERE e.tenant_id = $1 AND e.id = $2
+	`, tenant.UUID(), equipeID).Scan(&societeID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return societeID, nil
+}
+
 func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var u domain.User
 	var tenantID uuid.UUID
@@ -707,8 +745,11 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var profile string
 	var email *string
 	var expiration *time.Time
+	var totpSecret *string
+	var totpEnabledAt *time.Time
 	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &u.Prenom, &u.Nom, &email, &u.PasswordHash, &profile,
-		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt)
+		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt,
+		&u.TotpEnabled, &u.TotpEnrollmentRequired, &totpSecret, &totpEnabledAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, fmt.Errorf("user not found: %w", err)
@@ -722,10 +763,15 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	}
 	u.Profile = domain.Profile(profile)
 	u.Period.Expiration = expiration
+	if totpSecret != nil {
+		u.TotpSecretEncrypted = *totpSecret
+	}
+	u.TotpEnabledAt = totpEnabledAt
 	return u, nil
 }
 
-const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, deleted_at`
+const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, deleted_at,
+totp_enabled, totp_enrollment_required, totp_secret_encrypted, totp_enabled_at`
 
 func (r *Repository) SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error {
 	_, err := r.pool.Exec(ctx, `
@@ -888,6 +934,150 @@ func encodeMailRecipients(recipients []string) []byte {
 	}
 	data, _ := json.Marshal(recipients)
 	return data
+}
+
+func decodeTaskTypes(raw []byte) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var out []string
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+func encodeTaskTypes(types []string) []byte {
+	if types == nil {
+		types = []string{}
+	}
+	data, _ := json.Marshal(types)
+	return data
+}
+
+func (r *Repository) UpdateUserTotp(ctx context.Context, u domain.User) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users
+		SET totp_enabled = $3,
+		    totp_enrollment_required = $4,
+		    totp_secret_encrypted = $5,
+		    totp_enabled_at = $6
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, u.TenantID.UUID(), u.ID, u.TotpEnabled, u.TotpEnrollmentRequired, nullString(u.TotpSecretEncrypted), u.TotpEnabledAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+	}
+	return nil
+}
+
+func (r *Repository) SaveTotpBackupCodes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, codeHashes []string) error {
+	if err := r.DeleteTotpBackupCodes(ctx, tenant, userID); err != nil {
+		return err
+	}
+	for _, hash := range codeHashes {
+		_, err := r.pool.Exec(ctx, `
+			INSERT INTO org.user_totp_backup_codes (id, tenant_id, user_id, code_hash)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.New(), tenant.UUID(), userID, hash)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) ConsumeTotpBackupCode(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, codeHash string, usedAt time.Time) (bool, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.user_totp_backup_codes
+		SET used_at = $4
+		WHERE tenant_id = $1 AND user_id = $2 AND code_hash = $3 AND used_at IS NULL
+	`, tenant.UUID(), userID, codeHash, usedAt)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repository) DeleteTotpBackupCodes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `
+		DELETE FROM org.user_totp_backup_codes
+		WHERE tenant_id = $1 AND user_id = $2
+	`, tenant.UUID(), userID)
+	return err
+}
+
+func (r *Repository) ListUnusedTotpBackupCodeHashes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT code_hash FROM org.user_totp_backup_codes
+		WHERE tenant_id = $1 AND user_id = $2 AND used_at IS NULL
+	`, tenant.UUID(), userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var hash string
+		if err := rows.Scan(&hash); err != nil {
+			return nil, err
+		}
+		out = append(out, hash)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) MarkTotpEnrollmentRequiredForSocieteUsers(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) (int, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.users u
+		SET totp_enrollment_required = TRUE
+		WHERE u.tenant_id = $1
+		  AND u.active = TRUE
+		  AND u.deleted_at IS NULL
+		  AND COALESCE(u.totp_enabled, FALSE) = FALSE
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.applications a ON a.id = e.application_id
+		      JOIN org.services sv ON sv.id = a.service_id
+		      JOIN org.sites st ON st.id = sv.site_id
+		      WHERE e.id = u.equipe_id AND st.societe_id = $2
+		    )
+		    OR (
+		      u.equipe_id IS NULL
+		      AND (SELECT id FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale LIMIT 1) = $2
+		    )
+		  )
+	`, tenant.UUID(), societeID)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+func (r *Repository) ClearTotpEnrollmentRequiredForSocieteUsers(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE org.users u
+		SET totp_enrollment_required = FALSE
+		WHERE u.tenant_id = $1
+		  AND COALESCE(u.totp_enabled, FALSE) = FALSE
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.applications a ON a.id = e.application_id
+		      JOIN org.services sv ON sv.id = a.service_id
+		      JOIN org.sites st ON st.id = sv.site_id
+		      WHERE e.id = u.equipe_id AND st.societe_id = $2
+		    )
+		    OR (
+		      u.equipe_id IS NULL
+		      AND (SELECT id FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale LIMIT 1) = $2
+		    )
+		  )
+	`, tenant.UUID(), societeID)
+	return err
 }
 
 var _ ports.OrganizationRepository = (*Repository)(nil)

@@ -4,7 +4,20 @@ import { leaveDayCount, pickFrom, pickLeaveTypeCode, pickLeaveTypeLabel, pickSor
 import type { TmaDemand } from '~/composables/useTma'
 import { currentMonthKey } from '~/composables/useCraStatus'
 
-type CraTimesheet = { month?: string; Month?: string; status?: string; Status?: string }
+type CraTimesheet = {
+  month?: string
+  Month?: string
+  status?: string
+  Status?: string
+  totalMinutes?: number
+  TotalMinutes?: number
+  weeksSubmitted?: number
+  WeeksSubmitted?: number
+  weeksTotal?: number
+  WeeksTotal?: number
+  prefillRatio?: number
+  PrefillRatio?: number
+}
 
 export function pickLeaveStatus(item: LeaveRequest) {
   return item.status ?? item.Status ?? ''
@@ -108,6 +121,27 @@ export function craCurrentMonthStatus(items: CraTimesheet[]) {
   const key = currentMonthKey()
   const current = items.find((ts) => (ts.month ?? ts.Month) === key)
   return current?.status ?? current?.Status ?? null
+}
+
+export function isCraMonthIncomplete(items: CraTimesheet[]) {
+  const key = currentMonthKey()
+  const current = items.find((ts) => (ts.month ?? ts.Month) === key)
+  if (!current) return true
+  const status = current.status ?? current.Status ?? 'Brouillon'
+  if (status === 'Définitif') return false
+  const submitted = current.weeksSubmitted ?? current.WeeksSubmitted ?? 0
+  const total = current.weeksTotal ?? current.WeeksTotal ?? 0
+  const minutes = current.totalMinutes ?? current.TotalMinutes ?? 0
+  if (total > 0 && submitted < total) return true
+  return minutes <= 0
+}
+
+export function craPrefillRatioForMonth(items: CraTimesheet[]) {
+  const key = currentMonthKey()
+  const current = items.find((ts) => (ts.month ?? ts.Month) === key)
+  if (!current) return null
+  const ratio = current.prefillRatio ?? current.PrefillRatio
+  return typeof ratio === 'number' ? ratio : null
 }
 
 export function budgetMetrics(budgets: BudgetItem[]) {

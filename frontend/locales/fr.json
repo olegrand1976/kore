@@ -52,7 +52,25 @@
     "field_profile": "Profil",
     "account_type_interne": "Interne",
     "account_type_client": "Client",
-    "account_type_prestataire": "Prestataire"
+    "account_type_prestataire": "Prestataire",
+    "2fa": {
+      "section_title": "Sécurité",
+      "enabled": "Double authentification activée",
+      "disabled": "Double authentification désactivée",
+      "required_policy": "Obligatoire (politique société)",
+      "enable": "Activer la 2FA",
+      "disable": "Désactiver la 2FA",
+      "manual_secret": "Clé manuelle",
+      "code_label": "Code à 6 chiffres",
+      "password_label": "Mot de passe actuel",
+      "backup_title": "Codes de secours — conservez-les en lieu sûr",
+      "continue": "Continuer",
+      "confirm_enable": "Confirmer l'activation",
+      "confirm_disable": "Confirmer la désactivation",
+      "saved": "Paramètres 2FA mis à jour",
+      "error": "Erreur 2FA",
+      "not_available": "Non disponible pour votre compte"
+    }
   },
   "brand": {
     "name": "Kore",
@@ -104,7 +122,20 @@
     "find_org": "Trouver mon organisation",
     "send_link": "M’envoyer un lien",
     "discovery_sent": "Si cet email est connu, un lien a été envoyé.",
-    "discovery_dev_hint": "En local, les emails sont capturés par"
+    "discovery_dev_hint": "En local, les emails sont capturés par",
+    "2fa": {
+      "title": "Vérification 2FA",
+      "subtitle": "Saisissez le code de votre application d'authentification",
+      "code_label": "Code à 6 chiffres",
+      "verify": "Vérifier",
+      "back": "Retour",
+      "error": "Code invalide ou expiré",
+      "enrollment_title": "Configurer la 2FA",
+      "enrollment_subtitle": "Scannez le QR code avec votre application d'authentification",
+      "enrollment_intro": "La double authentification est requise pour votre organisation.",
+      "enrollment_confirm": "Activer la 2FA",
+      "setup_error": "Impossible de démarrer la configuration 2FA"
+    }
   },
   "release_notes": {
     "open": "Ouvrir les nouveautés",
@@ -141,6 +172,9 @@
     "cra_alert": "Votre CRA du mois en cours n'est pas finalisé. Pensez à le compléter.",
     "pending_validations": "Validations en attente",
     "cra_current": "CRA du mois",
+    "cra_prefill_ratio": "Pré-remplissage CRA",
+    "cra_prefill_low": "Objectif 70 % non atteint",
+    "cra_prefill_ok": "Objectif 70 % atteint",
     "leave_pending": "Mes demandes en attente",
     "tma_open": "Demandes TMA ouvertes",
     "tma_total_hint": "{n} demande(s) au total",
@@ -757,6 +791,7 @@
     "tab_conges": "Congés",
     "tab_cra": "CRA",
     "tab_ia": "Intelligence artificielle",
+    "tab_securite": "Sécurité",
     "ia": {
       "status_enabled": "IA activée",
       "status_disabled": "IA désactivée",
@@ -809,6 +844,7 @@
       "cra_mail_auto": "Rappel e-mail automatique CRA",
       "cra_mail_recipients": "Destinataires e-mail CRA",
       "cra_mail_recipients_hint": "admin{'@'}example.com, un e-mail par ligne",
+      "task_types_enabled": "Types d'activité autorisés",
       "weekday_mon": "Lundi",
       "weekday_tue": "Mardi",
       "weekday_wed": "Mercredi",
@@ -818,6 +854,16 @@
       "weekday_sun": "Dimanche",
       "saved": "Paramètres CRA enregistrés",
       "save_error": "Impossible d'enregistrer les paramètres CRA"
+    },
+    "securite": {
+      "societe": "Société",
+      "intro": "Configurez la double authentification (TOTP) pour les utilisateurs de la société.",
+      "totp_default_enabled": "Activer la 2FA par défaut",
+      "totp_default_warning": "Les utilisateurs sans 2FA devront configurer une application d'authentification à la prochaine connexion.",
+      "totp_user_configurable": "Modifiable par l'utilisateur",
+      "totp_user_configurable_hint": "Si la 2FA n'est pas activée par défaut, les utilisateurs peuvent quand même l'activer depuis leur profil.",
+      "saved": "Paramètres sécurité enregistrés",
+      "error_save": "Impossible d'enregistrer les paramètres sécurité"
     }
   },
   "fiche": {

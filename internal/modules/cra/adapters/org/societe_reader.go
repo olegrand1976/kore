@@ -50,5 +50,6 @@ func (r *SocieteReader) SettingsForUser(ctx context.Context, tenant kernel.Tenan
 		WeekSubmitPolicy:   policy,
 		CraMailAuto:        societe.CraMailAuto,
 		CraMailRecipients:  societe.CraMailRecipients,
+		TaskTypesEnabled:   orgdomain.EffectiveTaskTypesEnabled(societe.TaskTypesEnabled),
 	}, nil
 }

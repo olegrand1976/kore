@@ -70,11 +70,16 @@ type CreateClientCommand struct {
 }
 
 type AuthResult struct {
-	AccessToken  string
-	RefreshToken string
-	UserID       uuid.UUID
-	TenantID     kernel.TenantID
-	Profile      domain.Profile
+	AccessToken           string         `json:"accessToken"`
+	RefreshToken          string         `json:"refreshToken"`
+	UserID                uuid.UUID      `json:"userId"`
+	TenantID              kernel.TenantID `json:"tenantId"`
+	Profile               domain.Profile `json:"profile"`
+	Requires2FA           bool           `json:"requires2FA,omitempty"`
+	ChallengeToken        string         `json:"challengeToken,omitempty"`
+	Requires2FAEnrollment bool           `json:"requires2FAEnrollment,omitempty"`
+	EnrollmentToken       string         `json:"enrollmentToken,omitempty"`
+	BackupCodes           []string       `json:"backupCodes,omitempty"`
 }
 
 type OrganizationRepository interface {
@@ -108,6 +113,7 @@ type OrganizationRepository interface {
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
 	ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error)
+	ResolveSocieteIDForEquipe(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) (uuid.UUID, error)
 	ListSocietesCraMailAuto(ctx context.Context) ([]CraMailReminderTarget, error)
 	SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error
 	GetIdentityProvider(ctx context.Context, tenant kernel.TenantID) (domain.IdentityProvider, error)
@@ -118,6 +124,13 @@ type OrganizationRepository interface {
 	FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error)
 	SaveAccessToken(ctx context.Context, tokenHash string, tenant kernel.TenantID, email, kind string, expiresAt time.Time) error
 	ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (AccessTokenRow, bool, error)
+	UpdateUserTotp(ctx context.Context, u domain.User) error
+	SaveTotpBackupCodes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, codeHashes []string) error
+	ConsumeTotpBackupCode(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, codeHash string, usedAt time.Time) (bool, error)
+	DeleteTotpBackupCodes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) error
+	ListUnusedTotpBackupCodeHashes(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ([]string, error)
+	MarkTotpEnrollmentRequiredForSocieteUsers(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) (int, error)
+	ClearTotpEnrollmentRequiredForSocieteUsers(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) error
 }
 
 type AccessTokenRow struct {
@@ -156,13 +169,16 @@ type UpdateSocieteBrandingCommand struct {
 }
 
 type UpdateSocieteSettingsCommand struct {
-	TenantID           kernel.TenantID
-	SocieteID          uuid.UUID
-	WeekStartDay       *int
-	DayCapacityMinutes *int
-	CraMailAuto        *bool
-	CraMailRecipients  *[]string
-	WeekSubmitPolicy   *string
+	TenantID             kernel.TenantID
+	SocieteID            uuid.UUID
+	WeekStartDay         *int
+	DayCapacityMinutes   *int
+	CraMailAuto          *bool
+	CraMailRecipients    *[]string
+	WeekSubmitPolicy     *string
+	TaskTypesEnabled     *[]string
+	TotpDefaultEnabled   *bool
+	TotpUserConfigurable *bool
 }
 
 type CraMailReminderTarget struct {
@@ -173,9 +189,10 @@ type CraMailReminderTarget struct {
 }
 
 type UserCalendarSettings struct {
-	WeekStartDay       int    `json:"weekStartDay"`
-	DayCapacityMinutes int    `json:"dayCapacityMinutes"`
-	WeekSubmitPolicy   string `json:"weekSubmitPolicy"`
+	WeekStartDay       int      `json:"weekStartDay"`
+	DayCapacityMinutes int      `json:"dayCapacityMinutes"`
+	WeekSubmitPolicy   string   `json:"weekSubmitPolicy"`
+	TaskTypesEnabled   []string `json:"taskTypesEnabled"`
 }
 
 type OrganizationService interface {
@@ -219,9 +236,53 @@ type UserDetail struct {
 	DateExpiration *string    `json:"dateExpiration,omitempty"`
 }
 
+type TotpPolicy struct {
+	DefaultEnabled   bool
+	UserConfigurable bool
+}
+
+type TotpStatus struct {
+	Enabled            bool       `json:"enabled"`
+	EnrollmentRequired bool       `json:"enrollmentRequired"`
+	UserConfigurable   bool       `json:"userConfigurable"`
+	OrgDefaultEnabled  bool       `json:"orgDefaultEnabled"`
+	EnabledAt          *time.Time `json:"enabledAt,omitempty"`
+	PasswordLogin      bool       `json:"passwordLogin"`
+}
+
+type TotpSetupResult struct {
+	OtpauthURL    string `json:"otpauthUrl"`
+	Secret        string `json:"secret"`
+	QrCodeDataURL string `json:"qrCodeDataUrl"`
+}
+
+type TotpConfirmResult struct {
+	BackupCodes []string `json:"backupCodes"`
+}
+
+type TotpApplyPolicyResult struct {
+	UsersMarked int `json:"usersMarked"`
+}
+
 type ReleaseNotesPreferences struct {
 	LastSeenVersion *string `json:"lastSeenVersion"`
 	AutoShowEnabled bool    `json:"autoShowEnabled"`
+}
+
+type Confirm2FACommand struct {
+	TenantID        kernel.TenantID
+	UserID          uuid.UUID
+	Code            string
+	Password        string
+	EnrollmentToken string
+	SkipPassword    bool
+}
+
+type Disable2FACommand struct {
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	Password string
+	Code     string
 }
 
 type UserService interface {
@@ -236,6 +297,15 @@ type UserService interface {
 	GetReleaseNotesPreferences(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ReleaseNotesPreferences, error)
 	SetReleaseNotesAutoShow(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, enabled bool) error
 	MarkReleaseNotesSeen(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, version string) error
+	Get2FAStatus(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (TotpStatus, error)
+	Setup2FA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (TotpSetupResult, error)
+	Confirm2FA(ctx context.Context, cmd Confirm2FACommand) (TotpConfirmResult, error)
+	Disable2FA(ctx context.Context, cmd Disable2FACommand) error
+	Verify2FAChallenge(ctx context.Context, challengeToken, code string) (AuthResult, error)
+	Verify2FAEnrollment(ctx context.Context, enrollmentToken, code, password string) (AuthResult, error)
+	Setup2FAWithEnrollmentToken(ctx context.Context, enrollmentToken string) (TotpSetupResult, error)
+	ApplyTotpPolicyOnSociete(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID, defaultEnabled bool) (TotpApplyPolicyResult, error)
+	ClearTotpEnrollmentRequiredOnSociete(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) error
 }
 
 type ClientService interface {

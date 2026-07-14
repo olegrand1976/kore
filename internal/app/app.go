@@ -61,6 +61,7 @@ import (
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
+	reportingcra "github.com/kore/kore/internal/modules/reporting/adapters/cra"
 	reportingpostgres "github.com/kore/kore/internal/modules/reporting/adapters/postgres"
 	reportingapp "github.com/kore/kore/internal/modules/reporting/app"
 	ssiicalendar "github.com/kore/kore/internal/modules/ssii/adapters/calendar"
@@ -165,9 +166,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	billingService := billingapp.NewService(billingRepo, cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.BillingTrialDays)
 
+	totpKey, err := orgapp.NewTotpEncryptionKey(cfg.TOTPEncryptionKey, cfg.JWTSigningKey, cfg.DevSeedEnabled)
+	if err != nil {
+		return nil, err
+	}
+
 	orgService := orgapp.NewOrganizationService(orgRepo)
 	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
-	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins)
+	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
 	clientService := orgapp.NewClientService(orgRepo)
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
@@ -176,7 +182,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
-		WithCalendarReader(craorg.NewSocieteReader(orgRepo))
+		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
+		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
 	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)
@@ -187,7 +194,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		congesapp.WithNotifier(congesnotif.NewPublisherAdapter(notifService)),
 		congesapp.WithTypeConfigs(leaveTypeConfigService),
 	)
-	budgetService := budgetapp.NewService(budgetRepo, budgetcra.NewReaderAdapter(craService))
+	budgetService := budgetapp.NewService(budgetRepo, budgetcra.NewReaderAdapter(craService), budgetapp.WithCache(appCache, keyBuilder))
 	tmaService := tmaapp.NewService(
 		tmaRepo,
 		tmaworkflow.NewAdapter(wfService),
@@ -210,7 +217,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
 	invoicingService := invoicingapp.NewService(invoicingRepo)
 	adminService := adminapp.NewService(adminRepo)
-	reportingService := reportingapp.NewService(reportingRepo)
+	reportingService := reportingapp.NewService(reportingRepo, reportingcra.NewBillableReader(craService))
 	ssiiService := ssiiapp.NewService(
 		ssiiRepo,
 		ssiicra.NewFeederAdapter(craService),

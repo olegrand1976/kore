@@ -9,22 +9,14 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-// SendMonthlyReminders returns users with cra_requis and an incomplete timesheet for the month
-// on sociétés with cra_mail_auto enabled. Notification delivery is delegated to callers.
+// SendMonthlyReminders returns users with cra_requis and an incomplete timesheet for the month.
 func (s *Service) SendMonthlyReminders(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]uuid.UUID, error) {
-	if s.calendar == nil {
-		return nil, nil
-	}
 	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, tenant, month)
 	if err != nil {
 		return nil, err
 	}
 	var pending []uuid.UUID
 	for _, summary := range summaries {
-		userSettings := s.settingsForUser(ctx, tenant, summary.UserID)
-		if !userSettings.CraMailAuto {
-			continue
-		}
 		if summary.Status == domain.StatusDefinitif {
 			continue
 		}

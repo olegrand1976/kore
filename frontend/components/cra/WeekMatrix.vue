@@ -44,6 +44,7 @@
     <CraAddActivityModal
       v-model:open="addModalOpen"
       :missions="missions"
+      :task-types="taskTypes"
       @add="onAddActivity"
     />
   </div>
@@ -68,6 +69,7 @@ const props = defineProps<{
   disabled?: boolean
   saving?: boolean
   missions?: MissionSummary[]
+  taskTypes?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -81,6 +83,7 @@ const weekNumberRef = toRef(props, 'weekNumber')
 const monthRef = toRef(props, 'month')
 const weekStartDayRef = toRef(props, 'weekStartDay')
 const missionsRef = computed(() => props.missions ?? [])
+const taskTypes = computed(() => props.taskTypes ?? ['manual', 'interne', 'formation', 'mission'])
 
 const { labelFor, iconFor } = useCraSourceLabels(missionsRef)
 const { weekDays, rowsByDay, toSaveLines, buildKey } = useWeekRows(

@@ -52,10 +52,13 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /out/kore-api ./cmd/kore-api
 
-# runtime
-FROM gcr.io/distroless/static-debian12
+# runtime (Chromium requis pour PDF CRA)
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends chromium ca-certificates fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/bin/chromium
 COPY --from=build /out/kore-api /kore-api
-USER nonroot:nonroot
+USER kore
 ENTRYPOINT ["/kore-api"]
 ```
 

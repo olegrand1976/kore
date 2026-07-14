@@ -6,6 +6,8 @@ export default defineEventHandler(async (event) => {
     body
   })
   const data = (response as { data?: AuthTokenPayload }).data
-  setAuthCookies(event, extractAuthTokens(data))
+  if (!isPartialAuth(data)) {
+    setAuthCookies(event, extractAuthTokens(data))
+  }
   return response
 })

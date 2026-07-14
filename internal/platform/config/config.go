@@ -36,6 +36,7 @@ type Config struct {
 	GeminiAPIKey         string
 	GeminiModel          string
 	PromptGuardBlock     bool
+	TOTPEncryptionKey    string
 }
 
 func Load() (Config, error) {
@@ -67,6 +68,7 @@ func Load() (Config, error) {
 		GeminiAPIKey:         envOr("GEMINI_API_KEY", ""),
 		GeminiModel:          envOr("GEMINI_MODEL", "gemini-3.5-flash"),
 		PromptGuardBlock:     envBool("PROMPT_GUARD_BLOCK", true),
+		TOTPEncryptionKey:    envOr("TOTP_ENCRYPTION_KEY", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

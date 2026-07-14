@@ -4,10 +4,7 @@
     <form class="add-form" @submit.prevent="confirm">
       <label class="add-form__label" for="activity-type">{{ $t('cra.activity_type') }}</label>
       <select id="activity-type" v-model="selectedType" class="add-form__select">
-        <option value="manual">{{ $t('cra.source_manual') }}</option>
-        <option value="interne">{{ $t('cra.source_internal') }}</option>
-        <option value="formation">{{ $t('cra.source_training') }}</option>
-        <option v-if="missions.length > 0" value="mission">{{ $t('cra.source_mission') }}</option>
+        <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <template v-if="selectedType === 'mission'">
         <label class="add-form__label" for="activity-mission">{{ $t('cra.mission') }}</label>
@@ -26,20 +23,41 @@
 <script setup lang="ts">
 import type { MissionSummary } from '~/composables/useCraSourceLabels'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   missions: MissionSummary[]
-}>()
+  taskTypes?: string[]
+}>(), {
+  taskTypes: () => ['manual', 'interne', 'formation', 'mission']
+})
 
 const emit = defineEmits<{
   add: [payload: { sourceType: string; sourceId: string }]
 }>()
 
+const { t } = useI18n()
 const open = defineModel<boolean>('open', { default: false })
 const selectedType = ref('manual')
 const selectedMissionId = ref('')
 const titleId = 'cra-add-activity-title'
 
 const missionLabel = (m: MissionSummary) => m.clientName || m.id.slice(0, 8)
+
+const typeLabels: Record<string, string> = {
+  manual: 'cra.source_manual',
+  interne: 'cra.source_internal',
+  formation: 'cra.source_training',
+  mission: 'cra.source_mission'
+}
+
+const typeOptions = computed(() => {
+  const enabled = props.taskTypes.length > 0 ? props.taskTypes : ['manual', 'interne', 'formation', 'mission']
+  return enabled
+    .filter((code) => code !== 'mission' || props.missions.length > 0)
+    .map((code) => ({
+      value: code,
+      label: t(typeLabels[code] ?? code, code)
+    }))
+})
 
 const confirm = () => {
   if (selectedType.value === 'mission') {
@@ -53,7 +71,8 @@ const confirm = () => {
 
 watch(open, (isOpen) => {
   if (!isOpen) return
-  selectedType.value = 'manual'
+  const first = typeOptions.value[0]?.value ?? 'manual'
+  selectedType.value = first
   selectedMissionId.value = props.missions[0]?.id ?? ''
 })
 </script>

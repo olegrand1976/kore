@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 13/07/2026
+> **Dernière mise à jour doc** : 14/07/2026
 
 ---
 
@@ -129,6 +129,9 @@ Index :
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
 | `cra_mail_recipients` | JSONB | NOT NULL, DEFAULT `'[]'` |
 | `week_submit_policy` | TEXT | NOT NULL, DEFAULT `'warn'`, CHECK `block` / `warn` / `none` |
+| `task_types_enabled` | JSONB | NOT NULL, DEFAULT `'[]'` (catalogue types activité CRA ; vide = défaut manual/interne/formation/mission) |
+| `totp_default_enabled` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
+| `totp_user_configurable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `org.sites`
@@ -204,9 +207,26 @@ Index :
 | `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `release_notes_auto_show` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `last_seen_version` | TEXT | |
+| `totp_enabled` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
+| `totp_enrollment_required` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
+| `totp_secret_encrypted` | TEXT | |
+| `totp_enabled_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`
+
+### `org.user_totp_backup_codes`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
+| `user_id` | UUID | NOT NULL → `org.users(id)` ON DELETE CASCADE |
+| `code_hash` | TEXT | NOT NULL |
+| `used_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index** : `idx_user_totp_backup_codes_user (user_id) WHERE used_at IS NULL`
 
 ### `org.identity_providers`
 

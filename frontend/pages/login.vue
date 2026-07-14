@@ -10,31 +10,77 @@
       </ul>
     </div>
     <PublicCard padding="lg" class="login-card">
-      <h1>{{ $t('login.title') }}</h1>
-      <p class="login-card__subtitle">{{ $t('login.subtitle') }}</p>
-      <form @submit.prevent="submit">
+      <h1>{{ stepTitle }}</h1>
+      <p class="login-card__subtitle">{{ stepSubtitle }}</p>
+
+      <form v-if="step === 'credentials'" @submit.prevent="submit">
         <PublicInput id="login" v-model="login" :label="$t('login.identifier')" placeholder="ADM_admin" required />
         <PublicInput id="password" v-model="password" type="password" :label="$t('login.password')" required />
         <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.submit') }}</PublicButton>
       </form>
-      <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
-        {{ $t('login.find_org') }}
-      </button>
-      <div v-if="showDiscovery" class="login-card__discovery">
-        <PublicInput id="discover-email" v-model="discoverEmail" type="email" :label="$t('login.email')" />
-        <PublicButton variant="ghost" class="login-card__submit" @click="requestDiscovery">
-          {{ $t('login.send_link') }}
-        </PublicButton>
-        <p v-if="discoveryInfo" class="login-card__info" role="status">{{ discoveryInfo }}</p>
-        <p v-if="discoveryInfo && showMailhogHint" class="login-card__info login-card__info--dev" role="note">
-          {{ $t('login.discovery_dev_hint') }}
-          <a :href="mailhogUiUrl" target="_blank" rel="noopener noreferrer" class="login-card__link-inline">MailHog</a>
+
+      <form v-else-if="step === 'totp'" @submit.prevent="submitTotp">
+        <PublicInput
+          id="totp-code"
+          v-model="totpCode"
+          :label="$t('login.2fa.code_label')"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="8"
+          required
+        />
+        <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.2fa.verify') }}</PublicButton>
+        <button type="button" class="login-card__link" @click="step = 'credentials'">{{ $t('login.2fa.back') }}</button>
+      </form>
+
+      <div v-else-if="step === 'enrollment'" class="login-enrollment">
+        <p class="login-card__info">{{ $t('login.2fa.enrollment_intro') }}</p>
+        <img v-if="qrCodeDataUrl" :src="qrCodeDataUrl" width="200" height="200" class="login-enrollment__qr" :alt="$t('login.2fa.enrollment_subtitle')" />
+        <p v-if="manualSecret" class="login-enrollment__secret">
+          <span class="login-enrollment__secret-label">{{ $t('profile.2fa.manual_secret') }}</span>
+          <code>{{ manualSecret }}</code>
         </p>
+        <form @submit.prevent="submitEnrollment">
+          <PublicInput
+            id="enroll-code"
+            v-model="totpCode"
+            :label="$t('login.2fa.code_label')"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="8"
+            required
+          />
+          <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.2fa.enrollment_confirm') }}</PublicButton>
+        </form>
+        <div v-if="backupCodes.length" class="login-enrollment__backup">
+          <p>{{ $t('profile.2fa.backup_title') }}</p>
+          <ul>
+            <li v-for="code in backupCodes" :key="code"><code>{{ code }}</code></li>
+          </ul>
+          <PublicButton variant="primary" class="login-card__submit" @click="finishEnrollment">{{ $t('profile.2fa.continue') }}</PublicButton>
+        </div>
       </div>
-      <div v-if="showSso" class="login-card__sso">
-        <p class="login-card__divider" aria-hidden="true">{{ $t('login.or_divider') }}</p>
-        <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ ssoButtonLabel }}</PublicButton>
-      </div>
+
+      <template v-if="step === 'credentials'">
+        <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
+          {{ $t('login.find_org') }}
+        </button>
+        <div v-if="showDiscovery" class="login-card__discovery">
+          <PublicInput id="discover-email" v-model="discoverEmail" type="email" :label="$t('login.email')" />
+          <PublicButton variant="ghost" class="login-card__submit" @click="requestDiscovery">
+            {{ $t('login.send_link') }}
+          </PublicButton>
+          <p v-if="discoveryInfo" class="login-card__info" role="status">{{ discoveryInfo }}</p>
+          <p v-if="discoveryInfo && showMailhogHint" class="login-card__info login-card__info--dev" role="note">
+            {{ $t('login.discovery_dev_hint') }}
+            <a :href="mailhogUiUrl" target="_blank" rel="noopener noreferrer" class="login-card__link-inline">MailHog</a>
+          </p>
+        </div>
+        <div v-if="showSso" class="login-card__sso">
+          <p class="login-card__divider" aria-hidden="true">{{ $t('login.or_divider') }}</p>
+          <PublicButton variant="secondary" class="login-card__submit" @click="startSSO">{{ ssoButtonLabel }}</PublicButton>
+        </div>
+      </template>
       <p v-if="error" class="login-card__error" role="alert">{{ error }}</p>
     </PublicCard>
   </div>
@@ -56,6 +102,53 @@ const error = ref('')
 const showDiscovery = ref(false)
 const discoverEmail = ref('')
 const discoveryInfo = ref('')
+
+type LoginStep = 'credentials' | 'totp' | 'enrollment'
+const step = ref<LoginStep>('credentials')
+const challengeToken = ref('')
+const enrollmentToken = ref('')
+
+const {
+  manualSecret,
+  totpCode,
+  backupCodes,
+  qrCodeDataUrl,
+  loadSetup,
+  reset: resetTotpSetup
+} = useTwoFactorSetup()
+
+const stepTitle = computed(() => {
+  switch (step.value) {
+    case 'totp':
+      return t('login.2fa.title')
+    case 'enrollment':
+      return t('login.2fa.enrollment_title')
+    default:
+      return t('login.title')
+  }
+})
+
+const stepSubtitle = computed(() => {
+  switch (step.value) {
+    case 'totp':
+      return t('login.2fa.subtitle')
+    case 'enrollment':
+      return t('login.2fa.enrollment_subtitle')
+    default:
+      return t('login.subtitle')
+  }
+})
+
+type LoginData = {
+  requires2FA?: boolean
+  Requires2FA?: boolean
+  requires2FAEnrollment?: boolean
+  Requires2FAEnrollment?: boolean
+  challengeToken?: string
+  ChallengeToken?: string
+  enrollmentToken?: string
+  EnrollmentToken?: string
+}
 
 const ssoButtonLabel = computed(() => {
   if (ssoProviderName.value) {
@@ -86,12 +179,73 @@ async function resolveTenant(tenant: string) {
 const submit = async () => {
   error.value = ''
   try {
-    await $fetch('/api/auth/login', { method: 'POST', body: { login: login.value, password: password.value } })
+    const res = await $fetch<{ data?: LoginData }>('/api/auth/login', {
+      method: 'POST',
+      body: { login: login.value, password: password.value }
+    })
+    const data = res?.data
+    if (data?.requires2FA || data?.Requires2FA) {
+      step.value = 'totp'
+      challengeToken.value = data.challengeToken ?? data.ChallengeToken ?? ''
+      return
+    }
+    if (data?.requires2FAEnrollment || data?.Requires2FAEnrollment) {
+      step.value = 'enrollment'
+      enrollmentToken.value = data.enrollmentToken ?? data.EnrollmentToken ?? ''
+      await startEnrollmentSetup()
+      return
+    }
     await navigateTo('/dashboard')
   } catch (e: unknown) {
     const err = e as { data?: { error?: { message?: string } } }
     error.value = err?.data?.error?.message || t('login.error')
   }
+}
+
+const submitTotp = async () => {
+  error.value = ''
+  try {
+    await $fetch('/api/auth/2fa/verify', {
+      method: 'POST',
+      body: { challengeToken: challengeToken.value, code: totpCode.value }
+    })
+    await navigateTo('/dashboard')
+  } catch (e: unknown) {
+    const err = e as { data?: { error?: { message?: string } } }
+    error.value = err?.data?.error?.message || t('login.2fa.error')
+  }
+}
+
+const startEnrollmentSetup = async () => {
+  resetTotpSetup()
+  try {
+    await loadSetup('/api/auth/2fa/enrollment/setup', {
+      body: { enrollmentToken: enrollmentToken.value }
+    })
+  } catch {
+    error.value = t('login.2fa.setup_error')
+  }
+}
+
+const submitEnrollment = async () => {
+  error.value = ''
+  try {
+    const res = await $fetch<{ data?: { backupCodes?: string[] } }>('/api/auth/2fa/enrollment/confirm', {
+      method: 'POST',
+      body: { enrollmentToken: enrollmentToken.value, code: totpCode.value }
+    })
+    backupCodes.value = res?.data?.backupCodes ?? []
+    if (backupCodes.value.length === 0) {
+      await navigateTo('/dashboard')
+    }
+  } catch (e: unknown) {
+    const err = e as { data?: { error?: { message?: string } } }
+    error.value = err?.data?.error?.message || t('login.2fa.error')
+  }
+}
+
+const finishEnrollment = async () => {
+  await navigateTo('/dashboard')
 }
 
 function randomVerifier(): string {
@@ -333,5 +487,40 @@ form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
 .login-card__link-inline {
   color: var(--kore-link);
   font-weight: 500;
+}
+
+.login-enrollment {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.login-enrollment__qr {
+  margin: 0 auto;
+  border-radius: var(--kore-radius-md);
+}
+
+.login-enrollment__secret {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  text-align: center;
+  word-break: break-all;
+}
+
+.login-enrollment__secret-label {
+  display: block;
+  color: var(--kore-text-muted);
+  margin-bottom: var(--kore-space-2xs);
+}
+
+.login-enrollment__backup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.login-enrollment__backup code {
+  font-family: var(--kore-font-mono, monospace);
 }
 </style>

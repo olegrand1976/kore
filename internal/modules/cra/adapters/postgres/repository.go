@@ -267,6 +267,7 @@ const timesheetSummarySelect = `
 			t.commercial_info,
 			COALESCE(t.reject_reason, ''),
 			t.updated_at,
+			COALESCE(SUM(tl.duration) FILTER (WHERE tl.duration > 0 AND tl.origin = 'prefill'), 0) AS prefill_minutes,
 			COALESCE(SUM(tl.duration), 0) AS total_minutes,
 			COUNT(we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
 			COUNT(DISTINCT we.id) AS weeks_total,
@@ -301,6 +302,7 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 		var commercial []byte
 		var clientID *uuid.UUID
 		var missionID *uuid.UUID
+		var prefillMinutes int
 		if err := rows.Scan(
 			&summary.ID,
 			&summary.UserID,
@@ -312,6 +314,7 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 			&commercial,
 			&summary.RejectReason,
 			&summary.UpdatedAt,
+			&prefillMinutes,
 			&summary.TotalMinutes,
 			&summary.WeeksSubmitted,
 			&summary.WeeksTotal,
@@ -327,6 +330,9 @@ func scanTimesheetSummaries(rows pgx.Rows) ([]domain.TimesheetSummary, error) {
 		}
 		summary.ClientID = clientID
 		summary.MissionID = missionID
+		if summary.TotalMinutes > 0 {
+			summary.PrefillRatio = int((float64(prefillMinutes) / float64(summary.TotalMinutes)) * 100)
+		}
 		out = append(out, summary)
 	}
 	return out, rows.Err()

@@ -126,6 +126,11 @@ type SocieteCraSettings struct {
 	WeekSubmitPolicy   string
 	CraMailAuto        bool
 	CraMailRecipients  []string
+	TaskTypesEnabled   []string
+}
+
+type UserEmailResolver interface {
+	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
 }
 
 type SocieteCalendarReader interface {

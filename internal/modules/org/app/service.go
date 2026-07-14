@@ -165,8 +165,33 @@ func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd por
 			return domain.Societe{}, fmt.Errorf("weekSubmitPolicy must be block, warn, or none")
 		}
 	}
+	if cmd.TaskTypesEnabled != nil {
+		types, err := normalizeTaskTypes(*cmd.TaskTypesEnabled)
+		if err != nil {
+			return domain.Societe{}, err
+		}
+		societe.TaskTypesEnabled = types
+	}
+	prevDefault := societe.TotpDefaultEnabled
+	if cmd.TotpDefaultEnabled != nil {
+		societe.TotpDefaultEnabled = *cmd.TotpDefaultEnabled
+	}
+	if cmd.TotpUserConfigurable != nil {
+		societe.TotpUserConfigurable = *cmd.TotpUserConfigurable
+	}
 	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
 		return domain.Societe{}, err
+	}
+	if cmd.TotpDefaultEnabled != nil && societe.TotpDefaultEnabled != prevDefault {
+		if societe.TotpDefaultEnabled {
+			if _, err := s.repo.MarkTotpEnrollmentRequiredForSocieteUsers(ctx, cmd.TenantID, cmd.SocieteID); err != nil {
+				return domain.Societe{}, err
+			}
+		} else {
+			if err := s.repo.ClearTotpEnrollmentRequiredForSocieteUsers(ctx, cmd.TenantID, cmd.SocieteID); err != nil {
+				return domain.Societe{}, err
+			}
+		}
 	}
 	return societe, nil
 }
@@ -188,11 +213,39 @@ func normalizeMailRecipients(recipients []string) []string {
 	return out
 }
 
+var allowedTaskTypes = map[string]struct{}{
+	"manual": {}, "interne": {}, "formation": {}, "mission": {},
+}
+
+func normalizeTaskTypes(types []string) ([]string, error) {
+	if len(types) == 0 {
+		return []string{}, nil
+	}
+	seen := make(map[string]struct{}, len(types))
+	out := make([]string, 0, len(types))
+	for _, raw := range types {
+		code := strings.ToLower(strings.TrimSpace(raw))
+		if code == "" {
+			continue
+		}
+		if _, ok := allowedTaskTypes[code]; !ok {
+			return nil, fmt.Errorf("invalid task type %q", raw)
+		}
+		if _, dup := seen[code]; dup {
+			continue
+		}
+		seen[code] = struct{}{}
+		out = append(out, code)
+	}
+	return out, nil
+}
+
 func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (ports.UserCalendarSettings, error) {
 	defaults := ports.UserCalendarSettings{
 		WeekStartDay:       domain.DefaultWeekStartDay,
 		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
 		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
+		TaskTypesEnabled:   domain.EffectiveTaskTypesEnabled(nil),
 	}
 	societeID, err := s.repo.ResolveSocieteIDForUser(ctx, tenant, userID)
 	if err != nil {
@@ -218,6 +271,7 @@ func (s *organizationService) CalendarSettingsForUser(ctx context.Context, tenan
 		WeekStartDay:       day,
 		DayCapacityMinutes: cap,
 		WeekSubmitPolicy:   policy,
+		TaskTypesEnabled:   domain.EffectiveTaskTypesEnabled(societe.TaskTypesEnabled),
 	}, nil
 }
 
@@ -230,6 +284,7 @@ type userService struct {
 	keys                cache.KeyBuilder
 	clock               func() time.Time
 	platformAdminLogins map[string]struct{}
+	totpKey             []byte
 }
 
 func NewUserService(
@@ -240,6 +295,7 @@ func NewUserService(
 	appCache cache.Cache,
 	keys cache.KeyBuilder,
 	platformAdminLogins []string,
+	totpKey []byte,
 ) ports.UserService {
 	logins := make(map[string]struct{}, len(platformAdminLogins))
 	for _, login := range platformAdminLogins {
@@ -254,6 +310,7 @@ func NewUserService(
 		keys:                keys,
 		clock:               time.Now,
 		platformAdminLogins: logins,
+		totpKey:             totpKey,
 	}
 }
 
@@ -300,31 +357,10 @@ func (s *userService) CreateUser(ctx context.Context, cmd ports.CreateUserComman
 			Activation: s.clock().UTC().Truncate(24 * time.Hour),
 		},
 	}
+	if err := s.applyTotpPolicyOnCreate(ctx, &user); err != nil {
+		return domain.User{}, err
+	}
 	return user, s.repo.SaveUser(ctx, user)
-}
-
-func (s *userService) Authenticate(ctx context.Context, login, password string) (ports.AuthResult, error) {
-	user, err := s.repo.FindUserByLoginGlobal(ctx, login)
-	if err != nil {
-		return ports.AuthResult{}, domain.ErrInvalidCredentials
-	}
-	if !user.Active || !user.Period.IsActive(s.clock()) {
-		return ports.AuthResult{}, domain.ErrAccountExpired
-	}
-	if !s.hasher.Verify(user.PasswordHash, password) {
-		return ports.AuthResult{}, domain.ErrInvalidCredentials
-	}
-	pair, err := s.tokens.Issue(s.buildIdentity(user))
-	if err != nil {
-		return ports.AuthResult{}, err
-	}
-	return ports.AuthResult{
-		AccessToken:  pair.AccessToken,
-		RefreshToken: pair.RefreshToken,
-		UserID:       user.ID,
-		TenantID:     user.TenantID,
-		Profile:      user.Profile,
-	}, nil
 }
 
 func (s *userService) RefreshSession(ctx context.Context, refreshToken string) (authx.TokenPair, error) {
