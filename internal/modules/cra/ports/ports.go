@@ -90,6 +90,24 @@ type InvoiceDraftPublisher interface {
 	PublishCRAValidationDraft(ctx context.Context, cmd ValidationInvoiceCommand) error
 }
 
+type MissionRate struct {
+	TJMAmount int64
+	Currency  string
+}
+
+type MissionRateReader interface {
+	GetMissionRate(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) (MissionRate, error)
+}
+
+type ETTDayHours struct {
+	WorkDate time.Time
+	Hours    float64
+}
+
+type ETTRecordReader interface {
+	ListUserDayHours(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, from, to time.Time) ([]ETTDayHours, error)
+}
+
 type DailyActivityRow struct {
 	UserID     uuid.UUID
 	UserPrenom string
@@ -113,6 +131,7 @@ type CRAService interface {
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
+	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)
 	ExportPrestationsXML(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]PrestationExportRow, error)
 	BillableSummary(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]BillableUserSummary, error)
 	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)

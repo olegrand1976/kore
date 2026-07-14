@@ -2,6 +2,12 @@
   <div>
     <AppPageHeader :title="$t('cra.title')">
       <template #actions>
+        <AppButton v-if="canReadReporting" variant="ghost" size="sm" @click="navigateTo('/cra/planning')">
+          {{ $t('cra.planning_link') }}
+        </AppButton>
+        <AppButton v-if="canReadReporting" variant="ghost" size="sm" @click="navigateTo('/cra/gantt')">
+          {{ $t('cra.gantt_link') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">
           <AppIcon name="add" /> {{ $t('cra.new') }}
         </AppButton>
@@ -149,7 +155,7 @@ type CraSummary = {
 
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant, currentMonthKey } = useCraStatus()
-const { canValidateCra } = usePermissions()
+const { canValidateCra, canReadReporting } = usePermissions()
 
 const creating = ref(false)
 const errorMsg = ref('')

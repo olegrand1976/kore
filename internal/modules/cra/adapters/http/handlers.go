@@ -37,6 +37,7 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Get("/prestations/billable-summary", billableSummary(svc, authorizer))
 		pr.Post("/prestations/validate-all", validateAllPrestations(svc, authorizer))
 		pr.Post("/timesheets/{id}/prefill-holidays", prefillHolidays(svc, authorizer))
+		pr.Post("/timesheets/{id}/prefill-ett", prefillETT(svc, authorizer))
 	})
 }
 
@@ -462,6 +463,36 @@ func prefillHolidays(svc ports.CRAService, authorizer authx.Authorizer) http.Han
 			country = "FR"
 		}
 		added, err := svc.PrefillPublicHolidays(r.Context(), identity.TenantID, ts.UserID, ts.Month, country)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]int{"added": added})
+	}
+}
+
+func prefillETT(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "cra", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		ts, err := svc.GetByID(r.Context(), identity.TenantID, id)
+		if err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		if !canAccessTimesheet(r.Context(), authorizer, identity, ts) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		added, err := svc.PrefillFromETT(r.Context(), identity.TenantID, ts.UserID, ts.Month)
 		if err != nil {
 			writeCRAError(w, err)
 			return

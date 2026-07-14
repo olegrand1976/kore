@@ -27,6 +27,8 @@ type Service struct {
 	notifier notifports.TransactionalNotifier
 	emails   ports.UserEmailResolver
 	invoices ports.InvoiceDraftPublisher
+	missions ports.MissionRateReader
+	ettRecords ports.ETTRecordReader
 }
 
 func NewService(repo ports.CRARepository, appCache cache.Cache, keys cache.KeyBuilder) *Service {
@@ -66,6 +68,27 @@ func (s *Service) WithRejectNotifier(notifier notifports.TransactionalNotifier, 
 	}
 	if resolver != nil {
 		s.emails = resolver
+	}
+	return s
+}
+
+func (s *Service) WithInvoicePublisher(publisher ports.InvoiceDraftPublisher) *Service {
+	if publisher != nil {
+		s.invoices = publisher
+	}
+	return s
+}
+
+func (s *Service) WithMissionRateReader(reader ports.MissionRateReader) *Service {
+	if reader != nil {
+		s.missions = reader
+	}
+	return s
+}
+
+func (s *Service) WithETTRecordReader(reader ports.ETTRecordReader) *Service {
+	if reader != nil {
+		s.ettRecords = reader
 	}
 	return s
 }

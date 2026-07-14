@@ -107,6 +107,8 @@ export const useCraStore = defineStore('cra', {
         )
         const data = res.data ?? (res as unknown as Record<string, unknown>)
         this.setTimesheet(data)
+      } catch (err) {
+        throw err
       } finally {
         this.saving = false
       }
@@ -114,13 +116,26 @@ export const useCraStore = defineStore('cra', {
     async submitWeek(weekNumber: number) {
       if (!this.timesheet) return
       const { apiFetch } = useApiFetch()
-      await apiFetch(`/api/cra/timesheets/${this.timesheet.id}/weeks/${weekNumber}/submit`, { method: 'POST' })
-      await this.load(this.timesheet.id)
+      try {
+        await apiFetch(`/api/cra/timesheets/${this.timesheet.id}/weeks/${weekNumber}/submit`, { method: 'POST' })
+        await this.load(this.timesheet.id)
+      } catch (err) {
+        throw err
+      }
     },
     async validateFinal() {
       if (!this.timesheet) return
       const { apiFetch } = useApiFetch()
       await apiFetch(`/api/cra/timesheets/${this.timesheet.id}/validate`, { method: 'POST' })
+      await this.load(this.timesheet.id)
+    },
+    async rejectTimesheet(reason: string) {
+      if (!this.timesheet) return
+      const { apiFetch } = useApiFetch()
+      await apiFetch(`/api/cra/timesheets/${this.timesheet.id}/reject`, {
+        method: 'POST',
+        body: { reason }
+      })
       await this.load(this.timesheet.id)
     }
   }

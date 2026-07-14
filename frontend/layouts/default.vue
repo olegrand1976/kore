@@ -58,6 +58,21 @@
       </header>
       <main class="main" :class="{ 'main--narrow': isNarrowMain }">
         <p v-if="isPastDue" class="past-due" role="alert">{{ $t('billing.past_due_banner') }}</p>
+        <AppCard
+          v-if="craGate.blocked && !isCraRoute && !craGate.loading"
+          padding="md"
+          class="cra-gate-banner"
+          role="alert"
+        >
+          <p class="cra-gate-banner__text">{{ $t('cra.gate_banner') }}</p>
+          <AppButton
+            variant="primary"
+            size="sm"
+            @click="navigateTo(craGate.currentTimesheetId ? `/cra/${craGate.currentTimesheetId}` : '/cra')"
+          >
+            {{ $t('cra.gate_action') }}
+          </AppButton>
+        </AppCard>
         <slot />
       </main>
     </div>
@@ -127,6 +142,8 @@ const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
 const { apiFetch } = useApiFetch()
 const drawerOpen = ref(false)
+const craGate = useCraGate()
+const isCraRoute = computed(() => route.path.startsWith('/cra'))
 
 onMounted(async () => {
   await Promise.all([fetchBranding(), fetchSession(), fetchEntitlements()])
@@ -484,6 +501,23 @@ const logout = async () => {
   background: rgba(220, 53, 69, 0.12);
   color: var(--kore-error);
   font-size: var(--kore-text-small);
+}
+
+.cra-gate-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-sm);
+  margin-bottom: var(--kore-space-md);
+  border: 1px solid var(--kore-status-warn);
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.cra-gate-banner__text {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
 }
 
 .drawer-title {

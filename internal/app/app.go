@@ -34,10 +34,12 @@ import (
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
 	crainvoicing "github.com/kore/kore/internal/modules/cra/adapters/invoicing"
 	craorg "github.com/kore/kore/internal/modules/cra/adapters/org"
+	crassii "github.com/kore/kore/internal/modules/cra/adapters/ssii"
 	crapdf "github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
 	craapp "github.com/kore/kore/internal/modules/cra/app"
 	etthttp "github.com/kore/kore/internal/modules/ett/adapters/http"
+	ettcra "github.com/kore/kore/internal/modules/ett/adapters/cra"
 	ettpostgres "github.com/kore/kore/internal/modules/ett/adapters/postgres"
 	ettapp "github.com/kore/kore/internal/modules/ett/app"
 	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
@@ -186,7 +188,9 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
 		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).
-		WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
+		WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService)).
+		WithMissionRateReader(crassii.NewMissionRateReader(ssiiRepo)).
+		WithETTRecordReader(ettcra.NewRecordReader(ettRepo))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
 	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)

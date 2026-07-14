@@ -9,13 +9,6 @@ import (
 	"github.com/kore/kore/internal/modules/cra/ports"
 )
 
-func (s *Service) WithInvoicePublisher(publisher ports.InvoiceDraftPublisher) *Service {
-	if publisher != nil {
-		s.invoices = publisher
-	}
-	return s
-}
-
 func (s *Service) publishValidationInvoice(ctx context.Context, ts domain.Timesheet) {
 	if s.invoices == nil {
 		return
@@ -29,15 +22,21 @@ func (s *Service) publishValidationInvoice(ctx context.Context, ts domain.Timesh
 		return
 	}
 	userLabel := userLabelForTimesheet(ctx, s, ts)
+	unitPrice := int64(0)
+	currency := "EUR"
+	if missionID := s.resolveMissionID(ctx, ts); missionID != nil {
+		unitPrice, currency = s.resolveUnitPriceCents(ctx, ts, *missionID)
+	}
 	_ = s.invoices.PublishCRAValidationDraft(ctx, ports.ValidationInvoiceCommand{
-		TenantID:      ts.TenantID,
-		TimesheetID:   ts.ID,
-		ClientID:      *clientID,
-		Month:         ts.Month,
-		BillableHours: float64(billableMinutes) / 60,
-		MissionLabel:  ts.CommercialInfo.Mission,
-		UserLabel:     userLabel,
-		Currency:      "EUR",
+		TenantID:       ts.TenantID,
+		TimesheetID:    ts.ID,
+		ClientID:       *clientID,
+		Month:          ts.Month,
+		BillableHours:  float64(billableMinutes) / 60,
+		MissionLabel:   ts.CommercialInfo.Mission,
+		UserLabel:      userLabel,
+		Currency:       currency,
+		UnitPriceCents: unitPrice,
 	})
 }
 
@@ -75,4 +74,70 @@ func (s *Service) resolveClientID(ctx context.Context, ts domain.Timesheet) *uui
 		}
 	}
 	return nil
+}
+
+func (s *Service) resolveMissionID(ctx context.Context, ts domain.Timesheet) *uuid.UUID {
+	if ts.CommercialInfo.MissionID != nil && *ts.CommercialInfo.MissionID != uuid.Nil {
+		return ts.CommercialInfo.MissionID
+	}
+	if id := dominantMissionFromLines(ts); id != uuid.Nil {
+		return &id
+	}
+	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, ts.TenantID, ts.Month)
+	if err != nil {
+		return nil
+	}
+	for _, summary := range summaries {
+		if summary.ID == ts.ID {
+			return summary.MissionID
+		}
+	}
+	return nil
+}
+
+func dominantMissionFromLines(ts domain.Timesheet) uuid.UUID {
+	minutesByMission := make(map[string]int)
+	for _, week := range ts.Weeks {
+		for _, line := range week.Lines {
+			if line.Source.Type != "mission" || !line.Billable || line.Duration.Minutes <= 0 {
+				continue
+			}
+			minutesByMission[line.Source.ID] += line.Duration.Minutes
+		}
+	}
+	var bestID string
+	var bestMinutes int
+	for id, minutes := range minutesByMission {
+		if minutes > bestMinutes {
+			bestMinutes = minutes
+			bestID = id
+		}
+	}
+	if bestID == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(bestID)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
+}
+
+func (s *Service) resolveUnitPriceCents(ctx context.Context, ts domain.Timesheet, missionID uuid.UUID) (int64, string) {
+	if s.missions == nil {
+		return 0, "EUR"
+	}
+	rate, err := s.missions.GetMissionRate(ctx, ts.TenantID, missionID)
+	if err != nil || rate.TJMAmount <= 0 {
+		return 0, "EUR"
+	}
+	cap := s.settingsForUser(ctx, ts.TenantID, ts.UserID).DayCapacityMinutes
+	if cap <= 0 {
+		cap = domain.DefaultDayCapacityMinutes
+	}
+	currency := rate.Currency
+	if currency == "" {
+		currency = "EUR"
+	}
+	return rate.TJMAmount * 60 / int64(cap), currency
 }

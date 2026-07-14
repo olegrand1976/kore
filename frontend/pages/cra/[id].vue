@@ -6,13 +6,30 @@
           <AppIcon name="arrow_back" /> {{ $t('cra.back') }}
         </AppButton>
         <AppButton
-          v-if="isAdmin"
+          v-if="canValidateCra"
           variant="secondary"
           size="sm"
           :disabled="!canEdit || saving"
           @click="validateFinal"
         >
           {{ $t('cra.validate_final') }}
+        </AppButton>
+        <AppButton
+          v-if="canValidateCra && timesheet?.status !== 'Définitif'"
+          variant="secondary"
+          size="sm"
+          @click="rejectOpen = true"
+        >
+          {{ $t('cra.reject') }}
+        </AppButton>
+        <AppButton
+          v-if="canEdit"
+          variant="secondary"
+          size="sm"
+          :disabled="prefillLoading"
+          @click="loadPrefillETT"
+        >
+          {{ $t('cra.prefill_ett') }}
         </AppButton>
         <AppButton
           v-if="canEdit"
@@ -88,6 +105,15 @@
         @submit="onSubmitWeek"
       />
 
+      <AppCard v-if="anomalies.length || anomaliesLoading" padding="lg" class="cra-detail__anomalies">
+        <h3 class="cra-detail__anomalies-title">{{ $t('cra.anomalies_title') }}</h3>
+        <p v-if="anomaliesLoading" class="muted">{{ $t('cra.loading') }}</p>
+        <ul v-else-if="anomalies.length" class="cra-detail__anomalies-list">
+          <li v-for="(item, idx) in anomalies" :key="idx">{{ item }}</li>
+        </ul>
+        <p v-else class="muted">{{ $t('cra.anomalies_empty') }}</p>
+      </AppCard>
+
       <CommercialInfoForm
         :client="commercial.client"
         :mission="commercial.mission"
@@ -105,6 +131,22 @@
 
     <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
     <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
+    <p v-if="actionError" class="flash flash--error" role="alert">{{ actionError }}</p>
+
+    <AppModal v-model:open="rejectOpen" width="md" :title-id="rejectTitleId" :aria-label="$t('cra.reject')">
+      <form class="reject-form" @submit.prevent="confirmReject">
+        <label :for="rejectReasonId">{{ $t('cra.reject_reason') }}</label>
+        <textarea :id="rejectReasonId" v-model="rejectReason" rows="3" required />
+        <div class="reject-form__actions">
+          <AppButton variant="ghost" size="sm" type="button" @click="rejectOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" size="sm" type="submit" :disabled="rejecting">
+            {{ $t('cra.reject') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -118,10 +160,11 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
-const { isAdmin } = useAuth()
+const { canValidateCra } = usePermissions()
+const { mapCraError } = useCraError()
 const id = computed(() => String(route.params.id))
 
-const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal } = useCra(id)
+const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal, rejectTimesheet } = useCra(id)
 
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
@@ -179,7 +222,57 @@ const loadMissions = async () => {
   }
 }
 
+const savingCommercial = ref(false)
+const commercialMsg = ref('')
+const commercialError = ref(false)
+const downloading = ref(false)
+const downloadError = ref('')
+const prefillLoading = ref(false)
+const prefillMsg = ref('')
+const actionError = ref('')
+const rejectOpen = ref(false)
+const rejectReason = ref('')
+const rejecting = ref(false)
+const rejectTitleId = 'cra-reject-title'
+const rejectReasonId = 'cra-reject-reason'
+const anomalies = ref<string[]>([])
+const anomaliesLoading = ref(false)
+const { suggestCraPrefill, fetchCraAnomalies } = useAi()
+
+const loadAnomalies = async () => {
+  anomaliesLoading.value = true
+  try {
+    const res = await fetchCraAnomalies(id.value) as { data?: { anomalies?: string[] }; anomalies?: string[] }
+    const list = res?.data?.anomalies ?? res?.anomalies ?? []
+    anomalies.value = Array.isArray(list) ? list.map(String) : []
+  } catch {
+    anomalies.value = []
+  } finally {
+    anomaliesLoading.value = false
+  }
+}
+
+const loadPrefillETT = async () => {
+  if (!timesheet.value) return
+  prefillLoading.value = true
+  prefillMsg.value = ''
+  actionError.value = ''
+  try {
+    const res = await $fetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-ett`, {
+      method: 'POST'
+    })
+    await load(id.value)
+    await loadAnomalies()
+    prefillMsg.value = t('cra.prefill_ett_result', { n: res?.data?.added ?? 0 })
+  } catch (err) {
+    actionError.value = mapCraError(err)
+  } finally {
+    prefillLoading.value = false
+  }
+}
+
 await Promise.all([load(id.value), loadOrgSettings(), loadMissions()])
+await loadAnomalies()
 
 const monthRef = computed(() => timesheet.value?.month ?? '')
 const weekStartDayRef = computed(() => weekStartDay.value)
@@ -194,14 +287,6 @@ const commercial = reactive({
   lieu: '',
   responsableClient: ''
 })
-const savingCommercial = ref(false)
-const commercialMsg = ref('')
-const commercialError = ref(false)
-const downloading = ref(false)
-const downloadError = ref('')
-const prefillLoading = ref(false)
-const prefillMsg = ref('')
-const { suggestCraPrefill, extractFetchError: aiError } = useAi()
 
 const mergePrefillLines = (existing: CraLine[], suggestions: Array<{ day: string; duration: number; comment?: string }>): CraLine[] => {
   const result = existing.map((line) => ({ ...line }))
@@ -249,7 +334,7 @@ const loadPrefillHolidays = async () => {
     await load(id.value)
     prefillMsg.value = t('cra.prefill_holidays_result', { n: res?.data?.added ?? 0 })
   } catch (err) {
-    downloadError.value = aiError(err)
+    actionError.value = mapCraError(err)
   } finally {
     prefillLoading.value = false
   }
@@ -280,7 +365,7 @@ const loadPrefillSuggest = async () => {
     await load(id.value)
     prefillMsg.value = t('ai.cra_prefill_result', { n: res.lines.length })
   } catch (err) {
-    downloadError.value = aiError(err)
+    actionError.value = mapCraError(err)
   } finally {
     prefillLoading.value = false
   }
@@ -311,11 +396,39 @@ const formatMonth = (raw: string) => {
 }
 
 const onSaveWeek = async (weekNumber: number, lines: Parameters<typeof saveWeek>[1]) => {
-  await saveWeek(weekNumber, lines)
+  actionError.value = ''
+  try {
+    await saveWeek(weekNumber, lines)
+    await loadAnomalies()
+  } catch (err) {
+    actionError.value = mapCraError(err)
+  }
 }
 
 const onSubmitWeek = async (weekNumber: number) => {
-  await submitWeek(weekNumber)
+  actionError.value = ''
+  try {
+    await submitWeek(weekNumber)
+    await loadAnomalies()
+  } catch (err) {
+    actionError.value = mapCraError(err)
+  }
+}
+
+const confirmReject = async () => {
+  if (!rejectReason.value.trim()) return
+  rejecting.value = true
+  actionError.value = ''
+  try {
+    await rejectTimesheet(rejectReason.value.trim())
+    rejectOpen.value = false
+    rejectReason.value = ''
+    await loadAnomalies()
+  } catch (err) {
+    actionError.value = mapCraError(err)
+  } finally {
+    rejecting.value = false
+  }
 }
 
 const saveCommercial = async () => {
@@ -356,8 +469,8 @@ const downloadPdf = async () => {
     a.download = `cra-${timesheet.value?.month ?? id.value}.pdf`
     a.click()
     URL.revokeObjectURL(url)
-  } catch {
-    downloadError.value = t('cra.download_error')
+  } catch (err) {
+    downloadError.value = mapCraError(err, t('cra.download_error'))
   } finally {
     downloading.value = false
   }
@@ -412,4 +525,28 @@ const downloadPdf = async () => {
 .muted { color: var(--kore-text-muted); }
 
 .flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
+
+.cra-detail__anomalies-title {
+  margin: 0 0 var(--kore-space-sm);
+  font-size: var(--kore-text-h3);
+}
+
+.cra-detail__anomalies-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--kore-text);
+  font-size: var(--kore-text-small);
+}
+
+.reject-form {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.reject-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
+}
 </style>

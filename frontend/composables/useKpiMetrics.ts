@@ -4,7 +4,9 @@ import { leaveDayCount, pickFrom, pickLeaveTypeCode, pickLeaveTypeLabel, pickSor
 import type { TmaDemand } from '~/composables/useTma'
 import { currentMonthKey } from '~/composables/useCraStatus'
 
-type CraTimesheet = {
+export type CraTimesheet = {
+  id?: string
+  ID?: string
   month?: string
   Month?: string
   status?: string
