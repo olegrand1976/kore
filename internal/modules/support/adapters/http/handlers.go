@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ func RegisterRoutes(r chi.Router, svc ports.SupportService, tokens *authx.TokenI
 		pr.Get("/tickets", listTickets(svc, authorizer))
 		pr.Post("/tickets", createTicket(svc, authorizer))
 		pr.Get("/tickets/{id}", getTicket(svc, authorizer))
+		pr.Post("/tickets/{id}/assign", assignTicket(svc, authorizer))
 		pr.Post("/tickets/{id}/take-over", takeOverTicket(svc, authorizer))
 		pr.Post("/tickets/{id}/replies", addReply(svc, authorizer))
 		pr.Post("/tickets/{id}/resolve", resolveTicket(svc, authorizer))
@@ -52,10 +54,21 @@ func createTicket(svc ports.SupportService, authorizer authx.Authorizer) http.Ha
 			ApplicationID uuid.UUID `json:"applicationId"`
 			Subject       string    `json:"subject"`
 			Description   string    `json:"description"`
+			Priority      string    `json:"priority"`
+			DueAt         *string   `json:"dueAt"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
+		}
+		var dueAt *time.Time
+		if req.DueAt != nil && *req.DueAt != "" {
+			parsed, err := time.Parse(time.RFC3339, *req.DueAt)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid dueAt")
+				return
+			}
+			dueAt = &parsed
 		}
 		identity, _ := authx.FromContext(r.Context())
 		reporterID := identity.UserID
@@ -64,6 +77,8 @@ func createTicket(svc ports.SupportService, authorizer authx.Authorizer) http.Ha
 			ApplicationID: req.ApplicationID,
 			Subject:       req.Subject,
 			Description:   req.Description,
+			Priority:      req.Priority,
+			DueAt:         dueAt,
 			ReporterID:    &reporterID,
 		})
 		if err != nil {
@@ -89,6 +104,34 @@ func getTicket(svc ports.SupportService, authorizer authx.Authorizer) http.Handl
 		t, err := svc.Get(r.Context(), identity.TenantID, id)
 		if err != nil {
 			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, t)
+	}
+}
+
+func assignTicket(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			AssigneeID uuid.UUID `json:"assigneeId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		t, err := svc.Assign(r.Context(), identity.TenantID, id, req.AssigneeID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, t)

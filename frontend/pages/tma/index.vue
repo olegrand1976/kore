@@ -47,7 +47,7 @@
     </AppKpiGrid>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
-      <DemandForm @submit="onCreate" />
+      <ServiceRequestForm show-chef-gate :busy="creating" @submit="onCreate" />
     </AppCard>
 
     <AppListToolbar
@@ -115,8 +115,10 @@
 
 <script setup lang="ts">
 import type { KanbanColumn } from '~/components/ui/AppKanbanBoard.vue'
+import type { ServiceRequestPayload } from '~/components/requests/ServiceRequestForm.vue'
 import { countTmaByStatus, countTmaOpen } from '~/composables/useKpiMetrics'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
+import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useRequestAttachments'
 
 definePageMeta({ layout: 'default' })
 
@@ -138,6 +140,7 @@ type TmaRow = {
 
 const { t } = useI18n()
 const { list, create, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
+const { uploadAll } = useRequestAttachments()
 const { canValidateTma } = usePermissions()
 
 const showForm = ref(false)
@@ -230,10 +233,21 @@ const kanbanColumns = computed((): KanbanColumn[] =>
   }))
 )
 
-const onCreate = async (payload: { applicationId: string; subject: string; requiresChefGate: boolean }) => {
+const onCreate = async (payload: ServiceRequestPayload) => {
   creating.value = true
   try {
-    await create(payload)
+    const created = await create({
+      applicationId: payload.applicationId,
+      subject: payload.subject,
+      description: payload.description,
+      priority: payload.priority,
+      dueAt: payload.dueAt,
+      requiresChefGate: payload.requiresChefGate
+    })
+    const id = pickId(created)
+    if (id && payload.files.length) {
+      await uploadAll(REQUEST_RESOURCE.tma, id, payload.files)
+    }
     showForm.value = false
     await refresh()
   } finally {

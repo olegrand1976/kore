@@ -5,6 +5,12 @@ export type WorkRequest = {
   ApplicationID?: string
   subject?: string
   Subject?: string
+  description?: string
+  Description?: string
+  priority?: string
+  Priority?: string
+  dueAt?: string
+  DueAt?: string
   state?: string
   State?: string
   assigneeId?: string
@@ -17,11 +23,30 @@ export type WorkRequest = {
   CompletedAt?: string
 }
 
+export type CreateWorkRequestPayload = {
+  applicationId: string
+  subject: string
+  description?: string
+  priority?: string
+  dueAt?: string
+}
+
+function toDueAtISO(raw?: string) {
+  if (!raw) return undefined
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return undefined
+  return parsed.toISOString()
+}
+
 export function useMaintenance() {
   const pickId = (w: WorkRequest) => w.id ?? w.ID ?? ''
   const pickSubject = (w: WorkRequest) => w.subject ?? w.Subject ?? ''
   const pickState = (w: WorkRequest) => w.state ?? w.State ?? ''
   const pickConsumption = (w: WorkRequest) => w.consumptionDays ?? w.ConsumptionDays ?? 0
+  const pickPriority = (w: WorkRequest) => w.priority ?? w.Priority ?? 'normal'
+  const pickDueAt = (w: WorkRequest) => w.dueAt ?? w.DueAt ?? ''
+  const pickApplicationId = (w: WorkRequest) => w.applicationId ?? w.ApplicationID ?? ''
+  const pickAssigneeId = (w: WorkRequest) => w.assigneeId ?? w.AssigneeID ?? ''
 
   const list = async () => {
     const res = await $fetch<{ data?: WorkRequest[] }>('/api/work-requests')
@@ -33,8 +58,14 @@ export function useMaintenance() {
     return (res?.data ?? res) as WorkRequest
   }
 
-  const create = async (payload: { applicationId: string; subject: string }) => {
-    const res = await $fetch<{ data?: WorkRequest }>('/api/work-requests', { method: 'POST', body: payload })
+  const create = async (payload: CreateWorkRequestPayload) => {
+    const res = await $fetch<{ data?: WorkRequest }>('/api/work-requests', {
+      method: 'POST',
+      body: {
+        ...payload,
+        dueAt: toDueAtISO(payload.dueAt)
+      }
+    })
     return (res?.data ?? res) as WorkRequest
   }
 
@@ -59,5 +90,20 @@ export function useMaintenance() {
     return (res?.data ?? res) as WorkRequest
   }
 
-  return { list, get, create, assign, progress, complete, pickId, pickSubject, pickState, pickConsumption }
+  return {
+    list,
+    get,
+    create,
+    assign,
+    progress,
+    complete,
+    pickId,
+    pickSubject,
+    pickState,
+    pickConsumption,
+    pickPriority,
+    pickDueAt,
+    pickApplicationId,
+    pickAssigneeId
+  }
 }

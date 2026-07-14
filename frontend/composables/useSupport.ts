@@ -7,6 +7,10 @@ export type SupportTicket = {
   Subject?: string
   description?: string
   Description?: string
+  priority?: string
+  Priority?: string
+  dueAt?: string
+  DueAt?: string
   state?: string
   State?: string
   channel?: string
@@ -30,11 +34,30 @@ export type TicketReply = {
   CreatedAt?: string
 }
 
+export type CreateTicketPayload = {
+  applicationId: string
+  subject: string
+  description: string
+  priority?: string
+  dueAt?: string
+}
+
+function toDueAtISO(raw?: string) {
+  if (!raw) return undefined
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return undefined
+  return parsed.toISOString()
+}
+
 export function useSupport() {
   const pickId = (t: SupportTicket) => t.id ?? t.ID ?? ''
   const pickSubject = (t: SupportTicket) => t.subject ?? t.Subject ?? ''
   const pickState = (t: SupportTicket) => t.state ?? t.State ?? ''
   const pickDescription = (t: SupportTicket) => t.description ?? t.Description ?? ''
+  const pickPriority = (t: SupportTicket) => t.priority ?? t.Priority ?? 'normal'
+  const pickDueAt = (t: SupportTicket) => t.dueAt ?? t.DueAt ?? ''
+  const pickApplicationId = (t: SupportTicket) => t.applicationId ?? t.ApplicationID ?? ''
+  const pickAssigneeId = (t: SupportTicket) => t.assigneeId ?? t.AssigneeID ?? ''
 
   const list = async () => {
     const res = await $fetch<{ data?: SupportTicket[] }>('/api/tickets')
@@ -46,8 +69,22 @@ export function useSupport() {
     return (res?.data ?? res) as SupportTicket
   }
 
-  const create = async (payload: { applicationId: string; subject: string; description: string }) => {
-    const res = await $fetch<{ data?: SupportTicket }>('/api/tickets', { method: 'POST', body: payload })
+  const create = async (payload: CreateTicketPayload) => {
+    const res = await $fetch<{ data?: SupportTicket }>('/api/tickets', {
+      method: 'POST',
+      body: {
+        ...payload,
+        dueAt: toDueAtISO(payload.dueAt)
+      }
+    })
+    return (res?.data ?? res) as SupportTicket
+  }
+
+  const assign = async (id: string, assigneeId: string) => {
+    const res = await $fetch<{ data?: SupportTicket }>(`/api/tickets/${id}/assign`, {
+      method: 'POST',
+      body: { assigneeId }
+    })
     return (res?.data ?? res) as SupportTicket
   }
 
@@ -69,5 +106,21 @@ export function useSupport() {
     return (res?.data ?? res) as TicketReply
   }
 
-  return { list, get, create, takeOver, resolve, addReply, pickId, pickSubject, pickState, pickDescription }
+  return {
+    list,
+    get,
+    create,
+    assign,
+    takeOver,
+    resolve,
+    addReply,
+    pickId,
+    pickSubject,
+    pickState,
+    pickDescription,
+    pickPriority,
+    pickDueAt,
+    pickApplicationId,
+    pickAssigneeId
+  }
 }

@@ -28,6 +28,7 @@ func RegisterRoutes(
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
 	uploadsDir string,
+	attachments ports.AttachmentService,
 	entitlements authx.EntitlementReader,
 	leaveBootstrap ports.LeaveTypeBootstrapper,
 ) {
@@ -73,6 +74,9 @@ func RegisterRoutes(
 		pr.Post("/clients", createClient(clients, authorizer))
 
 		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
+		if attachments != nil {
+			registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
+		}
 	})
 }
 

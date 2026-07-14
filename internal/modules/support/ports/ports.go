@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/support/domain"
@@ -13,6 +14,8 @@ type CreateTicketCommand struct {
 	ApplicationID uuid.UUID
 	Subject       string
 	Description   string
+	Priority      string
+	DueAt         *time.Time
 	ReporterID    *uuid.UUID
 }
 
@@ -27,6 +30,7 @@ type SupportService interface {
 	List(ctx context.Context, tenant kernel.TenantID) ([]domain.Ticket, error)
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Ticket, error)
 	Create(ctx context.Context, cmd CreateTicketCommand) (domain.Ticket, error)
+	Assign(ctx context.Context, tenant kernel.TenantID, ticketID, assigneeID uuid.UUID) (domain.Ticket, error)
 	TakeOver(ctx context.Context, tenant kernel.TenantID, ticketID, assigneeID uuid.UUID) (domain.Ticket, error)
 	AddReply(ctx context.Context, cmd AddReplyCommand) (domain.TicketReply, error)
 	Resolve(ctx context.Context, tenant kernel.TenantID, ticketID uuid.UUID) (domain.Ticket, error)

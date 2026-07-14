@@ -1,0 +1,4 @@
+ALTER TABLE maintenance.work_requests
+    ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal',
+    ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;

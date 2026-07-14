@@ -38,9 +38,9 @@
     "conges_validation": "Leave approval",
     "budget": "Budget",
     "invoicing": "Invoicing",
-    "tma": "TMA",
-    "support": "Support",
-    "maintenance": "Maintenance",
+    "tma": "Changes & incidents",
+    "support": "Assistance",
+    "maintenance": "Interventions",
     "workflows": "Workflows",
     "billing": "Subscription",
     "notifications": "Notifications",
@@ -682,8 +682,29 @@
     "kpi_consumption_pct": "{n}% consumed",
     "kpi_overrun_hint": "{n} budget(s) over limit"
   },
+  "requests": {
+    "form_application": "Application",
+    "form_application_placeholder": "Select an application",
+    "form_subject": "Subject",
+    "form_description": "Description",
+    "form_priority": "Priority",
+    "form_due_at": "Due date",
+    "form_attachments": "Attachments",
+    "form_chef_gate": "Submit for business owner approval before processing",
+    "form_submit": "Create request",
+    "priority_low": "Low",
+    "priority_normal": "Normal",
+    "priority_high": "High",
+    "priority_urgent": "Urgent",
+    "attachments_hint": "PDF, images, documents — 10 MB max per file",
+    "col_application": "Application",
+    "col_due_at": "Due date",
+    "col_priority": "Priority",
+    "col_assignee": "Assigned to",
+    "assign_to": "Assign to"
+  },
   "tma": {
-    "title": "TMA requests",
+    "title": "Changes & incidents",
     "empty": "No requests",
     "col_title": "Title",
     "col_status": "Status",
@@ -724,7 +745,7 @@
     "gantt_empty": "No requests to display"
   },
   "support": {
-    "title": "Support tickets",
+    "title": "Assistance",
     "empty": "No tickets",
     "new": "New ticket",
     "open": "Open",
@@ -745,7 +766,7 @@
     "state_resolved": "Resolved"
   },
   "maintenance": {
-    "title": "Maintenance work",
+    "title": "Interventions",
     "empty": "No work requests",
     "new": "New request",
     "loading": "Loading…",

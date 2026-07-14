@@ -34,7 +34,7 @@ import (
 func buildAPIRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", nil, nil)
+		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", nil, nil, nil)
 		orghttp.RegisterOIDCRoutes(r, nil, nil, nil)
 		notifhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		wfhttp.RegisterRoutes(r, nil, nil, nil, nil)

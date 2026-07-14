@@ -37,6 +37,9 @@ type Demand struct {
 	ApplicationID      uuid.UUID
 	Type               DemandType
 	Subject            string
+	Description        string
+	Priority           kernel.RequestPriority
+	DueAt              *time.Time
 	WorkflowInstanceID *uuid.UUID
 	AuthorID           uuid.UUID
 	AssigneeID         *uuid.UUID
@@ -78,7 +81,7 @@ type XmlExportRow struct {
 	Comment           string
 }
 
-func NewDemand(tenant kernel.TenantID, appID, authorID uuid.UUID, subject string, requiresChefGate bool) Demand {
+func NewDemand(tenant kernel.TenantID, appID, authorID uuid.UUID, subject, description string, priority kernel.RequestPriority, dueAt *time.Time, requiresChefGate bool) Demand {
 	status := DemandStatusOpen
 	visible := true
 	if requiresChefGate {
@@ -91,6 +94,9 @@ func NewDemand(tenant kernel.TenantID, appID, authorID uuid.UUID, subject string
 		ApplicationID:     appID,
 		Type:              DemandTypeIncident,
 		Subject:           subject,
+		Description:       description,
+		Priority:          priority,
+		DueAt:             dueAt,
 		AuthorID:          authorID,
 		Status:            status,
 		Visible:           visible,

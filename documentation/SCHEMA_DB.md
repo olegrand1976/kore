@@ -274,6 +274,25 @@ Index :
 
 **Index** : `idx_org_clients_tenant`
 
+### `org.request_attachments`
+
+Pièces jointes des demandes TMA, tickets support et travaux maintenance.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `resource_type` | TEXT | NOT NULL |
+| `resource_id` | UUID | NOT NULL |
+| `file_name` | TEXT | NOT NULL |
+| `mime_type` | TEXT | NOT NULL, DEFAULT `'application/octet-stream'` |
+| `size_bytes` | BIGINT | NOT NULL, DEFAULT 0 |
+| `storage_path` | TEXT | NOT NULL |
+| `uploaded_by` | UUID | NOT NULL |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index** : `idx_org_request_attachments_resource` sur `(tenant_id, resource_type, resource_id)`
+
 ### `org.authx_permissions`
 
 Matrice RBAC statique (pas de `tenant_id`).
@@ -603,6 +622,9 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `application_id` | UUID | NOT NULL |
 | `type` | TEXT | NOT NULL, DEFAULT `'incident'` |
 | `subject` | TEXT | NOT NULL |
+| `description` | TEXT | NOT NULL, DEFAULT `''` |
+| `priority` | TEXT | NOT NULL, DEFAULT `'normal'` |
+| `due_at` | TIMESTAMPTZ | |
 | `workflow_instance_id` | UUID | |
 | `author_id` | UUID | NOT NULL |
 | `assignee_id` | UUID | |
@@ -855,6 +877,8 @@ Helpdesk tickets et réponses historisées.
 | `application_id` | UUID | NOT NULL |
 | `subject` | TEXT | NOT NULL |
 | `description` | TEXT | NOT NULL, DEFAULT `''` |
+| `priority` | TEXT | NOT NULL, DEFAULT `'normal'` |
+| `due_at` | TIMESTAMPTZ | |
 | `state` | TEXT | NOT NULL, DEFAULT `'open'` |
 | `channel` | TEXT | NOT NULL, DEFAULT `'web'` |
 | `reporter_id` | UUID | |
@@ -888,6 +912,9 @@ Demandes de travaux (cycle allégé).
 | `tenant_id` | UUID | NOT NULL |
 | `application_id` | UUID | NOT NULL |
 | `subject` | TEXT | NOT NULL |
+| `description` | TEXT | NOT NULL, DEFAULT `''` |
+| `priority` | TEXT | NOT NULL, DEFAULT `'normal'` |
+| `due_at` | TIMESTAMPTZ | |
 | `state` | TEXT | NOT NULL, DEFAULT `'created'` |
 | `assignee_id` | UUID | |
 | `consumption_days` | NUMERIC(12,2) | NOT NULL, DEFAULT 0 |

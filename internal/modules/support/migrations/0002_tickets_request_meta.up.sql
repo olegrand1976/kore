@@ -1,0 +1,3 @@
+ALTER TABLE support.tickets
+    ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal',
+    ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;

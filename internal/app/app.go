@@ -156,6 +156,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	migrator := db.NewMigrationRunner(pool, AllModuleMigrations())
 
 	orgRepo := orgpostgres.NewRepository(pool)
+	attachmentRepo := orgpostgres.NewAttachmentRepository(pool)
 	notifRepo := notifpostgres.NewRepository(pool)
 	wfRepo := wfpostgres.NewRepository(pool)
 	craRepo := crapostgres.NewRepository(pool)
@@ -181,6 +182,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	}
 
 	orgService := orgapp.NewOrganizationService(orgRepo)
+	attachmentService := orgapp.NewAttachmentService(attachmentRepo)
 	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
 	clientService := orgapp.NewClientService(orgRepo)
@@ -283,7 +285,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	router.Route("/api/v1", func(r chi.Router) {
 		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
 		idpService := orgapp.NewIdentityProviderService(orgRepo)
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, billingService, leaveTypeConfigService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)

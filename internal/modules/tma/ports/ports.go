@@ -15,6 +15,9 @@ type CreateDemandCommand struct {
 	ApplicationID    uuid.UUID
 	AuthorID         uuid.UUID
 	Subject          string
+	Description      string
+	Priority         string
+	DueAt            *time.Time
 	RequiresChefGate bool
 }
 

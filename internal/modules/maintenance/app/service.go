@@ -28,7 +28,7 @@ func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID)
 }
 
 func (s *service) Create(ctx context.Context, cmd ports.CreateWorkRequestCommand) (domain.WorkRequest, error) {
-	wr := domain.NewWorkRequest(cmd.TenantID, cmd.ApplicationID, cmd.Subject)
+	wr := domain.NewWorkRequest(cmd.TenantID, cmd.ApplicationID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt)
 	return wr, s.repo.SaveWorkRequest(ctx, wr)
 }
 

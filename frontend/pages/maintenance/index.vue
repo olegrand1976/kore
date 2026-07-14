@@ -9,13 +9,7 @@
     </AppPageHeader>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
-      <form class="maintenance-form" @submit.prevent="onCreate">
-        <AppInput v-model="form.applicationId" :label="$t('maintenance.application_id')" required />
-        <AppInput v-model="form.subject" :label="$t('maintenance.col_subject')" required />
-        <AppButton variant="primary" size="sm" type="submit" :disabled="busy">
-          {{ $t('maintenance.create') }}
-        </AppButton>
-      </form>
+      <ServiceRequestForm :busy="busy" @submit="onCreate" />
     </AppCard>
 
     <AppCard v-if="pending" padding="lg"><p class="muted">{{ $t('maintenance.loading') }}</p></AppCard>
@@ -28,15 +22,22 @@
           <AppBadge variant="neutral">{{ maintenanceStateLabel(String(value)) }}</AppBadge>
         </template>
         <template #cell-actions="{ row }">
-          <AppButton
-            v-if="row.state === 'created'"
-            variant="ghost"
-            size="sm"
-            :disabled="busy"
-            @click="onAssign(row.id)"
-          >
-            {{ $t('maintenance.assign_self') }}
-          </AppButton>
+          <div v-if="row.state === 'created'" class="maintenance-actions">
+            <select v-model="assignTargets[row.id]" class="maintenance-actions__select">
+              <option value="">{{ $t('requests.assign_to') }}</option>
+              <option v-for="u in users" :key="pickUserId(u)" :value="pickUserId(u)">
+                {{ pickUserLogin(u) }}
+              </option>
+            </select>
+            <AppButton
+              variant="ghost"
+              size="sm"
+              :disabled="busy || !assignTargets[row.id]"
+              @click="onAssign(row.id, assignTargets[row.id])"
+            >
+              {{ $t('maintenance.assign_self') }}
+            </AppButton>
+          </div>
           <AppButton
             v-if="row.state === 'assigned'"
             variant="ghost"
@@ -63,21 +64,27 @@
 </template>
 
 <script setup lang="ts">
+import type { ServiceRequestPayload } from '~/components/requests/ServiceRequestForm.vue'
+import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useRequestAttachments'
+
 definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
 const { user } = useAuth()
 const { extractFetchError } = useApiError()
 const { list, create, assign, progress, complete, pickId, pickSubject, pickState } = useMaintenance()
+const { uploadAll } = useRequestAttachments()
+const { list: listUsers, pickUserId, pickUserLogin } = useUsers()
 
 const pending = ref(true)
 const busy = ref(false)
 const showForm = ref(false)
 const errorMsg = ref('')
 const requests = ref<Awaited<ReturnType<typeof list>>>([])
-const form = reactive({ applicationId: '', subject: '' })
+const users = ref<Awaited<ReturnType<typeof listUsers>>>([])
+const assignTargets = reactive<Record<string, string>>({})
 
-const userId = computed(() => user.value?.id ?? '')
+const userId = computed(() => user.value?.userId ?? user.value?.id ?? '')
 
 const columns = computed(() => [
   { key: 'subject', label: t('maintenance.col_subject') },
@@ -99,7 +106,14 @@ const load = async () => {
   pending.value = true
   errorMsg.value = ''
   try {
-    requests.value = await list()
+    const [workRequests, userList] = await Promise.all([list(), listUsers()])
+    requests.value = workRequests
+    users.value = userList
+    if (userId.value) {
+      for (const row of rows.value) {
+        if (!assignTargets[row.id]) assignTargets[row.id] = userId.value
+      }
+    }
   } catch (e) {
     errorMsg.value = extractFetchError(e)
   } finally {
@@ -107,12 +121,15 @@ const load = async () => {
   }
 }
 
-const onCreate = async () => {
+const onCreate = async (payload: ServiceRequestPayload) => {
   busy.value = true
   try {
-    await create(form)
+    const created = await create(payload)
+    const id = pickId(created)
+    if (id && payload.files.length) {
+      await uploadAll(REQUEST_RESOURCE.maintenance, id, payload.files)
+    }
     showForm.value = false
-    form.subject = ''
     await load()
   } catch (e) {
     errorMsg.value = extractFetchError(e)
@@ -121,11 +138,11 @@ const onCreate = async () => {
   }
 }
 
-const onAssign = async (id: string) => {
-  if (!userId.value) return
+const onAssign = async (id: string, assigneeId: string) => {
+  if (!assigneeId) return
   busy.value = true
   try {
-    await assign(id, userId.value)
+    await assign(id, assigneeId)
     await load()
   } catch (e) {
     errorMsg.value = extractFetchError(e)
@@ -163,16 +180,28 @@ await load()
 
 <style scoped>
 .mb { margin-bottom: var(--kore-space-lg); }
-.maintenance-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--kore-space-md);
-  max-width: var(--kore-form-max);
-}
 .muted { color: var(--kore-text-muted); }
 .flash { margin-top: var(--kore-space-md); font-size: var(--kore-text-small); }
 .flash--error { color: var(--kore-status-danger); }
+.maintenance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  align-items: center;
+}
+.maintenance-actions__select {
+  min-width: 10rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg-elevated);
+  color: var(--kore-text);
+}
 @media (max-width: 768px) {
-  .maintenance-form :deep(.app-button) { width: 100%; }
+  .maintenance-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .maintenance-actions__select { width: 100%; }
 }
 </style>

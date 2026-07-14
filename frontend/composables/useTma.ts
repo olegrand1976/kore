@@ -5,6 +5,12 @@ export type TmaDemand = {
   ApplicationID?: string
   subject?: string
   Subject?: string
+  description?: string
+  Description?: string
+  priority?: string
+  Priority?: string
+  dueAt?: string
+  DueAt?: string
   status?: string
   Status?: string
   visible?: boolean
@@ -83,8 +89,25 @@ export function useTma() {
     return (res?.data ?? res) as TmaAnalysis
   }
 
-  const create = async (payload: { applicationId: string; subject: string; requiresChefGate?: boolean }) => {
-    return $fetch('/api/tma/demands', { method: 'POST', body: payload })
+  const create = async (payload: {
+    applicationId: string
+    subject: string
+    description?: string
+    priority?: string
+    dueAt?: string
+    requiresChefGate?: boolean
+  }) => {
+    const dueAt = payload.dueAt
+      ? (() => {
+          const parsed = new Date(payload.dueAt)
+          return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString()
+        })()
+      : undefined
+    const res = await $fetch<{ data?: TmaDemand }>('/api/tma/demands', {
+      method: 'POST',
+      body: { ...payload, dueAt }
+    })
+    return (res?.data ?? res) as TmaDemand
   }
 
   const validateCreation = (id: string) =>

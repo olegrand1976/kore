@@ -18,7 +18,7 @@ func (s *service) IngestInboundEmails(ctx context.Context, tenant kernel.TenantI
 	}
 	created := 0
 	for _, email := range emails {
-		t := domain.NewTicket(tenant, applicationID, email.Subject, email.Body, email.ReporterID)
+		t := domain.NewTicket(tenant, applicationID, email.Subject, email.Body, kernel.PriorityNormal, nil, email.ReporterID)
 		t.Channel = "mail"
 		if err := s.repo.SaveTicket(ctx, t); err != nil {
 			return created, err

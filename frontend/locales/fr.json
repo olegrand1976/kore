@@ -38,9 +38,9 @@
     "conges_validation": "Validation congés",
     "budget": "Budget",
     "invoicing": "Facturation",
-    "tma": "TMA",
-    "support": "Support",
-    "maintenance": "Maintenance",
+    "tma": "Évolutions & incidents",
+    "support": "Assistance",
+    "maintenance": "Interventions",
     "workflows": "Workflows",
     "billing": "Abonnement",
     "notifications": "Notifications",
@@ -682,8 +682,29 @@
     "kpi_consumption_pct": "{n} % consommé",
     "kpi_overrun_hint": "{n} budget(s) dépassé(s)"
   },
+  "requests": {
+    "form_application": "Application",
+    "form_application_placeholder": "Choisir une application",
+    "form_subject": "Sujet",
+    "form_description": "Description",
+    "form_priority": "Priorité",
+    "form_due_at": "Échéance",
+    "form_attachments": "Pièces jointes",
+    "form_chef_gate": "Soumettre à validation du responsable métier avant traitement",
+    "form_submit": "Créer la demande",
+    "priority_low": "Basse",
+    "priority_normal": "Normale",
+    "priority_high": "Haute",
+    "priority_urgent": "Urgente",
+    "attachments_hint": "PDF, images, documents — 10 Mo max par fichier",
+    "col_application": "Application",
+    "col_due_at": "Échéance",
+    "col_priority": "Priorité",
+    "col_assignee": "Affecté à",
+    "assign_to": "Affecter à"
+  },
   "tma": {
-    "title": "Demandes TMA",
+    "title": "Évolutions & incidents",
     "empty": "Aucune demande",
     "col_title": "Titre",
     "col_status": "Statut",
@@ -724,7 +745,7 @@
     "gantt_empty": "Aucune demande à afficher"
   },
   "support": {
-    "title": "Tickets support",
+    "title": "Assistance",
     "empty": "Aucun ticket",
     "new": "Nouveau ticket",
     "open": "Ouvrir",
@@ -745,7 +766,7 @@
     "state_resolved": "Résolu"
   },
   "maintenance": {
-    "title": "Travaux maintenance",
+    "title": "Interventions",
     "empty": "Aucune demande de travaux",
     "new": "Nouvelle demande",
     "loading": "Chargement…",

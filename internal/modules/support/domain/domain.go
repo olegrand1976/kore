@@ -27,6 +27,8 @@ type Ticket struct {
 	ApplicationID uuid.UUID
 	Subject       string
 	Description   string
+	Priority      kernel.RequestPriority
+	DueAt         *time.Time
 	State         TicketState
 	Channel       string
 	ReporterID    *uuid.UUID
@@ -45,13 +47,15 @@ type TicketReply struct {
 	CreatedAt time.Time
 }
 
-func NewTicket(tenant kernel.TenantID, appID uuid.UUID, subject, description string, reporterID *uuid.UUID) Ticket {
+func NewTicket(tenant kernel.TenantID, appID uuid.UUID, subject, description string, priority kernel.RequestPriority, dueAt *time.Time, reporterID *uuid.UUID) Ticket {
 	return Ticket{
 		ID:            uuid.New(),
 		TenantID:      tenant,
 		ApplicationID: appID,
 		Subject:       subject,
 		Description:   description,
+		Priority:      priority,
+		DueAt:         dueAt,
 		State:         TicketStateOpen,
 		Channel:       "web",
 		ReporterID:    reporterID,
@@ -60,8 +64,14 @@ func NewTicket(tenant kernel.TenantID, appID uuid.UUID, subject, description str
 }
 
 func (t *Ticket) TakeOver(assigneeID uuid.UUID) {
+	t.Assign(assigneeID)
+}
+
+func (t *Ticket) Assign(assigneeID uuid.UUID) {
 	t.AssigneeID = &assigneeID
-	t.State = TicketStateInProgress
+	if t.State == TicketStateOpen {
+		t.State = TicketStateInProgress
+	}
 }
 
 func (t *Ticket) Resolve() error {

@@ -61,7 +61,7 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 	if !hasBudget {
 		return domain.Demand{}, domain.ErrDefaultBudgetRequired
 	}
-	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.RequiresChefGate)
+	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
 	if s.workflow != nil {
 		inst, err := s.workflow.Start(ctx, ports.StartWorkflowCommand{
 			TenantID:       cmd.TenantID,

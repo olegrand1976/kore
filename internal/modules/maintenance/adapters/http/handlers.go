@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -51,16 +52,31 @@ func createWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer
 		var req struct {
 			ApplicationID uuid.UUID `json:"applicationId"`
 			Subject       string    `json:"subject"`
+			Description   string    `json:"description"`
+			Priority      string    `json:"priority"`
+			DueAt         *string   `json:"dueAt"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
+		}
+		var dueAt *time.Time
+		if req.DueAt != nil && *req.DueAt != "" {
+			parsed, err := time.Parse(time.RFC3339, *req.DueAt)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid dueAt")
+				return
+			}
+			dueAt = &parsed
 		}
 		identity, _ := authx.FromContext(r.Context())
 		wr, err := svc.Create(r.Context(), ports.CreateWorkRequestCommand{
 			TenantID:      identity.TenantID,
 			ApplicationID: req.ApplicationID,
 			Subject:       req.Subject,
+			Description:   req.Description,
+			Priority:      req.Priority,
+			DueAt:         dueAt,
 		})
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())

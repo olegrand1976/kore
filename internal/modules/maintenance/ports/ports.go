@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/maintenance/domain"
@@ -12,6 +13,9 @@ type CreateWorkRequestCommand struct {
 	TenantID      kernel.TenantID
 	ApplicationID uuid.UUID
 	Subject       string
+	Description   string
+	Priority      string
+	DueAt         *time.Time
 }
 
 type AssignCommand struct {

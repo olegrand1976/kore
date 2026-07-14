@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -122,11 +123,23 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Handle
 		var req struct {
 			ApplicationID    uuid.UUID `json:"applicationId"`
 			Subject          string    `json:"subject"`
+			Description      string    `json:"description"`
+			Priority         string    `json:"priority"`
+			DueAt            *string   `json:"dueAt"`
 			RequiresChefGate bool      `json:"requiresChefGate"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
+		}
+		var dueAt *time.Time
+		if req.DueAt != nil && *req.DueAt != "" {
+			parsed, err := time.Parse(time.RFC3339, *req.DueAt)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid dueAt")
+				return
+			}
+			dueAt = &parsed
 		}
 		identity, _ := authx.FromContext(r.Context())
 		d, err := tma.CreateDemand(r.Context(), ports.CreateDemandCommand{
@@ -134,6 +147,9 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Handle
 			ApplicationID:    req.ApplicationID,
 			AuthorID:         identity.UserID,
 			Subject:          req.Subject,
+			Description:      req.Description,
+			Priority:         req.Priority,
+			DueAt:            dueAt,
 			RequiresChefGate: req.RequiresChefGate,
 		})
 		if err != nil {

@@ -27,6 +27,9 @@ type WorkRequest struct {
 	TenantID        kernel.TenantID
 	ApplicationID   uuid.UUID
 	Subject         string
+	Description     string
+	Priority        kernel.RequestPriority
+	DueAt           *time.Time
 	State           WorkState
 	AssigneeID      *uuid.UUID
 	ConsumptionDays float64
@@ -34,12 +37,15 @@ type WorkRequest struct {
 	CompletedAt     *time.Time
 }
 
-func NewWorkRequest(tenant kernel.TenantID, appID uuid.UUID, subject string) WorkRequest {
+func NewWorkRequest(tenant kernel.TenantID, appID uuid.UUID, subject, description string, priority kernel.RequestPriority, dueAt *time.Time) WorkRequest {
 	return WorkRequest{
 		ID:            uuid.New(),
 		TenantID:      tenant,
 		ApplicationID: appID,
 		Subject:       subject,
+		Description:   description,
+		Priority:      priority,
+		DueAt:         dueAt,
 		State:         WorkStateCreated,
 		CreatedAt:     time.Now().UTC(),
 	}

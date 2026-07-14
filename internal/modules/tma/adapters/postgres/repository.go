@@ -24,32 +24,35 @@ func NewRepository(pool *db.Pool) *Repository {
 func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO tma.demands (
-			id, tenant_id, application_id, type, subject, workflow_instance_id,
-			author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			id, tenant_id, application_id, type, subject, description, priority, due_at,
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		ON CONFLICT (id) DO UPDATE SET
 			assignee_id = EXCLUDED.assignee_id,
 			status = EXCLUDED.status,
 			visible = EXCLUDED.visible,
 			consumption_active = EXCLUDED.consumption_active,
-			workflow_instance_id = EXCLUDED.workflow_instance_id
-	`, d.ID, d.TenantID.UUID(), d.ApplicationID, string(d.Type), d.Subject, d.WorkflowInstanceID,
-		d.AuthorID, d.AssigneeID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate, d.CreatedAt)
+			workflow_instance_id = EXCLUDED.workflow_instance_id,
+			description = EXCLUDED.description,
+			priority = EXCLUDED.priority,
+			due_at = EXCLUDED.due_at
+	`, d.ID, d.TenantID.UUID(), d.ApplicationID, string(d.Type), d.Subject, d.Description, string(d.Priority), d.DueAt,
+		d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate, d.CreatedAt)
 	return err
 }
 
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
 	return r.scanDemand(r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, application_id, type, subject, workflow_instance_id,
-			author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
+		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
 		FROM tma.demands WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
 }
 
 func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
 	query := `
-		SELECT id, tenant_id, application_id, type, subject, workflow_instance_id,
-			author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
+		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
 		FROM tma.demands WHERE tenant_id = $1`
 	args := []any{tenant.UUID()}
 	argPos := 2
@@ -128,10 +131,10 @@ func (r *Repository) scanDemand(row pgx.Row) (domain.Demand, error) {
 func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	var d domain.Demand
 	var tenantID uuid.UUID
-	var demandType, status string
+	var demandType, status, priority string
 	err := row.Scan(
-		&d.ID, &tenantID, &d.ApplicationID, &demandType, &d.Subject, &d.WorkflowInstanceID,
-		&d.AuthorID, &d.AssigneeID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate, &d.CreatedAt,
+		&d.ID, &tenantID, &d.ApplicationID, &demandType, &d.Subject, &d.Description, &priority, &d.DueAt,
+		&d.WorkflowInstanceID, &d.AuthorID, &d.AssigneeID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate, &d.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -142,6 +145,7 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	d.TenantID = kernel.NewTenantID(tenantID)
 	d.Type = domain.DemandType(demandType)
 	d.Status = domain.DemandStatus(status)
+	d.Priority = kernel.RequestPriority(priority)
 	return d, nil
 }
 

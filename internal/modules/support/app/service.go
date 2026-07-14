@@ -29,7 +29,16 @@ func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID)
 }
 
 func (s *service) Create(ctx context.Context, cmd ports.CreateTicketCommand) (domain.Ticket, error) {
-	t := domain.NewTicket(cmd.TenantID, cmd.ApplicationID, cmd.Subject, cmd.Description, cmd.ReporterID)
+	t := domain.NewTicket(cmd.TenantID, cmd.ApplicationID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.ReporterID)
+	return t, s.repo.SaveTicket(ctx, t)
+}
+
+func (s *service) Assign(ctx context.Context, tenant kernel.TenantID, ticketID, assigneeID uuid.UUID) (domain.Ticket, error) {
+	t, err := s.repo.GetTicket(ctx, tenant, ticketID)
+	if err != nil {
+		return domain.Ticket{}, err
+	}
+	t.Assign(assigneeID)
 	return t, s.repo.SaveTicket(ctx, t)
 }
 
