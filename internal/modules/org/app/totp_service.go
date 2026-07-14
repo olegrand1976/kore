@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	totpChallengeTTL   = 5 * time.Minute
-	totpEnrollmentTTL  = 30 * time.Minute
+	totpChallengeTTL    = 5 * time.Minute
+	totpEnrollmentTTL   = 30 * time.Minute
 	totpSetupPendingTTL = 10 * time.Minute
 	totpBackupCodeCount = 8
 	totpIssuer          = "Kore"

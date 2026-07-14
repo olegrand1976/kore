@@ -101,7 +101,9 @@ func (r *totpUserRepo) ResolveSocieteIDForEquipe(context.Context, kernel.TenantI
 func (r *totpUserRepo) ListSocietesCraMailAuto(context.Context) ([]ports.CraMailReminderTarget, error) {
 	return nil, nil
 }
-func (r *totpUserRepo) SaveIdentityProvider(context.Context, domain.IdentityProvider) error { return nil }
+func (r *totpUserRepo) SaveIdentityProvider(context.Context, domain.IdentityProvider) error {
+	return nil
+}
 func (r *totpUserRepo) GetIdentityProvider(context.Context, kernel.TenantID) (domain.IdentityProvider, error) {
 	return domain.IdentityProvider{}, domain.ErrSSONotEnabled
 }

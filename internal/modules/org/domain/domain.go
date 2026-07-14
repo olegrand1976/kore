@@ -70,22 +70,22 @@ func (a ActivationPeriod) IsActive(now time.Time) bool {
 }
 
 type User struct {
-	ID                    uuid.UUID
-	TenantID              kernel.TenantID
-	EquipeID              *uuid.UUID
-	Login                 Login
-	Prenom                string
-	Nom                   string
-	Email                 string
-	PasswordHash          string
-	Profile               Profile
-	Active                bool
-	Period                ActivationPeriod
-	DeletedAt             *time.Time
-	TotpEnabled           bool
+	ID                     uuid.UUID
+	TenantID               kernel.TenantID
+	EquipeID               *uuid.UUID
+	Login                  Login
+	Prenom                 string
+	Nom                    string
+	Email                  string
+	PasswordHash           string
+	Profile                Profile
+	Active                 bool
+	Period                 ActivationPeriod
+	DeletedAt              *time.Time
+	TotpEnabled            bool
 	TotpEnrollmentRequired bool
-	TotpSecretEncrypted   string
-	TotpEnabledAt         *time.Time
+	TotpSecretEncrypted    string
+	TotpEnabledAt          *time.Time
 }
 
 type IdentityProvider struct {
@@ -111,23 +111,23 @@ type UserIdentityLink struct {
 }
 
 type Societe struct {
-	ID                 uuid.UUID       `json:"id"`
-	TenantID           kernel.TenantID `json:"tenantId"`
-	RaisonSociale      string          `json:"raisonSociale"`
-	Logo               string          `json:"logo,omitempty"`
-	Devise             string          `json:"devise"`
-	Pays               string          `json:"pays"`
-	WeekStartDay       int             `json:"weekStartDay"`
-	DayCapacityMinutes int             `json:"dayCapacityMinutes"`
-	CraMailAuto        bool            `json:"craMailAuto"`
-	CraMailRecipients  []string        `json:"craMailRecipients,omitempty"`
-	WeekSubmitPolicy      string   `json:"weekSubmitPolicy"`
-	TaskTypesEnabled      []string `json:"taskTypesEnabled,omitempty"`
-	TotpDefaultEnabled    bool     `json:"totpDefaultEnabled"`
-	TotpUserConfigurable  bool   `json:"totpUserConfigurable"`
-	Adresse               string `json:"adresse,omitempty"`
-	Siret              string          `json:"siret,omitempty"`
-	URLTenant          string          `json:"urlTenant,omitempty"`
+	ID                   uuid.UUID       `json:"id"`
+	TenantID             kernel.TenantID `json:"tenantId"`
+	RaisonSociale        string          `json:"raisonSociale"`
+	Logo                 string          `json:"logo,omitempty"`
+	Devise               string          `json:"devise"`
+	Pays                 string          `json:"pays"`
+	WeekStartDay         int             `json:"weekStartDay"`
+	DayCapacityMinutes   int             `json:"dayCapacityMinutes"`
+	CraMailAuto          bool            `json:"craMailAuto"`
+	CraMailRecipients    []string        `json:"craMailRecipients,omitempty"`
+	WeekSubmitPolicy     string          `json:"weekSubmitPolicy"`
+	TaskTypesEnabled     []string        `json:"taskTypesEnabled,omitempty"`
+	TotpDefaultEnabled   bool            `json:"totpDefaultEnabled"`
+	TotpUserConfigurable bool            `json:"totpUserConfigurable"`
+	Adresse              string          `json:"adresse,omitempty"`
+	Siret                string          `json:"siret,omitempty"`
+	URLTenant            string          `json:"urlTenant,omitempty"`
 }
 
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
