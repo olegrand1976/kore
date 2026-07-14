@@ -214,11 +214,17 @@ const loadOrgSettings = async () => {
     }>('/api/org/users/me/calendar-settings')
     const data = res.data ?? res
     const day = data.weekStartDay
-    if (day != null && day >= 0 && day <= 6) {
-      weekStartDay.value = day
+    if (day != null) {
+      const normalizedDay = Number(day)
+      if (Number.isFinite(normalizedDay) && normalizedDay >= 0 && normalizedDay <= 6) {
+        weekStartDay.value = normalizedDay
+      }
     }
-    if (data.dayCapacityMinutes != null && data.dayCapacityMinutes > 0) {
-      dayCapacityMinutes.value = data.dayCapacityMinutes
+    if (data.dayCapacityMinutes != null) {
+      const normalizedCapacity = Number(data.dayCapacityMinutes)
+      if (Number.isFinite(normalizedCapacity) && normalizedCapacity > 0) {
+        dayCapacityMinutes.value = normalizedCapacity
+      }
     }
     const policy = data.weekSubmitPolicy
     if (policy === 'block' || policy === 'warn' || policy === 'none') {

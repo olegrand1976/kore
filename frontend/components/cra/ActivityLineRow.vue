@@ -14,24 +14,28 @@
           v-model="localHours"
           type="number"
           min="0"
-          max="8"
+          :max="maxHours"
           step="0.5"
           :label="$t('cra.hours')"
           :disabled="disabled"
         />
         <button type="button" class="stepper-btn" :disabled="disabled" :aria-label="$t('cra.increase_hours')" @click="step(0.5)">+</button>
       </div>
-      <div v-else class="activity-line__hours-placeholder">
+      <div v-else-if="allowPartialAbsence" class="activity-line__hours-placeholder">
         <span class="activity-line__hours-placeholder-label">{{ $t('cra.hours') }}</span>
         <span class="activity-line__hours-placeholder-value">{{ $t('cra.full_day_absence') }}</span>
         <button
           type="button"
           class="activity-line__hours-edit"
           :disabled="disabled"
-          @click="startPartialAbsence"
+          @click.stop="startPartialAbsence"
         >
           {{ $t('cra.enter_partial_hours') }}
         </button>
+      </div>
+      <div v-else class="activity-line__hours-placeholder">
+        <span class="activity-line__hours-placeholder-label">{{ $t('cra.hours') }}</span>
+        <span class="activity-line__hours-placeholder-value">{{ $t('cra.full_day_absence') }}</span>
       </div>
       <AppInput v-model="localComment" :label="$t('cra.comment')" :disabled="disabled" />
       <label v-if="!absence" class="activity-line__billable">
@@ -53,7 +57,9 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
+import { partialAbsenceHoursLabel } from '~/utils/craDayState'
+
+const props = withDefaults(defineProps<{
   inputId: string
   label: string
   icon: string
@@ -63,9 +69,12 @@ const props = defineProps<{
   origin: string
   billable: boolean
   absence?: boolean
+  dayCapacityMinutes?: number
   disabled?: boolean
   canRemove?: boolean
-}>()
+}>(), {
+  dayCapacityMinutes: 8 * 60
+})
 
 const emit = defineEmits<{
   'update:hours': [value: string]
@@ -78,6 +87,10 @@ const hasHours = computed(() => {
   const value = Number(props.hours)
   return Number.isFinite(value) && value > 0
 })
+
+const allowPartialAbsence = computed(() => Boolean(props.absence))
+
+const maxHours = computed(() => Math.max(0.5, props.dayCapacityMinutes / 60))
 
 const absenceClass = computed(() => {
   if (!props.absence) return ''
@@ -109,12 +122,12 @@ const localBillable = computed({
 
 const step = (delta: number) => {
   const current = Number(localHours.value) || 0
-  const next = Math.max(0, Math.min(8, current + delta))
+  const next = Math.max(0, Math.min(maxHours.value, current + delta))
   emit('update:hours', Number.isInteger(next) ? String(next) : next.toFixed(1))
 }
 
 const startPartialAbsence = () => {
-  emit('update:hours', '4')
+  emit('update:hours', partialAbsenceHoursLabel(props.dayCapacityMinutes))
 }
 </script>
 

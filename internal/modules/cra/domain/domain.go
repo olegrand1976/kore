@@ -242,16 +242,16 @@ func DetectAbsenceConflict(lines []TimeLine) error {
 		byDay[key] = append(byDay[key], line.Source)
 	}
 	for day, sources := range byDay {
-		hasAbsence := false
+		hasBlockingAbsence := false
 		hasMission := false
 		for _, s := range sources {
-			if isAbsenceSource(s) {
-				hasAbsence = true
-			} else {
+			if isBlockingAbsenceSource(s) {
+				hasBlockingAbsence = true
+			} else if !isAbsenceSource(s) {
 				hasMission = true
 			}
 		}
-		if hasAbsence && hasMission {
+		if hasBlockingAbsence && hasMission {
 			return fmt.Errorf("%w on %s", ErrCRAConflictAbsence, day)
 		}
 	}
@@ -261,6 +261,16 @@ func DetectAbsenceConflict(lines []TimeLine) error {
 func isAbsenceSource(s SourceRef) bool {
 	switch s.Type {
 	case "absence", "conge", "leave", "holiday":
+		return true
+	default:
+		return false
+	}
+}
+
+// isBlockingAbsenceSource — les jours fériés pré-remplis peuvent coexister avec une activité mission.
+func isBlockingAbsenceSource(s SourceRef) bool {
+	switch s.Type {
+	case "absence", "conge", "leave":
 		return true
 	default:
 		return false

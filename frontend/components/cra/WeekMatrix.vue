@@ -57,6 +57,7 @@ import type { ActivityRow } from '~/composables/useWeekRows'
 import { hoursToMinutes } from '~/composables/useWeekCalendar'
 import { useCraSourceLabels } from '~/composables/useCraSourceLabels'
 import { useWeekRows } from '~/composables/useWeekRows'
+import { unlockHolidayPrefillRows } from '~/utils/craDayState'
 
 const props = defineProps<{
   weekNumber: number
@@ -158,7 +159,7 @@ const openAddModal = (day: string) => {
 const onAddActivity = ({ sourceType, sourceId }: { sourceType: string; sourceId: string }) => {
   const day = addTargetDay.value
   if (!day) return
-  const rows = [...(editableRows.value.get(day) ?? [])]
+  const rows = unlockHolidayPrefillRows(editableRows.value.get(day) ?? [])
   const key = buildKey(sourceType, sourceId, day)
   if (rows.some((r) => r.key === key)) return
   rows.push({

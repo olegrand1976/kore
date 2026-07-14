@@ -15,8 +15,9 @@ export function formatLocalDate(date: Date): string {
 }
 
 function normalizeWeekStartDay(day: number): number {
-  if (day < 0 || day > 6) return DEFAULT_WEEK_START_DAY
-  return day
+  const value = Number(day)
+  if (!Number.isFinite(value) || value < 0 || value > 6) return DEFAULT_WEEK_START_DAY
+  return value
 }
 
 function parseMonth(month: string): { year: number; monthIndex: number } {

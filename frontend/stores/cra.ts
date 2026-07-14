@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { parseLineDurationMinutes } from '~/utils/craDuration'
 
 export type CraLine = {
   sourceType: string
@@ -36,13 +37,12 @@ function normalizeWeek(raw: Record<string, unknown>): CraWeek {
   const linesRaw = (raw.lines ?? raw.Lines ?? []) as Record<string, unknown>[]
   const lines: CraLine[] = linesRaw.map((line) => {
     const source = (line.source ?? line.Source ?? {}) as Record<string, unknown>
-    const duration = (line.duration ?? line.Duration ?? {}) as Record<string, unknown>
     const day = String(line.day ?? line.Day ?? '')
     return {
       sourceType: String(source.type ?? source.Type ?? 'manual'),
       sourceId: String(source.id ?? source.ID ?? 'default'),
       day: day.slice(0, 10),
-      duration: Number(duration.minutes ?? duration.Minutes ?? line.duration ?? 0),
+      duration: parseLineDurationMinutes(line),
       comment: String(line.comment ?? line.Comment ?? ''),
       origin: String(line.origin ?? line.Origin ?? 'manual'),
       billable: line.billable ?? line.Billable ?? true

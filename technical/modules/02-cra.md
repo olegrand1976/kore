@@ -38,7 +38,7 @@ flowchart LR
   - **Pré-remplissage non destructif** : une ligne saisie manuellement n'est jamais écrasée par une source (critère PR-08.2, RG-CRA-01).
   - **PDF bloqué** tant que `CommercialInfo` incomplète (RG-CRA-02).
   - Cohérence : total jour ne dépasse pas la capacité configurée (RG-CRA-03).
-  - Conflit mission + absence même jour -> signalement (correction manuelle).
+  - Conflit mission + absence (congé, arrêt) même jour -> signalement (correction manuelle). **Exception** : un jour férié pré-rempli peut être contourné (heures partielles ou activité mission le même jour).
 
 ## 4. Ports
 
@@ -135,7 +135,7 @@ Contraintes : `UNIQUE (tenant_id, user_id, month)` ; index `(tenant_id, source_t
 - Pré-remplissage n'écrase pas une ligne `origin=manual` (critère PR-08.2 / RG-CRA-01).
 - `GeneratePDF` refuse si `CommercialInfo` incomplète (RG-CRA-02).
 - Dépassement capacité jour rejeté (RG-CRA-03).
-- Conflit mission + absence même jour -> signalé.
+- Conflit mission + absence (congé, arrêt) même jour -> signalé ; férié pré-rempli + mission autorisé.
 - Transitions de statut Brouillon → ValidéSemaine → Définitif ; refus modif après Définitif.
 
 **Application (mocks)** :

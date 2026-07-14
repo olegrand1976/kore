@@ -21,7 +21,32 @@ beforeAll(() => {
   vi.stubGlobal('computed', computed)
 })
 
+describe('parseLineDurationMinutes', () => {
+  it('parses API shapes without producing NaN', async () => {
+    const { parseLineDurationMinutes } = await import('../utils/craDuration')
+    expect(parseLineDurationMinutes({ Duration: { Minutes: 240 } })).toBe(240)
+    expect(parseLineDurationMinutes({ duration: 120 })).toBe(120)
+    expect(parseLineDurationMinutes({ duration: {} })).toBe(0)
+    expect(parseLineDurationMinutes({})).toBe(0)
+  })
+})
+
 describe('useCraMonthStats', () => {
+  it('stays finite when a line duration is malformed', () => {
+    const weeks = ref([{
+      weekNumber: 1,
+      lines: [{ sourceType: 'holiday', sourceId: '2026-07-14', day: '2026-07-14', duration: Number.NaN }],
+      submittedAt: null
+    }])
+    const month = ref('2026-07')
+    const weekStartDay = ref(1)
+    const dayCapacity = ref(480)
+
+    const stats = useCraMonthStats(weeks, month, weekStartDay, dayCapacity)
+    expect(Number.isFinite(stats.totalMinutes.value)).toBe(true)
+    expect(Number.isFinite(stats.capacityMinutes.value)).toBe(true)
+  })
+
   it('recalculates capacity when dayCapacityMinutes ref changes', () => {
     const weeks = ref([{ weekNumber: 1, lines: [], submittedAt: null }])
     const month = ref('2026-07')
@@ -248,6 +273,34 @@ describe('mapInvoiceDraftReason', () => {
     const t = (key: string) => key
     expect(mapInvoiceDraftReason('client_unresolved', t)).toBe('cra.invoice_reason.client_unresolved')
     expect(mapInvoiceDraftMessage({ status: 'unavailable' }, t)).toBe('cra.invoice_unavailable')
+  })
+})
+
+describe('craDayState', () => {
+  it('detects full absence day and unlocks holiday prefill', async () => {
+    const { isFullAbsenceDay, partialAbsenceHoursLabel, unlockHolidayPrefillRows } = await import('../utils/craDayState')
+    const toMinutes = (hours: string) => Number(hours) * 60
+
+    expect(isFullAbsenceDay([{ sourceType: 'holiday', hours: '', origin: 'prefill' }], toMinutes)).toBe(true)
+    expect(isFullAbsenceDay([{ sourceType: 'holiday', hours: '4', origin: 'manual' }], toMinutes)).toBe(false)
+    expect(isFullAbsenceDay([
+      { sourceType: 'holiday', hours: '', origin: 'prefill' },
+      { sourceType: 'manual', hours: '', origin: 'manual' },
+    ], toMinutes)).toBe(false)
+    expect(isFullAbsenceDay([
+      { sourceType: 'holiday', hours: '', origin: 'prefill' },
+      { sourceType: 'mission', hours: '4', origin: 'manual' },
+    ], toMinutes)).toBe(false)
+
+    expect(partialAbsenceHoursLabel(480)).toBe('4')
+    expect(partialAbsenceHoursLabel(420)).toBe('3.5')
+
+    const unlocked = unlockHolidayPrefillRows([
+      { sourceType: 'holiday', hours: '', origin: 'prefill' },
+      { sourceType: 'leave', hours: '', origin: 'prefill' },
+    ])
+    expect(unlocked[0]?.origin).toBe('manual')
+    expect(unlocked[1]?.origin).toBe('prefill')
   })
 })
 

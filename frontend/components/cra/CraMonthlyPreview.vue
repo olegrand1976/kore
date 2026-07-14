@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
+import { safeMinutes } from '~/utils/craDuration'
 
 const props = defineProps<{
   totalMinutes: number
@@ -31,8 +32,9 @@ const props = defineProps<{
 }>()
 
 const hoursLabel = computed(() => {
-  const total = minutesToHoursLabel(props.totalMinutes)
-  const cap = props.capacityMinutes ? minutesToHoursLabel(props.capacityMinutes) : null
+  const total = minutesToHoursLabel(safeMinutes(props.totalMinutes))
+  const capMinutes = safeMinutes(props.capacityMinutes)
+  const cap = capMinutes > 0 ? minutesToHoursLabel(capMinutes) : null
   return cap ? `${total}h / ${cap}h` : `${total}h`
 })
 </script>

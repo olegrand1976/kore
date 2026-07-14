@@ -8,7 +8,14 @@
       [absenceClass]: isAbsenceDay
     }"
   >
-    <button type="button" class="day-block__toggle" :aria-expanded="showBody" @click="toggle">
+    <button
+      type="button"
+      class="day-block__toggle"
+      :aria-expanded="showBody"
+      :tabindex="isMobile ? 0 : -1"
+      :aria-disabled="!isMobile"
+      @click="toggle"
+    >
       <span class="day-block__date">
         <AppIcon v-if="isAbsenceDay" :name="headerIcon" class="day-block__date-icon" />
         {{ dayLabel }}
@@ -31,6 +38,7 @@
           :origin="row.origin"
           :billable="row.billable"
           :absence="isAbsenceSourceType(row.sourceType)"
+          :day-capacity-minutes="capacityMinutes"
           :disabled="disabled"
           :can-remove="localRows.length > 1"
           @update:hours="(v) => updateRow(idx, 'hours', v)"
@@ -39,7 +47,13 @@
           @remove="removeRow(idx)"
         />
       </template>
-      <AppButton variant="ghost" size="sm" :disabled="disabled" @click="$emit('add-activity', day)">
+      <AppButton
+        variant="ghost"
+        size="sm"
+        class="day-block__add"
+        :disabled="disabled"
+        @click="$emit('add-activity', day)"
+      >
         <AppIcon name="add" /> {{ $t('cra.add_activity') }}
       </AppButton>
     </div>
@@ -50,6 +64,7 @@
 import type { ActivityRow } from '~/composables/useWeekRows'
 import { hoursToMinutes, minutesToHoursLabel } from '~/composables/useWeekCalendar'
 import { absenceDayClass, isAbsenceSourceType } from '~/utils/craAbsence'
+import { isFullAbsenceDay, rowsSnapshot, withManualOrigin } from '~/utils/craDayState'
 
 import type { OriginFilter } from '~/components/cra/CraWeekSummary.vue'
 
@@ -91,12 +106,18 @@ onMounted(() => {
 watch(
   () => props.rows,
   (rows) => {
-    localRows.value = rows.map((r) => ({ ...r }))
+    const incoming = rows.map((r) => ({ ...r }))
+    if (rowsSnapshot(incoming) === rowsSnapshot(localRows.value)) return
+    localRows.value = incoming
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 )
 
-watch(localRows, (rows) => emit('update:rows', rows.map((r) => ({ ...r }))), { deep: true })
+watch(localRows, (rows) => {
+  const outgoing = rows.map((r) => ({ ...r }))
+  if (rowsSnapshot(outgoing) === rowsSnapshot(props.rows)) return
+  emit('update:rows', outgoing)
+}, { deep: true })
 
 const dayLabel = computed(() =>
   new Date(`${props.day}T12:00:00`).toLocaleDateString(locale.value === 'en' ? 'en-US' : 'fr-FR', {
@@ -117,11 +138,7 @@ const visibleRows = computed(() => localRows.value.filter((row) => isRowVisible(
 
 const absenceRows = computed(() => visibleRows.value.filter((row) => isAbsenceSourceType(row.sourceType)))
 
-const hasWorkedHours = computed(() =>
-  visibleRows.value.some((row) => !isAbsenceSourceType(row.sourceType) && hoursToMinutes(row.hours) > 0)
-)
-
-const isAbsenceDay = computed(() => absenceRows.value.length > 0 && !hasWorkedHours.value)
+const isAbsenceDay = computed(() => isFullAbsenceDay(visibleRows.value, hoursToMinutes))
 
 const primaryAbsenceRow = computed(() => absenceRows.value[0])
 
@@ -155,13 +172,13 @@ const overCapacity = computed(() => !isAbsenceDay.value && totalMinutes.value > 
 const updateRow = (idx: number, field: 'hours' | 'comment', value: string) => {
   const row = localRows.value[idx]
   if (!row) return
-  localRows.value[idx] = { ...row, [field]: value, origin: 'manual' }
+  localRows.value[idx] = withManualOrigin({ ...row, [field]: value })
 }
 
 const updateRowBillable = (idx: number, value: boolean) => {
   const row = localRows.value[idx]
   if (!row) return
-  localRows.value[idx] = { ...row, billable: value, origin: 'manual' }
+  localRows.value[idx] = withManualOrigin({ ...row, billable: value })
 }
 
 const removeRow = (idx: number) => {
@@ -260,10 +277,13 @@ const removeRow = (idx: number) => {
   gap: var(--kore-space-sm);
 }
 
+.day-block__add:not(:disabled) {
+  color: var(--kore-link);
+}
+
 @media (min-width: 900px) {
   .day-block__toggle {
     cursor: default;
-    pointer-events: none;
   }
 
   .day-block__body {

@@ -74,6 +74,17 @@ func TestDetectAbsenceConflict_Leave(t *testing.T) {
 	}
 }
 
+func TestDetectAbsenceConflict_HolidayAllowsMission(t *testing.T) {
+	day := time.Date(2026, 7, 14, 0, 0, 0, 0, time.UTC)
+	lines := []TimeLine{
+		{Day: day, Duration: kernel.Duration{Minutes: 240}, Source: SourceRef{Type: "holiday", ID: "2026-07-14"}},
+		{Day: day, Duration: kernel.Duration{Minutes: 240}, Source: SourceRef{Type: "mission", ID: "m1"}},
+	}
+	if err := DetectAbsenceConflict(lines); err != nil {
+		t.Fatalf("holiday + mission should be allowed, got %v", err)
+	}
+}
+
 func TestCommercialInfo_Complete(t *testing.T) {
 	if (CommercialInfo{}).Complete() {
 		t.Fatal("empty commercial info should be incomplete")
