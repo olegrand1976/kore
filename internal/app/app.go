@@ -312,7 +312,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 				return integrationsRepo.SaveApiKey(ctx, key)
 			},
 		)
-		r.Route("/public", func(pr chi.Router) {
+		r.Route("/open", func(pr chi.Router) {
 			pr.Use(httpx.PublicAPIStack(apiKeyLookup, appCache, keyBuilder))
 			pr.Get("/invoices", func(w http.ResponseWriter, req *http.Request) {
 				identity, _ := authx.FromContext(req.Context())
