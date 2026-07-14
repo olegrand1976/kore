@@ -303,7 +303,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		migrator:   migrator,
 		seed:       seedRunner,
 	}
-	app.startBackgroundWorkers(notifService, craService, orgRepo, log)
+	app.startBackgroundWorkers(notifService, craService, orgRepo, appCache, keyBuilder, log)
 	return app, nil
 }
 
@@ -311,12 +311,18 @@ func (a *Application) startBackgroundWorkers(
 	notifService *notifapp.Service,
 	craService *craapp.Service,
 	orgRepo *orgpostgres.Repository,
+	appCache cache.Cache,
+	keyBuilder cache.KeyBuilder,
 	log *logging.Logger,
 ) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.workerStop = cancel
 	notifapp.StartWorker(ctx, notifService, log, 60*time.Second)
-	craapp.StartReminderWorker(ctx, craapp.NewReminderWorker(craService, orgRepo, notifService, log), craapp.ReminderWorkerInterval)
+	craapp.StartReminderWorker(
+		ctx,
+		craapp.NewReminderWorker(craService, orgRepo, notifService, appCache, keyBuilder, log),
+		craapp.ReminderWorkerInterval,
+	)
 }
 
 func (a *Application) Migrate(ctx context.Context) error {
