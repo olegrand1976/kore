@@ -18,16 +18,16 @@ import (
 const consumptionCacheTTL = 5 * time.Minute
 
 type Service struct {
-	repo     ports.CRARepository
-	cache    cache.Cache
-	keys     cache.KeyBuilder
-	pdf      ports.PDFRenderer
-	clock    ports.Clock
-	calendar ports.SocieteCalendarReader
-	notifier notifports.TransactionalNotifier
-	emails   ports.UserEmailResolver
-	invoices ports.InvoiceDraftPublisher
-	missions ports.MissionRateReader
+	repo       ports.CRARepository
+	cache      cache.Cache
+	keys       cache.KeyBuilder
+	pdf        ports.PDFRenderer
+	clock      ports.Clock
+	calendar   ports.SocieteCalendarReader
+	notifier   notifports.TransactionalNotifier
+	emails     ports.UserEmailResolver
+	invoices   ports.InvoiceDraftPublisher
+	missions   ports.MissionRateReader
 	ettRecords ports.ETTRecordReader
 }
 
