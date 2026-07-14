@@ -808,7 +808,7 @@
       "submit_policy_none": "Aucune vérification",
       "cra_mail_auto": "Rappel e-mail automatique CRA",
       "cra_mail_recipients": "Destinataires e-mail CRA",
-      "cra_mail_recipients_hint": "admin@example.com, un e-mail par ligne",
+      "cra_mail_recipients_hint": "admin{'@'}example.com, un e-mail par ligne",
       "weekday_mon": "Lundi",
       "weekday_tue": "Mardi",
       "weekday_wed": "Mercredi",
