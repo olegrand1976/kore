@@ -1,12 +1,17 @@
 <template>
   <div>
-    <AppPageHeader :title="$t('maintenance.title')">
+    <AppPageHeader :title="$t('maintenance.title')" :subtitle="$t('maintenance.subtitle')">
       <template #actions>
+        <AppButton v-if="guideRef" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" @click="showForm = !showForm">
           {{ $t('maintenance.new') }}
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="maintenance" />
 
     <AppCard v-if="showForm" padding="lg" class="mb">
       <ServiceRequestForm :busy="busy" @submit="onCreate" />
@@ -38,6 +43,8 @@ import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useReques
 
 definePageMeta({ layout: 'default' })
 
+const route = useRoute()
+const guideRef = ref<{ showAgain: () => void } | null>(null)
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { list, create, pickId, pickSubject, pickState } = useMaintenance()
@@ -45,7 +52,7 @@ const { uploadAll } = useRequestAttachments()
 
 const pending = ref(true)
 const busy = ref(false)
-const showForm = ref(false)
+const showForm = ref(route.query.create === '1')
 const errorMsg = ref('')
 const requests = ref<Awaited<ReturnType<typeof list>>>([])
 

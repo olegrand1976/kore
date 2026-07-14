@@ -7,8 +7,10 @@
 
 | Module | Package | Backend | Frontend | Priorité |
 | --- | --- | --- | --- | --- |
-| **06 Support** | `support/` | Routes HTTP + schéma `support` | Absent | Après stabilisation TMA |
-| **07 Maintenance** | `maintenance/` | Routes HTTP + schéma `maintenance` | Absent | Après M06 |
+| **06 Support** | `support/` | Routes HTTP + schéma `support` | Pages `support/` + paramètres demandes | Après stabilisation TMA |
+| **07 Maintenance** | `maintenance/` | Routes HTTP + schéma `maintenance` | Pages `maintenance/` + paramètres demandes | Après M06 |
+
+Les canaux TMA / Service utilisateur / Exploitation & travaux sont activables par tenant via `org.tenant_request_settings` (admin → Paramètres → Demandes).
 
 ## Dépendances
 
@@ -25,6 +27,7 @@
 ## Prochaines étapes
 
 - [ ] Intégration `InboundMailGateway` (M06)
-- [ ] UI Nuxt `support/` et `maintenance/`
+- [x] UI Nuxt `support/` et `maintenance/`
+- [x] Paramètres admin activation canaux (`/admin/parametres/demandes`)
 - [ ] Tests app + intégration workflow
 - [ ] Entitlements module 14 pour activation tenant

@@ -13,22 +13,23 @@ import (
 	"github.com/kore/kore/internal/modules/tma/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, channels kernel.RequestChannelReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/demands", listDemands(tma, authorizer))
 		pr.Get("/demands/export.xml", exportXML(tma))
 		pr.Get("/demands/{id}", getDemand(tma, authorizer))
 		pr.Get("/demands/{id}/analysis", getAnalysis(tma, authorizer))
-		pr.Post("/demands", createDemand(tma, authorizer))
-		pr.Post("/demands/{id}/validate-creation", validateCreation(tma, authorizer))
-		pr.Post("/demands/{id}/assign", assignDemand(tma, authorizer))
-		pr.Post("/demands/{id}/take-over", takeOverDemand(tma, authorizer))
-		pr.Post("/demands/{id}/analysis", addAnalysis(tma, authorizer))
-		pr.Post("/demands/{id}/resolve", resolveDemand(tma, authorizer))
-		pr.Post("/demands/{id}/reopen", reopenDemand(tma, authorizer))
+		pr.Post("/demands", createDemand(tma, authorizer, channels))
+		pr.Post("/demands/{id}/validate-creation", validateCreation(tma, authorizer, channels))
+		pr.Post("/demands/{id}/assign", assignDemand(tma, authorizer, channels))
+		pr.Post("/demands/{id}/take-over", takeOverDemand(tma, authorizer, channels))
+		pr.Post("/demands/{id}/analysis", addAnalysis(tma, authorizer, channels))
+		pr.Post("/demands/{id}/resolve", resolveDemand(tma, authorizer, channels))
+		pr.Post("/demands/{id}/reopen", reopenDemand(tma, authorizer, channels))
 	})
 }
 
@@ -114,8 +115,11 @@ func getAnalysis(tma ports.TMAService, authorizer authx.Authorizer) http.Handler
 	}
 }
 
-func createDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -164,8 +168,11 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Handle
 	}
 }
 
-func validateCreation(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func validateCreation(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionValidate) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -193,8 +200,11 @@ func validateCreation(tma ports.TMAService, authorizer authx.Authorizer) http.Ha
 	}
 }
 
-func assignDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func assignDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionValidate) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -230,8 +240,11 @@ func assignDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Handle
 	}
 }
 
-func takeOverDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func takeOverDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -255,8 +268,11 @@ func takeOverDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Hand
 	}
 }
 
-func addAnalysis(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func addAnalysis(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -298,8 +314,11 @@ func addAnalysis(tma ports.TMAService, authorizer authx.Authorizer) http.Handler
 	}
 }
 
-func resolveDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func resolveDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -326,8 +345,11 @@ func resolveDemand(tma ports.TMAService, authorizer authx.Authorizer) http.Handl
 	}
 }
 
-func reopenDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFunc {
+func reopenDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return

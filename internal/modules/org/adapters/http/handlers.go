@@ -31,6 +31,7 @@ func RegisterRoutes(
 	attachments ports.AttachmentService,
 	entitlements authx.EntitlementReader,
 	leaveBootstrap ports.LeaveTypeBootstrapper,
+	requestSettings ports.RequestSettingsService,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/2fa/verify", verify2FAHandler(users))
@@ -75,6 +76,9 @@ func RegisterRoutes(
 
 		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
 		registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
+		if requestSettings != nil {
+			registerRequestSettingsRoutes(pr, requestSettings, authorizer)
+		}
 	})
 }
 

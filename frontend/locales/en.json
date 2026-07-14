@@ -38,9 +38,10 @@
     "conges_validation": "Leave approval",
     "budget": "Budget",
     "invoicing": "Invoicing",
-    "tma": "Changes & incidents",
-    "support": "Assistance",
-    "maintenance": "Interventions",
+    "tma": "Evolutions & incidents",
+    "support": "User support",
+    "maintenance": "Operations & work",
+    "new_request": "New request",
     "workflows": "Workflows",
     "billing": "Subscription",
     "notifications": "Notifications",
@@ -350,9 +351,9 @@
     "source_manual": "Service",
     "source_mission": "Mission",
     "source_leave": "Leave",
-    "source_tma": "TMA",
-    "source_ticket": "Support ticket",
-    "source_work_request": "Maintenance",
+    "source_tma": "Evolutions & incidents",
+    "source_ticket": "User support",
+    "source_work_request": "Operations & work",
     "source_holiday": "Public holiday",
     "day_non_worked": "Non-worked day",
     "full_day_absence": "Full day",
@@ -711,8 +712,57 @@
     "col_assignee": "Assigned to",
     "assign_to": "Assign to"
   },
+  "demandes": {
+    "triage_title": "New request",
+    "triage_subtitle": "Pick the channel that fits your need",
+    "triage_tma_title": "Application change or incident",
+    "triage_tma_desc": "Development, analysis, budget and release",
+    "triage_support_title": "User support",
+    "triage_support_desc": "Question, access or light incident — quick response",
+    "triage_maintenance_title": "Operations & work",
+    "triage_maintenance_desc": "Infra, fixes or deployment — tracked in days"
+  },
+  "guides": {
+    "hide": "Hide help",
+    "show": "Show help",
+    "tma": {
+      "title": "What is this module for?",
+      "items": [
+        "Handle application changes and incidents requiring analysis, budget or release.",
+        "BUILD team: application owner, developers, optional user lead gate.",
+        "On resolve: proposes one day (8 h) on the assignee timesheet."
+      ]
+    },
+    "support": {
+      "title": "What is this module for?",
+      "items": [
+        "Helpdesk: user questions, access, light incidents without full TMA cycle.",
+        "DESK team: Support profile, threaded replies, no quote or analysis dossier.",
+        "On resolve: proposes one hour on the timesheet."
+      ]
+    },
+    "maintenance": {
+      "title": "What is this module for?",
+      "items": [
+        "Operations and infra work without TMA overhead (fixes, deployments, ops).",
+        "RUN team: tracked in consumed days, no mandatory analysis artefacts.",
+        "On complete: proposes days × 8 h on the timesheet."
+      ]
+    },
+    "admin": {
+      "demandes": {
+        "title": "Configure request channels",
+        "items": [
+          "ESN: enable TMA + User support for maintenance + helpdesk contracts.",
+          "Structured IT dept: add Operations & work for the RUN team.",
+          "Small team: TMA alone is often enough — disable other channels."
+        ]
+      }
+    }
+  },
   "tma": {
-    "title": "Changes & incidents",
+    "title": "Evolutions & incidents",
+    "subtitle": "Development cycle: analysis, budget, release and rework",
     "empty": "No requests",
     "col_title": "Title",
     "col_status": "Status",
@@ -753,7 +803,8 @@
     "gantt_empty": "No requests to display"
   },
   "support": {
-    "title": "Assistance",
+    "title": "User support",
+    "subtitle": "Questions, access, light incidents — quick responses",
     "empty": "No tickets",
     "new": "New ticket",
     "open": "Open",
@@ -775,7 +826,8 @@
     "state_resolved": "Resolved"
   },
   "maintenance": {
-    "title": "Interventions",
+    "title": "Operations & work",
+    "subtitle": "Infra, fixes, deployments — tracked in days",
     "empty": "No work requests",
     "new": "New request",
     "loading": "Loading…",
@@ -1067,6 +1119,7 @@
     "title": "Settings",
     "tabs_label": "Settings sections",
     "tab_conges": "Leave",
+    "tab_demandes": "Requests",
     "tab_cra": "Timesheets",
     "tab_ia": "Artificial intelligence",
     "tab_securite": "Security",
@@ -1140,6 +1193,14 @@
       "weekday_sun": "Sunday",
       "saved": "Timesheet settings saved",
       "save_error": "Could not save timesheet settings"
+    },
+    "demandes": {
+      "channels_title": "Active channels",
+      "channels_hint": "At least one channel must stay enabled. Disabling hides the menu and blocks new items; history remains readable.",
+      "guides_enabled": "Show help blocks on request pages",
+      "guides_hint": "Users can also hide help individually.",
+      "saved": "Request settings saved",
+      "save_error": "Could not save request settings"
     },
     "securite": {
       "societe": "Company",

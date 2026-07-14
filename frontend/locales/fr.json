@@ -39,8 +39,9 @@
     "budget": "Budget",
     "invoicing": "Facturation",
     "tma": "Évolutions & incidents",
-    "support": "Assistance",
-    "maintenance": "Interventions",
+    "support": "Service utilisateur",
+    "maintenance": "Exploitation & travaux",
+    "new_request": "Nouvelle demande",
     "workflows": "Workflows",
     "billing": "Abonnement",
     "notifications": "Notifications",
@@ -350,9 +351,9 @@
     "source_manual": "Prestation",
     "source_mission": "Mission",
     "source_leave": "Congé",
-    "source_tma": "TMA",
-    "source_ticket": "Ticket support",
-    "source_work_request": "Maintenance",
+    "source_tma": "Évolutions & incidents",
+    "source_ticket": "Service utilisateur",
+    "source_work_request": "Exploitation & travaux",
     "source_holiday": "Jour férié",
     "day_non_worked": "Jour non presté",
     "full_day_absence": "Journée entière",
@@ -711,8 +712,57 @@
     "col_assignee": "Affecté à",
     "assign_to": "Affecter à"
   },
+  "demandes": {
+    "triage_title": "Nouvelle demande",
+    "triage_subtitle": "Choisissez le canal adapté à votre besoin",
+    "triage_tma_title": "Évolution ou incident applicatif",
+    "triage_tma_desc": "Développement, analyse, budget et MEP",
+    "triage_support_title": "Service utilisateur",
+    "triage_support_desc": "Question, accès ou incident léger — réponse rapide",
+    "triage_maintenance_title": "Exploitation & travaux",
+    "triage_maintenance_desc": "Infra, correctifs ou déploiement — suivi en jours"
+  },
+  "guides": {
+    "hide": "Masquer l'aide",
+    "show": "Afficher l'aide",
+    "tma": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Traiter les évolutions et incidents applicatifs nécessitant analyse, budget ou MEP.",
+        "Équipe BUILD : responsable application, développeurs, validation chef utilisateur possible.",
+        "À la clôture : proposition d'une journée (8 h) dans le CRA de l'intervenant."
+      ]
+    },
+    "support": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Helpdesk : questions utilisateurs, accès, incidents légers sans cycle TMA complet.",
+        "Équipe DESK : profil Support, échanges historisés, pas de devis ni dossier d'analyse.",
+        "À la résolution : proposition d'une heure dans le CRA."
+      ]
+    },
+    "maintenance": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Travaux d'exploitation et d'infra sans lourdeur TMA (correctifs, déploiements, ops).",
+        "Équipe RUN : suivi en jours consommés, pas d'artefacts d'analyse obligatoires.",
+        "À la terminaison : proposition de jours × 8 h dans le CRA."
+      ]
+    },
+    "admin": {
+      "demandes": {
+        "title": "Configurer les canaux de demandes",
+        "items": [
+          "ESN : activez TMA + Service utilisateur si contrat maintenance + helpdesk.",
+          "DSI structurée : ajoutez Exploitation & travaux pour l'équipe RUN.",
+          "Petite structure : TMA seul suffit souvent — désactivez les autres canaux."
+        ]
+      }
+    }
+  },
   "tma": {
     "title": "Évolutions & incidents",
+    "subtitle": "Cycle développement : analyse, budget, MEP et rework",
     "empty": "Aucune demande",
     "col_title": "Titre",
     "col_status": "Statut",
@@ -753,7 +803,8 @@
     "gantt_empty": "Aucune demande à afficher"
   },
   "support": {
-    "title": "Assistance",
+    "title": "Service utilisateur",
+    "subtitle": "Questions, accès, incidents légers — réponses rapides",
     "empty": "Aucun ticket",
     "new": "Nouveau ticket",
     "open": "Ouvrir",
@@ -775,7 +826,8 @@
     "state_resolved": "Résolu"
   },
   "maintenance": {
-    "title": "Interventions",
+    "title": "Exploitation & travaux",
+    "subtitle": "Infra, correctifs, déploiements — suivi en jours",
     "empty": "Aucune demande de travaux",
     "new": "Nouvelle demande",
     "loading": "Chargement…",
@@ -1067,6 +1119,7 @@
     "title": "Paramètres",
     "tabs_label": "Sections paramètres",
     "tab_conges": "Congés",
+    "tab_demandes": "Demandes",
     "tab_cra": "CRA",
     "tab_ia": "Intelligence artificielle",
     "tab_securite": "Sécurité",
@@ -1140,6 +1193,14 @@
       "weekday_sun": "Dimanche",
       "saved": "Paramètres CRA enregistrés",
       "save_error": "Impossible d'enregistrer les paramètres CRA"
+    },
+    "demandes": {
+      "channels_title": "Canaux actifs",
+      "channels_hint": "Au moins un canal doit rester activé. La désactivation masque le menu et bloque les créations ; l'historique reste consultable.",
+      "guides_enabled": "Afficher les blocs d'aide sur les pages demandes",
+      "guides_hint": "Les utilisateurs peuvent aussi masquer l'aide individuellement.",
+      "saved": "Paramètres demandes enregistrés",
+      "save_error": "Impossible d'enregistrer les paramètres demandes"
     },
     "securite": {
       "societe": "Société",

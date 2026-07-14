@@ -141,13 +141,14 @@ const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { can } = usePermissions()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
+const { fetchSettings, isChannelEnabled, activeChannelCount } = useRequestSettings()
 const { apiFetch } = useApiFetch()
 const drawerOpen = ref(false)
 const craGate = useCraGate()
 const isCraRoute = computed(() => route.path.startsWith('/cra'))
 
 onMounted(async () => {
-  await Promise.all([fetchBranding(), fetchSession(), fetchEntitlements()])
+  await Promise.all([fetchBranding(), fetchSession(), fetchEntitlements(), fetchSettings()])
   await maybeAutoOpenReleaseNotes()
 })
 
@@ -249,21 +250,24 @@ type NavItem = {
   platformOnly?: boolean
   module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
   rbacModule?: 'support' | 'maintenance'
+  requestChannel?: 'tma' | 'support' | 'maintenance'
   activePrefix?: string
+  multiChannelOnly?: boolean
 }
 
 const allNavItems = computed<NavItem[]>(() => [
   { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
   { to: '/compte', icon: 'person', label: t('nav.profile'), activePrefix: '/compte' },
+  { to: '/demandes/nouveau', icon: 'add_circle', label: t('nav.new_request'), multiChannelOnly: true },
   { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
   { to: '/prestations', icon: 'fact_check', label: t('nav.prestations'), module: 'cra', adminOnly: true },
   { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), module: 'ett' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
   { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), module: 'invoicing' },
-  { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma' },
-  { to: '/support', icon: 'confirmation_number', label: t('nav.support'), rbacModule: 'support' },
-  { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), rbacModule: 'maintenance' },
+  { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma', requestChannel: 'tma' },
+  { to: '/support', icon: 'confirmation_number', label: t('nav.support'), rbacModule: 'support', requestChannel: 'support' },
+  { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), rbacModule: 'maintenance', requestChannel: 'maintenance' },
   { to: '/platform', icon: 'hub', label: t('nav.platform'), platformOnly: true, activePrefix: '/platform' },
   { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
@@ -279,8 +283,10 @@ const navItems = computed(() =>
   allNavItems.value.filter((item) => {
     if (item.platformOnly && !isPlatformAdmin.value) return false
     if (item.adminOnly && !isAdmin.value) return false
+    if (item.multiChannelOnly && activeChannelCount.value < 2) return false
     if (item.module && !hasModule(item.module)) return false
     if (item.rbacModule && !can(item.rbacModule, 'L')) return false
+    if (item.requestChannel && !isChannelEnabled(item.requestChannel)) return false
     return true
   })
 )

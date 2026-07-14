@@ -274,6 +274,17 @@ Index :
 
 **Index** : `idx_org_clients_tenant`
 
+### `org.tenant_request_settings`
+
+Activation des canaux de demandes (TMA, support, maintenance) et affichage des guides par tenant.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `tenant_id` | UUID | PK → `org.tenants(id)` ON DELETE CASCADE |
+| `channels_enabled` | JSONB | NOT NULL, DEFAULT `'{"tma":true,"support":true,"maintenance":true}'` |
+| `guides_enabled` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
 ### `org.request_attachments`
 
 Pièces jointes des demandes TMA, tickets support et travaux maintenance.

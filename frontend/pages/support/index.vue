@@ -1,12 +1,17 @@
 <template>
   <div>
-    <AppPageHeader :title="$t('support.title')">
+    <AppPageHeader :title="$t('support.title')" :subtitle="$t('support.subtitle')">
       <template #actions>
+        <AppButton v-if="guideRef" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" @click="showForm = !showForm">
           {{ $t('support.new') }}
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="support" />
 
     <AppCard v-if="showForm" padding="lg" class="mb">
       <ServiceRequestForm :busy="busy" @submit="onCreate" />
@@ -41,6 +46,8 @@ import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useReques
 
 definePageMeta({ layout: 'default' })
 
+const route = useRoute()
+const guideRef = ref<{ showAgain: () => void } | null>(null)
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { list, create, pickId, pickSubject, pickState, pickPriority, pickDueAt, pickApplicationId } = useSupport()
@@ -49,7 +56,7 @@ const { list: listApps, pickAppLabel, appById } = useApplications()
 
 const pending = ref(true)
 const busy = ref(false)
-const showForm = ref(false)
+const showForm = ref(route.query.create === '1')
 const errorMsg = ref('')
 const tickets = ref<Awaited<ReturnType<typeof list>>>([])
 const apps = ref<Awaited<ReturnType<typeof listApps>>>([])

@@ -35,14 +35,14 @@ import (
 func buildAPIRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", orgapp.NoopAttachmentService{}, nil, nil)
+		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", orgapp.NoopAttachmentService{}, nil, nil, orgapp.NoopRequestSettingsService())
 		orghttp.RegisterOIDCRoutes(r, nil, nil, nil)
 		notifhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		wfhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		crahttp.RegisterRoutes(r, nil, nil, nil, nil)
 		congeshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
 		budgethttp.RegisterRoutes(r, nil, nil, nil, nil)
-		tmahttp.RegisterRoutes(r, nil, nil, nil, nil)
+		tmahttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
 		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
@@ -51,8 +51,8 @@ func buildAPIRouter() chi.Router {
 		reportinghttp.RegisterRoutes(r, nil, nil, nil, nil)
 		ssiihttp.RegisterRoutes(r, nil, nil, nil, nil)
 		etthttp.RegisterRoutes(r, nil, nil, nil, nil)
-		supporthttp.RegisterRoutes(r, nil, nil, nil, nil)
-		maintenancehttp.RegisterRoutes(r, nil, nil, nil, nil)
+		supporthttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
+		maintenancehttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
 	})
 	return r
 }

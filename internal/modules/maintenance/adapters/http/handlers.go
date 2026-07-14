@@ -13,17 +13,18 @@ import (
 	"github.com/kore/kore/internal/modules/maintenance/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.MaintenanceService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterRoutes(r chi.Router, svc ports.MaintenanceService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, channels kernel.RequestChannelReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/work-requests", listWorkRequests(svc, authorizer))
-		pr.Post("/work-requests", createWorkRequest(svc, authorizer))
+		pr.Post("/work-requests", createWorkRequest(svc, authorizer, channels))
 		pr.Get("/work-requests/{id}", getWorkRequest(svc, authorizer))
-		pr.Post("/work-requests/{id}/assign", assignWorkRequest(svc, authorizer))
-		pr.Post("/work-requests/{id}/progress", progressWorkRequest(svc, authorizer))
-		pr.Post("/work-requests/{id}/complete", completeWorkRequest(svc, authorizer))
+		pr.Post("/work-requests/{id}/assign", assignWorkRequest(svc, authorizer, channels))
+		pr.Post("/work-requests/{id}/progress", progressWorkRequest(svc, authorizer, channels))
+		pr.Post("/work-requests/{id}/complete", completeWorkRequest(svc, authorizer, channels))
 	})
 }
 
@@ -43,8 +44,11 @@ func listWorkRequests(svc ports.MaintenanceService, authorizer authx.Authorizer)
 	}
 }
 
-func createWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer) http.HandlerFunc {
+func createWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelMaintenance) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "maintenance", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -107,8 +111,11 @@ func getWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer) h
 	}
 }
 
-func assignWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer) http.HandlerFunc {
+func assignWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelMaintenance) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "maintenance", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -139,8 +146,11 @@ func assignWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer
 	}
 }
 
-func progressWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer) http.HandlerFunc {
+func progressWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelMaintenance) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "maintenance", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -171,8 +181,11 @@ func progressWorkRequest(svc ports.MaintenanceService, authorizer authx.Authoriz
 	}
 }
 
-func completeWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer) http.HandlerFunc {
+func completeWorkRequest(svc ports.MaintenanceService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelMaintenance) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "maintenance", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return

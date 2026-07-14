@@ -439,3 +439,19 @@ type IdentityProviderService interface {
 	Configure(ctx context.Context, cmd ConfigureIdPCommand) (domain.IdentityProvider, error)
 	List(ctx context.Context, tenant kernel.TenantID) ([]domain.IdentityProvider, error)
 }
+
+type UpdateRequestSettingsCommand struct {
+	TenantID        kernel.TenantID
+	ChannelsEnabled domain.ChannelsEnabled
+	GuidesEnabled   bool
+}
+
+type RequestSettingsService interface {
+	Get(ctx context.Context, tenant kernel.TenantID) (domain.TenantRequestSettings, error)
+	Update(ctx context.Context, cmd UpdateRequestSettingsCommand) (domain.TenantRequestSettings, error)
+}
+
+type RequestSettingsRepository interface {
+	GetTenantRequestSettings(ctx context.Context, tenant kernel.TenantID) (domain.TenantRequestSettings, bool, error)
+	SaveTenantRequestSettings(ctx context.Context, settings domain.TenantRequestSettings) error
+}

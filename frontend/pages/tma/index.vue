@@ -1,7 +1,10 @@
 <template>
   <div>
-    <AppPageHeader :title="$t('tma.title')">
+    <AppPageHeader :title="$t('tma.title')" :subtitle="$t('tma.subtitle')">
       <template #actions>
+        <AppButton v-if="guideRef" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="ghost" size="sm" @click="navigateTo('/tma/gantt')">
           {{ $t('tma.gantt') }}
         </AppButton>
@@ -13,6 +16,8 @@
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="tma" />
 
     <AppKpiGrid compact>
       <AppKpiCard
@@ -139,12 +144,18 @@ type TmaRow = {
 }
 
 const { t } = useI18n()
+const route = useRoute()
+const guideRef = ref<{ showAgain: () => void } | null>(null)
 const { list, create, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
 const { uploadAll } = useRequestAttachments()
 const { canValidateTma } = usePermissions()
 
 const showForm = ref(false)
 const creating = ref(false)
+
+if (route.query.create === '1') {
+  showForm.value = true
+}
 
 const { data, pending, refresh } = await useAsyncData('tma-demands', () => list())
 

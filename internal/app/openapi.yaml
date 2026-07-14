@@ -153,6 +153,34 @@ paths:
       responses:
         "200":
           description: Paramètres mis à jour
+  /request-settings:
+    get:
+      summary: Paramètres routage demandes (tenant)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Paramètres courants
+  /admin/request-settings:
+    put:
+      summary: Mettre à jour le routage demandes
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channelsEnabled]
+              properties:
+                channelsEnabled:
+                  type: object
+                  properties:
+                    tma: { type: boolean }
+                    support: { type: boolean }
+                    maintenance: { type: boolean }
+                guidesEnabled: { type: boolean }
+      responses:
+        "200":
+          description: Paramètres mis à jour
   /users:
     get:
       summary: Liste utilisateurs

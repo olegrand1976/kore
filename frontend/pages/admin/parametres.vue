@@ -4,6 +4,14 @@
 
     <nav class="parametres-tabs" role="tablist" :aria-label="$t('settings.tabs_label')">
       <NuxtLink
+        to="/admin/parametres/demandes"
+        role="tab"
+        class="parametres-tab"
+        :class="{ 'parametres-tab--active': route.path.startsWith('/admin/parametres/demandes') }"
+      >
+        {{ $t('settings.tab_demandes') }}
+      </NuxtLink>
+      <NuxtLink
         to="/admin/parametres/conges"
         role="tab"
         class="parametres-tab"

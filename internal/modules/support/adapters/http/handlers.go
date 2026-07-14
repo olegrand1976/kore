@@ -13,18 +13,19 @@ import (
 	"github.com/kore/kore/internal/modules/support/ports"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.SupportService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterRoutes(r chi.Router, svc ports.SupportService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, channels kernel.RequestChannelReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/tickets", listTickets(svc, authorizer))
-		pr.Post("/tickets", createTicket(svc, authorizer))
+		pr.Post("/tickets", createTicket(svc, authorizer, channels))
 		pr.Get("/tickets/{id}", getTicket(svc, authorizer))
-		pr.Post("/tickets/{id}/assign", assignTicket(svc, authorizer))
-		pr.Post("/tickets/{id}/take-over", takeOverTicket(svc, authorizer))
-		pr.Post("/tickets/{id}/replies", addReply(svc, authorizer))
-		pr.Post("/tickets/{id}/resolve", resolveTicket(svc, authorizer))
+		pr.Post("/tickets/{id}/assign", assignTicket(svc, authorizer, channels))
+		pr.Post("/tickets/{id}/take-over", takeOverTicket(svc, authorizer, channels))
+		pr.Post("/tickets/{id}/replies", addReply(svc, authorizer, channels))
+		pr.Post("/tickets/{id}/resolve", resolveTicket(svc, authorizer, channels))
 	})
 }
 
@@ -44,8 +45,11 @@ func listTickets(svc ports.SupportService, authorizer authx.Authorizer) http.Han
 	}
 }
 
-func createTicket(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+func createTicket(svc ports.SupportService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelSupport) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -110,8 +114,11 @@ func getTicket(svc ports.SupportService, authorizer authx.Authorizer) http.Handl
 	}
 }
 
-func assignTicket(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+func assignTicket(svc ports.SupportService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelSupport) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -138,8 +145,11 @@ func assignTicket(svc ports.SupportService, authorizer authx.Authorizer) http.Ha
 	}
 }
 
-func takeOverTicket(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+func takeOverTicket(svc ports.SupportService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelSupport) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -159,8 +169,11 @@ func takeOverTicket(svc ports.SupportService, authorizer authx.Authorizer) http.
 	}
 }
 
-func addReply(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+func addReply(svc ports.SupportService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelSupport) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -192,8 +205,11 @@ func addReply(svc ports.SupportService, authorizer authx.Authorizer) http.Handle
 	}
 }
 
-func resolveTicket(svc ports.SupportService, authorizer authx.Authorizer) http.HandlerFunc {
+func resolveTicket(svc ports.SupportService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelSupport) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "support", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return

@@ -253,6 +253,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	ettService := ettapp.NewService(ettRepo, craService, craService, orgRepo)
 	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService), nil)
 	maintenanceService := maintenanceapp.NewService(maintenanceRepo, maintenancecra.NewFeederAdapter(craService))
+	requestSettingsService := orgapp.NewRequestSettingsService(orgRepo)
 
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
 	deps := httpx.Dependencies{
@@ -286,7 +287,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	router.Route("/api/v1", func(r chi.Router) {
 		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
 		idpService := orgapp.NewIdentityProviderService(orgRepo)
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
@@ -294,7 +295,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)
 		congeshttp.RegisterRoutes(r, congesService, leaveTypeConfigService, tokenIssuer, authorizer, billingService)
 		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer, billingService)
-		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService)
+		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService, requestSettingsService)
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
@@ -303,8 +304,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)
 		ssiihttp.RegisterRoutes(r, ssiiService, tokenIssuer, authorizer, billingService)
 		etthttp.RegisterRoutes(r, ettService, tokenIssuer, authorizer, billingService)
-		supporthttp.RegisterRoutes(r, supportService, tokenIssuer, authorizer, billingService)
-		maintenancehttp.RegisterRoutes(r, maintenanceService, tokenIssuer, authorizer, billingService)
+		supporthttp.RegisterRoutes(r, supportService, tokenIssuer, authorizer, billingService, requestSettingsService)
+		maintenancehttp.RegisterRoutes(r, maintenanceService, tokenIssuer, authorizer, billingService, requestSettingsService)
 		publichttp.RegisterRoutes(r, publicService, appCache, keyBuilder)
 
 		apiKeyLookup := httpx.NewApiKeyLookup(

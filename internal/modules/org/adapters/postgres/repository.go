@@ -1097,3 +1097,4 @@ func (r *Repository) ClearTotpEnrollmentRequiredForSocieteUsers(ctx context.Cont
 }
 
 var _ ports.OrganizationRepository = (*Repository)(nil)
+var _ ports.RequestSettingsRepository = (*Repository)(nil)
