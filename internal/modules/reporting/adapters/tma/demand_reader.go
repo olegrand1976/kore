@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	reportports "github.com/kore/kore/internal/modules/reporting/ports"
 	"github.com/kore/kore/internal/modules/tma/domain"
 	tmaports "github.com/kore/kore/internal/modules/tma/ports"
-	reportports "github.com/kore/kore/internal/modules/reporting/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 

@@ -258,7 +258,7 @@ func (s *Service) TranscribeVoiceCra(ctx context.Context, cmd ports.VoiceCraComm
 	reqID, err := s.logRequest(ctx, domain.RequestLog{
 		TenantID: cmd.TenantID, UserID: cmd.UserID, CapabilityCode: capCode,
 		EntityType: "timesheet", EntityID: ptrUUID(cmd.TimesheetID),
-		InputHash: hashInput(map[string]any{"week": cmd.WeekNumber, "len": len(transcript)}),
+		InputHash:  hashInput(map[string]any{"week": cmd.WeekNumber, "len": len(transcript)}),
 		OutputJSON: out, Model: stub.ModelName,
 	})
 	if err != nil {

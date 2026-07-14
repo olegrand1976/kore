@@ -35,15 +35,19 @@ func (r *syncRepo) SaveSyncJob(_ context.Context, j domain.SyncJob) error {
 	r.jobs = append(r.jobs, j)
 	return nil
 }
-func (r *syncRepo) ListSyncJobs(context.Context, kernel.TenantID) ([]domain.SyncJob, error) { return r.jobs, nil }
-func (r *syncRepo) SaveApiKey(context.Context, domain.ApiKey) error                         { return nil }
+func (r *syncRepo) ListSyncJobs(context.Context, kernel.TenantID) ([]domain.SyncJob, error) {
+	return r.jobs, nil
+}
+func (r *syncRepo) SaveApiKey(context.Context, domain.ApiKey) error { return nil }
 func (r *syncRepo) GetApiKey(context.Context, kernel.TenantID, uuid.UUID) (domain.ApiKey, error) {
 	return domain.ApiKey{}, domain.ErrApiKeyNotFound
 }
 func (r *syncRepo) GetApiKeyByHash(context.Context, string) (domain.ApiKey, error) {
 	return domain.ApiKey{}, domain.ErrApiKeyNotFound
 }
-func (r *syncRepo) ListApiKeys(context.Context, kernel.TenantID) ([]domain.ApiKey, error) { return nil, nil }
+func (r *syncRepo) ListApiKeys(context.Context, kernel.TenantID) ([]domain.ApiKey, error) {
+	return nil, nil
+}
 func (r *syncRepo) SaveWebhookSubscription(context.Context, domain.WebhookSubscription) error {
 	return nil
 }

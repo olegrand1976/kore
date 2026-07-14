@@ -225,7 +225,7 @@ func TestOIDCCallbackInvalidState(t *testing.T) {
 }
 
 type mockTokenGateway struct {
-	token oidc.TokenResponse
+	token  oidc.TokenResponse
 	claims oidc.IDTokenClaims
 }
 

@@ -14,13 +14,13 @@ func MapInvoice(inv domain.Invoice) Document {
 	for i, line := range inv.Lines {
 		lineTotal := int64(float64(line.UnitPrice) * line.Quantity)
 		lines = append(lines, map[string]any{
-			"id":               line.ID.String(),
-			"lineNumber":       i + 1,
-			"description":      line.Description,
-			"quantity":         line.Quantity,
-			"unitPrice":        line.UnitPrice,
+			"id":                  line.ID.String(),
+			"lineNumber":          i + 1,
+			"description":         line.Description,
+			"quantity":            line.Quantity,
+			"unitPrice":           line.UnitPrice,
 			"lineExtensionAmount": lineTotal,
-			"taxRate":          line.TaxRate,
+			"taxRate":             line.TaxRate,
 		})
 	}
 	doc := Document{
