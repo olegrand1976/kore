@@ -65,6 +65,7 @@ kore_api_secrets() {
   local secrets
   secrets="DATABASE_URL=kore-database-url:latest"
   secrets+=",JWT_SIGNING_KEY=kore-jwt-signing-key:latest"
+  secrets+=",TOTP_ENCRYPTION_KEY=kore-totp-encryption-key:latest"
   secrets+=",STRIPE_SECRET_KEY=kore-stripe-secret-key:latest"
   secrets+=",STRIPE_WEBHOOK_SECRET=kore-stripe-webhook-secret:latest"
   secrets+=",STRIPE_PUBLISHABLE_KEY=kore-stripe-publishable-key:latest"
@@ -75,13 +76,16 @@ kore_api_secrets() {
 }
 
 kore_migrate_secrets() {
+  local secrets
   if gcloud secrets versions access latest \
     --secret=kore-migrate-database-url --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
-    printf '%s' "DATABASE_URL=kore-migrate-database-url:latest"
-    return
+    secrets="DATABASE_URL=kore-migrate-database-url:latest"
+  else
+    echo "→ Job migrate : secret kore-migrate-database-url absent — fallback runtime" >&2
+    secrets="DATABASE_URL=kore-database-url:latest"
   fi
-  echo "→ Job migrate : secret kore-migrate-database-url absent — fallback runtime" >&2
-  printf '%s' "DATABASE_URL=kore-database-url:latest"
+  secrets+=",TOTP_ENCRYPTION_KEY=kore-totp-encryption-key:latest"
+  printf '%s' "$secrets"
 }
 
 kore_seed_secrets() {

@@ -125,6 +125,14 @@ else
   echo "  kore-jwt-signing-key existe"
 fi
 
+if ! gcloud secrets versions list kore-totp-encryption-key --project="$GCP_PROJECT_ID" --limit=1 --format='value(name)' 2>/dev/null | grep -q .; then
+  TOTP_KEY="$(openssl rand -base64 32)"
+  add_secret_version "kore-totp-encryption-key" "$TOTP_KEY"
+  echo "→ kore-totp-encryption-key créé"
+else
+  echo "  kore-totp-encryption-key existe"
+fi
+
 for stripe_secret in kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key; do
   ensure_secret "$stripe_secret"
   if ! gcloud secrets versions list "$stripe_secret" --project="$GCP_PROJECT_ID" --limit=1 --format='value(name)' 2>/dev/null | grep -q .; then
@@ -147,7 +155,7 @@ for stripe_secret in kore-stripe-secret-key kore-stripe-webhook-secret kore-stri
 done
 
 COMPUTE_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
-for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key kore-redis-url \
+for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key kore-totp-encryption-key kore-redis-url \
   kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key; do
   if gcloud secrets describe "$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
     gcloud secrets add-iam-policy-binding "$secret" \
