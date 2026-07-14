@@ -623,6 +623,18 @@ paths:
       responses:
         "200":
           description: Lignes ajoutées
+  /timesheets/{id}/prefill-ett:
+    post:
+      summary: Préremplir CRA depuis les jours ETT du mois
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Lignes ajoutées
   /prestations:
     get:
       summary: Suivi prestations CRA (manager)
