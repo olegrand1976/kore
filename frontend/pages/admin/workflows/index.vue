@@ -1,159 +1,181 @@
 <template>
-  <div>
-    <AppPageHeader :title="$t('workflows.title')" />
+  <div class="wf-page">
+    <AppPageHeader :title="$t('workflows.title')" :subtitle="$t('workflows.subtitle')">
+      <template #actions>
+        <AppButton
+          v-if="guideRef?.dismissed"
+          variant="ghost"
+          size="sm"
+          type="button"
+          @click="guideRef?.showAgain()"
+        >
+          {{ $t('guides.show') }}
+        </AppButton>
+      </template>
+    </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="admin.workflows" />
 
     <AppCard padding="lg" class="mb">
-      <form class="load-form" @submit.prevent="loadWorkflow">
-        <AppInput v-model="workflowCode" :label="$t('workflows.code_label')" placeholder="leave.request" required />
-        <AppButton variant="primary" size="sm" type="submit" :disabled="loading">
-          {{ $t('workflows.load') }}
-        </AppButton>
-      </form>
+      <fieldset class="wf-preset">
+        <legend class="wf-section-title">{{ $t('workflows.preset_label') }}</legend>
+        <div class="wf-preset-options" role="radiogroup" :aria-label="$t('workflows.preset_label')">
+          <label
+            v-for="code in WORKFLOW_PRESET_CODES"
+            :key="code"
+            class="wf-preset-option"
+            :class="{ 'wf-preset-option--active': selectedPreset === code }"
+          >
+            <input
+              v-model="selectedPreset"
+              class="wf-preset-option__input"
+              type="radio"
+              name="wf-preset"
+              :value="code"
+              :disabled="loading"
+            />
+            <span class="wf-preset-option__title">{{ $t(WORKFLOW_PRESETS[code].labelKey) }}</span>
+            <span class="wf-preset-option__desc">{{ $t(WORKFLOW_PRESETS[code].descKey) }}</span>
+          </label>
+        </div>
+      </fieldset>
     </AppCard>
 
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
     <p v-if="flash" class="flash" role="status">{{ flash }}</p>
 
-    <template v-if="definition">
+    <template v-if="editor">
       <AppCard padding="lg" class="mb">
-        <h2 class="section-title">{{ $t('workflows.states') }}</h2>
-        <ul class="wf-list">
-          <li v-for="state in definition.states" :key="String(state.code ?? state.Code)">
-            <AppBadge variant="neutral">{{ state.label ?? state.Label ?? state.code ?? state.Code }}</AppBadge>
-            <span class="wf-meta">
-              {{ state.code ?? state.Code }}
-              <template v-if="state.isInitial ?? state.IsInitial"> · {{ $t('workflows.initial') }}</template>
-              <template v-if="state.isFinal ?? state.IsFinal"> · {{ $t('workflows.final') }}</template>
-            </span>
-          </li>
-        </ul>
+        <div class="settings-howto" role="note">
+          <p class="settings-howto__title">{{ $t('workflows.howto.title') }}</p>
+          <ol class="settings-howto__list settings-howto__list--ordered">
+            <li>{{ $t('workflows.howto.step_states') }}</li>
+            <li>{{ $t('workflows.howto.step_transitions') }}</li>
+            <li>{{ $t('workflows.howto.step_roles') }}</li>
+            <li>{{ $t('workflows.howto.step_save') }}</li>
+            <li>{{ $t(presetHowtoKey) }}</li>
+          </ol>
+        </div>
+
+        <p class="settings-hint">
+          <strong>{{ $t('workflows.entity_type') }}:</strong> {{ editor.entityType }}
+        </p>
       </AppCard>
 
       <AppCard padding="lg" class="mb">
-        <h2 class="section-title">{{ $t('workflows.transitions') }}</h2>
-        <AppTable :columns="transitionColumns" :rows="transitionRows" row-key="key" />
+        <h2 class="wf-section-title">{{ $t('workflows.diagram_title') }}</h2>
+        <WorkflowDiagram :states="editor.states" :transitions="editor.transitions" />
+      </AppCard>
+
+      <AppCard padding="lg" class="mb">
+        <h2 class="wf-section-title">{{ $t('workflows.states_title') }}</h2>
+        <WorkflowStateForm
+          :states="editor.states"
+          :transitions="editor.transitions"
+          lock-codes
+          @update:states="editor.states = $event"
+        />
+      </AppCard>
+
+      <AppCard padding="lg" class="mb">
+        <h2 class="wf-section-title">{{ $t('workflows.transitions_title') }}</h2>
+        <WorkflowTransitionForm
+          :states="editor.states"
+          :transitions="editor.transitions"
+          @update:transitions="editor.transitions = $event"
+        />
       </AppCard>
 
       <AppCard padding="lg">
-        <h2 class="section-title">{{ $t('workflows.json_editor') }}</h2>
-        <textarea v-model="jsonEditor" class="json-editor" rows="16" :aria-label="$t('workflows.json_editor')" />
-        <div class="json-actions">
-          <AppButton variant="primary" size="sm" :disabled="saving" @click="saveWorkflow">
-            {{ $t('workflows.save') }}
-          </AppButton>
-        </div>
+        <ul v-if="validationErrors.length" class="wf-validation" role="alert">
+          <li v-for="(err, index) in validationErrors" :key="index">{{ err }}</li>
+        </ul>
+        <AppButton variant="primary" :loading="saving" @click="saveWorkflow">
+          {{ $t('workflows.save') }}
+        </AppButton>
       </AppCard>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-type WorkflowState = {
-  code?: string
-  Code?: string
-  label?: string
-  Label?: string
-  isInitial?: boolean
-  IsInitial?: boolean
-  isFinal?: boolean
-  IsFinal?: boolean
-}
-
-type WorkflowTransition = {
-  from?: string
-  From?: string
-  to?: string
-  To?: string
-  action?: string
-  Action?: string
-  guard?: string
-  Guard?: string
-}
-
-type WorkflowDefinition = {
-  code?: string
-  Code?: string
-  entityType?: string
-  EntityType?: string
-  states?: WorkflowState[]
-  States?: WorkflowState[]
-  transitions?: WorkflowTransition[]
-  Transitions?: WorkflowTransition[]
-}
+import type { WorkflowDefinition, WorkflowPresetCode } from '~/composables/useWorkflowDefinition'
+import {
+  WORKFLOW_PRESET_CODES,
+  WORKFLOW_PRESETS,
+  buildPayload,
+  normalizeDefinition,
+  validateDefinition
+} from '~/composables/useWorkflowDefinition'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 
-const workflowCode = ref('leave.request')
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
+const selectedPreset = ref<WorkflowPresetCode>('leave.request')
 const loading = ref(false)
 const saving = ref(false)
 const errorMsg = ref('')
 const flash = ref('')
-const definition = ref<WorkflowDefinition | null>(null)
-const jsonEditor = ref('')
+const editor = ref<WorkflowDefinition | null>(null)
+const isHydrating = ref(true)
 
-const transitionColumns = computed(() => [
-  { key: 'from', label: t('workflows.col_from') },
-  { key: 'to', label: t('workflows.col_to') },
-  { key: 'action', label: t('workflows.col_action') }
-])
+const presetHowtoKey = computed(() => WORKFLOW_PRESETS[selectedPreset.value].howtoKey)
 
-const transitionRows = computed(() => {
-  const transitions = definition.value?.transitions ?? definition.value?.Transitions ?? []
-  return transitions.map((tr, index) => ({
-    key: String(index),
-    from: tr.from ?? tr.From ?? '',
-    to: tr.to ?? tr.To ?? '',
-    action: tr.action ?? tr.Action ?? ''
-  }))
-})
+const validationErrors = computed(() =>
+  editor.value
+    ? validateDefinition(editor.value).map((code) => t(`workflows.validation.${code}`))
+    : []
+)
 
-const normalizeDefinition = (raw: WorkflowDefinition) => ({
-  code: raw.code ?? raw.Code ?? workflowCode.value,
-  entityType: raw.entityType ?? raw.EntityType ?? '',
-  states: (raw.states ?? raw.States ?? []).map((s) => ({
-    code: s.code ?? s.Code ?? '',
-    label: s.label ?? s.Label ?? '',
-    isInitial: s.isInitial ?? s.IsInitial ?? false,
-    isFinal: s.isFinal ?? s.IsFinal ?? false
-  })),
-  transitions: (raw.transitions ?? raw.Transitions ?? []).map((tr) => ({
-    from: tr.from ?? tr.From ?? '',
-    to: tr.to ?? tr.To ?? '',
-    action: tr.action ?? tr.Action ?? '',
-    guard: tr.guard ?? tr.Guard ?? ''
-  }))
-})
-
-const loadWorkflow = async () => {
+const loadWorkflow = async (code: WorkflowPresetCode) => {
   loading.value = true
   errorMsg.value = ''
   flash.value = ''
   try {
-    const res = await $fetch<{ data?: WorkflowDefinition }>(`/api/admin/workflows/${encodeURIComponent(workflowCode.value)}`)
-    const raw = (res?.data ?? res) as WorkflowDefinition
-    definition.value = raw
-    jsonEditor.value = JSON.stringify(normalizeDefinition(raw), null, 2)
+    const res = await $fetch<{ data?: Parameters<typeof normalizeDefinition>[0] }>(
+      `/api/admin/workflows/${encodeURIComponent(code)}`
+    )
+    const raw = (res?.data ?? res) as Parameters<typeof normalizeDefinition>[0]
+    editor.value = normalizeDefinition(raw, code)
+    if (!editor.value.entityType) {
+      editor.value.entityType = WORKFLOW_PRESETS[code].entityType
+    }
   } catch (e) {
-    definition.value = null
+    editor.value = null
     const statusCode = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode?: number }).statusCode : undefined
     errorMsg.value = extractFetchError(e, statusCode === 404 ? t('workflows.not_found') : t('workflows.error_load'))
   } finally {
     loading.value = false
+    isHydrating.value = false
   }
 }
 
+watch(selectedPreset, (code) => {
+  if (isHydrating.value) return
+  loadWorkflow(code)
+})
+
 const saveWorkflow = async () => {
+  if (!editor.value) return
+  const errors = validateDefinition(editor.value)
+  if (errors.length) {
+    errorMsg.value = validationErrors.value[0] ?? t('common.error')
+    return
+  }
+
   saving.value = true
   errorMsg.value = ''
   flash.value = ''
   try {
-    const payload = JSON.parse(jsonEditor.value) as WorkflowDefinition
-    await $fetch('/api/admin/workflows', { method: 'POST', body: payload })
+    await $fetch('/api/admin/workflows', {
+      method: 'POST',
+      body: buildPayload(editor.value)
+    })
     flash.value = t('workflows.saved')
-    await loadWorkflow()
+    await loadWorkflow(selectedPreset.value)
   } catch (e) {
     errorMsg.value = extractFetchError(e)
   } finally {
@@ -161,37 +183,112 @@ const saveWorkflow = async () => {
   }
 }
 
-await loadWorkflow()
+await loadWorkflow(selectedPreset.value)
 </script>
 
 <style scoped>
 .mb { margin-bottom: var(--kore-space-lg); }
-.load-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--kore-space-md);
-  align-items: flex-end;
+
+.wf-section-title {
+  margin: 0 0 var(--kore-space-md);
+  font-size: var(--kore-text-h3);
+}
+
+.wf-preset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.wf-preset-options {
+  display: grid;
+  gap: var(--kore-space-sm);
   max-width: var(--kore-form-wide-max);
 }
-.section-title { margin: 0 0 var(--kore-space-md); font-size: var(--kore-text-h3); }
-.wf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--kore-space-sm); }
-.wf-meta { margin-left: var(--kore-space-sm); font-size: var(--kore-text-small); color: var(--kore-text-muted); }
-.json-editor {
-  width: 100%;
-  font-family: ui-monospace, monospace;
-  font-size: var(--kore-text-small);
+
+.wf-preset-option {
+  display: grid;
+  gap: 0.2rem;
   padding: var(--kore-space-md);
   border: 1px solid var(--kore-border);
-  border-radius: var(--kore-radius-sm);
-  background: var(--kore-bg-elevated);
-  color: var(--kore-text);
-  resize: vertical;
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  cursor: pointer;
 }
-.json-actions { margin-top: var(--kore-space-md); }
-.flash { margin-bottom: var(--kore-space-md); font-size: var(--kore-text-small); }
-.flash--error { color: var(--kore-status-danger); }
+
+.wf-preset-option--active {
+  border-color: var(--kore-primary);
+  background: var(--kore-bg-elevated);
+}
+
+.wf-preset-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wf-preset-option__title {
+  font-size: var(--kore-text-small);
+  font-weight: 600;
+}
+
+.wf-preset-option__desc {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
+
+.settings-howto {
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg-elevated);
+}
+
+.settings-howto__title {
+  margin: 0 0 var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  font-weight: 600;
+}
+
+.settings-howto__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+}
+
+.settings-howto__list--ordered {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-hint {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+}
+
+.wf-validation {
+  margin: 0 0 var(--kore-space-md);
+  padding-left: 1.25rem;
+  color: var(--kore-status-danger);
+  font-size: var(--kore-text-small);
+}
+
+.flash {
+  margin-bottom: var(--kore-space-md);
+  font-size: var(--kore-text-small);
+}
+
+.flash--error {
+  color: var(--kore-status-danger);
+}
+
 @media (max-width: 768px) {
-  .load-form :deep(.app-button),
-  .json-actions :deep(.app-button) { width: 100%; }
+  .wf-page :deep(.app-button) {
+    width: 100%;
+  }
 }
 </style>

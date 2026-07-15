@@ -837,6 +837,16 @@
           "Le login par mot de passe reste disponible en parallèle (dual-mode).",
           "Les nouveaux utilisateurs SSO reçoivent le profil par défaut configuré ci-dessous."
         ]
+      },
+      "workflows": {
+        "title": "Concevoir un workflow de validation",
+        "items": [
+          "Un workflow définit les étapes (états) et les actions possibles entre elles (transitions).",
+          "Chaque module métier (congés, TMA…) s'appuie sur un code workflow prédéfini.",
+          "Un seul état initial et au moins un état final sont obligatoires.",
+          "Les transitions déclenchent les boutons d'action visibles dans les écrans métier.",
+          "Modifiez avec prudence : un workflow incorrect peut bloquer les validations."
+        ]
       }
     },
     "cra": {
@@ -984,20 +994,58 @@
   },
   "workflows": {
     "title": "Configuration workflows",
-    "code_label": "Code workflow",
-    "load": "Charger",
+    "subtitle": "Assistant no-code — concevez les étapes et actions de validation",
+    "preset_label": "Workflow à configurer",
+    "preset_leave": "Congés — demande de congé",
+    "preset_leave_desc": "Validation des demandes de congés (module Congés).",
+    "preset_tma": "TMA — incident applicatif",
+    "preset_tma_desc": "Cycle de vie des demandes TMA (module Évolutions & incidents).",
+    "entity_type": "Type d'entité",
+    "states_title": "États du workflow",
+    "transitions_title": "Transitions (actions)",
+    "diagram_title": "Aperçu du flux",
+    "diagram_empty": "Ajoutez des transitions pour visualiser le flux.",
     "states": "États",
     "transitions": "Transitions",
     "initial": "initial",
     "final": "final",
-    "json_editor": "Éditeur JSON",
     "save": "Enregistrer",
     "saved": "Workflow enregistré",
-    "not_found": "Workflow introuvable pour ce code.",
+    "not_found": "Workflow introuvable — exécutez le seed ou contactez l'administrateur plateforme.",
     "error_load": "Impossible de charger le workflow.",
+    "col_code": "Code",
+    "col_label": "Libellé",
     "col_from": "De",
     "col_to": "Vers",
-    "col_action": "Action"
+    "col_action": "Action",
+    "add_state": "Ajouter un état",
+    "remove_state": "Supprimer",
+    "add_transition": "Ajouter une transition",
+    "remove_transition": "Supprimer la transition",
+    "select_state": "Choisir un état",
+    "roles_label": "Profils autorisés",
+    "roles_hint": "Laissez tous les profils décochés pour autoriser toute personne ayant accès au module.",
+    "roles_all": "tous profils",
+    "cannot_remove_state": "État utilisé par une transition — supprimez d'abord les transitions liées.",
+    "howto": {
+      "title": "Comment concevoir ce workflow ?",
+      "step_states": "Définissez les étapes : un état initial (départ), des états intermédiaires et au moins un état final.",
+      "step_transitions": "Reliez les états avec des actions (ex. approve, reject, assign) — ce sont les boutons dans l'application.",
+      "step_roles": "Restreignez optionnellement une action à certains profils ; sinon elle est ouverte à tous.",
+      "step_save": "Enregistrez puis testez depuis le module métier concerné.",
+      "leave_example": "Exemple congés : En attente → approve → Validé, ou reject → Refusé.",
+      "tma_example": "Exemple TMA : Ouverte → assign → Affectée → resolve → Résolue, avec boucle reopen → Rework."
+    },
+    "validation": {
+      "code_required": "Le code workflow est requis.",
+      "entity_type_required": "Le type d'entité est requis.",
+      "states_required": "Ajoutez au moins un état.",
+      "one_initial": "Exactement un état doit être marqué comme initial.",
+      "one_final": "Au moins un état doit être marqué comme final.",
+      "duplicate_state": "Les codes d'état doivent être uniques.",
+      "orphan_transition": "Chaque transition doit relier des états existants.",
+      "transition_action_required": "Chaque transition doit avoir une action."
+    }
   },
   "notifications": {
     "title": "Notifications",

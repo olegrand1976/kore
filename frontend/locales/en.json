@@ -837,6 +837,16 @@
           "Password login remains available in parallel (dual-mode).",
           "New SSO users receive the default profile configured below."
         ]
+      },
+      "workflows": {
+        "title": "Design a validation workflow",
+        "items": [
+          "A workflow defines steps (states) and allowed actions between them (transitions).",
+          "Each business module (leave, TMA…) relies on a predefined workflow code.",
+          "Exactly one initial state and at least one final state are required.",
+          "Transitions drive the action buttons shown in business screens.",
+          "Change with care: an incorrect workflow can block validations."
+        ]
       }
     },
     "cra": {
@@ -984,20 +994,58 @@
   },
   "workflows": {
     "title": "Workflow configuration",
-    "code_label": "Workflow code",
-    "load": "Load",
+    "subtitle": "No-code assistant — design validation steps and actions",
+    "preset_label": "Workflow to configure",
+    "preset_leave": "Leave — leave request",
+    "preset_leave_desc": "Leave request validation (Leave module).",
+    "preset_tma": "TMA — application incident",
+    "preset_tma_desc": "TMA demand lifecycle (Evolutions & incidents module).",
+    "entity_type": "Entity type",
+    "states_title": "Workflow states",
+    "transitions_title": "Transitions (actions)",
+    "diagram_title": "Flow preview",
+    "diagram_empty": "Add transitions to visualize the flow.",
     "states": "States",
     "transitions": "Transitions",
     "initial": "initial",
     "final": "final",
-    "json_editor": "JSON editor",
     "save": "Save",
     "saved": "Workflow saved",
-    "not_found": "No workflow found for this code.",
+    "not_found": "Workflow not found — run the seed or contact the platform admin.",
     "error_load": "Unable to load the workflow.",
+    "col_code": "Code",
+    "col_label": "Label",
     "col_from": "From",
     "col_to": "To",
-    "col_action": "Action"
+    "col_action": "Action",
+    "add_state": "Add state",
+    "remove_state": "Remove",
+    "add_transition": "Add transition",
+    "remove_transition": "Remove transition",
+    "select_state": "Select a state",
+    "roles_label": "Allowed profiles",
+    "roles_hint": "Leave all profiles unchecked to allow anyone with module access.",
+    "roles_all": "all profiles",
+    "cannot_remove_state": "State used by a transition — remove linked transitions first.",
+    "howto": {
+      "title": "How to design this workflow?",
+      "step_states": "Define steps: one initial state (start), intermediate states, and at least one final state.",
+      "step_transitions": "Connect states with actions (e.g. approve, reject, assign) — these become buttons in the app.",
+      "step_roles": "Optionally restrict an action to specific profiles; otherwise it is open to all.",
+      "step_save": "Save then test from the related business module.",
+      "leave_example": "Leave example: Pending → approve → Approved, or reject → Rejected.",
+      "tma_example": "TMA example: Open → assign → Assigned → resolve → Resolved, with reopen → Rework loop."
+    },
+    "validation": {
+      "code_required": "Workflow code is required.",
+      "entity_type_required": "Entity type is required.",
+      "states_required": "Add at least one state.",
+      "one_initial": "Exactly one state must be marked as initial.",
+      "one_final": "At least one state must be marked as final.",
+      "duplicate_state": "State codes must be unique.",
+      "orphan_transition": "Each transition must link existing states.",
+      "transition_action_required": "Each transition must have an action."
+    }
   },
   "notifications": {
     "title": "Notifications",
