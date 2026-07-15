@@ -188,9 +188,11 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	clientService := orgapp.NewClientService(orgRepo)
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
-	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
+	pushSender := notifapp.NewPushSender(cfg)
+	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo,
+		notifapp.WithPush(notifRepo, pushSender, cfg.PushEnabled),
+	)
 	deviceService := notifapp.NewDeviceService(notifRepo)
-	_ = notifapp.NewPushSender(cfg)
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).

@@ -47,6 +47,9 @@ SMTP_FROM: "Kore <noreply@ll-it-sc.be>"
 AI_LLM_PROVIDER: "gemini"
 GEMINI_MODEL: "gemini-3.5-flash"
 PROMPT_GUARD_BLOCK: "true"
+PUSH_ENABLED: "false"
+FCM_PROJECT_ID: "${GCP_PROJECT_ID}"
+PDP_PROVIDER: "stub"
 EOF
 }
 
@@ -71,6 +74,24 @@ kore_api_secrets() {
   secrets+=",STRIPE_PUBLISHABLE_KEY=kore-stripe-publishable-key:latest"
   if kore_has_secret_version "$GEMINI_API_KEY_SECRET"; then
     secrets+=",GEMINI_API_KEY=${GEMINI_API_KEY_SECRET}:latest"
+  fi
+  if kore_has_secret_version "kore-oidc-google-client-secret"; then
+    secrets+=",OIDC_GOOGLE_CLIENT_SECRET=kore-oidc-google-client-secret:latest"
+  fi
+  if kore_has_secret_version "kore-oidc-google-client-id"; then
+    secrets+=",OIDC_GOOGLE_CLIENT_ID=kore-oidc-google-client-id:latest"
+  fi
+  if kore_has_secret_version "kore-pdp-api-key"; then
+    secrets+=",PDP_API_KEY=kore-pdp-api-key:latest"
+  fi
+  if kore_has_secret_version "kore-pdp-webhook-secret"; then
+    secrets+=",PDP_WEBHOOK_SECRET=kore-pdp-webhook-secret:latest"
+  fi
+  if kore_has_secret_version "kore-pennylane-api-token"; then
+    secrets+=",PENNYLANE_API_TOKEN=kore-pennylane-api-token:latest"
+  fi
+  if kore_has_secret_version "kore-fcm-service-account"; then
+    secrets+=",GOOGLE_APPLICATION_CREDENTIALS=kore-fcm-service-account:latest"
   fi
   printf '%s' "$secrets"
 }

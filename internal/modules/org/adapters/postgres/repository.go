@@ -715,6 +715,63 @@ func (r *Repository) ResolveServiceUserEmails(ctx context.Context, tenant kernel
 	return emails, rows.Err()
 }
 
+func (r *Repository) ResolveEquipeUserIDs(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id FROM org.users
+		WHERE tenant_id = $1 AND equipe_id = $2 AND active = TRUE
+	`, tenant.UUID(), equipeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUserIDs(rows)
+}
+
+func (r *Repository) ResolveApplicationUserIDs(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id
+		FROM org.users u
+		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
+		WHERE u.tenant_id = $1 AND e.application_id = $2 AND u.active = TRUE
+	`, tenant.UUID(), applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUserIDs(rows)
+}
+
+func (r *Repository) ResolveServiceUserIDs(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id
+		FROM org.users u
+		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
+		JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		WHERE u.tenant_id = $1 AND a.service_id = $2 AND u.active = TRUE
+	`, tenant.UUID(), serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanUserIDs(rows)
+}
+
+func scanUserIDs(rows interface {
+	Next() bool
+	Scan(dest ...any) error
+	Err() error
+}) ([]uuid.UUID, error) {
+	var out []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (uuid.UUID, error) {
 	var societeID uuid.UUID
 	err := r.pool.QueryRow(ctx, `

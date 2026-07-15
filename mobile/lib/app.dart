@@ -6,6 +6,7 @@ import 'core/api/api_client.dart';
 import 'core/auth/auth_repository.dart';
 import 'core/auth/oidc_service.dart';
 import 'core/l10n/app_localizations.dart';
+import 'core/push/push_service.dart';
 import 'core/theme/kore_theme.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/conges/data/leave_repository.dart';
@@ -27,6 +28,7 @@ class KoreAppScope extends InheritedWidget {
     required this.oidcService,
     required this.craRepository,
     required this.leaveRepository,
+    required this.pushService,
     required super.child,
   });
 
@@ -35,6 +37,7 @@ class KoreAppScope extends InheritedWidget {
   final OidcService oidcService;
   final CraRepository craRepository;
   final LeaveRepository leaveRepository;
+  final PushService pushService;
 
   static KoreAppScope of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<KoreAppScope>()!;
@@ -59,6 +62,7 @@ class _KoreAppState extends State<KoreApp> {
   late final OidcService _oidc;
   late final CraRepository _cra;
   late final LeaveRepository _leave;
+  late final PushService _push;
   late final GoRouter _router;
   bool _canValidateLeave = false;
 
@@ -70,6 +74,7 @@ class _KoreAppState extends State<KoreApp> {
     _oidc = OidcService(apiClient: _api, authRepository: _auth);
     _cra = CraRepository(_api);
     _leave = LeaveRepository(_api);
+    _push = PushService(apiClient: _api);
     _router = GoRouter(
       initialLocation: '/login',
       redirect: (context, state) async {
@@ -88,6 +93,7 @@ class _KoreAppState extends State<KoreApp> {
             onLoggedIn: () async {
               final session = await _auth.loadSession();
               setState(() => _canValidateLeave = session?.canValidateLeave ?? false);
+              await _push.syncAfterLogin();
               _router.go('/cra');
             },
           ),
@@ -109,9 +115,12 @@ class _KoreAppState extends State<KoreApp> {
         ),
       ],
     );
-    _auth.loadSession().then((session) {
+    _auth.loadSession().then((session) async {
       if (mounted) {
         setState(() => _canValidateLeave = session?.canValidateLeave ?? false);
+        if (session != null) {
+          await _push.syncAfterLogin();
+        }
       }
     });
   }
@@ -132,6 +141,7 @@ class _KoreAppState extends State<KoreApp> {
       oidcService: _oidc,
       craRepository: _cra,
       leaveRepository: _leave,
+      pushService: _push,
       child: MaterialApp.router(
         title: 'Kore',
         theme: KoreTheme.light(),

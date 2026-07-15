@@ -34,6 +34,14 @@ func (r *Repository) DeleteDeviceToken(ctx context.Context, tenant kernel.Tenant
 	return nil
 }
 
+func (r *Repository) DeleteDeviceTokenByValue(ctx context.Context, tenant kernel.TenantID, token string) error {
+	_, err := r.pool.Exec(ctx, `
+		DELETE FROM notifications.device_tokens
+		WHERE tenant_id = $1 AND token = $2
+	`, tenant.UUID(), token)
+	return err
+}
+
 func (r *Repository) ListDeviceTokens(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ([]domain.DeviceToken, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, user_id, platform, token, created_at, updated_at

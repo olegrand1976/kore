@@ -46,6 +46,17 @@ func (r *fakeRepo) GetRuleByTrigger(_ context.Context, _ kernel.TenantID, trigge
 	return rule, nil
 }
 
+func (r *fakeRepo) GetRuleByCode(_ context.Context, _ kernel.TenantID, code string) (domain.NotificationRule, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, rule := range r.rules {
+		if rule.Code == code {
+			return rule, nil
+		}
+	}
+	return domain.NotificationRule{}, domain.ErrRuleNotFound
+}
+
 func (r *fakeRepo) ListRules(_ context.Context, _ kernel.TenantID) ([]domain.NotificationRule, error) {
 	return nil, nil
 }
@@ -112,6 +123,18 @@ func (fakeResolver) ResolveApplicationUserEmails(_ context.Context, _ kernel.Ten
 
 func (fakeResolver) ResolveServiceUserEmails(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]string, error) {
 	return []string{"user@example.com"}, nil
+}
+
+func (fakeResolver) ResolveEquipeUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
+}
+
+func (fakeResolver) ResolveApplicationUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
+}
+
+func (fakeResolver) ResolveServiceUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
 }
 
 func TestScheduledMessageNotSentBeforeDue(t *testing.T) {

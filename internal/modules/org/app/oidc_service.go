@@ -115,7 +115,7 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 		return ports.AuthResult{}, domain.ErrSSONotEnabled
 	}
 
-	tokenResp, err := s.gateway.ExchangeCode(ctx, idp.Issuer, idp.ClientID, idp.ClientSecret, cmd.RedirectURI, cmd.Code, cmd.CodeVerifier)
+	tokenResp, err := s.gateway.ExchangeCode(ctx, idp.Issuer, idp.ClientID, resolveIDPClientSecret(idp), cmd.RedirectURI, cmd.Code, cmd.CodeVerifier)
 	if err != nil {
 		return ports.AuthResult{}, fmt.Errorf("%w: %v", domain.ErrInvalidIDPToken, err)
 	}

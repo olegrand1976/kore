@@ -14,10 +14,13 @@ import (
 )
 
 type Service struct {
-	repo     ports.NotificationRepository
-	sender   ports.EmailSender
-	resolver ports.RecipientResolver
-	clock    ports.Clock
+	repo         ports.NotificationRepository
+	sender       ports.EmailSender
+	resolver     ports.RecipientResolver
+	devices      ports.DeviceRepository
+	push         ports.PushSender
+	pushEnabled  bool
+	clock        ports.Clock
 }
 
 func NewService(
@@ -47,6 +50,14 @@ func WithClock(clock ports.Clock) Option {
 		if clock != nil {
 			s.clock = clock
 		}
+	}
+}
+
+func WithPush(devices ports.DeviceRepository, push ports.PushSender, enabled bool) Option {
+	return func(s *Service) {
+		s.devices = devices
+		s.push = push
+		s.pushEnabled = enabled
 	}
 }
 
@@ -107,7 +118,11 @@ func (s *Service) Publish(ctx context.Context, evt ports.NotificationEvent) erro
 	}
 
 	if rule.Frequency.IsImmediate() {
-		return s.dispatch(ctx, &msg)
+		if err := s.dispatch(ctx, &msg); err != nil {
+			return err
+		}
+		s.dispatchPush(ctx, evt.TenantID, rule.RecipientsPolicy, subject, pushBodyForNotification(subject, body))
+		return nil
 	}
 
 	scheduledFor := domain.NextRun(rule.Frequency, s.clock.Now())
@@ -153,6 +168,11 @@ func (s *Service) ProcessPending(ctx context.Context) (int, error) {
 		msg := pending[i]
 		if err := s.dispatch(ctx, &msg); err != nil {
 			continue
+		}
+		if msg.RuleCode != "" {
+			if rule, err := s.repo.GetRuleByCode(ctx, msg.TenantID, msg.RuleCode); err == nil {
+				s.dispatchPush(ctx, msg.TenantID, rule.RecipientsPolicy, msg.Subject, pushBodyForNotification(msg.Subject, msg.Body))
+			}
 		}
 		sent++
 	}

@@ -100,13 +100,18 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 		} else {
 			job.ErrorMessage = fmt.Sprintf("fec export: %d records", count)
 		}
-	} else if conn.Provider == "pennylane" && s.pennylane != nil {
-		count, syncErr := s.pennylane.SyncAccounting(ctx, cmd.TenantID, now.Format("2006-01"))
-		if syncErr != nil {
+	} else if conn.Provider == "pennylane" {
+		if s.pennylane == nil {
 			job.Status = "failed"
-			job.ErrorMessage = syncErr.Error()
+			job.ErrorMessage = "pennylane: API token not configured"
 		} else {
-			job.ErrorMessage = fmt.Sprintf("pennylane sync: %d records", count)
+			count, syncErr := s.pennylane.SyncAccounting(ctx, cmd.TenantID, now.Format("2006-01"))
+			if syncErr != nil {
+				job.Status = "failed"
+				job.ErrorMessage = syncErr.Error()
+			} else {
+				job.ErrorMessage = fmt.Sprintf("pennylane sync: %d records", count)
+			}
 		}
 	} else if conn.Type == domain.ConnectionTypeCalendar && (conn.Provider == "google" || conn.Provider == "googlecalendar") {
 		count, syncErr := s.calendar.Sync(ctx, cmd.TenantID, conn.Provider)
@@ -133,7 +138,7 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 		return domain.SyncJob{}, err
 	}
 	if job.Status == "completed" && s.webhooks != nil {
-		_ = s.webhooks.Dispatch(ctx, ports.OutboundEvent{
+		if err := s.webhooks.Dispatch(ctx, ports.OutboundEvent{
 			ID:         job.ID,
 			TenantID:   cmd.TenantID,
 			Type:       "integration.sync.completed",
@@ -143,7 +148,9 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 				"provider":     conn.Provider,
 				"message":      job.ErrorMessage,
 			},
-		})
+		}); err != nil {
+			slog.Default().Warn("integration webhook dispatch failed", "err", err, "connectionId", cmd.ConnectionID)
+		}
 	}
 	return job, nil
 }

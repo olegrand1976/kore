@@ -2,6 +2,8 @@ package app
 
 import (
 	"log/slog"
+	"os"
+	"strings"
 
 	notifpush "github.com/kore/kore/internal/modules/notifications/adapters/push"
 	"github.com/kore/kore/internal/modules/notifications/ports"
@@ -13,5 +15,12 @@ func NewPushSender(cfg config.Config) ports.PushSender {
 	if !cfg.PushEnabled {
 		return stub
 	}
-	return notifpush.NewFCMSender(cfg.FCMProjectID, stub)
+	credsPath := cfg.FCMCredentialsPath
+	if credsPath == "" {
+		credsPath = strings.TrimSpace(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	}
+	return notifpush.NewFCMSender(notifpush.FCMConfig{
+		ProjectID:       cfg.FCMProjectID,
+		CredentialsPath: credsPath,
+	}, stub)
 }

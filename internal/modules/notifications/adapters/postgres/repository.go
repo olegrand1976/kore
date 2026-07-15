@@ -50,6 +50,14 @@ func (r *Repository) GetRuleByTrigger(ctx context.Context, tenant kernel.TenantI
 	`, tenant.UUID(), trigger))
 }
 
+func (r *Repository) GetRuleByCode(ctx context.Context, tenant kernel.TenantID, code string) (domain.NotificationRule, error) {
+	return r.scanRule(r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, code, trigger, frequency, recipient_policy, template, attach_pdf
+		FROM notifications.rules
+		WHERE tenant_id = $1 AND code = $2
+	`, tenant.UUID(), code))
+}
+
 func (r *Repository) ListRules(ctx context.Context, tenant kernel.TenantID) ([]domain.NotificationRule, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, code, trigger, frequency, recipient_policy, template, attach_pdf

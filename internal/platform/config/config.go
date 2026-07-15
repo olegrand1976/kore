@@ -46,6 +46,9 @@ type Config struct {
 	PennylaneAPIToken    string
 	PushEnabled          bool
 	FCMProjectID         string
+	FCMCredentialsPath   string
+	OIDCGoogleClientSecret string
+	OIDCAzureClientSecret  string
 }
 
 func Load() (Config, error) {
@@ -87,6 +90,9 @@ func Load() (Config, error) {
 		PennylaneAPIToken:    envOr("PENNYLANE_API_TOKEN", ""),
 		PushEnabled:          envBool("PUSH_ENABLED", false),
 		FCMProjectID:         envOr("FCM_PROJECT_ID", ""),
+		FCMCredentialsPath:   envOr("FCM_CREDENTIALS_PATH", envOr("GOOGLE_APPLICATION_CREDENTIALS", "")),
+		OIDCGoogleClientSecret: envOr("OIDC_GOOGLE_CLIENT_SECRET", ""),
+		OIDCAzureClientSecret:  envOr("OIDC_AZURE_CLIENT_SECRET", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

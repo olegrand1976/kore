@@ -34,6 +34,18 @@ func (r *captureResolver) ResolveServiceUserEmails(_ context.Context, _ kernel.T
 	return []string{"a@kore.local"}, nil
 }
 
+func (r *captureResolver) ResolveEquipeUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
+}
+
+func (r *captureResolver) ResolveApplicationUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
+}
+
+func (r *captureResolver) ResolveServiceUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return []uuid.UUID{uuid.New()}, nil
+}
+
 func TestRecipientPolicyResolutionPrecedence(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeRepo()

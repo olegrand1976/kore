@@ -57,6 +57,7 @@ type TransactionalNotifier interface {
 type NotificationRepository interface {
 	SaveRule(ctx context.Context, r domain.NotificationRule) error
 	GetRuleByTrigger(ctx context.Context, tenant kernel.TenantID, trigger string) (domain.NotificationRule, error)
+	GetRuleByCode(ctx context.Context, tenant kernel.TenantID, code string) (domain.NotificationRule, error)
 	ListRules(ctx context.Context, tenant kernel.TenantID) ([]domain.NotificationRule, error)
 	SaveMessage(ctx context.Context, m domain.NotificationMessage) error
 	ListMessages(ctx context.Context, filter SentFilter) ([]domain.NotificationMessage, error)
@@ -73,6 +74,9 @@ type RecipientResolver interface {
 	ResolveEquipeUserEmails(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]string, error)
 	ResolveApplicationUserEmails(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]string, error)
 	ResolveServiceUserEmails(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]string, error)
+	ResolveEquipeUserIDs(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]uuid.UUID, error)
+	ResolveApplicationUserIDs(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]uuid.UUID, error)
+	ResolveServiceUserIDs(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type Clock interface {
@@ -101,6 +105,7 @@ type PushMessage struct {
 type DeviceRepository interface {
 	UpsertDeviceToken(ctx context.Context, token domain.DeviceToken) error
 	DeleteDeviceToken(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, token string) error
+	DeleteDeviceTokenByValue(ctx context.Context, tenant kernel.TenantID, token string) error
 	ListDeviceTokens(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ([]domain.DeviceToken, error)
 }
 
