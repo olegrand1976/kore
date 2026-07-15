@@ -138,7 +138,8 @@ const loadWorkflow = async () => {
     jsonEditor.value = JSON.stringify(normalizeDefinition(raw), null, 2)
   } catch (e) {
     definition.value = null
-    errorMsg.value = extractFetchError(e)
+    const statusCode = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode?: number }).statusCode : undefined
+    errorMsg.value = extractFetchError(e, statusCode === 404 ? t('workflows.not_found') : t('workflows.error_load'))
   } finally {
     loading.value = false
   }

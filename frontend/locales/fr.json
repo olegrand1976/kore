@@ -972,6 +972,8 @@
     "json_editor": "Éditeur JSON",
     "save": "Enregistrer",
     "saved": "Workflow enregistré",
+    "not_found": "Workflow introuvable pour ce code.",
+    "error_load": "Impossible de charger le workflow.",
     "col_from": "De",
     "col_to": "Vers",
     "col_action": "Action"

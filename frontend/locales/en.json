@@ -972,6 +972,8 @@
     "json_editor": "JSON editor",
     "save": "Save",
     "saved": "Workflow saved",
+    "not_found": "No workflow found for this code.",
+    "error_load": "Unable to load the workflow.",
     "col_from": "From",
     "col_to": "To",
     "col_action": "Action"
