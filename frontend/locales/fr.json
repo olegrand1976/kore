@@ -182,7 +182,50 @@
     "scopes": "Scopes",
     "default_profile": "Profil par défaut (JIT)",
     "enabled": "SSO activé",
-    "saved": "Configuration enregistrée"
+    "saved": "Configuration enregistrée",
+    "howto": {
+      "title": "Configurer Google SSO — étapes",
+      "step_console": "Ouvrez la {link} et sélectionnez votre projet Google Cloud.",
+      "step_create": "Créez un client OAuth 2.0 de type {type} (voir la {link}).",
+      "step_redirect": "Ajoutez l'URI de redirection autorisée ci-dessous dans les paramètres du client OAuth.",
+      "step_copy": "Copiez le Client ID et le Client secret générés par Google.",
+      "step_paste": "Collez-les dans le formulaire ci-dessous, puis enregistrez.",
+      "step_enable": "Cochez « SSO activé » pour afficher le bouton de connexion Google sur la page login."
+    },
+    "links": {
+      "google_console": "Google Cloud Console → Identifiants",
+      "google_oauth_doc": "documentation Google OAuth",
+      "google_oidc_doc": "documentation OpenID Connect Google"
+    },
+    "howto_type_web": "Application Web",
+    "redirect_uri": "URI de redirection autorisée",
+    "redirect_uri_hint": "Collez cette URI telle quelle dans Google Cloud Console → Client OAuth → URI de redirection autorisés.",
+    "copy": "Copier",
+    "copied": "Copié",
+    "copy_failed": "Copie impossible — sélectionnez l'URI manuellement.",
+    "section_credentials": "Identifiants Google",
+    "section_advanced": "Paramètres OIDC (Google)",
+    "section_advanced_note": "Valeurs par défaut Google — ne modifiez que si vous savez ce que vous faites. Voir la ",
+    "section_activation": "Activation SSO",
+    "client_secret_keep": "Laissez vide pour conserver le secret existant.",
+    "profile_collaborateur": "Collaborateur",
+    "profile_administrateur": "Administrateur",
+    "tooltip": {
+      "name": "Nom affiché du fournisseur (ex. Google). Utilisé sur le bouton de connexion SSO.",
+      "issuer": "URL de l'émetteur OIDC. Pour Google : https://accounts.google.com",
+      "client_id": "Identifiant du client OAuth créé dans Google Cloud Console.",
+      "client_secret": "Secret du client OAuth. Ne le partagez jamais publiquement.",
+      "jwks_uri": "URL des clés publiques JWT de Google pour valider les tokens.",
+      "scopes": "Permissions OIDC demandées à Google (openid, profile, email).",
+      "default_profile": "Profil Kore attribué aux nouveaux utilisateurs créés automatiquement (JIT) à la première connexion SSO.",
+      "enabled": "Active ou désactive le bouton de connexion SSO sur la page login."
+    },
+    "hint": {
+      "client_id": "Format : xxxxxx.apps.googleusercontent.com — visible dans Google Cloud Console → Identifiants.",
+      "client_secret": "Généré une seule fois à la création du client OAuth. Conservez-le en lieu sûr.",
+      "default_profile": "Collaborateur convient dans la plupart des cas. Administrateur réservé aux comptes de gestion.",
+      "enabled": "Testez la connexion depuis la page login après activation."
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -762,6 +805,16 @@
           "ESN : activez TMA + Service utilisateur si contrat maintenance + helpdesk.",
           "DSI structurée : ajoutez Exploitation & travaux pour l'équipe RUN.",
           "Petite structure : TMA seul suffit souvent — désactivez les autres canaux."
+        ]
+      },
+      "identity": {
+        "title": "Connexion SSO Google",
+        "items": [
+          "Permet aux collaborateurs de se connecter avec leur compte Google (Gmail ou Workspace).",
+          "Prérequis : un projet Google Cloud avec un client OAuth 2.0 de type Application Web.",
+          "Configurez l'URI de redirection Kore dans Google, puis renseignez Client ID et secret ici.",
+          "Le login par mot de passe reste disponible en parallèle (dual-mode).",
+          "Les nouveaux utilisateurs SSO reçoivent le profil par défaut configuré ci-dessous."
         ]
       }
     },
