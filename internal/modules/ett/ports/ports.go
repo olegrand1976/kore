@@ -42,8 +42,17 @@ type ETTService interface {
 	ListRecords(ctx context.Context, q RecordsQuery) ([]domain.WorkTimeRecord, error)
 	CorrectRecord(ctx context.Context, cmd CorrectRecordCommand) (domain.WorkTimeRecord, error)
 	GetAuditTrail(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error)
+	VerifyAuditIntegrity(ctx context.Context, tenant kernel.TenantID) (AuditIntegrityReport, error)
 	CompareCRA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ReconciliationReport, error)
 	CompareCRATeam(ctx context.Context, tenant kernel.TenantID, month string) ([]ReconciliationReport, error)
+}
+
+// AuditIntegrityReport résume la vérification du chaînage de hachage du journal.
+type AuditIntegrityReport struct {
+	Entries     int    `json:"entries"`
+	Valid       bool   `json:"valid"`
+	Code        string `json:"code"`
+	BrokenAtSeq *int64 `json:"brokenAtSeq,omitempty"`
 }
 
 type ReconciliationReport struct {
@@ -61,10 +70,12 @@ type ReconciliationReport struct {
 
 type ETTRepository interface {
 	SaveRecord(ctx context.Context, rec domain.WorkTimeRecord) error
+	SaveRecordAndAudit(ctx context.Context, rec domain.WorkTimeRecord, entry domain.AuditEntry) error
 	GetRecord(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.WorkTimeRecord, error)
 	FindRecordByUserDate(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, workDate time.Time) (domain.WorkTimeRecord, error)
 	ListRecords(ctx context.Context, q RecordsQuery) ([]domain.WorkTimeRecord, error)
 	AppendAuditEntry(ctx context.Context, entry domain.AuditEntry) error
 	ListAuditEntries(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error)
+	ListTenantAuditEntries(ctx context.Context, tenant kernel.TenantID) ([]domain.AuditEntry, error)
 	GetCountryRule(ctx context.Context, tenant kernel.TenantID, countryCode string) (domain.CountryWorkRule, error)
 }

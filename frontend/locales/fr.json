@@ -479,7 +479,12 @@
     "missing_ett_days": "Jours ETT manquants",
     "alert": "Écart détecté",
     "ok": "Cohérent",
-    "load_error": "Impossible de charger la réconciliation."
+    "load_error": "Impossible de charger la réconciliation.",
+    "integrity_title": "Intégrité du journal légal",
+    "integrity_check": "Vérifier l'intégrité",
+    "integrity_valid": "Journal intègre — {n} entrée(s) vérifiée(s).",
+    "integrity_broken": "Altération détectée à la position {seq}.",
+    "integrity_error": "Impossible de vérifier l'intégrité du journal."
   },
   "missions": {
     "title": "Missions SSII",
@@ -720,7 +725,8 @@
     "triage_support_title": "Service utilisateur",
     "triage_support_desc": "Question, accès ou incident léger — réponse rapide",
     "triage_maintenance_title": "Exploitation & travaux",
-    "triage_maintenance_desc": "Infra, correctifs ou déploiement — suivi en jours"
+    "triage_maintenance_desc": "Infra, correctifs ou déploiement — suivi en jours",
+    "triage_empty": "Aucun canal de demande n'est disponible pour votre profil."
   },
   "guides": {
     "hide": "Masquer l'aide",

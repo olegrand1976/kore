@@ -24,21 +24,35 @@ func NewRepository(pool *db.Pool) *Repository {
 }
 
 func (r *Repository) SaveRecord(ctx context.Context, rec domain.WorkTimeRecord) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO ett.work_time_records (
-			id, tenant_id, user_id, work_date, clock_in, clock_out,
-			effective_hours, overtime_hours, status, origin, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		ON CONFLICT (tenant_id, user_id, work_date) DO UPDATE SET
-			clock_in = EXCLUDED.clock_in,
-			clock_out = EXCLUDED.clock_out,
-			effective_hours = EXCLUDED.effective_hours,
-			overtime_hours = EXCLUDED.overtime_hours,
-			status = EXCLUDED.status
-	`, rec.ID, rec.TenantID.UUID(), rec.UserID, rec.WorkDate, rec.ClockIn, rec.ClockOut,
+	_, err := r.pool.Exec(ctx, saveRecordSQL,
+		rec.ID, rec.TenantID.UUID(), rec.UserID, rec.WorkDate, rec.ClockIn, rec.ClockOut,
 		rec.EffectiveHours, rec.OvertimeHours, rec.Status, rec.Origin, rec.CreatedAt)
 	return err
 }
+
+func (r *Repository) SaveRecordAndAudit(ctx context.Context, rec domain.WorkTimeRecord, entry domain.AuditEntry) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, saveRecordSQL,
+			rec.ID, rec.TenantID.UUID(), rec.UserID, rec.WorkDate, rec.ClockIn, rec.ClockOut,
+			rec.EffectiveHours, rec.OvertimeHours, rec.Status, rec.Origin, rec.CreatedAt); err != nil {
+			return err
+		}
+		return r.appendAuditEntryTx(ctx, tx, entry)
+	})
+}
+
+const saveRecordSQL = `
+	INSERT INTO ett.work_time_records (
+		id, tenant_id, user_id, work_date, clock_in, clock_out,
+		effective_hours, overtime_hours, status, origin, created_at
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	ON CONFLICT (tenant_id, user_id, work_date) DO UPDATE SET
+		clock_in = EXCLUDED.clock_in,
+		clock_out = EXCLUDED.clock_out,
+		effective_hours = EXCLUDED.effective_hours,
+		overtime_hours = EXCLUDED.overtime_hours,
+		status = EXCLUDED.status
+`
 
 func (r *Repository) GetRecord(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.WorkTimeRecord, error) {
 	return r.scanRecord(r.pool.QueryRow(ctx, `
@@ -84,32 +98,70 @@ func (r *Repository) ListRecords(ctx context.Context, q ports.RecordsQuery) ([]d
 }
 
 func (r *Repository) AppendAuditEntry(ctx context.Context, entry domain.AuditEntry) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		return r.appendAuditEntryTx(ctx, tx, entry)
+	})
+}
+
+func (r *Repository) appendAuditEntryTx(ctx context.Context, tx pgx.Tx, entry domain.AuditEntry) error {
 	payload, err := json.Marshal(entry.Payload)
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(ctx, `
-		INSERT INTO ett.audit_journal (id, tenant_id, record_id, action, actor_id, payload, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, entry.ID, entry.TenantID.UUID(), entry.RecordID, entry.Action, entry.ActorID, payload, entry.CreatedAt)
+	// Sérialise les ajouts d'un même tenant pour garantir un chaînage cohérent.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, entry.TenantID.UUID().String()); err != nil {
+		return err
+	}
+	var lastSeq int64
+	var lastHash string
+	err = tx.QueryRow(ctx, `
+		SELECT seq, entry_hash FROM ett.audit_journal
+		WHERE tenant_id = $1 ORDER BY seq DESC LIMIT 1
+	`, entry.TenantID.UUID()).Scan(&lastSeq, &lastHash)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	entry.Seq = lastSeq + 1
+	entry.PrevHash = lastHash
+	entry.EntryHash = entry.ComputeHash(lastHash)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ett.audit_journal (id, tenant_id, record_id, action, actor_id, payload, created_at, seq, prev_hash, entry_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, entry.ID, entry.TenantID.UUID(), entry.RecordID, entry.Action, entry.ActorID, payload, entry.CreatedAt, entry.Seq, entry.PrevHash, entry.EntryHash)
 	return err
 }
 
 func (r *Repository) ListAuditEntries(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, record_id, action, actor_id, payload, created_at
-		FROM ett.audit_journal WHERE tenant_id = $1 AND record_id = $2 ORDER BY created_at
+		SELECT id, tenant_id, record_id, action, actor_id, payload, created_at, seq, prev_hash, entry_hash
+		FROM ett.audit_journal WHERE tenant_id = $1 AND record_id = $2 ORDER BY seq
 	`, tenant.UUID(), recordID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	return scanAuditEntries(rows)
+}
+
+func (r *Repository) ListTenantAuditEntries(ctx context.Context, tenant kernel.TenantID) ([]domain.AuditEntry, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, record_id, action, actor_id, payload, created_at, seq, prev_hash, entry_hash
+		FROM ett.audit_journal WHERE tenant_id = $1 ORDER BY seq
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanAuditEntries(rows)
+}
+
+func scanAuditEntries(rows pgx.Rows) ([]domain.AuditEntry, error) {
 	var out []domain.AuditEntry
 	for rows.Next() {
 		var entry domain.AuditEntry
 		var tenantID uuid.UUID
 		var payload []byte
-		if err := rows.Scan(&entry.ID, &tenantID, &entry.RecordID, &entry.Action, &entry.ActorID, &payload, &entry.CreatedAt); err != nil {
+		if err := rows.Scan(&entry.ID, &tenantID, &entry.RecordID, &entry.Action, &entry.ActorID, &payload, &entry.CreatedAt, &entry.Seq, &entry.PrevHash, &entry.EntryHash); err != nil {
 			return nil, err
 		}
 		entry.TenantID = kernel.NewTenantID(tenantID)

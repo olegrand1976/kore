@@ -21,6 +21,20 @@
       <input id="ett-month" v-model="month" type="month" @change="refresh">
     </AppCard>
 
+    <AppCard v-if="canValidateEtt" padding="lg" class="ett-integrity">
+      <div class="ett-integrity__head">
+        <div>
+          <h3>{{ $t('ett.integrity_title') }}</h3>
+          <p v-if="integrityMessage" :class="['ett-integrity__msg', { 'ett-integrity__msg--error': integrityBroken }]">
+            {{ integrityMessage }}
+          </p>
+        </div>
+        <AppButton :disabled="integrityPending" variant="secondary" @click="verifyIntegrity">
+          {{ $t('ett.integrity_check') }}
+        </AppButton>
+      </div>
+    </AppCard>
+
     <AppCard v-if="pending" padding="lg">
       <CraSkeleton />
     </AppCard>
@@ -94,6 +108,7 @@ definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
 const { canValidateEtt } = usePermissions()
+const { apiFetch } = useApiFetch()
 
 type ReconciliationReport = {
   userId?: string
@@ -227,6 +242,44 @@ const formatHours = (value?: number) => {
   if (value == null) return '—'
   return t('cra.hours_value', { n: Math.round(value * 10) / 10 })
 }
+
+type IntegrityReport = { entries?: number; valid?: boolean; code?: string; brokenAtSeq?: number }
+
+const integrityPending = ref(false)
+const integrityMessage = ref('')
+const integrityBroken = ref(false)
+
+const integrityMessageFromCode = (report?: IntegrityReport) => {
+  type IntegrityCode = 'INTEGRITY_OK' | 'INTEGRITY_BROKEN'
+  const code = report?.code as IntegrityCode | undefined
+  switch (code) {
+    case 'INTEGRITY_OK':
+      return t('ett.integrity_valid', { n: report?.entries ?? 0 })
+    case 'INTEGRITY_BROKEN':
+      return t('ett.integrity_broken', { seq: report?.brokenAtSeq ?? 0 })
+    case undefined:
+      return t('ett.integrity_error')
+    default: {
+      const _exhaustive: never = code
+      return t('ett.integrity_error')
+    }
+  }
+}
+
+const verifyIntegrity = async () => {
+  integrityPending.value = true
+  try {
+    const res = await apiFetch<{ data?: IntegrityReport }>('/api/ett/audit-verify')
+    const report = res?.data
+    integrityBroken.value = report?.code === 'INTEGRITY_BROKEN'
+    integrityMessage.value = integrityMessageFromCode(report)
+  } catch {
+    integrityBroken.value = true
+    integrityMessage.value = t('ett.integrity_error')
+  } finally {
+    integrityPending.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -289,5 +342,38 @@ const formatHours = (value?: number) => {
 
 .flash--error {
   color: var(--kore-error);
+}
+
+.ett-integrity {
+  margin-bottom: var(--kore-space-lg);
+}
+
+.ett-integrity__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-md);
+}
+
+.ett-integrity__head h3 {
+  margin: 0;
+  font-size: var(--kore-text-body);
+}
+
+.ett-integrity__msg {
+  margin: var(--kore-space-xs) 0 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-success);
+}
+
+.ett-integrity__msg--error {
+  color: var(--kore-error);
+}
+
+@media (max-width: 640px) {
+  .ett-integrity__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

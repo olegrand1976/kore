@@ -479,7 +479,12 @@
     "missing_ett_days": "Missing ETT days",
     "alert": "Mismatch detected",
     "ok": "Consistent",
-    "load_error": "Could not load reconciliation."
+    "load_error": "Could not load reconciliation.",
+    "integrity_title": "Legal journal integrity",
+    "integrity_check": "Verify integrity",
+    "integrity_valid": "Journal intact — {n} entry(ies) verified.",
+    "integrity_broken": "Tampering detected at position {seq}.",
+    "integrity_error": "Could not verify journal integrity."
   },
   "missions": {
     "title": "SSII missions",
@@ -720,7 +725,8 @@
     "triage_support_title": "User support",
     "triage_support_desc": "Question, access or light incident — quick response",
     "triage_maintenance_title": "Operations & work",
-    "triage_maintenance_desc": "Infra, fixes or deployment — tracked in days"
+    "triage_maintenance_desc": "Infra, fixes or deployment — tracked in days",
+    "triage_empty": "No request channel is available for your profile."
   },
   "guides": {
     "hide": "Hide help",

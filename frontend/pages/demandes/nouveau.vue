@@ -5,7 +5,7 @@ definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
 const route = useRoute()
-const { fetchSettings, isChannelEnabled, activeChannelCount, settings } = useRequestSettings()
+const { fetchSettings, isChannelEnabled, activeChannelCount, settings, loaded } = useRequestSettings()
 const { hasModule } = useEntitlements()
 const { can } = usePermissions()
 
@@ -53,7 +53,7 @@ onMounted(async () => {
   await fetchSettings()
   if (activeChannelCount.value < 2) {
     const ch = settings.value?.channelsEnabled
-    if (ch?.tma && hasModule('tma')) {
+    if (ch?.tma && hasModule('tma') && can('tma', 'E')) {
       await navigateTo('/tma?create=1', { replace: true })
       return
     }
@@ -68,21 +68,22 @@ onMounted(async () => {
   }
 })
 
-watch(
-  () => route.path,
-  () => {
-    if (cards.value.length === 1 && route.path === '/demandes/nouveau') {
-      navigateTo(cards.value[0].to, { replace: true })
-    }
+watch(cards, (list) => {
+  if (list.length === 1 && route.path === '/demandes/nouveau') {
+    navigateTo(list[0].to, { replace: true })
   }
-)
+})
 </script>
 
 <template>
   <div>
     <AppPageHeader :title="t('demandes.triage_title')" :subtitle="t('demandes.triage_subtitle')" />
 
-    <div class="triage-grid">
+    <AppCard v-if="loaded && cards.length === 0" padding="lg">
+      <p class="triage-empty">{{ $t('demandes.triage_empty') }}</p>
+    </AppCard>
+
+    <div v-else class="triage-grid">
       <AppCard
         v-for="card in cards"
         :key="card.channel"
@@ -102,6 +103,12 @@ watch(
 </template>
 
 <style scoped>
+.triage-empty {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+}
+
 .triage-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));

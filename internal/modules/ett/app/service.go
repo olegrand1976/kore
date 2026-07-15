@@ -54,11 +54,10 @@ func (s *service) ClockIn(ctx context.Context, cmd ports.ClockInCommand) (domain
 		rec = domain.NewWorkTimeRecord(cmd.TenantID, cmd.UserID, workDate)
 	}
 	rec.ClockInAt(cmd.At.UTC())
-	if err := s.repo.SaveRecord(ctx, rec); err != nil {
-		return domain.WorkTimeRecord{}, err
-	}
-	entry := domain.NewAuditEntry(cmd.TenantID, rec.ID, cmd.UserID, "clock_in", map[string]any{"at": cmd.At})
-	return rec, s.repo.AppendAuditEntry(ctx, entry)
+	entry := domain.NewAuditEntry(cmd.TenantID, rec.ID, cmd.UserID, "clock_in", map[string]any{
+		"at": cmd.At.UTC().Truncate(time.Microsecond),
+	})
+	return rec, s.repo.SaveRecordAndAudit(ctx, rec, entry)
 }
 
 func (s *service) ClockOut(ctx context.Context, cmd ports.ClockOutCommand) (domain.WorkTimeRecord, error) {
@@ -72,11 +71,10 @@ func (s *service) ClockOut(ctx context.Context, cmd ports.ClockOutCommand) (doma
 	}
 	rec.ClockOutAt(cmd.At.UTC())
 	s.applyOvertime(ctx, &rec, cmd.TenantID, "BE")
-	if err := s.repo.SaveRecord(ctx, rec); err != nil {
-		return domain.WorkTimeRecord{}, err
-	}
-	entry := domain.NewAuditEntry(cmd.TenantID, rec.ID, cmd.UserID, "clock_out", map[string]any{"at": cmd.At})
-	return rec, s.repo.AppendAuditEntry(ctx, entry)
+	entry := domain.NewAuditEntry(cmd.TenantID, rec.ID, cmd.UserID, "clock_out", map[string]any{
+		"at": cmd.At.UTC().Truncate(time.Microsecond),
+	})
+	return rec, s.repo.SaveRecordAndAudit(ctx, rec, entry)
 }
 
 func (s *service) ListRecords(ctx context.Context, q ports.RecordsQuery) ([]domain.WorkTimeRecord, error) {
@@ -119,6 +117,23 @@ func (s *service) applyOvertime(ctx context.Context, rec *domain.WorkTimeRecord,
 
 func (s *service) GetAuditTrail(ctx context.Context, tenant kernel.TenantID, recordID uuid.UUID) ([]domain.AuditEntry, error) {
 	return s.repo.ListAuditEntries(ctx, tenant, recordID)
+}
+
+func (s *service) VerifyAuditIntegrity(ctx context.Context, tenant kernel.TenantID) (ports.AuditIntegrityReport, error) {
+	entries, err := s.repo.ListTenantAuditEntries(ctx, tenant)
+	if err != nil {
+		return ports.AuditIntegrityReport{}, err
+	}
+	brokenAt, valid := domain.VerifyChain(entries)
+	report := ports.AuditIntegrityReport{Entries: len(entries), Valid: valid}
+	if valid {
+		report.Code = "INTEGRITY_OK"
+	} else {
+		seq := brokenAt
+		report.BrokenAtSeq = &seq
+		report.Code = "INTEGRITY_BROKEN"
+	}
+	return report, nil
 }
 
 func (s *service) CompareCRA(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, month string) (ports.ReconciliationReport, error) {

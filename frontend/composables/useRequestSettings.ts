@@ -15,8 +15,8 @@ export type TenantRequestSettings = {
 
 const defaultChannels: ChannelsEnabled = {
   tma: true,
-  support: true,
-  maintenance: true
+  support: false,
+  maintenance: false
 }
 
 export function useRequestSettings() {
@@ -62,14 +62,14 @@ export function useRequestSettings() {
   }
 
   const isChannelEnabled = (channel: RequestChannel) => {
-    const ch = settings.value?.channelsEnabled
-    if (!ch) return true
+    if (!loaded.value) return false
+    const ch = settings.value?.channelsEnabled ?? defaultChannels
     return ch[channel] ?? false
   }
 
   const activeChannelCount = computed(() => {
-    const ch = settings.value?.channelsEnabled
-    if (!ch) return 3
+    if (!loaded.value) return 0
+    const ch = settings.value?.channelsEnabled ?? defaultChannels
     return Number(ch.tma) + Number(ch.support) + Number(ch.maintenance)
   })
 

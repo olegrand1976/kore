@@ -31,6 +31,13 @@ func (r *ettRepoStub) SaveRecord(_ context.Context, rec domain.WorkTimeRecord) e
 	return nil
 }
 
+func (r *ettRepoStub) SaveRecordAndAudit(_ context.Context, rec domain.WorkTimeRecord, entry domain.AuditEntry) error {
+	if err := r.SaveRecord(context.Background(), rec); err != nil {
+		return err
+	}
+	return r.AppendAuditEntry(context.Background(), entry)
+}
+
 func (r *ettRepoStub) GetRecord(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.WorkTimeRecord, error) {
 	rec, ok := r.records[id]
 	if !ok {
@@ -57,6 +64,10 @@ func (r *ettRepoStub) AppendAuditEntry(_ context.Context, entry domain.AuditEntr
 }
 
 func (r *ettRepoStub) ListAuditEntries(context.Context, kernel.TenantID, uuid.UUID) ([]domain.AuditEntry, error) {
+	return r.audits, nil
+}
+
+func (r *ettRepoStub) ListTenantAuditEntries(context.Context, kernel.TenantID) ([]domain.AuditEntry, error) {
 	return r.audits, nil
 }
 

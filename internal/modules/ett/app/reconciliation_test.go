@@ -35,6 +35,9 @@ type fakeETTRepo struct {
 }
 
 func (f *fakeETTRepo) SaveRecord(context.Context, domain.WorkTimeRecord) error { return nil }
+func (f *fakeETTRepo) SaveRecordAndAudit(context.Context, domain.WorkTimeRecord, domain.AuditEntry) error {
+	return nil
+}
 func (f *fakeETTRepo) GetRecord(context.Context, kernel.TenantID, uuid.UUID) (domain.WorkTimeRecord, error) {
 	return domain.WorkTimeRecord{}, nil
 }
@@ -52,6 +55,10 @@ func (f *fakeETTRepo) ListRecords(_ context.Context, _ ports.RecordsQuery) ([]do
 }
 func (f *fakeETTRepo) AppendAuditEntry(context.Context, domain.AuditEntry) error { return nil }
 func (f *fakeETTRepo) ListAuditEntries(context.Context, kernel.TenantID, uuid.UUID) ([]domain.AuditEntry, error) {
+	return nil, nil
+}
+
+func (f *fakeETTRepo) ListTenantAuditEntries(context.Context, kernel.TenantID) ([]domain.AuditEntry, error) {
 	return nil, nil
 }
 func (f *fakeETTRepo) GetCountryRule(context.Context, kernel.TenantID, string) (domain.CountryWorkRule, error) {

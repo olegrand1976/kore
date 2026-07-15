@@ -22,6 +22,7 @@ func RegisterRoutes(r chi.Router, svc ports.ETTService, tokens *authx.TokenIssue
 		pr.Get("/ett/records", listRecords(svc, authorizer))
 		pr.Post("/ett/records/{id}/correct", correctRecord(svc, authorizer))
 		pr.Get("/ett/records/{id}/audit", getAuditTrail(svc, authorizer))
+		pr.Get("/ett/audit/verify", verifyAuditIntegrity(svc, authorizer))
 		pr.Get("/ett/reconciliation", compareCRA(svc, authorizer))
 	})
 }
@@ -172,6 +173,22 @@ func getAuditTrail(svc ports.ETTService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func verifyAuditIntegrity(svc ports.ETTService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ett", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		report, err := svc.VerifyAuditIntegrity(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, report)
 	}
 }
 

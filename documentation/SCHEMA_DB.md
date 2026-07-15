@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 14/07/2026
+> **Dernière mise à jour doc** : 15/07/2026
 
 ---
 
@@ -1006,6 +1006,8 @@ Conformité enregistrement légal du temps (append-only).
 
 ### `ett.audit_journal`
 
+Journal légal **inaltérable** (RG-ETT-01) : chaîne de hachage tamper-evident + trigger bloquant tout `UPDATE`/`DELETE`.
+
 | Colonne | Type | Contraintes |
 | --- | --- | --- |
 | `id` | UUID | PK |
@@ -1015,6 +1017,11 @@ Conformité enregistrement légal du temps (append-only).
 | `actor_id` | UUID | NOT NULL |
 | `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `seq` | BIGINT | NOT NULL, DEFAULT 0 — position monotone par tenant |
+| `prev_hash` | TEXT | NOT NULL, DEFAULT `''` — hash de l'entrée précédente |
+| `entry_hash` | TEXT | NOT NULL, DEFAULT `''` — SHA-256 chaîné de l'entrée |
+
+**Contraintes** : UNIQUE (`tenant_id`, `seq`) ; trigger `trg_ett_audit_no_mutation` (fonction `ett.prevent_audit_mutation`) rejette `UPDATE`/`DELETE` (append-only).
 
 ### `ett.country_work_rules`
 
