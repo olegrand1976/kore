@@ -14,13 +14,13 @@ import (
 )
 
 type Service struct {
-	repo         ports.NotificationRepository
-	sender       ports.EmailSender
-	resolver     ports.RecipientResolver
-	devices      ports.DeviceRepository
-	push         ports.PushSender
-	pushEnabled  bool
-	clock        ports.Clock
+	repo        ports.NotificationRepository
+	sender      ports.EmailSender
+	resolver    ports.RecipientResolver
+	devices     ports.DeviceRepository
+	push        ports.PushSender
+	pushEnabled bool
+	clock       ports.Clock
 }
 
 func NewService(

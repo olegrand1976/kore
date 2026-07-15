@@ -9,88 +9,88 @@ import (
 )
 
 type Config struct {
-	HTTPAddr             string
-	DatabaseURL          string
-	RedisAddr            string
-	RedisAuth            string
-	RedisDB              int
-	RedisKeyPrefix       string
-	RedisTLS             bool
-	CacheDefaultTTL      time.Duration
-	JWTSigningKey        string
-	JWTTTL               time.Duration
-	JWTRefreshTTL        time.Duration
-	MigrateOnBoot        bool
-	LogLevel             string
-	SMTPHost             string
-	SMTPPort             int
-	SMTPFrom             string
-	StripeSecretKey      string
-	StripeWebhookSecret  string
-	StripePublishableKey string
-	BillingTrialDays     int
-	DevSeedEnabled       bool
-	UploadsDir           string
-	PlatformAdminLogins  []string
-	AILLMProvider        string
-	GeminiAPIKey         string
-	GeminiModel          string
-	PromptGuardBlock     bool
-	TOTPEncryptionKey    string
-	PDPProvider          string
-	PDPBaseURL           string
-	PDPAPIKey            string
-	PDPWebhookSecret     string
-	PDPTimeout           time.Duration
-	PennylaneAPIBaseURL  string
-	PennylaneAPIToken    string
-	PushEnabled          bool
-	FCMProjectID         string
-	FCMCredentialsPath   string
+	HTTPAddr               string
+	DatabaseURL            string
+	RedisAddr              string
+	RedisAuth              string
+	RedisDB                int
+	RedisKeyPrefix         string
+	RedisTLS               bool
+	CacheDefaultTTL        time.Duration
+	JWTSigningKey          string
+	JWTTTL                 time.Duration
+	JWTRefreshTTL          time.Duration
+	MigrateOnBoot          bool
+	LogLevel               string
+	SMTPHost               string
+	SMTPPort               int
+	SMTPFrom               string
+	StripeSecretKey        string
+	StripeWebhookSecret    string
+	StripePublishableKey   string
+	BillingTrialDays       int
+	DevSeedEnabled         bool
+	UploadsDir             string
+	PlatformAdminLogins    []string
+	AILLMProvider          string
+	GeminiAPIKey           string
+	GeminiModel            string
+	PromptGuardBlock       bool
+	TOTPEncryptionKey      string
+	PDPProvider            string
+	PDPBaseURL             string
+	PDPAPIKey              string
+	PDPWebhookSecret       string
+	PDPTimeout             time.Duration
+	PennylaneAPIBaseURL    string
+	PennylaneAPIToken      string
+	PushEnabled            bool
+	FCMProjectID           string
+	FCMCredentialsPath     string
 	OIDCGoogleClientSecret string
 	OIDCAzureClientSecret  string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		HTTPAddr:             envOr("HTTP_ADDR", ":8080"),
-		DatabaseURL:          envOr("DATABASE_URL", "postgres://kore:kore@localhost:5432/kore?sslmode=disable"),
-		RedisAddr:            envOr("REDIS_ADDR", "localhost:6379"),
-		RedisAuth:            envOr("REDIS_AUTH", ""),
-		RedisDB:              envInt("REDIS_DB", 0),
-		RedisKeyPrefix:       envOr("REDIS_KEY_PREFIX", "kore"),
-		RedisTLS:             envBool("REDIS_TLS", false),
-		CacheDefaultTTL:      envDuration("CACHE_DEFAULT_TTL", 5*time.Minute),
-		JWTSigningKey:        envOr("JWT_SIGNING_KEY", "dev-insecure-change-me"),
-		JWTTTL:               envDuration("JWT_TTL", 15*time.Minute),
-		JWTRefreshTTL:        envDuration("JWT_REFRESH_TTL", 7*24*time.Hour),
-		MigrateOnBoot:        envBool("MIGRATE_ON_BOOT", false),
-		LogLevel:             envOr("LOG_LEVEL", "info"),
-		SMTPHost:             envOr("SMTP_HOST", "localhost"),
-		SMTPPort:             envInt("SMTP_PORT", 1025),
-		SMTPFrom:             envOr("SMTP_FROM", "noreply@kore.local"),
-		StripeSecretKey:      envOr("STRIPE_SECRET_KEY", "sk_test_mock"),
-		StripeWebhookSecret:  envOr("STRIPE_WEBHOOK_SECRET", "whsec_test"),
-		StripePublishableKey: envOr("STRIPE_PUBLISHABLE_KEY", "pk_test_mock"),
-		BillingTrialDays:     envInt("BILLING_TRIAL_DAYS", 14),
-		DevSeedEnabled:       envBool("DEV_SEED_ENABLED", true),
-		UploadsDir:           envOr("UPLOADS_DIR", "./uploads"),
-		PlatformAdminLogins:  envCSV("PLATFORM_ADMIN_LOGINS", "ADM_admin"),
-		AILLMProvider:        envOr("AI_LLM_PROVIDER", "stub"),
-		GeminiAPIKey:         envOr("GEMINI_API_KEY", ""),
-		GeminiModel:          envOr("GEMINI_MODEL", "gemini-3.5-flash"),
-		PromptGuardBlock:     envBool("PROMPT_GUARD_BLOCK", true),
-		TOTPEncryptionKey:    envOr("TOTP_ENCRYPTION_KEY", ""),
-		PDPProvider:          envOr("PDP_PROVIDER", "stub"),
-		PDPBaseURL:           envOr("PDP_BASE_URL", ""),
-		PDPAPIKey:            envOr("PDP_API_KEY", ""),
-		PDPWebhookSecret:     envOr("PDP_WEBHOOK_SECRET", ""),
-		PDPTimeout:           envDuration("PDP_TIMEOUT", 30*time.Second),
-		PennylaneAPIBaseURL:  envOr("PENNYLANE_API_BASE_URL", "https://app.pennylane.com/api/external/v1"),
-		PennylaneAPIToken:    envOr("PENNYLANE_API_TOKEN", ""),
-		PushEnabled:          envBool("PUSH_ENABLED", false),
-		FCMProjectID:         envOr("FCM_PROJECT_ID", ""),
-		FCMCredentialsPath:   envOr("FCM_CREDENTIALS_PATH", envOr("GOOGLE_APPLICATION_CREDENTIALS", "")),
+		HTTPAddr:               envOr("HTTP_ADDR", ":8080"),
+		DatabaseURL:            envOr("DATABASE_URL", "postgres://kore:kore@localhost:5432/kore?sslmode=disable"),
+		RedisAddr:              envOr("REDIS_ADDR", "localhost:6379"),
+		RedisAuth:              envOr("REDIS_AUTH", ""),
+		RedisDB:                envInt("REDIS_DB", 0),
+		RedisKeyPrefix:         envOr("REDIS_KEY_PREFIX", "kore"),
+		RedisTLS:               envBool("REDIS_TLS", false),
+		CacheDefaultTTL:        envDuration("CACHE_DEFAULT_TTL", 5*time.Minute),
+		JWTSigningKey:          envOr("JWT_SIGNING_KEY", "dev-insecure-change-me"),
+		JWTTTL:                 envDuration("JWT_TTL", 15*time.Minute),
+		JWTRefreshTTL:          envDuration("JWT_REFRESH_TTL", 7*24*time.Hour),
+		MigrateOnBoot:          envBool("MIGRATE_ON_BOOT", false),
+		LogLevel:               envOr("LOG_LEVEL", "info"),
+		SMTPHost:               envOr("SMTP_HOST", "localhost"),
+		SMTPPort:               envInt("SMTP_PORT", 1025),
+		SMTPFrom:               envOr("SMTP_FROM", "noreply@kore.local"),
+		StripeSecretKey:        envOr("STRIPE_SECRET_KEY", "sk_test_mock"),
+		StripeWebhookSecret:    envOr("STRIPE_WEBHOOK_SECRET", "whsec_test"),
+		StripePublishableKey:   envOr("STRIPE_PUBLISHABLE_KEY", "pk_test_mock"),
+		BillingTrialDays:       envInt("BILLING_TRIAL_DAYS", 14),
+		DevSeedEnabled:         envBool("DEV_SEED_ENABLED", true),
+		UploadsDir:             envOr("UPLOADS_DIR", "./uploads"),
+		PlatformAdminLogins:    envCSV("PLATFORM_ADMIN_LOGINS", "ADM_admin"),
+		AILLMProvider:          envOr("AI_LLM_PROVIDER", "stub"),
+		GeminiAPIKey:           envOr("GEMINI_API_KEY", ""),
+		GeminiModel:            envOr("GEMINI_MODEL", "gemini-3.5-flash"),
+		PromptGuardBlock:       envBool("PROMPT_GUARD_BLOCK", true),
+		TOTPEncryptionKey:      envOr("TOTP_ENCRYPTION_KEY", ""),
+		PDPProvider:            envOr("PDP_PROVIDER", "stub"),
+		PDPBaseURL:             envOr("PDP_BASE_URL", ""),
+		PDPAPIKey:              envOr("PDP_API_KEY", ""),
+		PDPWebhookSecret:       envOr("PDP_WEBHOOK_SECRET", ""),
+		PDPTimeout:             envDuration("PDP_TIMEOUT", 30*time.Second),
+		PennylaneAPIBaseURL:    envOr("PENNYLANE_API_BASE_URL", "https://app.pennylane.com/api/external/v1"),
+		PennylaneAPIToken:      envOr("PENNYLANE_API_TOKEN", ""),
+		PushEnabled:            envBool("PUSH_ENABLED", false),
+		FCMProjectID:           envOr("FCM_PROJECT_ID", ""),
+		FCMCredentialsPath:     envOr("FCM_CREDENTIALS_PATH", envOr("GOOGLE_APPLICATION_CREDENTIALS", "")),
 		OIDCGoogleClientSecret: envOr("OIDC_GOOGLE_CLIENT_SECRET", ""),
 		OIDCAzureClientSecret:  envOr("OIDC_AZURE_CLIENT_SECRET", ""),
 	}

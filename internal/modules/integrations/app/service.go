@@ -20,12 +20,12 @@ import (
 )
 
 type service struct {
-	repo       ports.IntegrationRepository
-	fec        *fec.Exporter
-	calendar   *calendar.StubGateway
-	hris       *hris.StubGateway
-	pennylane  *pennylane.Client
-	webhooks   ports.WebhookDispatcher
+	repo      ports.IntegrationRepository
+	fec       *fec.Exporter
+	calendar  *calendar.StubGateway
+	hris      *hris.StubGateway
+	pennylane *pennylane.Client
+	webhooks  ports.WebhookDispatcher
 }
 
 func NewService(repo ports.IntegrationRepository, opts ...ServiceOption) ports.IntegrationService {
