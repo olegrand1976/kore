@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/kore/kore/internal/modules/invoicing/adapters/pdp"
 	"github.com/kore/kore/internal/modules/invoicing/domain"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
 	"github.com/kore/kore/internal/platform/authx"
@@ -14,8 +16,8 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
-	r.Post("/webhooks/pdp", pdpWebhook(svc))
+func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, pdpWebhookSecret string) {
+	r.Post("/webhooks/pdp", pdpWebhook(svc, pdpWebhookSecret))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/invoices", listInvoices(svc, authorizer))
@@ -176,15 +178,24 @@ func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer) h
 	}
 }
 
-func pdpWebhook(svc ports.InvoicingService) http.HandlerFunc {
+func pdpWebhook(svc ports.InvoicingService, webhookSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if !pdp.VerifyWebhook(body, r.Header.Get("X-PDP-Signature"), webhookSecret) {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeForbidden, "invalid signature")
+			return
+		}
 		var req struct {
 			TenantID  string `json:"tenantId"`
 			InvoiceID string `json:"invoiceId"`
 			ReceiptID string `json:"receiptId"`
 			Status    string `json:"status"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}

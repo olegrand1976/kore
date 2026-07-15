@@ -90,7 +90,7 @@ func (s *oidcService) AuthorizeURL(ctx context.Context, cmd ports.OIDCAuthorizeC
 	if scopes == "" {
 		scopes = "openid profile email"
 	}
-	return oidc.BuildAuthorizeURL(idp.Issuer, idp.ClientID, cmd.RedirectURI, scopes, state, cmd.CodeChallenge)
+	return oidc.BuildAuthorizeURL(idp.Issuer, idp.ClientID, cmd.RedirectURI, scopes, state, cmd.CodeChallenge, nonce)
 }
 
 func (s *oidcService) Status(ctx context.Context, tenant kernel.TenantID) (ports.OIDCStatus, error) {
@@ -130,6 +130,9 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 		if err != nil {
 			return ports.AuthResult{}, fmt.Errorf("%w: %v", domain.ErrInvalidIDPToken, err)
 		}
+		return ports.AuthResult{}, domain.ErrInvalidIDPToken
+	}
+	if stored.Nonce != "" && claims.Nonce != "" && claims.Nonce != stored.Nonce {
 		return ports.AuthResult{}, domain.ErrInvalidIDPToken
 	}
 

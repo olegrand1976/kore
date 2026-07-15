@@ -47,7 +47,6 @@ import (
 	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	integrationsdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
-	invoicingpdp "github.com/kore/kore/internal/modules/invoicing/adapters/pdp"
 	invoicingpostgres "github.com/kore/kore/internal/modules/invoicing/adapters/postgres"
 	invoicingapp "github.com/kore/kore/internal/modules/invoicing/app"
 	maintenancecra "github.com/kore/kore/internal/modules/maintenance/adapters/cra"
@@ -190,6 +189,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
 	notifService := notifapp.NewService(notifRepo, emailSender, orgRepo)
+	deviceService := notifapp.NewDeviceService(notifRepo)
+	_ = notifapp.NewPushSender(cfg)
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
@@ -200,7 +201,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		WithETTRecordReader(ettcra.NewRecordReader(ettRepo))
 	invoicingService := invoicingapp.NewService(
 		invoicingRepo,
-		invoicingapp.WithPDPGateway(invoicingpdp.NewStubGateway()),
+		invoicingapp.WithPDPGateway(invoicingapp.NewPDPGateway(cfg)),
 		invoicingapp.WithMissionReader(ssiicra.NewMissionReader(ssiiRepo, craService)),
 	)
 	craService.WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
@@ -233,7 +234,13 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	)
 	publicService := publicapp.NewServiceWithCache(publicRepo, billingService, publicnotif.NewNotifierAdapter(notifService), cfg.StripePublishableKey, appCache, keyBuilder)
 
-	integrationsService := integrationsapp.NewService(integrationsRepo)
+	integrationOpts := []integrationsapp.ServiceOption{
+		integrationsapp.WithWebhookDispatcher(integrationsapp.NewWebhookDispatcher(integrationsRepo)),
+	}
+	if integrationsapp.PennylaneEnabled(cfg) {
+		integrationOpts = append(integrationOpts, integrationsapp.WithPennylaneClient(integrationsapp.NewPennylaneClient(cfg)))
+	}
+	integrationsService := integrationsapp.NewService(integrationsRepo, integrationOpts...)
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
 	adminService := adminapp.NewService(adminRepo)
 	reportingService := reportingapp.NewService(
@@ -290,7 +297,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
-		notifhttp.RegisterRoutes(r, notifService, tokenIssuer, authorizer, billingService)
+		notifhttp.RegisterRoutes(r, notifService, deviceService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)
 		congeshttp.RegisterRoutes(r, congesService, leaveTypeConfigService, tokenIssuer, authorizer, billingService)
@@ -299,7 +306,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
-		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService)
+		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService, cfg.PDPWebhookSecret)
 		adminhttp.RegisterRoutes(r, adminService, tokenIssuer, authorizer, billingService)
 		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)
 		ssiihttp.RegisterRoutes(r, ssiiService, tokenIssuer, authorizer, billingService)

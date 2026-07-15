@@ -17,6 +17,7 @@ import (
 func RegisterRoutes(
 	r chi.Router,
 	svc ports.NotificationService,
+	devices ports.DeviceService,
 	tokens *authx.TokenIssuer,
 	authorizer authx.Authorizer,
 	entitlements authx.EntitlementReader,
@@ -26,6 +27,8 @@ func RegisterRoutes(
 		pr.Get("/notification-rules", listRules(svc, authorizer))
 		pr.Post("/notification-rules", defineRule(svc, authorizer))
 		pr.Get("/notifications", listSent(svc, authorizer))
+		pr.Post("/devices/register", registerDevice(devices))
+		pr.Delete("/devices/register", unregisterDevice(devices))
 	})
 }
 
@@ -113,3 +116,61 @@ func listSent(svc ports.NotificationService, authorizer authx.Authorizer) http.H
 }
 
 var _ = kernel.TenantID{}
+
+func registerDevice(devices ports.DeviceService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Platform string `json:"platform"`
+			Token    string `json:"token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, ok := authx.FromContext(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "unauthorized")
+			return
+		}
+		if err := devices.RegisterDevice(r.Context(), ports.RegisterDeviceCommand{
+			TenantID: identity.TenantID,
+			UserID:   identity.UserID,
+			Platform: req.Platform,
+			Token:    req.Token,
+		}); err != nil {
+			if errors.Is(err, domain.ErrInvalidDevicePlatform) || errors.Is(err, domain.ErrEmptyDeviceToken) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "registered"})
+	}
+}
+
+func unregisterDevice(devices ports.DeviceService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, ok := authx.FromContext(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "unauthorized")
+			return
+		}
+		if err := devices.UnregisterDevice(r.Context(), ports.UnregisterDeviceCommand{
+			TenantID: identity.TenantID,
+			UserID:   identity.UserID,
+			Token:    req.Token,
+		}); err != nil {
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "unregistered"})
+	}
+}

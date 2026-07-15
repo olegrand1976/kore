@@ -75,11 +75,26 @@ func (s *Service) ExecutiveSummary(ctx context.Context, cmd ports.ExecutiveSumma
 		fmt.Sprintf("%d demandes ouvertes", open),
 		fmt.Sprintf("%d demandes résolues", resolved),
 	}
+	model := stub.ModelName
+	if resp, err := s.llmComplete(ctx, capCode,
+		`Synthétise un résumé exécutif TMA en français. Format strict :
+SUMMARY|2-3 phrases
+HIGHLIGHT|point clé (une ligne par highlight, max 4)`,
+		map[string]string{
+			"open_demands":     fmt.Sprintf("%d", open),
+			"resolved_demands": fmt.Sprintf("%d", resolved),
+		},
+	); err == nil {
+		if s, h, ok := parseExecutiveSummaryLLM(resp.Text); ok {
+			summary, highlights = s, h
+			model = resp.Model
+		}
+	}
 	result := ports.ExecutiveSummaryResult{Summary: summary, Highlights: highlights}
 	out, _ := json.Marshal(result)
 	reqID, err := s.logRequest(ctx, domain.RequestLog{
 		TenantID: cmd.TenantID, UserID: cmd.UserID, CapabilityCode: capCode,
-		InputHash: hashInput(cmd), OutputJSON: out, Model: stub.ModelName,
+		InputHash: hashInput(cmd), OutputJSON: out, Model: model,
 	})
 	if err != nil {
 		return ports.ExecutiveSummaryResult{}, err

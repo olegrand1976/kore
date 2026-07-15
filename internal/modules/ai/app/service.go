@@ -154,11 +154,23 @@ func (s *Service) ClassifyDemand(ctx context.Context, cmd ports.ClassifyDemandCo
 		return ports.ClassifyResult{}, err
 	}
 	category, confidence := stub.ClassifySubject(cmd.Subject)
+	model := stub.ModelName
+	if resp, err := s.llmComplete(ctx, capCode,
+		`Classifie la demande TMA. Réponds en français, format strict :
+CATEGORY|incident|regression|evolution|question
+CONFIDENCE|0.0-1.0`,
+		map[string]string{"subject": cmd.Subject},
+	); err == nil {
+		if cat, conf, ok := parseClassifyLLM(resp.Text); ok {
+			category, confidence = cat, conf
+			model = resp.Model
+		}
+	}
 	result := ports.ClassifyResult{Category: category, Confidence: confidence}
 	out, _ := json.Marshal(result)
 	reqID, err := s.logRequest(ctx, domain.RequestLog{
 		TenantID: cmd.TenantID, UserID: cmd.UserID, CapabilityCode: capCode,
-		InputHash: hashInput(cmd), OutputJSON: out, Model: stub.ModelName,
+		InputHash: hashInput(cmd), OutputJSON: out, Model: model,
 		ExplainContext: map[string]any{"subject": cmd.Subject, "category": category},
 	})
 	if err != nil {
@@ -487,8 +499,9 @@ func actionCodes(actions []wfdomain.ActionCode) []string {
 }
 
 func (s *Service) PublicChat(ctx context.Context, cmd ports.PublicChatCommand) (ports.ChatResult, error) {
+	const capCode = "publicsite.chatbot"
 	reply := stub.PublicChatReply(cmd.Message)
-	if resp, err := s.llmComplete(ctx, "public.chat",
+	if resp, err := s.llmComplete(ctx, capCode,
 		`Tu es l'assistant commercial Kore (plateforme PSA/ESN : CRA, TMA, congés, budget). Réponds brièvement en français. Oriente vers une démo ou la page tarifs si pertinent. Ne cite pas de prix précis.`,
 		map[string]string{"message": cmd.Message},
 	); err == nil && strings.TrimSpace(resp.Text) != "" {

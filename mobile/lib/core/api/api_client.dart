@@ -65,6 +65,20 @@ class ApiClient {
     });
   }
 
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    return _send(() async {
+      final response = await _http.delete(
+        _uri(path),
+        headers: await _headers(),
+        body: body == null ? null : jsonEncode(body),
+      );
+      return _handleResponse(response);
+    });
+  }
+
   Future<T> getData<T>(
     String path, {
     Map<String, String>? query,

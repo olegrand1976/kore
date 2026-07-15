@@ -78,3 +78,37 @@ type RecipientResolver interface {
 type Clock interface {
 	Now() time.Time
 }
+
+type RegisterDeviceCommand struct {
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	Platform string
+	Token    string
+}
+
+type UnregisterDeviceCommand struct {
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	Token    string
+}
+
+type PushMessage struct {
+	Title string
+	Body  string
+	Data  map[string]string
+}
+
+type DeviceRepository interface {
+	UpsertDeviceToken(ctx context.Context, token domain.DeviceToken) error
+	DeleteDeviceToken(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, token string) error
+	ListDeviceTokens(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) ([]domain.DeviceToken, error)
+}
+
+type PushSender interface {
+	Send(ctx context.Context, tokens []string, msg PushMessage) error
+}
+
+type DeviceService interface {
+	RegisterDevice(ctx context.Context, cmd RegisterDeviceCommand) error
+	UnregisterDevice(ctx context.Context, cmd UnregisterDeviceCommand) error
+}

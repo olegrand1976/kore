@@ -37,6 +37,15 @@ type Config struct {
 	GeminiModel          string
 	PromptGuardBlock     bool
 	TOTPEncryptionKey    string
+	PDPProvider          string
+	PDPBaseURL           string
+	PDPAPIKey            string
+	PDPWebhookSecret     string
+	PDPTimeout           time.Duration
+	PennylaneAPIBaseURL  string
+	PennylaneAPIToken    string
+	PushEnabled          bool
+	FCMProjectID         string
 }
 
 func Load() (Config, error) {
@@ -69,6 +78,15 @@ func Load() (Config, error) {
 		GeminiModel:          envOr("GEMINI_MODEL", "gemini-3.5-flash"),
 		PromptGuardBlock:     envBool("PROMPT_GUARD_BLOCK", true),
 		TOTPEncryptionKey:    envOr("TOTP_ENCRYPTION_KEY", ""),
+		PDPProvider:          envOr("PDP_PROVIDER", "stub"),
+		PDPBaseURL:           envOr("PDP_BASE_URL", ""),
+		PDPAPIKey:            envOr("PDP_API_KEY", ""),
+		PDPWebhookSecret:     envOr("PDP_WEBHOOK_SECRET", ""),
+		PDPTimeout:           envDuration("PDP_TIMEOUT", 30*time.Second),
+		PennylaneAPIBaseURL:  envOr("PENNYLANE_API_BASE_URL", "https://app.pennylane.com/api/external/v1"),
+		PennylaneAPIToken:    envOr("PENNYLANE_API_TOKEN", ""),
+		PushEnabled:          envBool("PUSH_ENABLED", false),
+		FCMProjectID:         envOr("FCM_PROJECT_ID", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

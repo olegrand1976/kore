@@ -54,6 +54,77 @@ func parseAnalysisDraftLLM(text string) (domain.AnalysisDraft, bool) {
 	return draft, true
 }
 
+func parseClassifyLLM(text string) (category string, confidence float64, ok bool) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", 0, false
+	}
+	category = ""
+	confidence = 0
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		upper := strings.ToUpper(line)
+		switch {
+		case strings.HasPrefix(upper, "CATEGORY|"):
+			category = strings.ToLower(strings.TrimSpace(line[len("CATEGORY|"):]))
+		case strings.HasPrefix(upper, "CONFIDENCE|"):
+			if v, err := parseConfidence(strings.TrimSpace(line[len("CONFIDENCE|"):])); err == nil {
+				confidence = v
+			}
+		}
+	}
+	if category == "" {
+		return "", 0, false
+	}
+	if confidence <= 0 {
+		confidence = 0.7
+	}
+	return category, confidence, true
+}
+
+func parseConfidence(raw string) (float64, error) {
+	raw = strings.TrimSpace(raw)
+	raw = strings.TrimSuffix(raw, "%")
+	var v float64
+	_, err := fmt.Sscanf(raw, "%f", &v)
+	if err != nil {
+		return 0, err
+	}
+	if v > 1 {
+		v = v / 100
+	}
+	if v < 0 {
+		v = 0
+	}
+	if v > 1 {
+		v = 1
+	}
+	return v, nil
+}
+
+func parseExecutiveSummaryLLM(text string) (summary string, highlights []string, ok bool) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", nil, false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		upper := strings.ToUpper(line)
+		switch {
+		case strings.HasPrefix(upper, "SUMMARY|"):
+			summary = strings.TrimSpace(line[len("SUMMARY|"):])
+		case strings.HasPrefix(upper, "HIGHLIGHT|"):
+			if h := strings.TrimSpace(line[len("HIGHLIGHT|"):]); h != "" {
+				highlights = append(highlights, h)
+			}
+		}
+	}
+	if summary == "" {
+		return "", nil, false
+	}
+	return summary, highlights, true
+}
+
 func briefingContextFields(cmd ports.DashboardBriefingCommand) map[string]string {
 	fields := map[string]string{
 		"profile": cmd.Profile,

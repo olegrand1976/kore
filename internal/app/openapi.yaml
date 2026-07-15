@@ -496,6 +496,19 @@ paths:
       responses:
         "200":
           description: Liste
+  /devices/register:
+    post:
+      summary: Enregistrer un token push mobile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Enregistré
+    delete:
+      summary: Désenregistrer un token push
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Désenregistré
   /workflows:
     post:
       summary: Définir workflow

@@ -55,7 +55,7 @@ func S256Challenge(verifier string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-func BuildAuthorizeURL(issuer, clientID, redirectURI, scopes, state, codeChallenge string) (string, error) {
+func BuildAuthorizeURL(issuer, clientID, redirectURI, scopes, state, codeChallenge, nonce string) (string, error) {
 	candidates := authorizeURLs(issuer)
 	var lastErr error
 	for _, candidate := range candidates {
@@ -72,6 +72,9 @@ func BuildAuthorizeURL(issuer, clientID, redirectURI, scopes, state, codeChallen
 		q.Set("state", state)
 		q.Set("code_challenge", codeChallenge)
 		q.Set("code_challenge_method", "S256")
+		if nonce != "" {
+			q.Set("nonce", nonce)
+		}
 		u.RawQuery = q.Encode()
 		return u.String(), nil
 	}

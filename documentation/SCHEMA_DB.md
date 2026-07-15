@@ -490,6 +490,22 @@ Règles et file d'envoi de messages.
 
 **Index** : `idx_notifications_messages_tenant`, `idx_notifications_messages_status`, `idx_notifications_messages_due (status, scheduled_for)`
 
+### `notifications.device_tokens`
+
+Tokens FCM/APNs pour notifications push mobile.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `user_id` | UUID | NOT NULL |
+| `platform` | TEXT | NOT NULL, CHECK `ios` / `android` / `web` |
+| `token` | TEXT | NOT NULL |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Contraintes** : `UNIQUE (tenant_id, user_id, token)` — index `idx_device_tokens_tenant_user`
+
 ---
 
 ## Schéma `conges`
@@ -1175,7 +1191,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `org` | tenants, societes, sites, services, applications, equipes, users, clients, authx_permissions | 9 |
 | `workflow` | definitions, states, transitions, instances, transition_logs | 5 |
 | `cra` | timesheets, week_entries, time_lines | 3 |
-| `notifications` | rules, messages | 2 |
+| `notifications` | rules, messages, device_tokens | 3 |
 | `conges` | leave_requests, leave_balances, leave_type_configs | 3 |
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
 | `tma` | demands, analysis_dossiers, releases, delivery_codes | 4 |

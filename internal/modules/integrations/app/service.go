@@ -13,16 +13,19 @@ import (
 	"github.com/kore/kore/internal/modules/integrations/adapters/calendar"
 	"github.com/kore/kore/internal/modules/integrations/adapters/fec"
 	"github.com/kore/kore/internal/modules/integrations/adapters/hris"
+	"github.com/kore/kore/internal/modules/integrations/adapters/pennylane"
 	"github.com/kore/kore/internal/modules/integrations/domain"
 	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
 type service struct {
-	repo     ports.IntegrationRepository
-	fec      *fec.Exporter
-	calendar *calendar.StubGateway
-	hris     *hris.StubGateway
+	repo       ports.IntegrationRepository
+	fec        *fec.Exporter
+	calendar   *calendar.StubGateway
+	hris       *hris.StubGateway
+	pennylane  *pennylane.Client
+	webhooks   ports.WebhookDispatcher
 }
 
 func NewService(repo ports.IntegrationRepository, opts ...ServiceOption) ports.IntegrationService {
@@ -46,6 +49,14 @@ func WithCalendarGateway(gw *calendar.StubGateway) ServiceOption {
 
 func WithHRISGateway(gw *hris.StubGateway) ServiceOption {
 	return func(s *service) { s.hris = gw }
+}
+
+func WithPennylaneClient(client *pennylane.Client) ServiceOption {
+	return func(s *service) { s.pennylane = client }
+}
+
+func WithWebhookDispatcher(d ports.WebhookDispatcher) ServiceOption {
+	return func(s *service) { s.webhooks = d }
 }
 
 func NewApiKeyService(repo ports.IntegrationRepository) ports.ApiKeyService {
@@ -89,6 +100,14 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 		} else {
 			job.ErrorMessage = fmt.Sprintf("fec export: %d records", count)
 		}
+	} else if conn.Provider == "pennylane" && s.pennylane != nil {
+		count, syncErr := s.pennylane.SyncAccounting(ctx, cmd.TenantID, now.Format("2006-01"))
+		if syncErr != nil {
+			job.Status = "failed"
+			job.ErrorMessage = syncErr.Error()
+		} else {
+			job.ErrorMessage = fmt.Sprintf("pennylane sync: %d records", count)
+		}
 	} else if conn.Type == domain.ConnectionTypeCalendar && (conn.Provider == "google" || conn.Provider == "googlecalendar") {
 		count, syncErr := s.calendar.Sync(ctx, cmd.TenantID, conn.Provider)
 		if syncErr != nil {
@@ -110,7 +129,23 @@ func (s *service) Sync(ctx context.Context, cmd ports.SyncCommand) (domain.SyncJ
 	if err := s.repo.SaveConnection(ctx, conn); err != nil {
 		return domain.SyncJob{}, err
 	}
-	return job, s.repo.SaveSyncJob(ctx, job)
+	if err := s.repo.SaveSyncJob(ctx, job); err != nil {
+		return domain.SyncJob{}, err
+	}
+	if job.Status == "completed" && s.webhooks != nil {
+		_ = s.webhooks.Dispatch(ctx, ports.OutboundEvent{
+			ID:         job.ID,
+			TenantID:   cmd.TenantID,
+			Type:       "integration.sync.completed",
+			OccurredAt: now,
+			Data: map[string]any{
+				"connectionId": cmd.ConnectionID.String(),
+				"provider":     conn.Provider,
+				"message":      job.ErrorMessage,
+			},
+		})
+	}
+	return job, nil
 }
 
 func (s *service) ListConnections(ctx context.Context, tenant kernel.TenantID) ([]domain.IntegrationConnection, error) {
