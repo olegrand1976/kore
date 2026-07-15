@@ -4,7 +4,7 @@ const props = defineProps<{
   defaultCollapsed?: boolean
 }>()
 
-const { t, tm } = useI18n()
+const { t, tm, rt } = useI18n()
 const { guidesEnabled } = useRequestSettings()
 
 const storageKey = computed(() => `kore.guide.dismissed.${props.guideKey}`)
@@ -66,7 +66,7 @@ defineExpose({ showAgain, dismissed })
       </AppButton>
     </div>
     <ul v-show="!collapsed" class="section-guide__list">
-      <li v-for="(item, idx) in items" :key="idx">{{ item }}</li>
+      <li v-for="(item, idx) in items" :key="idx">{{ rt(item) }}</li>
     </ul>
   </AppCard>
 </template>

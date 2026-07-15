@@ -764,6 +764,62 @@
           "Small team: TMA alone is often enough — disable other channels."
         ]
       }
+    },
+    "cra": {
+      "title": "What is this module for?",
+      "items": [
+        "Enter and track monthly activity reports per mission.",
+        "Submit → manager validation workflow, with commercial info for client PDF.",
+        "Access planning and Gantt views to monitor workload and open timesheets."
+      ]
+    },
+    "conges": {
+      "title": "What is this module for?",
+      "items": [
+        "Submit and track leave requests (paid leave, RTT, sick leave…).",
+        "View balances and history of approved absences.",
+        "Managers approve requests from the Validation tab."
+      ]
+    },
+    "budget": {
+      "title": "What is this module for?",
+      "items": [
+        "Track work-unit budgets: planned vs consumed days per mission.",
+        "View consumption rate and overrun alerts.",
+        "Open a budget to detail lines and adjust forecasts."
+      ]
+    },
+    "invoicing": {
+      "title": "What is this module for?",
+      "items": [
+        "View invoices generated from validated timesheets and services.",
+        "Track statuses (draft, issued, paid) and amounts per client.",
+        "Open an invoice to see line details and history."
+      ]
+    },
+    "missions": {
+      "title": "What is this module for?",
+      "items": [
+        "Reference missions and link them to a client.",
+        "Assign collaborators to each mission for timesheets and budgets.",
+        "Create a new mission from the button at top right."
+      ]
+    },
+    "prestations": {
+      "title": "What is this module for?",
+      "items": [
+        "Validate service timesheets before invoicing or export.",
+        "Filter and sort services by status, client or period.",
+        "Export the validated batch as XML for external integration."
+      ]
+    },
+    "dashboard": {
+      "title": "What is this module for?",
+      "items": [
+        "Overview: KPIs for active modules, pending validations, alerts.",
+        "Quick access to modules via cards and shortcuts.",
+        "AI briefing summarises recent activity when the module is enabled."
+      ]
     }
   },
   "tma": {

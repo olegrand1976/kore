@@ -2,6 +2,9 @@
   <div>
     <AppPageHeader :title="$t('nav.conges')">
       <template v-if="showIndexActions" #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="ghost" size="sm" @click="navigateTo('/conges/soldes')">
           {{ $t('conges.balances_link') }}
         </AppButton>
@@ -33,6 +36,8 @@
       </NuxtLink>
     </nav>
 
+    <AppSectionGuide v-if="showIndexActions" ref="guideRef" guide-key="conges" />
+
     <NuxtPage />
   </div>
 </template>
@@ -41,6 +46,7 @@
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()
 

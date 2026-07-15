@@ -1,6 +1,14 @@
 <template>
   <div>
-    <AppPageHeader :title="$t('invoicing.title')" :subtitle="$t('invoicing.subtitle')" />
+    <AppPageHeader :title="$t('invoicing.title')" :subtitle="$t('invoicing.subtitle')">
+      <template #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
+      </template>
+    </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="invoicing" />
 
     <AppCard padding="lg">
       <AppTable
@@ -28,6 +36,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
+
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const { t } = useI18n()
 

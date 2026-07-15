@@ -2,11 +2,16 @@
   <div>
     <AppPageHeader :title="$t('missions.title')">
       <template #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" to="/missions/nouveau">
           {{ $t('missions.new') }}
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="missions" />
 
     <AppCard v-if="pending" padding="lg">
       <p class="muted">{{ $t('fiche.loading') }}</p>
@@ -34,6 +39,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
+
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const { t } = useI18n()
 const { formatDate, formatMoney, missionStatusLabel } = useFicheFormat()

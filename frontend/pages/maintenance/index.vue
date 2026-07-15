@@ -2,7 +2,7 @@
   <div>
     <AppPageHeader :title="$t('maintenance.title')" :subtitle="$t('maintenance.subtitle')">
       <template #actions>
-        <AppButton v-if="guideRef" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
           {{ $t('guides.show') }}
         </AppButton>
         <AppButton variant="primary" size="sm" @click="showForm = !showForm">
@@ -44,7 +44,7 @@ import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useReques
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
-const guideRef = ref<{ showAgain: () => void } | null>(null)
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { list, create, pickId, pickSubject, pickState } = useMaintenance()

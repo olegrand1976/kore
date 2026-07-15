@@ -8,6 +8,14 @@
       <AppIcon name="insights" class="welcome-banner__icon" />
     </section>
 
+    <div v-if="guideRef?.dismissed" class="dashboard__guide-action">
+      <AppButton variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+        {{ $t('guides.show') }}
+      </AppButton>
+    </div>
+
+    <AppSectionGuide ref="guideRef" guide-key="dashboard" />
+
     <AppCard v-if="briefingText" padding="lg" class="dashboard__briefing">
       <div class="dashboard__briefing-header">
         <h2 class="dashboard__briefing-title">{{ $t('ai.briefing_title') }}</h2>
@@ -151,6 +159,8 @@ import type { DashboardStatErrors } from '~/composables/useDashboardStats'
 
 definePageMeta({ layout: 'default' })
 
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
+
 const { t, locale } = useI18n()
 const { modules, status, seats, loaded, fetchEntitlements } = useEntitlements()
 const { fetchSession } = useAuth()
@@ -230,6 +240,10 @@ const billingAmountDisplay = computed(() => {
 <style scoped>
 .dashboard {
   width: 100%;
+}
+
+.dashboard__guide-action {
+  margin-bottom: var(--kore-space-md);
 }
 
 .dashboard__kpis {

@@ -2,7 +2,7 @@
   <div>
     <AppPageHeader :title="$t('tma.title')" :subtitle="$t('tma.subtitle')">
       <template #actions>
-        <AppButton v-if="guideRef" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
           {{ $t('guides.show') }}
         </AppButton>
         <AppButton variant="ghost" size="sm" @click="navigateTo('/tma/gantt')">
@@ -145,7 +145,7 @@ type TmaRow = {
 
 const { t } = useI18n()
 const route = useRoute()
-const guideRef = ref<{ showAgain: () => void } | null>(null)
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { list, create, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
 const { uploadAll } = useRequestAttachments()
 const { canValidateTma } = usePermissions()

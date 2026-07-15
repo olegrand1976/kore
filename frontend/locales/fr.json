@@ -764,6 +764,62 @@
           "Petite structure : TMA seul suffit souvent — désactivez les autres canaux."
         ]
       }
+    },
+    "cra": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Saisir et suivre vos comptes-rendus d'activité mensuels par mission.",
+        "Workflow soumission → validation manager, avec informations commerciales pour le PDF client.",
+        "Accédez au planning et au Gantt pour visualiser la charge et les CRA en cours."
+      ]
+    },
+    "conges": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Déposer et suivre vos demandes de congés (CP, RTT, maladie…).",
+        "Consultez vos soldes et l'historique des absences validées.",
+        "Les managers valident les demandes depuis l'onglet Validation."
+      ]
+    },
+    "budget": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Suivre les budgets en unités d'œuvre : jours planifiés vs consommés par mission.",
+        "Visualiser le taux de consommation et les alertes de dépassement.",
+        "Ouvrir un budget pour détailler les lignes et ajuster le prévisionnel."
+      ]
+    },
+    "invoicing": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Consulter les factures générées à partir des CRA et prestations validées.",
+        "Suivre les statuts (brouillon, émise, payée) et les montants par client.",
+        "Ouvrir une facture pour voir le détail des lignes et l'historique."
+      ]
+    },
+    "missions": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Référencer les missions et les rattacher à un client.",
+        "Affecter les collaborateurs à chaque mission pour le CRA et le budget.",
+        "Créer une nouvelle mission depuis le bouton en haut à droite."
+      ]
+    },
+    "prestations": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Valider les CRA de prestation avant facturation ou export.",
+        "Filtrer et trier les prestations par statut, client ou période.",
+        "Exporter le lot validé au format XML pour intégration externe."
+      ]
+    },
+    "dashboard": {
+      "title": "À quoi sert ce module ?",
+      "items": [
+        "Vue d'ensemble : KPIs des modules actifs, validations en attente, alertes.",
+        "Accédez rapidement aux modules via les cartes et raccourcis.",
+        "Le briefing IA résume l'activité récente si le module est activé."
+      ]
     }
   },
   "tma": {

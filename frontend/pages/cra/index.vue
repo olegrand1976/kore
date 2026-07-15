@@ -2,6 +2,9 @@
   <div>
     <AppPageHeader :title="$t('cra.title')">
       <template #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton v-if="canReadReporting" variant="ghost" size="sm" @click="navigateTo('/cra/planning')">
           {{ $t('cra.planning_link') }}
         </AppButton>
@@ -13,6 +16,8 @@
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="cra" />
 
     <AppKpiGrid compact>
       <AppKpiCard
@@ -217,6 +222,8 @@ import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default' })
+
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 

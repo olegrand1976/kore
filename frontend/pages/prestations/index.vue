@@ -2,6 +2,9 @@
   <div>
     <AppPageHeader :title="$t('prestations.title')">
       <template #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
         <AppButton variant="secondary" size="sm" @click="exportXml">
           {{ $t('prestations.export_xml') }}
         </AppButton>
@@ -10,6 +13,8 @@
         </AppButton>
       </template>
     </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="prestations" />
 
     <AppListToolbar
       v-if="!pending"
@@ -182,6 +187,8 @@
 import { syncListMonthFilter, useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default' })
+
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 

@@ -1,6 +1,14 @@
 <template>
   <div>
-    <AppPageHeader :title="$t('budget.title')" :subtitle="$t('budget.subtitle')" />
+    <AppPageHeader :title="$t('budget.title')" :subtitle="$t('budget.subtitle')">
+      <template #actions>
+        <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
+          {{ $t('guides.show') }}
+        </AppButton>
+      </template>
+    </AppPageHeader>
+
+    <AppSectionGuide ref="guideRef" guide-key="budget" />
 
     <AppKpiGrid compact>
       <AppKpiCard
@@ -104,6 +112,8 @@ import { budgetMetrics, consumptionPct } from '~/composables/useKpiMetrics'
 import { useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default' })
+
+const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 type BudgetRow = {
   id: string
