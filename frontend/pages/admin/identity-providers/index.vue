@@ -17,38 +17,45 @@
     <AppSectionGuide ref="guideRef" guide-key="admin.identity" />
 
     <AppCard padding="lg">
+      <fieldset class="idp-form__section idp-form__section--provider">
+        <legend class="idp-form__legend">{{ $t('idp.provider_label') }}</legend>
+        <p class="settings-hint">{{ $t('idp.provider_hint') }}</p>
+        <div class="idp-provider-options" role="radiogroup" :aria-label="$t('idp.provider_label')">
+          <label
+            v-for="option in providerOptions"
+            :key="option.value"
+            class="idp-provider-option"
+            :class="{ 'idp-provider-option--active': providerPreset === option.value }"
+          >
+            <input
+              v-model="providerPreset"
+              class="idp-provider-option__input"
+              type="radio"
+              name="idp-provider"
+              :value="option.value"
+            />
+            <span class="idp-provider-option__title">{{ option.label }}</span>
+            <span class="idp-provider-option__desc">{{ option.description }}</span>
+          </label>
+        </div>
+      </fieldset>
+
       <div class="settings-howto" role="note">
-        <p class="settings-howto__title">{{ $t('idp.howto.title') }}</p>
+        <p class="settings-howto__title">{{ howtoTitle }}</p>
         <ol class="settings-howto__list settings-howto__list--ordered">
-          <li>
-            <i18n-t keypath="idp.howto.step_console" tag="span">
-              <template #link>
-                <a
-                  href="https://console.cloud.google.com/apis/credentials"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ $t('idp.links.google_console') }}</a>
+          <li v-for="(step, index) in howtoSteps" :key="index">
+            <i18n-t v-if="step.key" :keypath="step.key" tag="span">
+              <template v-if="step.slots?.link" #link>
+                <a :href="step.slots.link.href" target="_blank" rel="noopener noreferrer">
+                  {{ $t(step.slots.link.labelKey) }}
+                </a>
+              </template>
+              <template v-if="step.slots?.type" #type>
+                <strong>{{ $t(step.slots.type) }}</strong>
               </template>
             </i18n-t>
+            <span v-else>{{ step.text }}</span>
           </li>
-          <li>
-            <i18n-t keypath="idp.howto.step_create" tag="span">
-              <template #type>
-                <strong>{{ $t('idp.howto_type_web') }}</strong>
-              </template>
-              <template #link>
-                <a
-                  href="https://support.google.com/cloud/answer/6158849"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ $t('idp.links.google_oauth_doc') }}</a>
-              </template>
-            </i18n-t>
-          </li>
-          <li>{{ $t('idp.howto.step_redirect') }}</li>
-          <li>{{ $t('idp.howto.step_copy') }}</li>
-          <li>{{ $t('idp.howto.step_paste') }}</li>
-          <li>{{ $t('idp.howto.step_enable') }}</li>
         </ol>
       </div>
 
@@ -61,24 +68,43 @@
           </AppButton>
         </div>
         <p v-if="copyError" class="settings-hint settings-hint--error" role="alert">{{ copyError }}</p>
-        <p class="settings-hint">{{ $t('idp.redirect_uri_hint') }}</p>
+        <p class="settings-hint">{{ redirectUriHint }}</p>
       </div>
 
       <form class="idp-form" @submit.prevent="save">
         <fieldset class="idp-form__section">
-          <legend class="idp-form__legend">{{ $t('idp.section_credentials') }}</legend>
+          <legend class="idp-form__legend">{{ credentialsSectionTitle }}</legend>
+
+          <AppInput
+            v-if="providerPreset === 'azure'"
+            id="idp-azure-tenant"
+            v-model="azureTenantId"
+            required
+          >
+            <template #label>
+              <span class="settings-labelRow">
+                <span>{{ $t('idp.azure_tenant_id') }}</span>
+                <AppTooltip :button-label="$t('common.info')">
+                  {{ $t('idp.tooltip.azure_tenant_id') }}
+                </AppTooltip>
+              </span>
+            </template>
+          </AppInput>
+          <p v-if="providerPreset === 'azure'" class="settings-hint settings-hint--tight">
+            {{ $t('idp.hint.azure_tenant_id') }}
+          </p>
 
           <AppInput id="idp-client-id" v-model="form.clientId" required>
             <template #label>
               <span class="settings-labelRow">
                 <span>{{ $t('idp.client_id') }}</span>
                 <AppTooltip :button-label="$t('common.info')">
-                  {{ $t('idp.tooltip.client_id') }}
+                  {{ clientIdTooltip }}
                 </AppTooltip>
               </span>
             </template>
           </AppInput>
-          <p class="settings-hint settings-hint--tight">{{ $t('idp.hint.client_id') }}</p>
+          <p class="settings-hint settings-hint--tight">{{ clientIdHint }}</p>
 
           <AppInput id="idp-client-secret" v-model="form.clientSecret" type="password">
             <template #label>
@@ -95,16 +121,14 @@
           </p>
         </fieldset>
 
-        <details class="idp-form__details">
+        <label class="idp-form__toggle idp-form__toggle--advanced">
+          <input v-model="showAdvancedOidc" type="checkbox" />
+          <span>{{ $t('idp.show_advanced') }}</span>
+        </label>
+
+        <details v-if="showAdvancedOidc" class="idp-form__details" open>
           <summary class="idp-form__legend">{{ $t('idp.section_advanced') }}</summary>
-          <p class="settings-hint idp-form__advanced-note">
-            {{ $t('idp.section_advanced_note') }}
-            <a
-              href="https://developers.google.com/identity/openid-connect/openid-connect"
-              target="_blank"
-              rel="noopener noreferrer"
-            >{{ $t('idp.links.google_oidc_doc') }}</a>
-          </p>
+          <p class="settings-hint idp-form__advanced-note">{{ $t('idp.section_advanced_note') }}</p>
 
           <AppInput id="idp-name" v-model="form.name" required>
             <template #label>
@@ -117,12 +141,7 @@
             </template>
           </AppInput>
 
-          <AppInput
-            id="idp-issuer"
-            v-model="form.issuer"
-            placeholder="https://accounts.google.com"
-            required
-          >
+          <AppInput id="idp-issuer" v-model="form.issuer" required>
             <template #label>
               <span class="settings-labelRow">
                 <span>{{ $t('idp.issuer') }}</span>
@@ -185,7 +204,17 @@
           <p class="settings-hint settings-hint--tight">{{ $t('idp.hint.enabled') }}</p>
         </fieldset>
 
-        <AppButton type="submit" variant="primary" :loading="pending">{{ $t('common.save') }}</AppButton>
+        <div class="idp-form__actions">
+          <AppButton type="submit" variant="primary" :loading="pending">{{ $t('common.save') }}</AppButton>
+          <AppButton
+            variant="ghost"
+            type="button"
+            :disabled="!canTestConnection"
+            @click="testConnection"
+          >
+            {{ $t('idp.test_connection') }}
+          </AppButton>
+        </div>
         <p
           v-if="message"
           class="settings-flash"
@@ -200,6 +229,29 @@
 </template>
 
 <script setup lang="ts">
+type ProviderPreset = 'google' | 'azure'
+
+type HowtoStep = {
+  key?: string
+  text?: string
+  slots?: {
+    link?: { href: string; labelKey: string }
+    type?: string
+  }
+}
+
+const GOOGLE_PRESET = {
+  name: 'Google',
+  issuer: 'https://accounts.google.com',
+  jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
+  scopes: 'openid profile email'
+} as const
+
+const AZURE_PRESET = {
+  name: 'Microsoft',
+  scopes: 'openid profile email'
+} as const
+
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
 const { t } = useI18n()
@@ -211,17 +263,163 @@ const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const redirectUri = ref('')
 const copied = ref(false)
 const copyError = ref('')
+const providerPreset = ref<ProviderPreset>('google')
+const azureTenantId = ref('')
+const showAdvancedOidc = ref(false)
+const isHydrating = ref(true)
 let copyTimeout: ReturnType<typeof setTimeout> | undefined
 
 const form = reactive({
-  name: 'Google',
-  issuer: 'https://accounts.google.com',
+  name: GOOGLE_PRESET.name,
+  issuer: GOOGLE_PRESET.issuer,
   clientId: '',
   clientSecret: '',
-  jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
-  scopes: 'openid profile email',
+  jwksUri: GOOGLE_PRESET.jwksUri,
+  scopes: GOOGLE_PRESET.scopes,
   defaultProfile: 'Collaborateur',
   enabled: false
+})
+
+const providerOptions = computed(() => [
+  {
+    value: 'google' as const,
+    label: t('idp.provider_google'),
+    description: t('idp.provider_google_desc')
+  },
+  {
+    value: 'azure' as const,
+    label: t('idp.provider_azure'),
+    description: t('idp.provider_azure_desc')
+  }
+])
+
+const howtoTitle = computed(() =>
+  providerPreset.value === 'azure' ? t('idp.howto.azure_title') : t('idp.howto.google_title')
+)
+
+const howtoSteps = computed<HowtoStep[]>(() => {
+  if (providerPreset.value === 'azure') {
+    return [
+      {
+        key: 'idp.howto.azure_step_portal',
+        slots: {
+          link: {
+            href: 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
+            labelKey: 'idp.links.azure_portal'
+          }
+        }
+      },
+      {
+        key: 'idp.howto.azure_step_create',
+        slots: {
+          type: 'idp.howto_type_web',
+          link: {
+            href: 'https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app',
+            labelKey: 'idp.links.azure_doc'
+          }
+        }
+      },
+      { key: 'idp.howto.step_redirect' },
+      { key: 'idp.howto.azure_step_copy' },
+      { key: 'idp.howto.step_paste' },
+      { key: 'idp.howto.step_enable' }
+    ]
+  }
+
+  return [
+    {
+      key: 'idp.howto.google_step_console',
+      slots: {
+        link: {
+          href: 'https://console.cloud.google.com/apis/credentials',
+          labelKey: 'idp.links.google_console'
+        }
+      }
+    },
+    {
+      key: 'idp.howto.google_step_create',
+      slots: {
+        type: 'idp.howto_type_web',
+        link: {
+          href: 'https://support.google.com/cloud/answer/6158849',
+          labelKey: 'idp.links.google_oauth_doc'
+        }
+      }
+    },
+    { key: 'idp.howto.step_redirect' },
+    { key: 'idp.howto.google_step_copy' },
+    { key: 'idp.howto.step_paste' },
+    { key: 'idp.howto.step_enable' }
+  ]
+})
+
+const credentialsSectionTitle = computed(() =>
+  providerPreset.value === 'azure' ? t('idp.section_credentials_azure') : t('idp.section_credentials_google')
+)
+
+const redirectUriHint = computed(() =>
+  providerPreset.value === 'azure' ? t('idp.redirect_uri_hint_azure') : t('idp.redirect_uri_hint_google')
+)
+
+const clientIdHint = computed(() =>
+  providerPreset.value === 'azure' ? t('idp.hint.client_id_azure') : t('idp.hint.client_id_google')
+)
+
+const clientIdTooltip = computed(() =>
+  providerPreset.value === 'azure' ? t('idp.tooltip.client_id_azure') : t('idp.tooltip.client_id_google')
+)
+
+const canTestConnection = computed(() => form.enabled && form.clientId.trim().length > 0)
+
+const detectProvider = (issuer: string): ProviderPreset =>
+  issuer.toLowerCase().includes('microsoftonline.com') ? 'azure' : 'google'
+
+const extractAzureTenantId = (issuer: string): string => {
+  const match = issuer.match(/login\.microsoftonline\.com\/([^/]+)/i)
+  return match?.[1] ?? ''
+}
+
+const buildAzureIssuer = (tenantId: string) => {
+  const tid = tenantId.trim()
+  if (!tid) return ''
+  return `https://login.microsoftonline.com/${tid}/v2.0`
+}
+
+const buildAzureJwks = (tenantId: string) => {
+  const tid = tenantId.trim()
+  if (!tid) return ''
+  return `https://login.microsoftonline.com/${tid}/discovery/v2.0/keys`
+}
+
+const applyProviderPreset = (preset: ProviderPreset, preserveCredentials = false) => {
+  if (preset === 'azure') {
+    form.name = AZURE_PRESET.name
+    form.scopes = AZURE_PRESET.scopes
+    if (!preserveCredentials) {
+      azureTenantId.value = ''
+      form.issuer = ''
+      form.jwksUri = ''
+    }
+    return
+  }
+
+  form.name = GOOGLE_PRESET.name
+  form.issuer = GOOGLE_PRESET.issuer
+  form.jwksUri = GOOGLE_PRESET.jwksUri
+  form.scopes = GOOGLE_PRESET.scopes
+  azureTenantId.value = ''
+}
+
+watch(providerPreset, (preset) => {
+  if (isHydrating.value) return
+  applyProviderPreset(preset)
+  showAdvancedOidc.value = false
+})
+
+watch(azureTenantId, (tenantId) => {
+  if (providerPreset.value !== 'azure') return
+  form.issuer = buildAzureIssuer(tenantId)
+  form.jwksUri = buildAzureJwks(tenantId)
 })
 
 onMounted(() => {
@@ -248,7 +446,11 @@ const copyRedirectUri = async () => {
 const { data } = await useFetch<Array<Record<string, unknown>>>('/api/admin/identity-providers')
 watch(data, (items) => {
   const first = items?.[0]
-  if (!first) return
+  if (!first) {
+    isHydrating.value = false
+    return
+  }
+
   idpId.value = String(first.id)
   form.name = String(first.name ?? form.name)
   form.issuer = String(first.issuer ?? '')
@@ -257,6 +459,14 @@ watch(data, (items) => {
   form.scopes = String(first.scopes ?? form.scopes)
   form.defaultProfile = String(first.defaultProfile ?? form.defaultProfile)
   form.enabled = Boolean(first.enabled)
+
+  const preset = detectProvider(form.issuer)
+  providerPreset.value = preset
+  if (preset === 'azure') {
+    azureTenantId.value = extractAzureTenantId(form.issuer)
+  }
+
+  isHydrating.value = false
 }, { immediate: true })
 
 const save = async () => {
@@ -276,6 +486,10 @@ const save = async () => {
     pending.value = false
   }
 }
+
+const testConnection = async () => {
+  await navigateTo('/login', { open: { target: '_blank' } })
+}
 </script>
 
 <style scoped>
@@ -293,11 +507,51 @@ const save = async () => {
   margin: 0;
 }
 
+.idp-form__section--provider {
+  margin-bottom: var(--kore-space-lg);
+}
+
 .idp-form__legend {
   font-size: var(--kore-text-small);
   font-weight: 600;
   color: var(--kore-text);
   margin-bottom: var(--kore-space-xs);
+}
+
+.idp-provider-options {
+  display: grid;
+  gap: var(--kore-space-sm);
+}
+
+.idp-provider-option {
+  display: grid;
+  gap: 0.2rem;
+  padding: var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  cursor: pointer;
+}
+
+.idp-provider-option--active {
+  border-color: var(--kore-primary);
+  background: var(--kore-bg-elevated);
+}
+
+.idp-provider-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.idp-provider-option__title {
+  font-size: var(--kore-text-small);
+  font-weight: 600;
+}
+
+.idp-provider-option__desc {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
 }
 
 .idp-form__details {
@@ -331,6 +585,17 @@ const save = async () => {
 .idp-form__toggle {
   display: flex;
   align-items: center;
+  gap: var(--kore-space-sm);
+}
+
+.idp-form__toggle--advanced {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
+
+.idp-form__actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--kore-space-sm);
 }
 
@@ -455,13 +720,18 @@ const save = async () => {
 }
 
 @media (max-width: 768px) {
-  .idp-redirect__row {
+  .idp-redirect__row,
+  .idp-form__actions {
     flex-direction: column;
     align-items: stretch;
   }
 
   .idp-redirect__value {
     flex: none;
+    width: 100%;
+  }
+
+  .idp-form__actions :deep(.app-button) {
     width: 100%;
   }
 }
