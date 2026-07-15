@@ -67,10 +67,12 @@ func (s *service) Request(ctx context.Context, cmd ports.RequestLeaveCommand) (d
 	}
 	req := domain.NewLeaveRequest(cmd.TenantID, cmd.UserID, cmd.Type, period, cmd.Motif)
 	if s.workflow != nil {
+		leaveID := req.ID
 		_, err = s.workflow.Start(ctx, ports.StartWorkflowCommand{
 			TenantID:       cmd.TenantID,
 			DefinitionCode: "leave.request",
 			EntityID:       req.ID.String(),
+			InstanceID:     &leaveID,
 		})
 		if err != nil {
 			return domain.LeaveRequest{}, err

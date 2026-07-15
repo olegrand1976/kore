@@ -191,3 +191,34 @@ func TestService_Start_UsesInitialState(t *testing.T) {
 	assert.Equal(t, domain.StateCode("draft"), inst.CurrentState)
 	assert.WithinDuration(t, time.Now(), time.Now(), time.Second)
 }
+
+func TestService_Start_CustomInstanceIDAndInitialState(t *testing.T) {
+	repo := newMemRepo()
+	tenant := kernel.NewTenantID(uuid.New())
+	customID := uuid.New()
+	override := domain.StateCode("pending_gate")
+	def := domain.WorkflowDefinition{
+		ID:         uuid.New(),
+		TenantID:   tenant,
+		Code:       "demo",
+		EntityType: "entity",
+		States: []domain.State{
+			{Code: "pending_gate", Label: "Gate"},
+			{Code: "draft", Label: "Brouillon", IsInitial: true},
+			{Code: "done", Label: "Terminé", IsFinal: true},
+		},
+	}
+	require.NoError(t, repo.SaveDefinition(context.Background(), def))
+
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil)
+	inst, err := svc.Start(context.Background(), ports.StartInstanceCommand{
+		TenantID:       tenant,
+		DefinitionCode: "demo",
+		EntityID:       customID.String(),
+		InstanceID:     &customID,
+		InitialState:   &override,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, customID, inst.ID)
+	assert.Equal(t, override, inst.CurrentState)
+}

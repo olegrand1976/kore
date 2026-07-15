@@ -87,6 +87,15 @@ func (d WorkflowDefinition) InitialState() (StateCode, error) {
 	return "", ErrInvalidDefinition
 }
 
+func (d WorkflowDefinition) HasState(code StateCode) bool {
+	for _, s := range d.States {
+		if s.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
 func (d WorkflowDefinition) FindTransition(from StateCode, action ActionCode) (Transition, bool) {
 	for _, t := range d.Transitions {
 		if t.From == from && t.Action == action {

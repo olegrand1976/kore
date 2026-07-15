@@ -18,11 +18,17 @@ func NewAdapter(svc wfports.WorkflowService) ports.WorkflowService {
 }
 
 func (a *Adapter) Start(ctx context.Context, cmd ports.StartWorkflowCommand) (ports.WorkflowInstance, error) {
-	inst, err := a.svc.Start(ctx, wfports.StartInstanceCommand{
+	start := wfports.StartInstanceCommand{
 		TenantID:       cmd.TenantID,
 		DefinitionCode: cmd.DefinitionCode,
 		EntityID:       cmd.EntityID,
-	})
+		InstanceID:     cmd.InstanceID,
+	}
+	if cmd.InitialState != nil {
+		st := domain.StateCode(*cmd.InitialState)
+		start.InitialState = &st
+	}
+	inst, err := a.svc.Start(ctx, start)
 	if err != nil {
 		return ports.WorkflowInstance{}, err
 	}

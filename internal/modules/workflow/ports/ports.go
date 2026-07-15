@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/workflow/domain"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/pkg/kernel"
@@ -12,6 +13,10 @@ type StartInstanceCommand struct {
 	TenantID       kernel.TenantID
 	DefinitionCode string
 	EntityID       string
+	// InstanceID optionnel : aligne l'instance sur l'ID métier (congés, TMA).
+	InstanceID *uuid.UUID
+	// InitialState optionnel : point d'entrée alternatif (ex. gate chef utilisateur TMA).
+	InitialState *domain.StateCode
 }
 
 type FireTransitionCommand struct {

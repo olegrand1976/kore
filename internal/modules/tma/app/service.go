@@ -63,11 +63,18 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 	}
 	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
 	if s.workflow != nil {
-		inst, err := s.workflow.Start(ctx, ports.StartWorkflowCommand{
+		demandID := demand.ID
+		start := ports.StartWorkflowCommand{
 			TenantID:       cmd.TenantID,
 			DefinitionCode: "tma.incident",
 			EntityID:       demand.ID.String(),
-		})
+			InstanceID:     &demandID,
+		}
+		if demand.RequiresChefGate {
+			gate := string(domain.DemandStatusAwaitingCreation)
+			start.InitialState = &gate
+		}
+		inst, err := s.workflow.Start(ctx, start)
 		if err != nil {
 			return domain.Demand{}, err
 		}

@@ -114,12 +114,14 @@ export function buildPresetDefinition(code: WorkflowPresetCode): WorkflowDefinit
         code,
         entityType: 'tma_demand',
         states: [
+          { code: 'en_attente_creation', label: 'En attente création', isInitial: false, isFinal: false },
           { code: 'ouverte', label: 'Ouverte', isInitial: true, isFinal: false },
           { code: 'affectee', label: 'Affectée', isInitial: false, isFinal: false },
           { code: 'resolue', label: 'Résolue', isInitial: false, isFinal: true },
           { code: 'rework', label: 'Rework', isInitial: false, isFinal: false }
         ],
         transitions: [
+          { from: 'en_attente_creation', to: 'ouverte', action: 'validate_creation', allowedRoles: [] },
           { from: 'ouverte', to: 'affectee', action: 'assign', allowedRoles: [] },
           { from: 'affectee', to: 'resolue', action: 'resolve', allowedRoles: [] },
           { from: 'resolue', to: 'rework', action: 'reopen', allowedRoles: [] },

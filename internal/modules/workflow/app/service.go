@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,8 +77,18 @@ func (s *Service) Start(ctx context.Context, cmd ports.StartInstanceCommand) (do
 	if err != nil {
 		return domain.WorkflowInstance{}, err
 	}
+	if cmd.InitialState != nil {
+		if !def.HasState(*cmd.InitialState) {
+			return domain.WorkflowInstance{}, fmt.Errorf("%w: unknown initial state %q", domain.ErrInvalidDefinition, *cmd.InitialState)
+		}
+		initial = *cmd.InitialState
+	}
+	instanceID := uuid.New()
+	if cmd.InstanceID != nil && *cmd.InstanceID != uuid.Nil {
+		instanceID = *cmd.InstanceID
+	}
 	inst := domain.WorkflowInstance{
-		ID:             uuid.New(),
+		ID:             instanceID,
 		TenantID:       cmd.TenantID,
 		DefinitionCode: cmd.DefinitionCode,
 		EntityID:       cmd.EntityID,

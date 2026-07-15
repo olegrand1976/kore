@@ -43,12 +43,14 @@ func tmaIncidentWorkflow(tenant kernel.TenantID) domain.WorkflowDefinition {
 		Code:       "tma.incident",
 		EntityType: "tma_demand",
 		States: []domain.State{
+			{Code: "en_attente_creation", Label: "En attente création"},
 			{Code: "ouverte", Label: "Ouverte", IsInitial: true},
 			{Code: "affectee", Label: "Affectée"},
 			{Code: "resolue", Label: "Résolue", IsFinal: true},
 			{Code: "rework", Label: "Rework"},
 		},
 		Transitions: []domain.Transition{
+			{From: "en_attente_creation", To: "ouverte", Action: "validate_creation", AllowedRoles: []string{}},
 			{From: "ouverte", To: "affectee", Action: "assign", AllowedRoles: []string{}},
 			{From: "affectee", To: "resolue", Action: "resolve", AllowedRoles: []string{}},
 			{From: "resolue", To: "rework", Action: "reopen", AllowedRoles: []string{}},

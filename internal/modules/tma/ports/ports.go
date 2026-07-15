@@ -72,6 +72,8 @@ type StartWorkflowCommand struct {
 	TenantID       kernel.TenantID
 	DefinitionCode string
 	EntityID       string
+	InstanceID     *uuid.UUID
+	InitialState   *string
 }
 
 type FireTransitionCommand struct {
