@@ -104,6 +104,7 @@ import {
   WORKFLOW_PRESET_CODES,
   WORKFLOW_PRESETS,
   buildPayload,
+  buildPresetDefinition,
   normalizeDefinition,
   validateDefinition
 } from '~/composables/useWorkflowDefinition'
@@ -144,9 +145,15 @@ const loadWorkflow = async (code: WorkflowPresetCode) => {
       editor.value.entityType = WORKFLOW_PRESETS[code].entityType
     }
   } catch (e) {
-    editor.value = null
     const statusCode = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode?: number }).statusCode : undefined
-    errorMsg.value = extractFetchError(e, statusCode === 404 ? t('workflows.not_found') : t('workflows.error_load'))
+    if (statusCode === 404) {
+      editor.value = buildPresetDefinition(code)
+      flash.value = t('workflows.not_found_preset')
+      errorMsg.value = ''
+    } else {
+      editor.value = null
+      errorMsg.value = extractFetchError(e, t('workflows.error_load'))
+    }
   } finally {
     loading.value = false
     isHydrating.value = false

@@ -19,6 +19,7 @@ import (
 	publicports "github.com/kore/kore/internal/modules/publicsite/ports"
 	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	wfports "github.com/kore/kore/internal/modules/workflow/ports"
+	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/internal/platform/db"
 	"github.com/kore/kore/pkg/kernel"
 )
@@ -39,6 +40,8 @@ type Dependencies struct {
 	Clients       orgports.ClientService
 	Billing       TrialEnsurer
 	Workflow      wfports.WorkflowService
+	Cache         cache.Cache
+	Keys          cache.KeyBuilder
 	CRA           craports.CRAService
 	Leaves        congesports.LeaveService
 	LeaveTypes    congesports.LeaveTypeConfigService

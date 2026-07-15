@@ -1012,6 +1012,7 @@
     "save": "Enregistrer",
     "saved": "Workflow enregistré",
     "not_found": "Workflow introuvable — exécutez le seed ou contactez l'administrateur plateforme.",
+    "not_found_preset": "Workflow absent en base — modèle par défaut chargé. Enregistrez pour l'activer.",
     "error_load": "Impossible de charger le workflow.",
     "col_code": "Code",
     "col_label": "Libellé",

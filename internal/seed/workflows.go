@@ -13,9 +13,6 @@ func (r *Runner) ensureWorkflows(ctx context.Context, tenant kernel.TenantID) er
 		tmaIncidentWorkflow(tenant),
 	}
 	for _, def := range defs {
-		if _, err := r.deps.Workflow.GetDefinition(ctx, tenant, def.Code); err == nil {
-			continue
-		}
 		if err := r.deps.Workflow.DefineWorkflow(ctx, def); err != nil {
 			return err
 		}

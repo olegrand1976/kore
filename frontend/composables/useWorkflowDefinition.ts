@@ -93,6 +93,46 @@ export type WorkflowValidationCode =
   | 'orphan_transition'
   | 'transition_action_required'
 
+export function buildPresetDefinition(code: WorkflowPresetCode): WorkflowDefinition {
+  switch (code) {
+    case 'leave.request':
+      return {
+        code,
+        entityType: 'leave_request',
+        states: [
+          { code: 'en_attente', label: 'En attente', isInitial: true, isFinal: false },
+          { code: 'valide', label: 'Validé', isInitial: false, isFinal: true },
+          { code: 'refuse', label: 'Refusé', isInitial: false, isFinal: true }
+        ],
+        transitions: [
+          { from: 'en_attente', to: 'valide', action: 'approve', allowedRoles: [] },
+          { from: 'en_attente', to: 'refuse', action: 'reject', allowedRoles: [] }
+        ]
+      }
+    case 'tma.incident':
+      return {
+        code,
+        entityType: 'tma_demand',
+        states: [
+          { code: 'ouverte', label: 'Ouverte', isInitial: true, isFinal: false },
+          { code: 'affectee', label: 'Affectée', isInitial: false, isFinal: false },
+          { code: 'resolue', label: 'Résolue', isInitial: false, isFinal: true },
+          { code: 'rework', label: 'Rework', isInitial: false, isFinal: false }
+        ],
+        transitions: [
+          { from: 'ouverte', to: 'affectee', action: 'assign', allowedRoles: [] },
+          { from: 'affectee', to: 'resolue', action: 'resolve', allowedRoles: [] },
+          { from: 'resolue', to: 'rework', action: 'reopen', allowedRoles: [] },
+          { from: 'rework', to: 'affectee', action: 'assign', allowedRoles: [] }
+        ]
+      }
+    default: {
+      const _exhaustive: never = code
+      return _exhaustive
+    }
+  }
+}
+
 export function normalizeDefinition(raw: RawWorkflowDefinition, fallbackCode: string): WorkflowDefinition {
   const preset = WORKFLOW_PRESETS[fallbackCode as WorkflowPresetCode]
   return {
@@ -189,6 +229,7 @@ export function useWorkflowDefinition() {
     WORKFLOW_PRESETS,
     WORKFLOW_ROLE_OPTIONS,
     normalizeDefinition,
+    buildPresetDefinition,
     buildPayload,
     validateDefinition,
     isPresetCode,

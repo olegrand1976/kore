@@ -3,6 +3,8 @@ package seed
 import (
 	"context"
 	"log"
+
+	"github.com/kore/kore/pkg/kernel"
 )
 
 // ResetDemoTenant supprime les données métier du tenant demo pour permettre un re-seed complet.
@@ -54,6 +56,12 @@ func (r *Runner) ResetDemoTenant(ctx context.Context) error {
 			continue
 		}
 		if _, err := r.deps.Pool.Exec(ctx, stmt.query); err != nil {
+			return err
+		}
+	}
+	if r.deps.Cache != nil && r.deps.Keys != nil {
+		prefix := r.deps.Keys.Key(kernel.NewTenantID(tid), "workflow", "def")
+		if err := r.deps.Cache.DeleteByPrefix(ctx, prefix); err != nil {
 			return err
 		}
 	}

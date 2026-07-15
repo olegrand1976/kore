@@ -347,6 +347,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		Clients:       clientService,
 		Billing:       billingRepo,
 		Workflow:      wfService,
+		Cache:         appCache,
+		Keys:          keyBuilder,
 		CRA:           craService,
 		Leaves:        congesService,
 		LeaveTypes:    leaveTypeConfigService,

@@ -1012,6 +1012,7 @@
     "save": "Save",
     "saved": "Workflow saved",
     "not_found": "Workflow not found — run the seed or contact the platform admin.",
+    "not_found_preset": "Workflow missing in database — default template loaded. Save to activate it.",
     "error_load": "Unable to load the workflow.",
     "col_code": "Code",
     "col_label": "Label",
