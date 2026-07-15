@@ -1028,6 +1028,54 @@
     "roles_hint": "Laissez tous les profils décochés pour autoriser toute personne ayant accès au module.",
     "roles_all": "tous profils",
     "cannot_remove_state": "État utilisé par une transition — supprimez d'abord les transitions liées.",
+    "code_readonly": "Code technique (verrouillé)",
+    "action_readonly": "Action technique (verrouillée)",
+    "state_hint_label": "Rôle de cet état",
+    "validation_title": "Points à corriger avant enregistrement",
+    "validation_ok": "Le workflow est prêt à être enregistré.",
+    "assistant": {
+      "title": "Assistant de configuration",
+      "locked_notice": "La structure du flux est fixée par l'application. Vous pouvez personnaliser les libellés affichés et les profils autorisés par action.",
+      "flow_title": "Parcours dans l'application",
+      "customize_title": "Personnalisation autorisée",
+      "customize_labels": "Libellés des étapes (affichage)",
+      "customize_roles": "Profils autorisés par action",
+      "restore": "Restaurer le modèle recommandé",
+      "restored": "Modèle recommandé restauré.",
+      "summary_leave": "Chaque demande de congé démarre en attente. Un manager valide ou refuse depuis l'écran Validation congés.",
+      "summary_tma": "Chaque incident suit un cycle ouverture → affectation → résolution, avec une étape optionnelle de validation chef utilisateur.",
+      "screens": {
+        "conges_validation": "Congés → Validation",
+        "tma_detail": "TMA → Fiche incident"
+      },
+      "states": {
+        "en_attente": "État de départ : la demande vient d'être déposée.",
+        "valide": "État final : la demande a été acceptée.",
+        "refuse": "État final : la demande a été refusée.",
+        "en_attente_creation": "État de départ si la validation chef utilisateur est requise.",
+        "ouverte": "État de départ standard ou après validation de création.",
+        "affectee": "Un responsable a été affecté à l'incident.",
+        "resolue": "État final : l'incident est résolu.",
+        "rework": "L'incident a été réouvert pour correction."
+      },
+      "actions": {
+        "approve": "Valider",
+        "reject": "Refuser",
+        "validate_creation": "Valider la création",
+        "assign": "Affecter",
+        "resolve": "Résoudre",
+        "reopen": "Réouvrir"
+      },
+      "hints": {
+        "leave_approve": "Correspond au bouton « Valider » sur la page Validation congés.",
+        "leave_reject": "Correspond au bouton « Refuser » sur la page Validation congés.",
+        "tma_validate_creation": "Correspond au bouton « Valider la création » sur la fiche incident (gate chef utilisateur).",
+        "tma_assign": "Correspond au bouton « Affecter » sur la fiche incident.",
+        "tma_resolve": "Correspond au bouton « Résoudre » sur la fiche incident.",
+        "tma_reopen": "Correspond au bouton « Réouvrir » sur la fiche incident.",
+        "tma_assign_rework": "Réaffectation après réouverture — même bouton « Affecter » sur la fiche incident."
+      }
+    },
     "howto": {
       "title": "Comment concevoir ce workflow ?",
       "step_states": "Définissez les étapes : un état initial (départ), des états intermédiaires et au moins un état final.",
@@ -1035,7 +1083,7 @@
       "step_roles": "Restreignez optionnellement une action à certains profils ; sinon elle est ouverte à tous.",
       "step_save": "Enregistrez puis testez depuis le module métier concerné.",
       "leave_example": "Exemple congés : En attente → approve → Validé, ou reject → Refusé.",
-      "tma_example": "Exemple TMA : Ouverte → assign → Affectée → resolve → Résolue, avec boucle reopen → Rework."
+      "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework."
     },
     "validation": {
       "code_required": "Le code workflow est requis.",

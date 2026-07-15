@@ -28,24 +28,188 @@ export const WORKFLOW_ROLE_OPTIONS = ['Collaborateur', 'Administrateur', 'Utilis
 
 export type WorkflowRoleOption = (typeof WORKFLOW_ROLE_OPTIONS)[number]
 
-export const WORKFLOW_PRESETS: Record<
-  WorkflowPresetCode,
-  { code: WorkflowPresetCode; entityType: string; labelKey: string; descKey: string; howtoKey: string }
-> = {
+export type WorkflowPresetStateMeta = {
+  code: string
+  defaultLabel: string
+  hintKey: string
+  isInitial: boolean
+  isFinal: boolean
+}
+
+export type WorkflowPresetTransitionMeta = {
+  from: string
+  to: string
+  action: string
+  labelKey: string
+  hintKey: string
+  screenKey: string
+  defaultRoles: string[]
+}
+
+export type WorkflowPresetMeta = {
+  code: WorkflowPresetCode
+  entityType: string
+  labelKey: string
+  descKey: string
+  howtoKey: string
+  summaryKey: string
+  states: WorkflowPresetStateMeta[]
+  transitions: WorkflowPresetTransitionMeta[]
+}
+
+export const WORKFLOW_PRESET_META: Record<WorkflowPresetCode, WorkflowPresetMeta> = {
   'leave.request': {
     code: 'leave.request',
     entityType: 'leave_request',
     labelKey: 'workflows.preset_leave',
     descKey: 'workflows.preset_leave_desc',
-    howtoKey: 'workflows.howto.leave_example'
+    howtoKey: 'workflows.howto.leave_example',
+    summaryKey: 'workflows.assistant.summary_leave',
+    states: [
+      {
+        code: 'en_attente',
+        defaultLabel: 'En attente',
+        hintKey: 'workflows.assistant.states.en_attente',
+        isInitial: true,
+        isFinal: false
+      },
+      {
+        code: 'valide',
+        defaultLabel: 'Validé',
+        hintKey: 'workflows.assistant.states.valide',
+        isInitial: false,
+        isFinal: true
+      },
+      {
+        code: 'refuse',
+        defaultLabel: 'Refusé',
+        hintKey: 'workflows.assistant.states.refuse',
+        isInitial: false,
+        isFinal: true
+      }
+    ],
+    transitions: [
+      {
+        from: 'en_attente',
+        to: 'valide',
+        action: 'approve',
+        labelKey: 'workflows.assistant.actions.approve',
+        hintKey: 'workflows.assistant.hints.leave_approve',
+        screenKey: 'workflows.assistant.screens.conges_validation',
+        defaultRoles: []
+      },
+      {
+        from: 'en_attente',
+        to: 'refuse',
+        action: 'reject',
+        labelKey: 'workflows.assistant.actions.reject',
+        hintKey: 'workflows.assistant.hints.leave_reject',
+        screenKey: 'workflows.assistant.screens.conges_validation',
+        defaultRoles: []
+      }
+    ]
   },
   'tma.incident': {
     code: 'tma.incident',
     entityType: 'tma_demand',
     labelKey: 'workflows.preset_tma',
     descKey: 'workflows.preset_tma_desc',
-    howtoKey: 'workflows.howto.tma_example'
+    howtoKey: 'workflows.howto.tma_example',
+    summaryKey: 'workflows.assistant.summary_tma',
+    states: [
+      {
+        code: 'en_attente_creation',
+        defaultLabel: 'En attente création',
+        hintKey: 'workflows.assistant.states.en_attente_creation',
+        isInitial: false,
+        isFinal: false
+      },
+      {
+        code: 'ouverte',
+        defaultLabel: 'Ouverte',
+        hintKey: 'workflows.assistant.states.ouverte',
+        isInitial: true,
+        isFinal: false
+      },
+      {
+        code: 'affectee',
+        defaultLabel: 'Affectée',
+        hintKey: 'workflows.assistant.states.affectee',
+        isInitial: false,
+        isFinal: false
+      },
+      {
+        code: 'resolue',
+        defaultLabel: 'Résolue',
+        hintKey: 'workflows.assistant.states.resolue',
+        isInitial: false,
+        isFinal: true
+      },
+      {
+        code: 'rework',
+        defaultLabel: 'Rework',
+        hintKey: 'workflows.assistant.states.rework',
+        isInitial: false,
+        isFinal: false
+      }
+    ],
+    transitions: [
+      {
+        from: 'en_attente_creation',
+        to: 'ouverte',
+        action: 'validate_creation',
+        labelKey: 'workflows.assistant.actions.validate_creation',
+        hintKey: 'workflows.assistant.hints.tma_validate_creation',
+        screenKey: 'workflows.assistant.screens.tma_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'ouverte',
+        to: 'affectee',
+        action: 'assign',
+        labelKey: 'workflows.assistant.actions.assign',
+        hintKey: 'workflows.assistant.hints.tma_assign',
+        screenKey: 'workflows.assistant.screens.tma_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'affectee',
+        to: 'resolue',
+        action: 'resolve',
+        labelKey: 'workflows.assistant.actions.resolve',
+        hintKey: 'workflows.assistant.hints.tma_resolve',
+        screenKey: 'workflows.assistant.screens.tma_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'resolue',
+        to: 'rework',
+        action: 'reopen',
+        labelKey: 'workflows.assistant.actions.reopen',
+        hintKey: 'workflows.assistant.hints.tma_reopen',
+        screenKey: 'workflows.assistant.screens.tma_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'rework',
+        to: 'affectee',
+        action: 'assign',
+        labelKey: 'workflows.assistant.actions.assign',
+        hintKey: 'workflows.assistant.hints.tma_assign_rework',
+        screenKey: 'workflows.assistant.screens.tma_detail',
+        defaultRoles: []
+      }
+    ]
   }
+}
+
+/** @deprecated Utiliser WORKFLOW_PRESET_META — conservé pour compatibilité pages existantes */
+export const WORKFLOW_PRESETS: Record<
+  WorkflowPresetCode,
+  { code: WorkflowPresetCode; entityType: string; labelKey: string; descKey: string; howtoKey: string }
+> = {
+  'leave.request': WORKFLOW_PRESET_META['leave.request'],
+  'tma.incident': WORKFLOW_PRESET_META['tma.incident']
 }
 
 type RawWorkflowState = {
@@ -93,51 +257,94 @@ export type WorkflowValidationCode =
   | 'orphan_transition'
   | 'transition_action_required'
 
+function transitionKey(tr: Pick<WorkflowTransition, 'from' | 'action' | 'to'>): string {
+  return `${tr.from}|${tr.action}|${tr.to}`
+}
+
+function rolesEqual(a: string[], b: string[]): boolean {
+  const sa = [...a].sort().join(',')
+  const sb = [...b].sort().join(',')
+  return sa === sb
+}
+
 export function buildPresetDefinition(code: WorkflowPresetCode): WorkflowDefinition {
-  switch (code) {
-    case 'leave.request':
-      return {
-        code,
-        entityType: 'leave_request',
-        states: [
-          { code: 'en_attente', label: 'En attente', isInitial: true, isFinal: false },
-          { code: 'valide', label: 'Validé', isInitial: false, isFinal: true },
-          { code: 'refuse', label: 'Refusé', isInitial: false, isFinal: true }
-        ],
-        transitions: [
-          { from: 'en_attente', to: 'valide', action: 'approve', allowedRoles: [] },
-          { from: 'en_attente', to: 'refuse', action: 'reject', allowedRoles: [] }
-        ]
-      }
-    case 'tma.incident':
-      return {
-        code,
-        entityType: 'tma_demand',
-        states: [
-          { code: 'en_attente_creation', label: 'En attente création', isInitial: false, isFinal: false },
-          { code: 'ouverte', label: 'Ouverte', isInitial: true, isFinal: false },
-          { code: 'affectee', label: 'Affectée', isInitial: false, isFinal: false },
-          { code: 'resolue', label: 'Résolue', isInitial: false, isFinal: true },
-          { code: 'rework', label: 'Rework', isInitial: false, isFinal: false }
-        ],
-        transitions: [
-          { from: 'en_attente_creation', to: 'ouverte', action: 'validate_creation', allowedRoles: [] },
-          { from: 'ouverte', to: 'affectee', action: 'assign', allowedRoles: [] },
-          { from: 'affectee', to: 'resolue', action: 'resolve', allowedRoles: [] },
-          { from: 'resolue', to: 'rework', action: 'reopen', allowedRoles: [] },
-          { from: 'rework', to: 'affectee', action: 'assign', allowedRoles: [] }
-        ]
-      }
-    default: {
-      const _exhaustive: never = code
-      return _exhaustive
-    }
+  const meta = WORKFLOW_PRESET_META[code]
+  return {
+    code: meta.code,
+    entityType: meta.entityType,
+    states: meta.states.map((s) => ({
+      code: s.code,
+      label: s.defaultLabel,
+      isInitial: s.isInitial,
+      isFinal: s.isFinal
+    })),
+    transitions: meta.transitions.map((tr) => ({
+      from: tr.from,
+      to: tr.to,
+      action: tr.action,
+      allowedRoles: [...tr.defaultRoles]
+    }))
   }
 }
 
-export function normalizeDefinition(raw: RawWorkflowDefinition, fallbackCode: string): WorkflowDefinition {
-  const preset = WORKFLOW_PRESETS[fallbackCode as WorkflowPresetCode]
+/** Réapplique la structure preset en conservant libellés et rôles chargés depuis l'API. */
+export function mergePresetWithLoaded(code: WorkflowPresetCode, loaded: WorkflowDefinition): WorkflowDefinition {
+  const preset = buildPresetDefinition(code)
+  const labelByCode = new Map(loaded.states.map((s) => [s.code, s.label]))
+  const rolesByKey = new Map(loaded.transitions.map((tr) => [transitionKey(tr), tr.allowedRoles]))
+
   return {
+    ...preset,
+    states: preset.states.map((s) => ({
+      ...s,
+      label: labelByCode.get(s.code)?.trim() || s.label
+    })),
+    transitions: preset.transitions.map((tr) => ({
+      ...tr,
+      allowedRoles: rolesByKey.get(transitionKey(tr)) ?? tr.allowedRoles
+    }))
+  }
+}
+
+export function differsFromPreset(editor: WorkflowDefinition): boolean {
+  if (!isPresetCode(editor.code)) return false
+  const preset = buildPresetDefinition(editor.code)
+
+  for (const ps of preset.states) {
+    const es = editor.states.find((s) => s.code === ps.code)
+    if (!es || es.label.trim() !== ps.label.trim()) return true
+  }
+
+  for (const pt of preset.transitions) {
+    const et = editor.transitions.find(
+      (tr) => tr.from === pt.from && tr.action === pt.action && tr.to === pt.to
+    )
+    if (!et || !rolesEqual(pt.allowedRoles, et.allowedRoles)) return true
+  }
+
+  return false
+}
+
+export function getPresetMeta(code: WorkflowPresetCode): WorkflowPresetMeta {
+  return WORKFLOW_PRESET_META[code]
+}
+
+export function getStateMeta(code: WorkflowPresetCode, stateCode: string): WorkflowPresetStateMeta | undefined {
+  return WORKFLOW_PRESET_META[code].states.find((s) => s.code === stateCode)
+}
+
+export function getTransitionMeta(
+  code: WorkflowPresetCode,
+  tr: Pick<WorkflowTransition, 'from' | 'action' | 'to'>
+): WorkflowPresetTransitionMeta | undefined {
+  return WORKFLOW_PRESET_META[code].transitions.find(
+    (t) => t.from === tr.from && t.action === tr.action && t.to === tr.to
+  )
+}
+
+export function normalizeDefinition(raw: RawWorkflowDefinition, fallbackCode: string): WorkflowDefinition {
+  const preset = WORKFLOW_PRESET_META[fallbackCode as WorkflowPresetCode]
+  const normalized: WorkflowDefinition = {
     code: raw.code ?? raw.Code ?? fallbackCode,
     entityType: raw.entityType ?? raw.EntityType ?? preset?.entityType ?? '',
     states: (raw.states ?? raw.States ?? []).map((s) => ({
@@ -154,6 +361,11 @@ export function normalizeDefinition(raw: RawWorkflowDefinition, fallbackCode: st
       allowedRoles: tr.allowedRoles ?? tr.AllowedRoles ?? []
     }))
   }
+
+  if (isPresetCode(fallbackCode)) {
+    return mergePresetWithLoaded(fallbackCode, normalized)
+  }
+  return normalized
 }
 
 export function buildPayload(definition: WorkflowDefinition): WorkflowDefinition {
@@ -229,9 +441,15 @@ export function useWorkflowDefinition() {
   return {
     WORKFLOW_PRESET_CODES,
     WORKFLOW_PRESETS,
+    WORKFLOW_PRESET_META,
     WORKFLOW_ROLE_OPTIONS,
     normalizeDefinition,
     buildPresetDefinition,
+    mergePresetWithLoaded,
+    differsFromPreset,
+    getPresetMeta,
+    getStateMeta,
+    getTransitionMeta,
     buildPayload,
     validateDefinition,
     isPresetCode,

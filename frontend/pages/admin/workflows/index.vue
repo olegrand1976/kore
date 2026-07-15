@@ -46,20 +46,13 @@
 
     <template v-if="editor">
       <AppCard padding="lg" class="mb">
-        <div class="settings-howto" role="note">
-          <p class="settings-howto__title">{{ $t('workflows.howto.title') }}</p>
-          <ol class="settings-howto__list settings-howto__list--ordered">
-            <li>{{ $t('workflows.howto.step_states') }}</li>
-            <li>{{ $t('workflows.howto.step_transitions') }}</li>
-            <li>{{ $t('workflows.howto.step_roles') }}</li>
-            <li>{{ $t('workflows.howto.step_save') }}</li>
-            <li>{{ $t(presetHowtoKey) }}</li>
-          </ol>
-        </div>
-
-        <p class="settings-hint">
-          <strong>{{ $t('workflows.entity_type') }}:</strong> {{ editor.entityType }}
-        </p>
+        <h2 class="wf-section-title">{{ $t('workflows.assistant.title') }}</h2>
+        <WorkflowPresetAssistant
+          :preset-code="selectedPreset"
+          :definition="editor"
+          :show-restore="differsFromPreset(editor)"
+          @restore="restorePreset"
+        />
       </AppCard>
 
       <AppCard padding="lg" class="mb">
@@ -72,7 +65,8 @@
         <WorkflowStateForm
           :states="editor.states"
           :transitions="editor.transitions"
-          lock-codes
+          :preset-code="selectedPreset"
+          guided
           @update:states="editor.states = $event"
         />
       </AppCard>
@@ -82,14 +76,21 @@
         <WorkflowTransitionForm
           :states="editor.states"
           :transitions="editor.transitions"
+          :preset-code="selectedPreset"
+          guided
           @update:transitions="editor.transitions = $event"
         />
       </AppCard>
 
       <AppCard padding="lg">
-        <ul v-if="validationErrors.length" class="wf-validation" role="alert">
-          <li v-for="(err, index) in validationErrors" :key="index">{{ err }}</li>
-        </ul>
+        <div v-if="validationErrors.length" class="wf-validation-block" role="alert">
+          <p class="wf-validation-block__title">{{ $t('workflows.validation_title') }}</p>
+          <ul class="wf-validation">
+            <li v-for="(err, index) in validationErrors" :key="index">{{ err }}</li>
+          </ul>
+        </div>
+        <p v-else class="wf-validation-ok" role="status">{{ $t('workflows.validation_ok') }}</p>
+
         <AppButton variant="primary" :loading="saving" @click="saveWorkflow">
           {{ $t('workflows.save') }}
         </AppButton>
@@ -105,6 +106,7 @@ import {
   WORKFLOW_PRESETS,
   buildPayload,
   buildPresetDefinition,
+  differsFromPreset,
   normalizeDefinition,
   validateDefinition
 } from '~/composables/useWorkflowDefinition'
@@ -123,27 +125,28 @@ const flash = ref('')
 const editor = ref<WorkflowDefinition | null>(null)
 const isHydrating = ref(true)
 
-const presetHowtoKey = computed(() => WORKFLOW_PRESETS[selectedPreset.value].howtoKey)
-
 const validationErrors = computed(() =>
   editor.value
     ? validateDefinition(editor.value).map((code) => t(`workflows.validation.${code}`))
     : []
 )
 
+const restorePreset = () => {
+  editor.value = buildPresetDefinition(selectedPreset.value)
+  flash.value = t('workflows.assistant.restored')
+  errorMsg.value = ''
+}
+
 const loadWorkflow = async (code: WorkflowPresetCode) => {
   loading.value = true
   errorMsg.value = ''
-  flash.value = ''
+  if (!isHydrating.value) flash.value = ''
   try {
     const res = await $fetch<{ data?: Parameters<typeof normalizeDefinition>[0] }>(
       `/api/admin/workflows/${encodeURIComponent(code)}`
     )
     const raw = (res?.data ?? res) as Parameters<typeof normalizeDefinition>[0]
     editor.value = normalizeDefinition(raw, code)
-    if (!editor.value.entityType) {
-      editor.value.entityType = WORKFLOW_PRESETS[code].entityType
-    }
   } catch (e) {
     const statusCode = e && typeof e === 'object' && 'statusCode' in e ? (e as { statusCode?: number }).statusCode : undefined
     if (statusCode === 404) {
@@ -244,43 +247,27 @@ await loadWorkflow(selectedPreset.value)
   color: var(--kore-text-muted);
 }
 
-.settings-howto {
-  margin: 0 0 var(--kore-space-md);
-  padding: var(--kore-space-md);
-  border: 1px solid var(--kore-border);
-  border-radius: var(--kore-radius-md);
-  background: var(--kore-bg-elevated);
+.wf-validation-block {
+  margin-bottom: var(--kore-space-md);
 }
 
-.settings-howto__title {
+.wf-validation-block__title {
   margin: 0 0 var(--kore-space-sm);
   font-size: var(--kore-text-small);
   font-weight: 600;
-}
-
-.settings-howto__list {
-  margin: 0;
-  padding-left: 1.25rem;
-  color: var(--kore-text-muted);
-  font-size: var(--kore-text-small);
-}
-
-.settings-howto__list--ordered {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.settings-hint {
-  margin: 0;
-  color: var(--kore-text-muted);
-  font-size: var(--kore-text-small);
+  color: var(--kore-status-danger);
 }
 
 .wf-validation {
-  margin: 0 0 var(--kore-space-md);
+  margin: 0;
   padding-left: 1.25rem;
   color: var(--kore-status-danger);
+  font-size: var(--kore-text-small);
+}
+
+.wf-validation-ok {
+  margin: 0 0 var(--kore-space-md);
+  color: var(--kore-status-success);
   font-size: var(--kore-text-small);
 }
 

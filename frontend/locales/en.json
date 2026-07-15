@@ -1028,6 +1028,54 @@
     "roles_hint": "Leave all profiles unchecked to allow anyone with module access.",
     "roles_all": "all profiles",
     "cannot_remove_state": "State used by a transition — remove linked transitions first.",
+    "code_readonly": "Technical code (locked)",
+    "action_readonly": "Technical action (locked)",
+    "state_hint_label": "Role of this state",
+    "validation_title": "Fix these items before saving",
+    "validation_ok": "The workflow is ready to save.",
+    "assistant": {
+      "title": "Configuration assistant",
+      "locked_notice": "The flow structure is fixed by the application. You can customize displayed labels and allowed profiles per action.",
+      "flow_title": "Journey in the application",
+      "customize_title": "Allowed customization",
+      "customize_labels": "Step labels (display)",
+      "customize_roles": "Allowed profiles per action",
+      "restore": "Restore recommended template",
+      "restored": "Recommended template restored.",
+      "summary_leave": "Each leave request starts as pending. A manager approves or rejects from the Leave validation screen.",
+      "summary_tma": "Each incident follows open → assign → resolve, with an optional chef utilisateur validation step.",
+      "screens": {
+        "conges_validation": "Leave → Validation",
+        "tma_detail": "TMA → Incident detail"
+      },
+      "states": {
+        "en_attente": "Starting state: the request was just submitted.",
+        "valide": "Final state: the request was approved.",
+        "refuse": "Final state: the request was rejected.",
+        "en_attente_creation": "Starting state when chef utilisateur validation is required.",
+        "ouverte": "Default starting state or after creation validation.",
+        "affectee": "A responsible person was assigned to the incident.",
+        "resolue": "Final state: the incident is resolved.",
+        "rework": "The incident was reopened for correction."
+      },
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "validate_creation": "Validate creation",
+        "assign": "Assign",
+        "resolve": "Resolve",
+        "reopen": "Reopen"
+      },
+      "hints": {
+        "leave_approve": "Matches the « Approve » button on the Leave validation page.",
+        "leave_reject": "Matches the « Reject » button on the Leave validation page.",
+        "tma_validate_creation": "Matches « Validate creation » on the incident detail (chef utilisateur gate).",
+        "tma_assign": "Matches the « Assign » button on the incident detail.",
+        "tma_resolve": "Matches the « Resolve » button on the incident detail.",
+        "tma_reopen": "Matches the « Reopen » button on the incident detail.",
+        "tma_assign_rework": "Reassignment after reopen — same « Assign » button on the incident detail."
+      }
+    },
     "howto": {
       "title": "How to design this workflow?",
       "step_states": "Define steps: one initial state (start), intermediate states, and at least one final state.",
@@ -1035,7 +1083,7 @@
       "step_roles": "Optionally restrict an action to specific profiles; otherwise it is open to all.",
       "step_save": "Save then test from the related business module.",
       "leave_example": "Leave example: Pending → approve → Approved, or reject → Rejected.",
-      "tma_example": "TMA example: Open → assign → Assigned → resolve → Resolved, with reopen → Rework loop."
+      "tma_example": "TMA example: Awaiting creation → validate_creation → Open → assign → Assigned → resolve → Resolved, with reopen → Rework."
     },
     "validation": {
       "code_required": "Workflow code is required.",
