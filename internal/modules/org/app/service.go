@@ -93,6 +93,14 @@ func (s *organizationService) ListApplications(ctx context.Context, tenant kerne
 	return s.repo.ListApplications(ctx, tenant)
 }
 
+func (s *organizationService) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {
+	return s.repo.ListEquipes(ctx, tenant)
+}
+
+func (s *organizationService) ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error) {
+	return s.repo.ListServices(ctx, tenant)
+}
+
 func (s *organizationService) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
 	return s.repo.GetApplication(ctx, tenant, id)
 }

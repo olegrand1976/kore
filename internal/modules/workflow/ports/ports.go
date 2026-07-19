@@ -45,12 +45,33 @@ type WorkflowRepository interface {
 	ListLogs(ctx context.Context, tenant kernel.TenantID, instanceID domain.InstanceID) ([]domain.TransitionLog, error)
 }
 
+type SideEffectContext struct {
+	TenantID       kernel.TenantID
+	InstanceID     domain.InstanceID
+	DefinitionCode string
+	EntityID       string
+	FromState      domain.StateCode
+	ToState        domain.StateCode
+	Action         domain.ActionCode
+	ActorID        uuid.UUID
+}
+
+type SideEffectExecutor interface {
+	Execute(ctx context.Context, effects []domain.SideEffect, effectCtx SideEffectContext) error
+}
+
 type TransitionPublisher interface {
 	Publish(ctx context.Context, evt domain.TransitionOccurred) error
 }
 
 type GuardEvaluator interface {
 	Evaluate(ctx context.Context, guard string, entityID string) (bool, error)
+}
+
+type NoopSideEffectExecutor struct{}
+
+func (NoopSideEffectExecutor) Execute(_ context.Context, _ []domain.SideEffect, _ SideEffectContext) error {
+	return nil
 }
 
 type NoopTransitionPublisher struct{}

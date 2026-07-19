@@ -36,6 +36,12 @@ func (r refreshUserRepo) SaveApplication(context.Context, domain.Application) er
 func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }
+func (r refreshUserRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+	return nil, nil
+}
+func (r refreshUserRepo) ListServices(context.Context, kernel.TenantID) ([]domain.ServiceSummary, error) {
+	return nil, nil
+}
 func (r refreshUserRepo) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
 }

@@ -40,6 +40,12 @@ func (s *oidcRepoStub) SaveApplication(context.Context, domain.Application) erro
 func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }
+func (s *oidcRepoStub) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+	return nil, nil
+}
+func (s *oidcRepoStub) ListServices(context.Context, kernel.TenantID) ([]domain.ServiceSummary, error) {
+	return nil, nil
+}
 func (s *oidcRepoStub) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
 }

@@ -21,6 +21,7 @@ type Service struct {
 	cache     cache.Cache
 	keys      cache.KeyBuilder
 	publisher ports.TransitionPublisher
+	effects   ports.SideEffectExecutor
 	guards    ports.GuardEvaluator
 	clock     func() time.Time
 }
@@ -30,15 +31,20 @@ func NewService(
 	appCache cache.Cache,
 	keys cache.KeyBuilder,
 	publisher ports.TransitionPublisher,
+	effects ports.SideEffectExecutor,
 ) ports.WorkflowService {
 	if publisher == nil {
 		publisher = ports.NoopTransitionPublisher{}
+	}
+	if effects == nil {
+		effects = ports.NoopSideEffectExecutor{}
 	}
 	return &Service{
 		repo:      repo,
 		cache:     appCache,
 		keys:      keys,
 		publisher: publisher,
+		effects:   effects,
 		guards:    ports.NoopGuardEvaluator{},
 		clock:     time.Now,
 	}
@@ -94,7 +100,19 @@ func (s *Service) Start(ctx context.Context, cmd ports.StartInstanceCommand) (do
 		EntityID:       cmd.EntityID,
 		CurrentState:   initial,
 	}
-	return inst, s.repo.SaveInstance(ctx, inst)
+	if err := s.repo.SaveInstance(ctx, inst); err != nil {
+		return domain.WorkflowInstance{}, err
+	}
+	if state, ok := def.FindState(initial); ok {
+		s.runEffects(ctx, state.OnEnterEffects, ports.SideEffectContext{
+			TenantID:       cmd.TenantID,
+			InstanceID:     inst.ID,
+			DefinitionCode: cmd.DefinitionCode,
+			EntityID:       cmd.EntityID,
+			ToState:        initial,
+		})
+	}
+	return inst, nil
 }
 
 func (s *Service) Fire(ctx context.Context, cmd ports.FireTransitionCommand) (domain.WorkflowInstance, error) {
@@ -150,7 +168,28 @@ func (s *Service) Fire(ctx context.Context, cmd ports.FireTransitionCommand) (do
 		Action:         cmd.Action,
 		ActorID:        cmd.Actor.UserID,
 	})
+	effectCtx := ports.SideEffectContext{
+		TenantID:       cmd.TenantID,
+		InstanceID:     inst.ID,
+		DefinitionCode: inst.DefinitionCode,
+		EntityID:       inst.EntityID,
+		FromState:      from,
+		ToState:        transition.To,
+		Action:         cmd.Action,
+		ActorID:        cmd.Actor.UserID,
+	}
+	s.runEffects(ctx, transition.OnFireEffects, effectCtx)
+	if state, ok := def.FindState(transition.To); ok {
+		s.runEffects(ctx, state.OnEnterEffects, effectCtx)
+	}
 	return inst, nil
+}
+
+func (s *Service) runEffects(ctx context.Context, effects []domain.SideEffect, effectCtx ports.SideEffectContext) {
+	if len(effects) == 0 {
+		return
+	}
+	_ = s.effects.Execute(ctx, effects, effectCtx)
 }
 
 func (s *Service) AvailableActions(ctx context.Context, tenant kernel.TenantID, instanceID domain.InstanceID, actor authx.Identity) ([]domain.ActionCode, error) {

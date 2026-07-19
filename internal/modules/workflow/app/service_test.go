@@ -107,7 +107,7 @@ func TestService_FireTransition_AppendsLogAndPublishes(t *testing.T) {
 	}
 	require.NoError(t, repo.SaveInstance(context.Background(), inst))
 
-	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), pub)
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), pub, nil)
 	actor := authx.Identity{UserID: uuid.New(), Profile: authx.Profile("Chef d'équipe")}
 
 	updated, err := svc.Fire(context.Background(), ports.FireTransitionCommand{
@@ -150,7 +150,7 @@ func TestService_AvailableActions_RespectsRoles(t *testing.T) {
 	}
 	require.NoError(t, repo.SaveInstance(context.Background(), inst))
 
-	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil)
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil, nil)
 	actions, err := svc.AvailableActions(context.Background(), tenant, inst.ID, authx.Identity{
 		UserID:  uuid.New(),
 		Profile: authx.Profile("Collaborateur"),
@@ -181,7 +181,7 @@ func TestService_Start_UsesInitialState(t *testing.T) {
 	}
 	require.NoError(t, repo.SaveDefinition(context.Background(), def))
 
-	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil)
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil, nil)
 	inst, err := svc.Start(context.Background(), ports.StartInstanceCommand{
 		TenantID:       tenant,
 		DefinitionCode: "demo",
@@ -210,7 +210,7 @@ func TestService_Start_CustomInstanceIDAndInitialState(t *testing.T) {
 	}
 	require.NoError(t, repo.SaveDefinition(context.Background(), def))
 
-	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil)
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil, nil)
 	inst, err := svc.Start(context.Background(), ports.StartInstanceCommand{
 		TenantID:       tenant,
 		DefinitionCode: "demo",

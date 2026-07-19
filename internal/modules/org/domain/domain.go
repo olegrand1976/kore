@@ -160,6 +160,19 @@ type Service struct {
 	ResponsableID *uuid.UUID
 }
 
+type Equipe struct {
+	ID            uuid.UUID       `json:"id"`
+	TenantID      kernel.TenantID `json:"tenantId"`
+	ApplicationID uuid.UUID       `json:"applicationId"`
+	Libelle       string          `json:"libelle"`
+}
+
+type ServiceSummary struct {
+	ID        uuid.UUID `json:"id"`
+	SiteID    uuid.UUID `json:"siteId"`
+	SiteLabel string    `json:"siteLabel,omitempty"`
+}
+
 type Application struct {
 	ID              uuid.UUID       `json:"id"`
 	TenantID        kernel.TenantID `json:"tenantId"`

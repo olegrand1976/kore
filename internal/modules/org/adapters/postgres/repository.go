@@ -328,6 +328,53 @@ func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantI
 	return out, rows.Err()
 }
 
+func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, application_id, libelle
+		FROM org.equipes
+		WHERE tenant_id = $1
+		ORDER BY libelle
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.Equipe
+	for rows.Next() {
+		var e domain.Equipe
+		var tenantID uuid.UUID
+		if err := rows.Scan(&e.ID, &tenantID, &e.ApplicationID, &e.Libelle); err != nil {
+			return nil, err
+		}
+		e.TenantID = kernel.NewTenantID(tenantID)
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT s.id, s.site_id, COALESCE(st.libelle, '')
+		FROM org.services s
+		LEFT JOIN org.sites st ON st.id = s.site_id
+		WHERE s.tenant_id = $1
+		ORDER BY st.libelle, s.id
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.ServiceSummary
+	for rows.Next() {
+		var item domain.ServiceSummary
+		if err := rows.Scan(&item.ID, &item.SiteID, &item.SiteLabel); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, service_id, libelle,
@@ -700,6 +747,26 @@ func (r *Repository) ResolveServiceUserEmails(ctx context.Context, tenant kernel
 		JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
 		WHERE u.tenant_id = $1 AND a.service_id = $2 AND u.active = TRUE
 	`, tenant.UUID(), serviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var emails []string
+	for rows.Next() {
+		var login string
+		if err := rows.Scan(&login); err != nil {
+			return nil, err
+		}
+		emails = append(emails, login+"@kore.local")
+	}
+	return emails, rows.Err()
+}
+
+func (r *Repository) ResolveTenantUserEmails(ctx context.Context, tenant kernel.TenantID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT login FROM org.users
+		WHERE tenant_id = $1 AND active = TRUE
+	`, tenant.UUID())
 	if err != nil {
 		return nil, err
 	}

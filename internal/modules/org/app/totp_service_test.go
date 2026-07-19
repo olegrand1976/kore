@@ -40,6 +40,12 @@ func (r *totpUserRepo) SaveApplication(context.Context, domain.Application) erro
 func (r *totpUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }
+func (r *totpUserRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+	return nil, nil
+}
+func (r *totpUserRepo) ListServices(context.Context, kernel.TenantID) ([]domain.ServiceSummary, error) {
+	return nil, nil
+}
 func (r *totpUserRepo) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
 }

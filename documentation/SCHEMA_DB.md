@@ -346,6 +346,7 @@ Moteur de workflow générique.
 | `label` | TEXT | NOT NULL, DEFAULT `''` |
 | `is_initial` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | `is_final` | BOOLEAN | NOT NULL, DEFAULT FALSE |
+| `on_enter_effects` | JSONB | NOT NULL, DEFAULT `'[]'` — effets à l'entrée (emails, etc.) |
 
 **Contraintes** : `UNIQUE (definition_id, code)`
 
@@ -361,6 +362,7 @@ Moteur de workflow générique.
 | `guard` | TEXT | NOT NULL, DEFAULT `''` |
 | `doc_trigger` | JSONB | |
 | `allowed_roles` | TEXT[] | NOT NULL, DEFAULT `'{}'` |
+| `on_fire_effects` | JSONB | NOT NULL, DEFAULT `'[]'` — effets au déclenchement (emails, etc.) |
 
 **Contraintes** : `UNIQUE (definition_id, from_state, action)`
 

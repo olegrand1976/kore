@@ -1040,6 +1040,7 @@
       "customize_title": "Allowed customization",
       "customize_labels": "Step labels (display)",
       "customize_roles": "Allowed profiles per action",
+      "customize_effects": "Automatic emails on state entry or action fire",
       "restore": "Restore recommended template",
       "restored": "Recommended template restored.",
       "summary_leave": "Each leave request starts as pending. A manager approves or rejects from the Leave validation screen.",
@@ -1081,6 +1082,7 @@
       "step_states": "Define steps: one initial state (start), intermediate states, and at least one final state.",
       "step_transitions": "Connect states with actions (e.g. approve, reject, assign) — these become buttons in the app.",
       "step_roles": "Optionally restrict an action to specific profiles; otherwise it is open to all.",
+      "step_effects": "Optional: configure emails when entering a state or when firing an action (custom recipients).",
       "step_save": "Save then test from the related business module.",
       "leave_example": "Leave example: Pending → approve → Approved, or reject → Rejected.",
       "tma_example": "TMA example: Awaiting creation → validate_creation → Open → assign → Assigned → resolve → Resolved, with reopen → Rework."
@@ -1093,7 +1095,33 @@
       "one_final": "At least one state must be marked as final.",
       "duplicate_state": "State codes must be unique.",
       "orphan_transition": "Each transition must link existing states.",
-      "transition_action_required": "Each transition must have an action."
+      "transition_action_required": "Each transition must have an action.",
+      "side_effect_invalid": "A configured side effect is invalid.",
+      "side_effect_subject_required": "Each email must have a subject or body.",
+      "side_effect_recipients_required": "Each email must have recipients.",
+      "too_many_side_effects": "Too many side effects (maximum 10 per step)."
+    },
+    "effects": {
+      "hint": "Send an automatic email when this step is reached or when the action is fired.",
+      "on_enter_title": "Emails on state entry",
+      "on_fire_title": "Emails on action",
+      "add_email": "Add email",
+      "remove": "Remove",
+      "email_title": "Email {n}",
+      "recipient_scope": "Recipients",
+      "scope_user": "Person(s)",
+      "scope_equipe": "Team",
+      "scope_service": "Service",
+      "scope_application": "Application",
+      "scope_all": "Everyone",
+      "pick_users": "Select users",
+      "pick_equipe": "Team",
+      "pick_service": "Service",
+      "pick_application": "Application",
+      "select_option": "Choose…",
+      "subject": "Subject",
+      "body": "Message body",
+      "template_vars": "Variables: {{entityId}}, {{definitionCode}}, {{fromState}}, {{toState}}, {{action}}, {{actorId}}, {{instanceId}}"
     }
   },
   "notifications": {

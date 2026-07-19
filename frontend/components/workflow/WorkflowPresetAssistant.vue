@@ -61,6 +61,7 @@ const flowSteps = computed(() =>
       <ul class="wf-assistant__customize">
         <li>{{ $t('workflows.assistant.customize_labels') }}</li>
         <li>{{ $t('workflows.assistant.customize_roles') }}</li>
+        <li>{{ $t('workflows.assistant.customize_effects') }}</li>
       </ul>
     </div>
 

@@ -20,7 +20,14 @@ const { createEmptyState } = useWorkflowDefinition()
 const isGuided = computed(() => props.guided === true)
 
 const updateState = (index: number, patch: Partial<WorkflowState>) => {
-  const next = props.states.map((s, i) => (i === index ? { ...s, ...patch } : s))
+  const next = props.states.map((s, i) => {
+    if (i !== index) return s
+    const merged = { ...s, ...patch }
+    if (patch.onEnterEffects === undefined && !merged.onEnterEffects) {
+      merged.onEnterEffects = []
+    }
+    return merged
+  })
   if (patch.isInitial) {
     emit('update:states', next.map((s, i) => ({ ...s, isInitial: i === index })))
     return
@@ -79,6 +86,15 @@ const stateHint = (code: string) => {
           <template #label>{{ $t('workflows.col_label') }}</template>
         </AppInput>
         <p v-if="stateHint(state.code)" class="settings-hint">{{ stateHint(state.code) }}</p>
+
+        <div class="wf-state-form__effects">
+          <h4 class="wf-state-form__effects-title">{{ $t('workflows.effects.on_enter_title') }}</h4>
+          <WorkflowSideEffectsEditor
+            :id-prefix="`state-${index}`"
+            :model-value="state.onEnterEffects ?? []"
+            @update:model-value="updateState(index, { onEnterEffects: $event })"
+          />
+        </div>
       </template>
 
       <template v-else>
@@ -131,6 +147,15 @@ const stateHint = (code: string) => {
         >
           {{ $t('workflows.remove_state') }}
         </AppButton>
+
+        <div class="wf-state-form__effects">
+          <h4 class="wf-state-form__effects-title">{{ $t('workflows.effects.on_enter_title') }}</h4>
+          <WorkflowSideEffectsEditor
+            :id-prefix="`state-${index}`"
+            :model-value="state.onEnterEffects ?? []"
+            @update:model-value="updateState(index, { onEnterEffects: $event })"
+          />
+        </div>
       </template>
     </div>
 
@@ -196,6 +221,18 @@ const stateHint = (code: string) => {
   margin: 0;
   color: var(--kore-text-muted);
   font-size: var(--kore-text-small);
+}
+
+.wf-state-form__effects {
+  display: grid;
+  gap: var(--kore-space-sm);
+  margin-top: var(--kore-space-sm);
+}
+
+.wf-state-form__effects-title {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

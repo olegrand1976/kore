@@ -50,10 +50,14 @@ func (r *Repository) SaveDefinition(ctx context.Context, def domain.WorkflowDefi
 			return err
 		}
 		for _, state := range def.States {
+			onEnter, err := marshalSideEffects(state.OnEnterEffects)
+			if err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO workflow.states (id, definition_id, code, label, is_initial, is_final)
-				VALUES ($1, $2, $3, $4, $5, $6)
-			`, uuid.New(), defID, string(state.Code), state.Label, state.IsInitial, state.IsFinal); err != nil {
+				INSERT INTO workflow.states (id, definition_id, code, label, is_initial, is_final, on_enter_effects)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)
+			`, uuid.New(), defID, string(state.Code), state.Label, state.IsInitial, state.IsFinal, onEnter); err != nil {
 				return err
 			}
 		}
@@ -65,12 +69,16 @@ func (r *Repository) SaveDefinition(ctx context.Context, def domain.WorkflowDefi
 					return err
 				}
 			}
+			onFire, err := marshalSideEffects(tr.OnFireEffects)
+			if err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO workflow.transitions (
-					id, definition_id, from_state, to_state, action, guard, doc_trigger, allowed_roles
-				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+					id, definition_id, from_state, to_state, action, guard, doc_trigger, allowed_roles, on_fire_effects
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			`, uuid.New(), defID, string(tr.From), string(tr.To), string(tr.Action),
-				tr.Guard, docTrigger, tr.AllowedRoles); err != nil {
+				tr.Guard, docTrigger, tr.AllowedRoles, onFire); err != nil {
 				return err
 			}
 		}
@@ -94,7 +102,7 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 	def.TenantID = kernel.NewTenantID(tenantID)
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT code, label, is_initial, is_final FROM workflow.states WHERE definition_id = $1 ORDER BY code
+		SELECT code, label, is_initial, is_final, on_enter_effects FROM workflow.states WHERE definition_id = $1 ORDER BY code
 	`, def.ID)
 	if err != nil {
 		return domain.WorkflowDefinition{}, err
@@ -103,10 +111,15 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 	for rows.Next() {
 		var s domain.State
 		var code string
-		if err := rows.Scan(&code, &s.Label, &s.IsInitial, &s.IsFinal); err != nil {
+		var onEnter []byte
+		if err := rows.Scan(&code, &s.Label, &s.IsInitial, &s.IsFinal, &onEnter); err != nil {
 			return domain.WorkflowDefinition{}, err
 		}
 		s.Code = domain.StateCode(code)
+		s.OnEnterEffects, err = unmarshalSideEffects(onEnter)
+		if err != nil {
+			return domain.WorkflowDefinition{}, err
+		}
 		def.States = append(def.States, s)
 	}
 	if err := rows.Err(); err != nil {
@@ -114,7 +127,7 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 	}
 
 	trows, err := r.pool.Query(ctx, `
-		SELECT from_state, to_state, action, guard, doc_trigger, allowed_roles
+		SELECT from_state, to_state, action, guard, doc_trigger, allowed_roles, on_fire_effects
 		FROM workflow.transitions WHERE definition_id = $1 ORDER BY from_state, action
 	`, def.ID)
 	if err != nil {
@@ -125,7 +138,8 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 		var tr domain.Transition
 		var from, to, action string
 		var docTrigger []byte
-		if err := trows.Scan(&from, &to, &action, &tr.Guard, &docTrigger, &tr.AllowedRoles); err != nil {
+		var onFire []byte
+		if err := trows.Scan(&from, &to, &action, &tr.Guard, &docTrigger, &tr.AllowedRoles, &onFire); err != nil {
 			return domain.WorkflowDefinition{}, err
 		}
 		tr.From = domain.StateCode(from)
@@ -137,6 +151,10 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 				return domain.WorkflowDefinition{}, err
 			}
 			tr.DocumentTrigger = &trigger
+		}
+		tr.OnFireEffects, err = unmarshalSideEffects(onFire)
+		if err != nil {
+			return domain.WorkflowDefinition{}, err
 		}
 		def.Transitions = append(def.Transitions, tr)
 	}
@@ -211,6 +229,24 @@ func (r *Repository) ListLogs(ctx context.Context, tenant kernel.TenantID, insta
 		out = append(out, log)
 	}
 	return out, rows.Err()
+}
+
+func marshalSideEffects(effects []domain.SideEffect) ([]byte, error) {
+	if len(effects) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal(effects)
+}
+
+func unmarshalSideEffects(raw []byte) ([]domain.SideEffect, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var effects []domain.SideEffect
+	if err := json.Unmarshal(raw, &effects); err != nil {
+		return nil, err
+	}
+	return effects, nil
 }
 
 var _ ports.WorkflowRepository = (*Repository)(nil)

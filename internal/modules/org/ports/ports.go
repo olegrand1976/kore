@@ -93,6 +93,8 @@ type OrganizationRepository interface {
 	SaveService(ctx context.Context, s domain.Service) error
 	SaveApplication(ctx context.Context, a domain.Application) error
 	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
+	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
@@ -203,6 +205,8 @@ type OrganizationService interface {
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
 	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
+	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)

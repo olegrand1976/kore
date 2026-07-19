@@ -27,10 +27,11 @@ type Trigger struct {
 }
 
 type State struct {
-	Code      StateCode
-	Label     string
-	IsInitial bool
-	IsFinal   bool
+	Code            StateCode
+	Label           string
+	IsInitial       bool
+	IsFinal         bool
+	OnEnterEffects  []SideEffect
 }
 
 type Transition struct {
@@ -40,6 +41,7 @@ type Transition struct {
 	Guard           string
 	DocumentTrigger *Trigger
 	AllowedRoles    []string
+	OnFireEffects   []SideEffect
 }
 
 type WorkflowDefinition struct {
@@ -75,7 +77,7 @@ func (d WorkflowDefinition) Validate() error {
 	if finalCount == 0 {
 		return fmt.Errorf("%w: at least one final state required", ErrInvalidDefinition)
 	}
-	return nil
+	return d.ValidateSideEffects()
 }
 
 func (d WorkflowDefinition) InitialState() (StateCode, error) {

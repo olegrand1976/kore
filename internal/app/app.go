@@ -194,7 +194,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	)
 	deviceService := notifapp.NewDeviceService(notifRepo)
 	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
-	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService))
+	wfEffects := wfnotif.NewEffectsExecutor(orgRepo, notifService)
+	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService), wfEffects)
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
 		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).

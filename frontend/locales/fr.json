@@ -1040,6 +1040,7 @@
       "customize_title": "Personnalisation autorisée",
       "customize_labels": "Libellés des étapes (affichage)",
       "customize_roles": "Profils autorisés par action",
+      "customize_effects": "Emails automatiques à l'entrée d'état ou lors des actions",
       "restore": "Restaurer le modèle recommandé",
       "restored": "Modèle recommandé restauré.",
       "summary_leave": "Chaque demande de congé démarre en attente. Un manager valide ou refuse depuis l'écran Validation congés.",
@@ -1081,6 +1082,7 @@
       "step_states": "Définissez les étapes : un état initial (départ), des états intermédiaires et au moins un état final.",
       "step_transitions": "Reliez les états avec des actions (ex. approve, reject, assign) — ce sont les boutons dans l'application.",
       "step_roles": "Restreignez optionnellement une action à certains profils ; sinon elle est ouverte à tous.",
+      "step_effects": "Optionnel : configurez des emails à l'entrée d'un état ou lors d'une action (destinataires personnalisables).",
       "step_save": "Enregistrez puis testez depuis le module métier concerné.",
       "leave_example": "Exemple congés : En attente → approve → Validé, ou reject → Refusé.",
       "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework."
@@ -1093,7 +1095,33 @@
       "one_final": "Au moins un état doit être marqué comme final.",
       "duplicate_state": "Les codes d'état doivent être uniques.",
       "orphan_transition": "Chaque transition doit relier des états existants.",
-      "transition_action_required": "Chaque transition doit avoir une action."
+      "transition_action_required": "Chaque transition doit avoir une action.",
+      "side_effect_invalid": "Un effet configuré est invalide.",
+      "side_effect_subject_required": "Chaque email doit avoir un sujet ou un corps.",
+      "side_effect_recipients_required": "Chaque email doit avoir des destinataires.",
+      "too_many_side_effects": "Trop d'effets configurés (maximum 10 par étape)."
+    },
+    "effects": {
+      "hint": "Envoyez un email automatique lorsque cette étape est atteinte ou lorsque l'action est déclenchée.",
+      "on_enter_title": "Emails à l'entrée de l'état",
+      "on_fire_title": "Emails lors de l'action",
+      "add_email": "Ajouter un email",
+      "remove": "Supprimer",
+      "email_title": "Email {n}",
+      "recipient_scope": "Destinataires",
+      "scope_user": "Personne(s)",
+      "scope_equipe": "Équipe",
+      "scope_service": "Service",
+      "scope_application": "Application",
+      "scope_all": "Tout le monde",
+      "pick_users": "Sélectionner des utilisateurs",
+      "pick_equipe": "Équipe",
+      "pick_service": "Service",
+      "pick_application": "Application",
+      "select_option": "Choisir…",
+      "subject": "Sujet",
+      "body": "Corps du message",
+      "template_vars": "Variables : {{entityId}}, {{definitionCode}}, {{fromState}}, {{toState}}, {{action}}, {{actorId}}, {{instanceId}}"
     }
   },
   "notifications": {

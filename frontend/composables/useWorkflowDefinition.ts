@@ -1,8 +1,26 @@
+export type WorkflowRecipientScope = 'user' | 'equipe' | 'service' | 'application' | 'all'
+
+export type WorkflowSideEffectRecipients = {
+  scope: WorkflowRecipientScope
+  userIds?: string[]
+  equipeId?: string
+  serviceId?: string
+  applicationId?: string
+}
+
+export type WorkflowSideEffect = {
+  type: 'email'
+  recipients: WorkflowSideEffectRecipients
+  subject: string
+  bodyTemplate: string
+}
+
 export type WorkflowState = {
   code: string
   label: string
   isInitial: boolean
   isFinal: boolean
+  onEnterEffects?: WorkflowSideEffect[]
 }
 
 export type WorkflowTransition = {
@@ -11,6 +29,7 @@ export type WorkflowTransition = {
   action: string
   guard?: string
   allowedRoles: string[]
+  onFireEffects?: WorkflowSideEffect[]
 }
 
 export type WorkflowDefinition = {
@@ -20,7 +39,11 @@ export type WorkflowDefinition = {
   transitions: WorkflowTransition[]
 }
 
-export type WorkflowPresetCode = 'leave.request' | 'tma.incident'
+export const WORKFLOW_RECIPIENT_SCOPES = ['user', 'equipe', 'service', 'application', 'all'] as const
+
+export type WorkflowRecipientScopeOption = (typeof WORKFLOW_RECIPIENT_SCOPES)[number]
+
+export const MAX_SIDE_EFFECTS_PER_HOOK = 10
 
 export const WORKFLOW_PRESET_CODES: WorkflowPresetCode[] = ['leave.request', 'tma.incident']
 
@@ -212,6 +235,30 @@ export const WORKFLOW_PRESETS: Record<
   'tma.incident': WORKFLOW_PRESET_META['tma.incident']
 }
 
+type RawWorkflowSideEffect = {
+  type?: string
+  Type?: string
+  recipients?: RawWorkflowSideEffectRecipients
+  Recipients?: RawWorkflowSideEffectRecipients
+  subject?: string
+  Subject?: string
+  bodyTemplate?: string
+  BodyTemplate?: string
+}
+
+type RawWorkflowSideEffectRecipients = {
+  scope?: string
+  Scope?: string
+  userIds?: string[]
+  UserIDs?: string[]
+  equipeId?: string
+  EquipeID?: string
+  serviceId?: string
+  ServiceID?: string
+  applicationId?: string
+  ApplicationID?: string
+}
+
 type RawWorkflowState = {
   code?: string
   Code?: string
@@ -221,6 +268,8 @@ type RawWorkflowState = {
   IsInitial?: boolean
   isFinal?: boolean
   IsFinal?: boolean
+  onEnterEffects?: RawWorkflowSideEffect[]
+  OnEnterEffects?: RawWorkflowSideEffect[]
 }
 
 type RawWorkflowTransition = {
@@ -234,6 +283,8 @@ type RawWorkflowTransition = {
   Guard?: string
   allowedRoles?: string[]
   AllowedRoles?: string[]
+  onFireEffects?: RawWorkflowSideEffect[]
+  OnFireEffects?: RawWorkflowSideEffect[]
 }
 
 export type RawWorkflowDefinition = {
@@ -256,6 +307,96 @@ export type WorkflowValidationCode =
   | 'duplicate_state'
   | 'orphan_transition'
   | 'transition_action_required'
+  | 'side_effect_invalid'
+  | 'side_effect_subject_required'
+  | 'side_effect_recipients_required'
+  | 'too_many_side_effects'
+
+function normalizeRecipientScope(raw: string | undefined): WorkflowRecipientScope {
+  switch (raw) {
+    case 'user':
+    case 'equipe':
+    case 'service':
+    case 'application':
+    case 'all':
+      return raw
+    default:
+      return 'user'
+  }
+}
+
+function normalizeSideEffectRecipients(raw: RawWorkflowSideEffectRecipients | undefined): WorkflowSideEffectRecipients {
+  const scope = normalizeRecipientScope(raw?.scope ?? raw?.Scope)
+  return {
+    scope,
+    userIds: raw?.userIds ?? raw?.UserIDs ?? [],
+    equipeId: raw?.equipeId ?? raw?.EquipeID,
+    serviceId: raw?.serviceId ?? raw?.ServiceID,
+    applicationId: raw?.applicationId ?? raw?.ApplicationID
+  }
+}
+
+function normalizeSideEffect(raw: RawWorkflowSideEffect): WorkflowSideEffect {
+  const type = raw.type ?? raw.Type ?? 'email'
+  if (type !== 'email') {
+    return {
+      type: 'email',
+      recipients: { scope: 'user', userIds: [] },
+      subject: '',
+      bodyTemplate: ''
+    }
+  }
+  return {
+    type: 'email',
+    recipients: normalizeSideEffectRecipients(raw.recipients ?? raw.Recipients),
+    subject: raw.subject ?? raw.Subject ?? '',
+    bodyTemplate: raw.bodyTemplate ?? raw.BodyTemplate ?? ''
+  }
+}
+
+function normalizeSideEffects(raw: RawWorkflowSideEffect[] | undefined): WorkflowSideEffect[] {
+  return (raw ?? []).map(normalizeSideEffect)
+}
+
+function validateSideEffects(effects: WorkflowSideEffect[] | undefined): WorkflowValidationCode[] {
+  const errors: WorkflowValidationCode[] = []
+  const list = effects ?? []
+  if (list.length > MAX_SIDE_EFFECTS_PER_HOOK) {
+    errors.push('too_many_side_effects')
+    return errors
+  }
+  for (const effect of list) {
+    if (effect.type !== 'email') {
+      errors.push('side_effect_invalid')
+      continue
+    }
+    if (!effect.subject.trim() && !effect.bodyTemplate.trim()) {
+      errors.push('side_effect_subject_required')
+    }
+    switch (effect.recipients.scope) {
+      case 'all':
+        break
+      case 'user':
+        if (!(effect.recipients.userIds?.length ?? 0)) errors.push('side_effect_recipients_required')
+        break
+      case 'equipe':
+        if (!effect.recipients.equipeId?.trim()) errors.push('side_effect_recipients_required')
+        break
+      case 'service':
+        if (!effect.recipients.serviceId?.trim()) errors.push('side_effect_recipients_required')
+        break
+      case 'application':
+        if (!effect.recipients.applicationId?.trim()) errors.push('side_effect_recipients_required')
+        break
+      default: {
+        const _exhaustive: never = effect.recipients.scope
+        errors.push('side_effect_invalid')
+        void _exhaustive
+      }
+    }
+  }
+  return errors
+}
 
 function transitionKey(tr: Pick<WorkflowTransition, 'from' | 'action' | 'to'>): string {
   return `${tr.from}|${tr.action}|${tr.to}`
@@ -291,17 +432,23 @@ export function buildPresetDefinition(code: WorkflowPresetCode): WorkflowDefinit
 export function mergePresetWithLoaded(code: WorkflowPresetCode, loaded: WorkflowDefinition): WorkflowDefinition {
   const preset = buildPresetDefinition(code)
   const labelByCode = new Map(loaded.states.map((s) => [s.code, s.label]))
+  const effectsByState = new Map(loaded.states.map((s) => [s.code, s.onEnterEffects ?? []]))
   const rolesByKey = new Map(loaded.transitions.map((tr) => [transitionKey(tr), tr.allowedRoles]))
+  const effectsByTransition = new Map(
+    loaded.transitions.map((tr) => [transitionKey(tr), tr.onFireEffects ?? []])
+  )
 
   return {
     ...preset,
     states: preset.states.map((s) => ({
       ...s,
-      label: labelByCode.get(s.code)?.trim() || s.label
+      label: labelByCode.get(s.code)?.trim() || s.label,
+      onEnterEffects: effectsByState.get(s.code) ?? []
     })),
     transitions: preset.transitions.map((tr) => ({
       ...tr,
-      allowedRoles: rolesByKey.get(transitionKey(tr)) ?? tr.allowedRoles
+      allowedRoles: rolesByKey.get(transitionKey(tr)) ?? tr.allowedRoles,
+      onFireEffects: effectsByTransition.get(transitionKey(tr)) ?? []
     }))
   }
 }
@@ -351,14 +498,16 @@ export function normalizeDefinition(raw: RawWorkflowDefinition, fallbackCode: st
       code: s.code ?? s.Code ?? '',
       label: s.label ?? s.Label ?? '',
       isInitial: s.isInitial ?? s.IsInitial ?? false,
-      isFinal: s.isFinal ?? s.IsFinal ?? false
+      isFinal: s.isFinal ?? s.IsFinal ?? false,
+      onEnterEffects: normalizeSideEffects(s.onEnterEffects ?? s.OnEnterEffects)
     })),
     transitions: (raw.transitions ?? raw.Transitions ?? []).map((tr) => ({
       from: tr.from ?? tr.From ?? '',
       to: tr.to ?? tr.To ?? '',
       action: tr.action ?? tr.Action ?? '',
       guard: tr.guard ?? tr.Guard ?? '',
-      allowedRoles: tr.allowedRoles ?? tr.AllowedRoles ?? []
+      allowedRoles: tr.allowedRoles ?? tr.AllowedRoles ?? [],
+      onFireEffects: normalizeSideEffects(tr.onFireEffects ?? tr.OnFireEffects)
     }))
   }
 
@@ -376,15 +525,32 @@ export function buildPayload(definition: WorkflowDefinition): WorkflowDefinition
       code: s.code.trim(),
       label: s.label.trim(),
       isInitial: s.isInitial,
-      isFinal: s.isFinal
+      isFinal: s.isFinal,
+      onEnterEffects: (s.onEnterEffects ?? []).map(sanitizeSideEffect)
     })),
     transitions: definition.transitions.map((tr) => ({
       from: tr.from.trim(),
       to: tr.to.trim(),
       action: tr.action.trim(),
       guard: tr.guard?.trim() ?? '',
-      allowedRoles: [...tr.allowedRoles]
+      allowedRoles: [...tr.allowedRoles],
+      onFireEffects: (tr.onFireEffects ?? []).map(sanitizeSideEffect)
     }))
+  }
+}
+
+function sanitizeSideEffect(effect: WorkflowSideEffect): WorkflowSideEffect {
+  return {
+    type: 'email',
+    recipients: {
+      scope: effect.recipients.scope,
+      userIds: effect.recipients.userIds?.filter(Boolean),
+      equipeId: effect.recipients.equipeId?.trim() || undefined,
+      serviceId: effect.recipients.serviceId?.trim() || undefined,
+      applicationId: effect.recipients.applicationId?.trim() || undefined
+    },
+    subject: effect.subject.trim(),
+    bodyTemplate: effect.bodyTemplate.trim()
   }
 }
 
@@ -413,6 +579,11 @@ export function validateDefinition(definition: WorkflowDefinition): WorkflowVali
     if (!stateSet.has(tr.from.trim()) || !stateSet.has(tr.to.trim())) {
       errors.push('orphan_transition')
     }
+    errors.push(...validateSideEffects(tr.onFireEffects))
+  }
+
+  for (const state of definition.states) {
+    errors.push(...validateSideEffects(state.onEnterEffects))
   }
 
   return [...new Set(errors)]
@@ -430,11 +601,20 @@ export function stateReferencedByTransition(
 }
 
 export function createEmptyState(): WorkflowState {
-  return { code: '', label: '', isInitial: false, isFinal: false }
+  return { code: '', label: '', isInitial: false, isFinal: false, onEnterEffects: [] }
 }
 
 export function createEmptyTransition(): WorkflowTransition {
-  return { from: '', to: '', action: '', guard: '', allowedRoles: [] }
+  return { from: '', to: '', action: '', guard: '', allowedRoles: [], onFireEffects: [] }
+}
+
+export function createEmptySideEffect(): WorkflowSideEffect {
+  return {
+    type: 'email',
+    recipients: { scope: 'all' },
+    subject: '',
+    bodyTemplate: ''
+  }
 }
 
 export function useWorkflowDefinition() {
@@ -443,6 +623,8 @@ export function useWorkflowDefinition() {
     WORKFLOW_PRESETS,
     WORKFLOW_PRESET_META,
     WORKFLOW_ROLE_OPTIONS,
+    WORKFLOW_RECIPIENT_SCOPES,
+    MAX_SIDE_EFFECTS_PER_HOOK,
     normalizeDefinition,
     buildPresetDefinition,
     mergePresetWithLoaded,
@@ -455,6 +637,7 @@ export function useWorkflowDefinition() {
     isPresetCode,
     stateReferencedByTransition,
     createEmptyState,
-    createEmptyTransition
+    createEmptyTransition,
+    createEmptySideEffect
   }
 }

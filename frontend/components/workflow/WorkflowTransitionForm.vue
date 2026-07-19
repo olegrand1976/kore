@@ -104,6 +104,15 @@ const transitionMeta = (tr: WorkflowTransition) => {
             <span>{{ role }}</span>
           </label>
         </fieldset>
+
+        <div class="wf-transition-form__effects">
+          <h4 class="wf-transition-form__effects-title">{{ $t('workflows.effects.on_fire_title') }}</h4>
+          <WorkflowSideEffectsEditor
+            :id-prefix="`transition-${index}`"
+            :model-value="tr.onFireEffects ?? []"
+            @update:model-value="updateTransition(index, { onFireEffects: $event })"
+          />
+        </div>
       </template>
 
       <template v-else>
@@ -165,6 +174,15 @@ const transitionMeta = (tr: WorkflowTransition) => {
         <AppButton variant="ghost" size="sm" type="button" @click="removeTransition(index)">
           {{ $t('workflows.remove_transition') }}
         </AppButton>
+
+        <div class="wf-transition-form__effects">
+          <h4 class="wf-transition-form__effects-title">{{ $t('workflows.effects.on_fire_title') }}</h4>
+          <WorkflowSideEffectsEditor
+            :id-prefix="`transition-${index}`"
+            :model-value="tr.onFireEffects ?? []"
+            @update:model-value="updateTransition(index, { onFireEffects: $event })"
+          />
+        </div>
       </template>
     </div>
 
@@ -264,6 +282,18 @@ const transitionMeta = (tr: WorkflowTransition) => {
   align-items: center;
   gap: 0.35rem;
   font-size: var(--kore-text-small);
+}
+
+.wf-transition-form__effects {
+  display: grid;
+  gap: var(--kore-space-sm);
+  margin-top: var(--kore-space-sm);
+}
+
+.wf-transition-form__effects-title {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

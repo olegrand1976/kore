@@ -74,6 +74,7 @@ type RecipientResolver interface {
 	ResolveEquipeUserEmails(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]string, error)
 	ResolveApplicationUserEmails(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]string, error)
 	ResolveServiceUserEmails(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]string, error)
+	ResolveTenantUserEmails(ctx context.Context, tenant kernel.TenantID) ([]string, error)
 	ResolveEquipeUserIDs(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]uuid.UUID, error)
 	ResolveApplicationUserIDs(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]uuid.UUID, error)
 	ResolveServiceUserIDs(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]uuid.UUID, error)

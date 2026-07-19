@@ -34,6 +34,10 @@ func (r *captureResolver) ResolveServiceUserEmails(_ context.Context, _ kernel.T
 	return []string{"a@kore.local"}, nil
 }
 
+func (r *captureResolver) ResolveTenantUserEmails(_ context.Context, _ kernel.TenantID) ([]string, error) {
+	return []string{"all@kore.local"}, nil
+}
+
 func (r *captureResolver) ResolveEquipeUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
 	return []uuid.UUID{uuid.New()}, nil
 }

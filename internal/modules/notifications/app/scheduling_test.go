@@ -125,6 +125,10 @@ func (fakeResolver) ResolveServiceUserEmails(_ context.Context, _ kernel.TenantI
 	return []string{"user@example.com"}, nil
 }
 
+func (fakeResolver) ResolveTenantUserEmails(_ context.Context, _ kernel.TenantID) ([]string, error) {
+	return []string{"all@example.com"}, nil
+}
+
 func (fakeResolver) ResolveEquipeUserIDs(_ context.Context, _ kernel.TenantID, _ uuid.UUID) ([]uuid.UUID, error) {
 	return []uuid.UUID{uuid.New()}, nil
 }

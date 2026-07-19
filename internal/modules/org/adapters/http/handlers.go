@@ -55,6 +55,8 @@ func RegisterRoutes(
 		pr.Post("/applications", createApplication(org, authorizer))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
+		pr.Get("/equipes", listEquipes(org, authorizer))
+		pr.Get("/services", listServices(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Get("/users/me/2fa", get2FAStatusHandler(users))
@@ -292,6 +294,40 @@ func listApplications(org ports.OrganizationService, authorizer authx.Authorizer
 		}
 		identity, _ := authx.FromContext(r.Context())
 		items, err := org.ListApplications(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func listEquipes(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) &&
+			!authorizer.Can(r.Context(), "workflow", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := org.ListEquipes(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func listServices(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) &&
+			!authorizer.Can(r.Context(), "workflow", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := org.ListServices(r.Context(), identity.TenantID)
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
