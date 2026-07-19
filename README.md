@@ -21,6 +21,7 @@ Suite PSA/ESN unifiée autour du **CRA pivot** (temps → projet → facturation
 | --- | --- |
 | [`documentation/SPECIFICATION_FONCTIONNELLE.md`](documentation/SPECIFICATION_FONCTIONNELLE.md) | Spécification fonctionnelle (modules, processus, règles) |
 | [`documentation/ANALYSE_COMMERCIALE.md`](documentation/ANALYSE_COMMERCIALE.md) | Analyse commerciale et go-to-market |
+| [`documentation/FICHE_COMMERCIALE_EQUIPE.md`](documentation/FICHE_COMMERCIALE_EQUIPE.md) | Fiche terrain pour l'équipe commerciale |
 | [`technical/README.md`](technical/README.md) | Spécifications techniques, architecture, briques |
 | [`documentation/CHARTE_GRAPHIQUE.md`](documentation/CHARTE_GRAPHIQUE.md) | Charte visuelle UI |
 
