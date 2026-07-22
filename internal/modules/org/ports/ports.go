@@ -374,7 +374,7 @@ type PlatformOverview struct {
 	Tenants []TenantUsageSummary    `json:"tenants"`
 }
 
-const DefaultGeminiModel = "gemini-3.5-flash"
+const DefaultGeminiModel = "gemini-3.6-flash"
 
 type PlatformSettings struct {
 	GeminiModel string     `json:"geminiModel"`

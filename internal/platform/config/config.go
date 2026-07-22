@@ -78,7 +78,7 @@ func Load() (Config, error) {
 		PlatformAdminLogins:    envCSV("PLATFORM_ADMIN_LOGINS", "ADM_admin"),
 		AILLMProvider:          envOr("AI_LLM_PROVIDER", "stub"),
 		GeminiAPIKey:           envOr("GEMINI_API_KEY", ""),
-		GeminiModel:            envOr("GEMINI_MODEL", "gemini-3.5-flash"),
+		GeminiModel:            envOr("GEMINI_MODEL", "gemini-3.6-flash"),
 		PromptGuardBlock:       envBool("PROMPT_GUARD_BLOCK", true),
 		TOTPEncryptionKey:      envOr("TOTP_ENCRYPTION_KEY", ""),
 		PDPProvider:            envOr("PDP_PROVIDER", "stub"),

@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 15/07/2026
+> **Dernière mise à jour doc** : 22/07/2026
 
 ---
 
@@ -303,6 +303,19 @@ Pièces jointes des demandes TMA, tickets support et travaux maintenance.
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index** : `idx_org_request_attachments_resource` sur `(tenant_id, resource_type, resource_id)`
+
+### `org.platform_settings`
+
+Singleton des paramètres plateforme (admin multi-tenant), notamment le modèle Gemini global.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | INT | PK, DEFAULT 1, CHECK `(id = 1)` |
+| `gemini_model` | TEXT | NOT NULL, DEFAULT `'gemini-3.6-flash'` |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_by` | UUID | |
+
+Seed : une ligne `(id=1, …)` via `0005` ; la migration `0017` fixe le DEFAULT à `gemini-3.6-flash` et met à jour la valeur uniquement si elle est encore `gemini-3.5-flash` **et** `updated_by IS NULL` (jamais personnalisée).
 
 ### `org.authx_permissions`
 
@@ -1190,7 +1203,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 
 | Schéma | Tables | Nb |
 | --- | --- | --- |
-| `org` | tenants, societes, sites, services, applications, equipes, users, clients, authx_permissions | 9 |
+| `org` | tenants, societes, sites, services, applications, equipes, users, clients, authx_permissions, platform_settings | 10 |
 | `workflow` | definitions, states, transitions, instances, transition_logs | 5 |
 | `cra` | timesheets, week_entries, time_lines | 3 |
 | `notifications` | rules, messages, device_tokens | 3 |
@@ -1208,7 +1221,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **62** |
+| **Total** | | **63** |
 
 ---
 

@@ -16,7 +16,7 @@ import (
 	"github.com/kore/kore/internal/modules/ai/ports"
 )
 
-const DefaultModel = "gemini-3.5-flash"
+const DefaultModel = "gemini-3.6-flash"
 const defaultBaseURL = "https://generativelanguage.googleapis.com/v1beta"
 
 type ModelResolver interface {

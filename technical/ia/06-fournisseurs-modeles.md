@@ -35,12 +35,24 @@ Priorité : tenant > env > stub.
 
 ## 5. Coûts et limites
 
+**Runtime actuel** : un seul modèle Gemini global (`org.platform_settings.gemini_model`, défaut `GEMINI_MODEL` / `gemini-3.6-flash`). Pas de routage par capability.
+
+Reco produit (cible future ou choix admin manuel) :
+
 | Capability | Modèle recommandé | Tokens estimés |
 | --- | --- | --- |
-| analysis_draft | gpt-4o-mini / stub | ~1500 |
-| classify | petit / stub | ~200 |
-| dashboard.briefing | gpt-4o-mini / stub | ~500 |
-| publicsite.chatbot | gpt-4o-mini / stub | ~800 |
+| analysis_draft | gemini-3.6-flash / stub | ~1500 |
+| classify | gemini-3.5-flash-lite / stub | ~200 |
+| dashboard.briefing | gemini-3.6-flash / stub | ~500 |
+| publicsite.chatbot | gemini-3.5-flash-lite / stub | ~800 |
+
+Modèles Gemini courants (admin plateforme / `GEMINI_MODEL`) :
+
+| Modèle | Usage |
+| --- | --- |
+| `gemini-3.6-flash` | Défaut prod — agentique / multimodal, moins de jetons et moins cher que 3.5 Flash |
+| `gemini-3.5-flash-lite` | Haut débit, latence et coût minimaux (à sélectionner manuellement côté admin) |
+| `gemini-3.5-flash` | Encore supporté (saisie libre / rétrocompat) |
 
 Rate-limit BFF public chat : 20 req/min/IP (roadmap Redis).
 

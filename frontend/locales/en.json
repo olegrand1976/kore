@@ -1572,7 +1572,7 @@
       "subtitle": "LLM model applied to all tenants. Adjust for cost, latency or capabilities.",
       "loading": "Loading AI settings…",
       "model_label": "Gemini model",
-      "model_hint": "e.g. gemini-3.5-flash — applied immediately on next AI requests",
+      "model_hint": "e.g. gemini-3.6-flash — applied immediately on next AI requests",
       "save_success": "AI model updated",
       "save_error": "Unable to save model"
     }

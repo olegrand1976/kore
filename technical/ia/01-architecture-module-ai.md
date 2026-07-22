@@ -108,7 +108,7 @@ Capability `ai_assist` via billing (add-on roadmap). En dev : activable via `ten
 | --- | --- | --- |
 | `AI_LLM_PROVIDER` | `stub` | `stub`, `gemini`, `openai`, `ollama` |
 | `GEMINI_API_KEY` | — | Clé API Gemini (Google AI / Cloud) |
-| `GEMINI_MODEL` | `gemini-3.5-flash` | Modèle Gemini (surchargeable via admin plateforme) |
+| `GEMINI_MODEL` | `gemini-3.6-flash` | Modèle Gemini (surchargeable via admin plateforme) |
 | `PROMPT_GUARD_BLOCK` | `true` | Bloque les requêtes à risque d'injection indirecte de prompt |
 | `AI_OPENAI_API_KEY` | — | Clé API si provider openai |
 | `AI_OLLAMA_BASE_URL` | `http://localhost:11434` | Base Ollama |
