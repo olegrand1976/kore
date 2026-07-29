@@ -61,9 +61,9 @@ func TestEffectsExecutorSendsEmail(t *testing.T) {
 
 	err := exec.Execute(context.Background(), []domain.SideEffect{
 		{
-			Type:       domain.SideEffectTypeEmail,
-			Recipients: domain.EffectRecipients{Scope: domain.RecipientScopeAll},
-			Subject:    "Entity {{entityId}}",
+			Type:         domain.SideEffectTypeEmail,
+			Recipients:   domain.EffectRecipients{Scope: domain.RecipientScopeAll},
+			Subject:      "Entity {{entityId}}",
 			BodyTemplate: "Action {{action}}",
 		},
 	}, ports.SideEffectContext{

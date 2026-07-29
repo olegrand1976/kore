@@ -27,11 +27,11 @@ type Trigger struct {
 }
 
 type State struct {
-	Code            StateCode
-	Label           string
-	IsInitial       bool
-	IsFinal         bool
-	OnEnterEffects  []SideEffect
+	Code           StateCode
+	Label          string
+	IsInitial      bool
+	IsFinal        bool
+	OnEnterEffects []SideEffect
 }
 
 type Transition struct {

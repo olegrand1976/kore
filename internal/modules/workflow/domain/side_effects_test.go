@@ -64,8 +64,8 @@ func TestWorkflowDefinitionValidateSideEffects(t *testing.T) {
 			{Code: "draft", Label: "Draft", IsInitial: true},
 			{Code: "done", Label: "Done", IsFinal: true, OnEnterEffects: []domain.SideEffect{
 				{
-					Type:       domain.SideEffectTypeEmail,
-					Recipients: domain.EffectRecipients{Scope: domain.RecipientScopeAll},
+					Type:         domain.SideEffectTypeEmail,
+					Recipients:   domain.EffectRecipients{Scope: domain.RecipientScopeAll},
 					BodyTemplate: "Done",
 				},
 			}},
