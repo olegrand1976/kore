@@ -8,7 +8,7 @@
         <AppButton variant="ghost" size="sm" @click="navigateTo('/conges/soldes')">
           {{ $t('conges.balances_link') }}
         </AppButton>
-        <AppButton variant="primary" size="sm" @click="indexActions?.toggleForm()">
+        <AppButton variant="primary" size="sm" @click="requestOpenForm()">
           {{ $t('conges.new_request') }}
         </AppButton>
       </template>
@@ -52,7 +52,11 @@ const { canValidateConges } = usePermissions()
 
 await fetchSession()
 
-const indexActions = useState<{ toggleForm: () => void } | null>('conges-index-actions', () => null)
+/** Serializable signal — never store functions in useState (SSR devalue). */
+const openFormSignal = useState<number>('conges-open-form', () => 0)
+function requestOpenForm() {
+  openFormSignal.value += 1
+}
 
 const isRequestsTab = computed(() => {
   const path = route.path

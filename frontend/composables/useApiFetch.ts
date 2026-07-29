@@ -33,9 +33,12 @@ export async function fetchWithRefresh<T>(
 let refreshInFlight: Promise<boolean> | null = null
 
 export function useApiFetch() {
+  // Forward Cookie during SSR so BFF can read kore_access_token.
+  const requestFetch = useRequestFetch()
+
   const refresh = async (): Promise<boolean> => {
     if (!refreshInFlight) {
-      refreshInFlight = $fetch('/api/auth/refresh', { method: 'POST' })
+      refreshInFlight = requestFetch('/api/auth/refresh', { method: 'POST' })
         .then(() => true)
         .catch(() => false)
         .finally(() => {
@@ -53,7 +56,7 @@ export function useApiFetch() {
 
   const apiFetch = <T>(url: string, options?: FetchOptions): Promise<T> =>
     fetchWithRefresh<T>(
-      (u, o) => $fetch(u, o as never),
+      (u, o) => requestFetch(u, o as never),
       refresh,
       onAuthFailure,
       url,

@@ -26,7 +26,7 @@ KORE_REDIS_PORT    ?= 6381
 .DEFAULT_GOAL := help
 
 .PHONY: help env up up-infra up-front front down migrate seed seed-reset logs ps restart ready smoke \
-        build api test test-integration lint sqlc frontend-dev frontend-install \
+        build api test test-integration test-frontend test-e2e test-all lint sqlc frontend-dev frontend-install \
         gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-postdeploy-staging gcp-smoke gcp-domain gcp-github-deploy
 
 ## Affiche les cibles disponibles
@@ -43,6 +43,11 @@ help:
 	@echo "  make seed-reset   Réinitialise et recharge le jeu de données demo"
 	@echo "  make ready        Vérifie /health et /ready"
 	@echo "  make smoke        Smoke test API complet"
+	@echo "  make test         Tests unitaires Go"
+	@echo "  make test-frontend Tests unitaires Vitest (frontend)"
+	@echo "  make test-integration Tests intégration Postgres (testcontainers)"
+	@echo "  make test-e2e     Playwright smoke (stack Docker test)"
+	@echo "  make test-all     Unit + frontend + intégration + e2e"
 	@echo "  make logs         Logs API (suivi)"
 	@echo "  make ps           État des conteneurs"
 	@echo ""
@@ -151,9 +156,20 @@ api: env
 test:
 	go test ./...
 
+## Tests unitaires frontend (Vitest)
+test-frontend:
+	cd frontend && npm test
+
 ## Tests d'intégration via testcontainers (Docker requis, Postgres éphémère auto-géré)
 test-integration:
 	go test -tags=integration ./internal/platform/... ./internal/modules/...
+
+## Playwright E2E smoke (Docker test stack + API + Nuxt preview)
+test-e2e:
+	@bash scripts/test-e2e.sh
+
+## Pyramide complète : unit Go + Vitest + intégration + Playwright
+test-all: test test-frontend test-integration test-e2e
 
 lint:
 	golangci-lint run ./...

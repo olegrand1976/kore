@@ -245,14 +245,9 @@ const showForm = ref(false)
 const submitting = ref(false)
 const errorMsg = ref('')
 
-const indexActions = useState<{ toggleForm: () => void } | null>('conges-index-actions', () => null)
-indexActions.value = {
-  toggleForm: () => {
-    showForm.value = !showForm.value
-  }
-}
-onUnmounted(() => {
-  indexActions.value = null
+const openFormSignal = useState<number>('conges-open-form', () => 0)
+watch(openFormSignal, () => {
+  showForm.value = true
 })
 
 const form = reactive<{ type: string; from: string; to: string; motif: string }>({

@@ -25,7 +25,7 @@ services:
       timeout: 3s
       retries: 10
     ports:
-      - "6380:6379"
+      - "6382:6379"
 
   stripe-mock:
     image: stripe/stripe-mock:latest

@@ -62,12 +62,16 @@ export function setAuthCookies(
   }
 }
 
-export function apiAuthHeaders(event: Parameters<typeof defineEventHandler>[0] extends never ? never : import('h3').H3Event): Record<string, string> {
-  const token = getCookie(event, 'kore_access_token')
+/** Build Authorization headers from an access token cookie value (pure). */
+export function authorizationHeadersFromToken(token: string | undefined | null): Record<string, string> {
   if (!token) {
     return {}
   }
   return { Authorization: `Bearer ${token}` }
+}
+
+export function apiAuthHeaders(event: Parameters<typeof defineEventHandler>[0] extends never ? never : import('h3').H3Event): Record<string, string> {
+  return authorizationHeadersFromToken(getCookie(event, 'kore_access_token'))
 }
 
 export function apiBase(): string {
@@ -81,8 +85,8 @@ export type SessionPayload = {
   roles?: string[]
 }
 
-export function parseSessionFromEvent(event: import('h3').H3Event): SessionPayload | null {
-  const token = getCookie(event, 'kore_access_token')
+/** Decode JWT payload claims used by the BFF session (no signature verify). */
+export function parseSessionFromToken(token: string | undefined | null): SessionPayload | null {
   if (!token) return null
 
   const parts = token.split('.')
@@ -99,4 +103,8 @@ export function parseSessionFromEvent(event: import('h3').H3Event): SessionPaylo
   } catch {
     return null
   }
+}
+
+export function parseSessionFromEvent(event: import('h3').H3Event): SessionPayload | null {
+  return parseSessionFromToken(getCookie(event, 'kore_access_token'))
 }

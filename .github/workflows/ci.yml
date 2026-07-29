@@ -18,6 +18,8 @@ jobs:
         run: go test ./...
       - name: Coverage gate (domain)
         run: bash scripts/check-coverage.sh
+        env:
+          COVERAGE_THRESHOLD: '50'
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -72,13 +74,15 @@ jobs:
         with:
           go-version: '1.21'
       - name: Start test stack
+        env:
+          COMPOSE_PROJECT_NAME: kore-test
         run: |
-          docker compose -f deploy/docker-compose.test.yml up -d
-          sleep 5
+          docker compose -f deploy/docker-compose.test.yml up -d --wait
       - name: Migrate and seed
         env:
+          COMPOSE_PROJECT_NAME: kore-test
           DATABASE_URL: postgres://kore:kore@localhost:5433/kore_test?sslmode=disable
-          REDIS_ADDR: localhost:6380
+          REDIS_ADDR: localhost:6382
           HTTP_ADDR: ':8081'
           JWT_SIGNING_KEY: ci-test-key
           DEV_SEED_ENABLED: 'true'
@@ -92,4 +96,94 @@ jobs:
           bash scripts/smoke-test.sh
       - name: Stop test stack
         if: always()
+        env:
+          COMPOSE_PROJECT_NAME: kore-test
+        run: docker compose -f deploy/docker-compose.test.yml down
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Start test stack
+        env:
+          COMPOSE_PROJECT_NAME: kore-test
+        run: |
+          docker compose -f deploy/docker-compose.test.yml up -d --wait
+      - name: Migrate, seed and start API
+        env:
+          COMPOSE_PROJECT_NAME: kore-test
+          DATABASE_URL: postgres://kore:kore@localhost:5433/kore_test?sslmode=disable
+          REDIS_ADDR: localhost:6382
+          HTTP_ADDR: ':8081'
+          JWT_SIGNING_KEY: ci-e2e-test-key
+          DEV_SEED_ENABLED: 'true'
+          MIGRATE_ON_BOOT: 'false'
+          STRIPE_API_BASE: http://localhost:12112
+        run: |
+          go run ./cmd/kore-api migrate
+          go run ./cmd/kore-api seed
+          go run ./cmd/kore-api &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8081/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:8081/health | grep -q ok
+          curl -sf -X POST http://localhost:8081/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"login":"ADM_admin","password":"Admin123!"}' \
+            | grep -qiE 'accessToken|AccessToken'
+      - name: Build and preview frontend
+        working-directory: frontend
+        env:
+          NUXT_API_BASE: http://localhost:8081
+          NUXT_PUBLIC_API_BASE: http://localhost:8081
+          PORT: '3001'
+          HOST: 0.0.0.0
+          NITRO_HOST: 0.0.0.0
+          NITRO_PORT: '3001'
+        run: |
+          npm ci
+          npm run build
+          node .output/server/index.mjs &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3001/login >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:3001/login >/dev/null
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright smoke
+        working-directory: frontend
+        env:
+          CI: 'true'
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
+        run: npx playwright test --config=e2e/playwright.config.ts
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            frontend/e2e/.auth
+          retention-days: 7
+      - name: Stop test stack
+        if: always()
+        env:
+          COMPOSE_PROJECT_NAME: kore-test
         run: docker compose -f deploy/docker-compose.test.yml down

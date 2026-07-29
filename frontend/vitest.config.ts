@@ -9,7 +9,12 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'node',
-    include: ['tests/**/*.spec.ts']
+    environment: 'happy-dom',
+    include: ['tests/**/*.{spec,test}.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['composables/**/*.ts', 'server/utils/**/*.ts', 'utils/**/*.ts']
+    }
   }
 })

@@ -76,16 +76,17 @@ export function pickSortOrder(cfg: LeaveTypeConfig) {
 }
 
 export function useLeaveTypeConfigs() {
+  const { apiFetch } = useApiFetch()
   const types = useState<LeaveTypeConfig[]>('leave-type-configs', () => [])
 
   const fetchMine = async () => {
-    const res = await $fetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs/mine')
+    const res = await apiFetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs/mine')
     types.value = (res?.data ?? []).slice().sort((a, b) => pickSortOrder(a) - pickSortOrder(b))
     return types.value
   }
 
   const fetchForSociete = async (societeId: string) => {
-    const res = await $fetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs', {
+    const res = await apiFetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs', {
       query: { societeId }
     })
     return (res?.data ?? []).slice().sort((a, b) => pickSortOrder(a) - pickSortOrder(b))
@@ -219,25 +220,27 @@ export function useLeaveLabels() {
 }
 
 export function useLeave() {
+  const { apiFetch } = useApiFetch()
+
   const list = async () => {
-    const res = await $fetch<{ data?: LeaveRequest[] }>('/api/conges/leave-requests')
+    const res = await apiFetch<{ data?: LeaveRequest[] }>('/api/conges/leave-requests')
     return res?.data ?? []
   }
 
   const create = async (payload: { type: string; from: string; to: string; motif: string }) => {
-    return $fetch('/api/conges/leave-requests', { method: 'POST', body: payload })
+    return apiFetch('/api/conges/leave-requests', { method: 'POST', body: payload })
   }
 
   const approve = async (id: string) => {
-    return $fetch(`/api/conges/leave-requests/${id}/approve`, { method: 'POST' })
+    return apiFetch(`/api/conges/leave-requests/${id}/approve`, { method: 'POST' })
   }
 
   const reject = async (id: string) => {
-    return $fetch(`/api/conges/leave-requests/${id}/reject`, { method: 'POST' })
+    return apiFetch(`/api/conges/leave-requests/${id}/reject`, { method: 'POST' })
   }
 
   const balances = async () => {
-    const res = await $fetch<{ data?: LeaveBalance[] }>('/api/conges/leave-balances')
+    const res = await apiFetch<{ data?: LeaveBalance[] }>('/api/conges/leave-balances')
     return res?.data ?? []
   }
 

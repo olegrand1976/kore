@@ -19,6 +19,11 @@ frontend/.nuxt/
 frontend/.output/
 frontend/dist/
 frontend/.data/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+frontend/e2e/.auth/
 
 # IDE
 .idea/

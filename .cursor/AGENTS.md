@@ -57,12 +57,28 @@ make up          # stack Docker
 3. i18n : zéro string FR hardcodé dans templates
 4. Tokens charte, pas de couleurs ad hoc
 5. `npm run build` + `go build ./...`
+6. Si parcours UI critique : spec Playwright (`frontend/e2e/smoke/`) ou extension d'une existante
+7. Logique composable/BFF : test Vitest (`frontend/tests/`)
 
 ## Checklist avant PR backend (migrations)
 
 1. Migration `.up.sql` + test d'intégration si pertinent
 2. **`documentation/SCHEMA_DB.md` à jour** (même PR que la migration)
 3. `go test ./...` + `make migrate`
+4. Nouvelle règle métier → test domain ; nouveau use case → test app (fakes ports)
+5. Alter SQL → `*_integration_test.go` (round-trip ou contrainte)
+
+## Tests (filet anti-régression)
+
+```bash
+make test              # unitaires Go
+make test-frontend     # Vitest
+make test-integration  # Postgres (Docker)
+make test-e2e          # Playwright smoke (stack Docker test)
+make test-all          # pyramide complète
+```
+
+CI : jobs `backend`, `frontend`, `integration`, `e2e`, `smoke` — voir `technical/foundation/06-testing-strategy.md`.
 
 ## Skills projet (`.cursor/skills/`)
 

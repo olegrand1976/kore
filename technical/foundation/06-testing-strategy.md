@@ -55,25 +55,50 @@ func TestCRAService_Submit(t *testing.T) {
 
 ## 5. Tests frontend (Nuxt)
 
-- **vitest** + `@vue/test-utils` : composables (logique), stores Pinia, composants critiques.
-- Tests des **server routes BFF** : mapping cookie->Authorization, gestion erreurs API.
+- **vitest** + `happy-dom` : composables (logique), utils, helpers BFF purs.
+- Tests **BFF** (`frontend/tests/bff/`) : cookie → `Authorization`, parsing session JWT, tokens 2FA partiels.
+- **Playwright** (`frontend/e2e/smoke/`) : parcours UI smoke sur stack Docker complète (API + Nuxt + Postgres/Redis).
+  - Commandes : `make test-frontend`, `make test-e2e`, `npm run test:e2e` (frontend déjà up).
+  - Seed : `ADM_admin` / `Admin123!`.
+  - Specs : login, dashboard, CRA, congés, TMA, budget, billing, org admin.
 
 ## 6. Seuils et qualité
 
 | Couche | Couverture cible | Nature |
 | --- | --- | --- |
-| domain | > 90 % | unitaire pur |
-| app (use cases) | > 80 % | unitaire + mocks |
-| adapters postgres | chemins clés | intégration |
+| domain | ≥ 50 % gate CI (cible long terme > 90 %) | unitaire pur |
+| app (use cases) | > 80 % | unitaire + fakes ports |
+| adapters postgres | chemins clés | intégration (`//go:build integration`) |
 | handlers http | chemins clés + RBAC | contrat |
-| frontend | composables/stores critiques | unitaire |
+| frontend | composables/BFF critiques | unitaire Vitest |
+| E2E | parcours MVP smoke | Playwright |
 
-- CI bloquante sur : build, lint, `go test ./...`, seuils de couverture domaine/app.
+- CI bloquante sur : build, lint, `go test ./...`, gate domain, `make test-integration`, `npm test`, job `e2e` Playwright.
 - Chaque **critère d'acceptation** de la spec §8 doit correspondre à au moins un test nommé.
 
 ## 7. Definition of Done (fondation testing)
 
-- [ ] Standard table-driven + mocks des ports documenté.
-- [ ] testcontainers en place pour l'intégration DB.
-- [ ] Port `Clock` prévu pour le déterminisme temporel.
-- [ ] Seuils de couverture et gates CI définis.
+- [x] Standard table-driven + fakes des ports documenté.
+- [x] testcontainers en place pour l'intégration DB.
+- [x] Port `Clock` prévu pour le déterminisme temporel.
+- [x] Seuils de couverture et gates CI définis.
+- [x] Playwright smoke MVP + job CI `e2e`.
+
+### DoD pour chaque PR feature
+
+1. Nouvelle règle métier → test domain table-driven.
+2. Nouveau use case → test app avec fake ports.
+3. Nouveau / alter SQL → test intégration repo (contrainte ou round-trip).
+4. Nouveau parcours UI critique → spec Playwright smoke ou extension d'une existante.
+5. CI verte (backend + frontend + integration + e2e) avant merge.
+
+### Commandes Makefile
+
+| Cible | Rôle |
+| --- | --- |
+| `make test` | Unitaires Go |
+| `make test-frontend` | Vitest |
+| `make test-integration` | Postgres testcontainers |
+| `make test-e2e` | Playwright (stack Docker test) |
+| `make test-all` | Pyramide complète |
+| `make smoke` | Smoke API curl (complémentaire) |

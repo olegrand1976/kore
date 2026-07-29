@@ -1,14 +1,14 @@
-#!/usr/bin/env bash
 # Gate de couverture sur la couche domain (règles métier pures).
 # Les couches app/adapters restent couvertes par les tests d'intégration et smoke.
-# Échoue si la couverture agrégée passe sous COVERAGE_THRESHOLD (défaut 40%).
+# Échoue si la couverture agrégée passe sous COVERAGE_THRESHOLD (défaut 50%).
 set -euo pipefail
 
-THRESHOLD="${COVERAGE_THRESHOLD:-40}"
+THRESHOLD="${COVERAGE_THRESHOLD:-50}"
 PROFILE="${COVERAGE_PROFILE:-coverage.out}"
 
 # Packages domain MVP (hors IA et modules squelettes post-MVP).
-SKELETON_MODULES='admin|ett|integrations|invoicing|maintenance|reporting|ssii|support'
+# admin / maintenance / support ont désormais des tests domain — inclus dans le gate.
+SKELETON_MODULES='ett|integrations|invoicing|reporting|ssii'
 PKGS=$(go list ./... | grep -E '/modules/[^/]+/domain$' | grep -v '/modules/ai/' | grep -vE "/modules/(${SKELETON_MODULES})/" | paste -sd, -)
 if [ -z "$PKGS" ]; then
   echo "no domain packages found" >&2

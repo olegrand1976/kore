@@ -10,10 +10,12 @@ type SessionUser = {
 
 export function useAuth() {
   const user = useState<SessionUser | null>('auth-user', () => null)
+  // Forward incoming Cookie header during SSR (plain $fetch does not).
+  const requestFetch = useRequestFetch()
 
   const fetchSession = async () => {
     try {
-      user.value = await $fetch<SessionUser>('/api/auth/session')
+      user.value = await requestFetch<SessionUser>('/api/auth/session')
     } catch {
       user.value = null
     }
