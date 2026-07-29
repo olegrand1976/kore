@@ -342,6 +342,9 @@ func (s *userService) CreateUser(ctx context.Context, cmd ports.CreateUserComman
 	if err != nil {
 		return domain.User{}, err
 	}
+	if err := domain.ValidatePassword(cmd.Password); err != nil {
+		return domain.User{}, err
+	}
 	exists, err := s.repo.ExistsLogin(ctx, cmd.TenantID, string(login))
 	if err != nil {
 		return domain.User{}, err
@@ -442,6 +445,9 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		user.Profile = *cmd.Profile
 	}
 	if cmd.Password != "" {
+		if err := domain.ValidatePassword(cmd.Password); err != nil {
+			return ports.UserSummary{}, err
+		}
 		hash, err := s.hasher.Hash(cmd.Password)
 		if err != nil {
 			return ports.UserSummary{}, err

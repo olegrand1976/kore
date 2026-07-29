@@ -8,6 +8,15 @@
       </template>
     </AppPageHeader>
 
+    <p
+      v-if="flash"
+      class="users-flash"
+      :class="{ 'users-flash--error': flashError }"
+      role="status"
+    >
+      {{ flash }}
+    </p>
+
     <AppCard v-if="pending" padding="lg">
       <p class="muted">{{ $t('users.loading') }}</p>
     </AppCard>
@@ -73,7 +82,7 @@
 
     <AppModal
       :open="showForm"
-      width="md"
+      width="lg"
       title-id="users-form-title"
       :aria-label="editingId ? $t('users.edit_title') : $t('users.add_title')"
       :close-label="$t('common.cancel')"
@@ -83,15 +92,35 @@
         <h3 id="users-form-title" class="users-form__title">
           {{ editingId ? $t('users.edit_title') : $t('users.add_title') }}
         </h3>
-        <form class="users-form__grid" @submit.prevent="save">
+
+        <div v-if="!editingId" class="users-howto" role="note">
+          <p class="users-howto__title">{{ $t('users.howto.title') }}</p>
+          <dl class="users-howto__list">
+            <div>
+              <dt>{{ $t('users.howto.login_title') }}</dt>
+              <dd>{{ $t('users.howto.login_body') }}</dd>
+            </div>
+            <div>
+              <dt>{{ $t('users.howto.profile_title') }}</dt>
+              <dd>{{ $t('users.howto.profile_body') }}</dd>
+            </div>
+            <div>
+              <dt>{{ $t('users.howto.password_title') }}</dt>
+              <dd>{{ $t('users.password_hint') }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <p v-if="formError" class="users-alert" role="alert">{{ formError }}</p>
+
+        <form class="users-form__grid" novalidate @submit.prevent="save">
           <AppInput
             v-if="!editingId"
             id="user-login"
             v-model="form.login"
             :label="$t('users.login')"
-            placeholder="COL_dupont"
-            pattern="[A-Z]{3}_[a-z0-9_]+"
-            :title="$t('users.login_hint')"
+            placeholder="COL_olivier"
+            :error="fieldErrors.login"
             required
           />
           <p v-if="!editingId" class="users-hint">{{ $t('users.login_hint') }}</p>
@@ -101,15 +130,20 @@
             v-model="form.password"
             type="password"
             :label="$t('users.password')"
+            :error="fieldErrors.password"
             required
           />
-          <AppInput
-            v-else
-            id="user-password-edit"
-            v-model="form.password"
-            type="password"
-            :label="$t('users.password_optional')"
-          />
+          <p v-if="!editingId" class="users-hint">{{ $t('users.password_hint') }}</p>
+          <template v-else>
+            <AppInput
+              id="user-password-edit"
+              v-model="form.password"
+              type="password"
+              :label="$t('users.password_optional')"
+              :error="fieldErrors.password"
+            />
+            <p v-if="form.password" class="users-hint">{{ $t('users.password_hint') }}</p>
+          </template>
           <div class="users-form__field">
             <label for="user-profile">{{ $t('users.profile') }}</label>
             <select id="user-profile" v-model="form.profil" required>
@@ -129,13 +163,8 @@
             </AppButton>
           </div>
         </form>
-        <p v-if="formError" class="users-flash users-flash--error" role="alert">{{ formError }}</p>
       </div>
     </AppModal>
-
-    <p v-if="flash" class="users-flash" :class="{ 'users-flash--error': flashError }" role="status">
-      {{ flash }}
-    </p>
   </div>
 </template>
 
@@ -166,6 +195,10 @@ const editingId = ref('')
 const formError = ref('')
 const flash = ref('')
 const flashError = ref(false)
+const fieldErrors = reactive({ login: '', password: '' })
+
+const LOGIN_PATTERN = /^[A-Z]{3}_[a-z0-9_]+$/
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
 const form = reactive({
   login: '',
@@ -173,6 +206,40 @@ const form = reactive({
   profil: USER_PROFILES[1],
   active: true
 })
+
+const clearFieldErrors = () => {
+  fieldErrors.login = ''
+  fieldErrors.password = ''
+}
+
+const validatePassword = (password: string, required: boolean): string => {
+  if (!password) {
+    return required ? t('users.error_password_required') : ''
+  }
+  if (!PASSWORD_PATTERN.test(password)) {
+    return t('users.error_password_rules')
+  }
+  return ''
+}
+
+const validateForm = (): boolean => {
+  clearFieldErrors()
+  formError.value = ''
+
+  if (!editingId.value) {
+    const login = form.login.trim()
+    if (!login) {
+      fieldErrors.login = t('users.error_login_required')
+    } else if (!LOGIN_PATTERN.test(login)) {
+      fieldErrors.login = t('users.error_login_format')
+    }
+    fieldErrors.password = validatePassword(form.password, true)
+  } else if (form.password) {
+    fieldErrors.password = validatePassword(form.password, false)
+  }
+
+  return !fieldErrors.login && !fieldErrors.password
+}
 
 const currentUserId = computed(() => user.value?.userId ?? '')
 
@@ -271,6 +338,7 @@ const openCreate = () => {
   form.profil = USER_PROFILES[1]
   form.active = true
   formError.value = ''
+  clearFieldErrors()
   showForm.value = true
 }
 
@@ -281,15 +349,19 @@ const openEdit = (row: UserRow) => {
   form.profil = row.profil
   form.active = row.active
   formError.value = ''
+  clearFieldErrors()
   showForm.value = true
 }
 
 const closeForm = () => {
   showForm.value = false
   editingId.value = ''
+  formError.value = ''
+  clearFieldErrors()
 }
 
 const save = async () => {
+  if (!validateForm()) return
   saving.value = true
   formError.value = ''
   try {
@@ -350,6 +422,7 @@ function mapUserError(err: unknown) {
   const message = String(extractFetchError(err, t('users.error_generic')))
   if (message.includes('login already exists')) return t('users.error_login_exists')
   if (message.includes('invalid login format')) return t('users.error_login_format')
+  if (message.includes('weak password')) return t('users.error_password_rules')
   if (message.includes('seat limit reached')) return t('users.error_seat_limit')
   if (message.includes('cannot modify own account')) return t('users.error_self')
   return message
@@ -368,6 +441,50 @@ function mapUserError(err: unknown) {
 .users-form__title {
   margin: 0 0 var(--kore-space-md);
   font-size: var(--kore-text-h3);
+}
+
+.users-howto {
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg-elevated);
+}
+
+.users-howto__title {
+  margin: 0 0 var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  font-weight: 600;
+}
+
+.users-howto__list {
+  margin: 0;
+  display: grid;
+  gap: var(--kore-space-sm);
+}
+
+.users-howto__list dt {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  font-weight: 600;
+  color: var(--kore-text);
+}
+
+.users-howto__list dd {
+  margin: var(--kore-space-xs) 0 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+  line-height: 1.4;
+}
+
+.users-alert {
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-error);
+  border-radius: var(--kore-radius-md);
+  background: color-mix(in srgb, var(--kore-error) 12%, transparent);
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
 }
 
 .users-form__grid {
@@ -419,12 +536,18 @@ function mapUserError(err: unknown) {
 }
 
 .users-flash {
-  margin-top: var(--kore-space-md);
-  font-size: var(--kore-text-small);
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-success);
+  border-radius: var(--kore-radius-md);
+  background: color-mix(in srgb, var(--kore-success) 12%, transparent);
   color: var(--kore-success);
+  font-size: var(--kore-text-small);
 }
 
 .users-flash--error {
+  border-color: var(--kore-error);
+  background: color-mix(in srgb, var(--kore-error) 12%, transparent);
   color: var(--kore-error);
 }
 

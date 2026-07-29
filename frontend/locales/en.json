@@ -1213,7 +1213,16 @@
     "edit_title": "Edit user",
     "password": "Password",
     "password_optional": "New password (optional)",
+    "password_hint": "At least 8 characters, with one uppercase, one lowercase and one digit.",
     "login_hint": "Format: XXX_name (e.g. COL_dupont)",
+    "howto": {
+      "title": "Before creating the account",
+      "login_title": "Login",
+      "login_body": "Required format XXX_name: 3 uppercase letters, an underscore, then a lowercase name (letters, digits or _). Example: COL_olivier — “olivier” alone is rejected.",
+      "profile_title": "Profile",
+      "profile_body": "Administrator: full access. Collaborator: timesheets / requests. Team lead: timesheet validation. Service manager: leave + budget.",
+      "password_title": "Password"
+    },
     "deactivate": "Deactivate",
     "deactivate_confirm": "Deactivate account « {login} »?",
     "delete_confirm": "Permanently delete « {login} »? The account will be hidden.",
@@ -1224,6 +1233,9 @@
     "error_generic": "An error occurred",
     "error_login_exists": "This login already exists.",
     "error_login_format": "Invalid format. Use XXX_name (3 uppercase letters, underscore, lowercase name).",
+    "error_login_required": "Enter a login.",
+    "error_password_required": "Enter a password.",
+    "error_password_rules": "Password too weak: at least 8 characters with uppercase, lowercase and a digit.",
     "error_seat_limit": "Seat limit reached.",
     "error_self": "You cannot modify your own account this way."
   },

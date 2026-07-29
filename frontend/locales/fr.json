@@ -1213,7 +1213,16 @@
     "edit_title": "Modifier l'utilisateur",
     "password": "Mot de passe",
     "password_optional": "Nouveau mot de passe (optionnel)",
+    "password_hint": "Au moins 8 caractères, avec une majuscule, une minuscule et un chiffre.",
     "login_hint": "Format : XXX_nom (ex. COL_dupont)",
+    "howto": {
+      "title": "Avant de créer le compte",
+      "login_title": "Identifiant",
+      "login_body": "Obligatoire au format XXX_nom : 3 lettres majuscules, un underscore, puis un nom en minuscules (lettres, chiffres ou _). Exemple : COL_olivier — « olivier » seul est refusé.",
+      "profile_title": "Profil",
+      "profile_body": "Administrateur : accès complet. Collaborateur : saisie CRA / demandes. Chef d'équipe : validation CRA. Responsable de service : congés + budget.",
+      "password_title": "Mot de passe"
+    },
     "deactivate": "Désactiver",
     "deactivate_confirm": "Désactiver le compte « {login} » ?",
     "delete_confirm": "Supprimer définitivement « {login} » ? Le compte sera masqué.",
@@ -1224,6 +1233,9 @@
     "error_generic": "Une erreur est survenue",
     "error_login_exists": "Cet identifiant existe déjà.",
     "error_login_format": "Format invalide. Utilisez XXX_nom (3 lettres majuscules, underscore, nom en minuscules).",
+    "error_login_required": "Saisissez un identifiant.",
+    "error_password_required": "Saisissez un mot de passe.",
+    "error_password_rules": "Mot de passe trop faible : 8 caractères minimum, avec majuscule, minuscule et chiffre.",
     "error_seat_limit": "Plafond de sièges atteint.",
     "error_self": "Vous ne pouvez pas modifier votre propre compte de cette façon."
   },

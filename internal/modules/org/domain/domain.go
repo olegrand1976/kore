@@ -13,6 +13,7 @@ var (
 	ErrInvalidLogin              = errors.New("invalid login format")
 	ErrLoginAlreadyExists        = errors.New("login already exists")
 	ErrInvalidCredentials        = errors.New("invalid credentials")
+	ErrWeakPassword              = errors.New("weak password")
 	ErrAccountExpired            = errors.New("account expired")
 	ErrServiceWithoutResponsible = errors.New("service without responsible")
 	ErrSeatLimitReached          = errors.New("seat limit reached")
@@ -47,6 +48,28 @@ func NewLogin(value string) (Login, error) {
 		return "", ErrInvalidLogin
 	}
 	return Login(value), nil
+}
+
+// ValidatePassword enforces: ≥8 chars, at least one lower, one upper, one digit.
+func ValidatePassword(value string) error {
+	if len(value) < 8 {
+		return ErrWeakPassword
+	}
+	var hasLower, hasUpper, hasDigit bool
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		}
+	}
+	if !hasLower || !hasUpper || !hasDigit {
+		return ErrWeakPassword
+	}
+	return nil
 }
 
 type Profile string

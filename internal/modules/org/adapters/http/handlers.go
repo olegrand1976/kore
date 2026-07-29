@@ -385,7 +385,7 @@ func createUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			switch {
 			case errors.Is(err, domain.ErrLoginAlreadyExists):
 				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
-			case errors.Is(err, domain.ErrInvalidLogin):
+			case errors.Is(err, domain.ErrInvalidLogin), errors.Is(err, domain.ErrWeakPassword):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 			case errors.Is(err, domain.ErrSeatLimitReached):
 				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
@@ -823,6 +823,8 @@ func writeUserMutationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrUserNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	case errors.Is(err, domain.ErrCannotModifySelf):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrWeakPassword):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrSeatLimitReached):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
