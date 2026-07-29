@@ -71,56 +71,67 @@
       </AppCard>
     </template>
 
-    <AppCard v-if="showForm" padding="lg" class="users-form">
-      <h3 class="users-form__title">
-        {{ editingId ? $t('users.edit_title') : $t('users.add_title') }}
-      </h3>
-      <form class="users-form__grid" @submit.prevent="save">
-        <AppInput
-          v-if="!editingId"
-          id="user-login"
-          v-model="form.login"
-          :label="$t('users.login')"
-          placeholder="COL_dupont"
-          required
-        />
-        <p v-if="!editingId" class="users-hint">{{ $t('users.login_hint') }}</p>
-        <AppInput
-          v-if="!editingId"
-          id="user-password"
-          v-model="form.password"
-          type="password"
-          :label="$t('users.password')"
-          required
-        />
-        <AppInput
-          v-else
-          id="user-password-edit"
-          v-model="form.password"
-          type="password"
-          :label="$t('users.password_optional')"
-        />
-        <div class="users-form__field">
-          <label for="user-profile">{{ $t('users.profile') }}</label>
-          <select id="user-profile" v-model="form.profil" required>
-            <option v-for="p in USER_PROFILES" :key="p" :value="p">{{ p }}</option>
-          </select>
-        </div>
-        <label v-if="editingId" class="users-toggle">
-          <input v-model="form.active" type="checkbox" />
-          {{ $t('users.active') }}
-        </label>
-        <div class="users-form__actions">
-          <AppButton variant="ghost" size="sm" type="button" @click="closeForm">
-            {{ $t('common.cancel') }}
-          </AppButton>
-          <AppButton variant="primary" size="sm" type="submit" :disabled="saving">
-            {{ $t('common.save') }}
-          </AppButton>
-        </div>
-      </form>
-      <p v-if="formError" class="users-flash users-flash--error" role="alert">{{ formError }}</p>
-    </AppCard>
+    <AppModal
+      :open="showForm"
+      width="md"
+      title-id="users-form-title"
+      :aria-label="editingId ? $t('users.edit_title') : $t('users.add_title')"
+      :close-label="$t('common.cancel')"
+      @update:open="(open) => { if (!open) closeForm() }"
+    >
+      <div class="users-form">
+        <h3 id="users-form-title" class="users-form__title">
+          {{ editingId ? $t('users.edit_title') : $t('users.add_title') }}
+        </h3>
+        <form class="users-form__grid" @submit.prevent="save">
+          <AppInput
+            v-if="!editingId"
+            id="user-login"
+            v-model="form.login"
+            :label="$t('users.login')"
+            placeholder="COL_dupont"
+            pattern="[A-Z]{3}_[a-z0-9_]+"
+            :title="$t('users.login_hint')"
+            required
+          />
+          <p v-if="!editingId" class="users-hint">{{ $t('users.login_hint') }}</p>
+          <AppInput
+            v-if="!editingId"
+            id="user-password"
+            v-model="form.password"
+            type="password"
+            :label="$t('users.password')"
+            required
+          />
+          <AppInput
+            v-else
+            id="user-password-edit"
+            v-model="form.password"
+            type="password"
+            :label="$t('users.password_optional')"
+          />
+          <div class="users-form__field">
+            <label for="user-profile">{{ $t('users.profile') }}</label>
+            <select id="user-profile" v-model="form.profil" required>
+              <option v-for="p in USER_PROFILES" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </div>
+          <label v-if="editingId" class="users-toggle">
+            <input v-model="form.active" type="checkbox" />
+            {{ $t('users.active') }}
+          </label>
+          <div class="users-form__actions">
+            <AppButton variant="ghost" size="sm" type="button" @click="closeForm">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="primary" size="sm" type="submit" :disabled="saving">
+              {{ $t('common.save') }}
+            </AppButton>
+          </div>
+        </form>
+        <p v-if="formError" class="users-flash users-flash--error" role="alert">{{ formError }}</p>
+      </div>
+    </AppModal>
 
     <p v-if="flash" class="users-flash" :class="{ 'users-flash--error': flashError }" role="status">
       {{ flash }}
@@ -336,7 +347,7 @@ const deleteRow = async (row: UserRow) => {
 }
 
 function mapUserError(err: unknown) {
-  const message = extractFetchError(err, t('users.error_generic'))
+  const message = String(extractFetchError(err, t('users.error_generic')))
   if (message.includes('login already exists')) return t('users.error_login_exists')
   if (message.includes('invalid login format')) return t('users.error_login_format')
   if (message.includes('seat limit reached')) return t('users.error_seat_limit')
@@ -352,10 +363,6 @@ function mapUserError(err: unknown) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--kore-space-xs);
-}
-
-.users-form {
-  margin-top: var(--kore-space-lg);
 }
 
 .users-form__title {
