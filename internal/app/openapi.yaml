@@ -988,7 +988,20 @@ paths:
       responses:
         "201":
           description: Site créé
+  /equipes:
+    get:
+      summary: Liste des équipes
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
   /services:
+    get:
+      summary: Liste des services
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
     post:
       summary: Créer un service
       security: [{ bearerAuth: [] }]

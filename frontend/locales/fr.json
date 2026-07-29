@@ -1121,7 +1121,7 @@
       "select_option": "Choisir…",
       "subject": "Sujet",
       "body": "Corps du message",
-      "template_vars": "Variables : {{entityId}}, {{definitionCode}}, {{fromState}}, {{toState}}, {{action}}, {{actorId}}, {{instanceId}}"
+      "template_vars": "Variables : {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}"
     }
   },
   "notifications": {
