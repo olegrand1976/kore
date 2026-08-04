@@ -1,3 +1,6 @@
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 const bumpTypes = ['major', 'minor', 'patch']
 
 function fail(msg) {
@@ -56,8 +59,14 @@ function fallbackFromCommits(text) {
   return 'patch'
 }
 
-async function openAIClassify({ apiKey, model, commits }) {
-  const prompt = [
+// Gemini est le fournisseur LLM du projet (cf. internal/modules/ai/adapters/gemini).
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash'
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
+
+const SYSTEM_PROMPT = 'Return only valid JSON, no markdown.'
+
+function buildPrompt(commits) {
+  return [
     'You are a release automation assistant.',
     'Task: decide SemVer bump type for the next git tag based on commit messages since last tag.',
     'Output STRICT JSON ONLY with keys: bump (major|minor|patch), reason (string).',
@@ -69,39 +78,63 @@ async function openAIClassify({ apiKey, model, commits }) {
     'Commit messages:',
     commits
   ].join('\n')
+}
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+// Le modèle peut encadrer sa réponse d'une clôture markdown malgré la consigne.
+export function stripJsonFence(text) {
+  const trimmed = String(text).trim()
+  const fenced = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i)
+  return (fenced ? fenced[1] : trimmed).trim()
+}
+
+export function parseBumpPayload(raw) {
+  let parsed
+  try {
+    parsed = JSON.parse(stripJsonFence(raw))
+  } catch {
+    throw new Error(`Gemini: non-JSON response: ${raw}`)
+  }
+  const bump = parsed?.bump
+  if (!bumpTypes.includes(bump)) throw new Error(`Gemini: invalid bump: ${String(bump)}`)
+  return { bump, reason: String(parsed?.reason || '') }
+}
+
+async function geminiClassify({ apiKey, model, commits, baseURL = GEMINI_BASE_URL }) {
+  const url = `${baseURL.replace(/\/+$/, '')}/models/${model}:generateContent`
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      'x-goog-api-key': apiKey,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model,
-      temperature: 0,
-      messages: [
-        { role: 'system', content: 'Return only valid JSON, no markdown.' },
-        { role: 'user', content: prompt }
-      ]
+      contents: [
+        { role: 'user', parts: [{ text: `Instructions système:\n${SYSTEM_PROMPT}` }] },
+        { role: 'model', parts: [{ text: 'Compris.' }] },
+        { role: 'user', parts: [{ text: buildPrompt(commits) }] }
+      ],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json' }
     })
   })
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`OpenAI error ${res.status}: ${body}`)
-  }
-  const data = await res.json()
-  const content = data?.choices?.[0]?.message?.content
-  if (!content) throw new Error('OpenAI: empty response')
-  let parsed
+  const raw = await res.text()
+  let data
   try {
-    parsed = JSON.parse(content)
+    data = JSON.parse(raw)
   } catch {
-    throw new Error(`OpenAI: non-JSON response: ${content}`)
+    throw new Error(`Gemini decode: ${res.status}: ${raw.slice(0, 300)}`)
   }
-  const bump = parsed?.bump
-  if (!bumpTypes.includes(bump)) throw new Error(`OpenAI: invalid bump: ${String(bump)}`)
-  return { bump, reason: String(parsed?.reason || '') }
+  if (data?.error) throw new Error(`Gemini api: ${data.error.message || res.status}`)
+  if (!res.ok) throw new Error(`Gemini http ${res.status}: ${raw.slice(0, 300)}`)
+
+  const text = (data?.candidates ?? [])
+    .flatMap((c) => c?.content?.parts ?? [])
+    .map((p) => p?.text)
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+  if (!text) throw new Error('Gemini: empty response')
+  return parseBumpPayload(text)
 }
 
 async function main() {
@@ -110,15 +143,15 @@ async function main() {
   const commits = args.commits || ''
   if (!current) fail('Missing --current')
 
-  const apiKey = process.env.OPENAI_API_KEY || ''
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim()
+  const model = (process.env.GEMINI_MODEL || '').trim() || DEFAULT_GEMINI_MODEL
 
   const fallback = fallbackFromCommits(commits)
   let decision = { bump: fallback, reason: 'fallback' }
 
   if (apiKey) {
     try {
-      decision = await openAIClassify({ apiKey, model, commits })
+      decision = await geminiClassify({ apiKey, model, commits })
     } catch (e) {
       process.stderr.write(`AI eval failed, using fallback: ${String(e?.message || e)}\n`)
       decision = { bump: fallback, reason: 'fallback' }
@@ -136,5 +169,12 @@ async function main() {
   process.stdout.write(`${JSON.stringify(out)}\n`)
 }
 
-main().catch((e) => fail(String(e?.message || e)))
+// N'exécute la CLI que lors d'un appel direct, pour que les helpers exportés
+// puissent être importés (et testés) sans déclencher main().
+const invokedDirectly =
+  process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (invokedDirectly) {
+  main().catch((e) => fail(String(e?.message || e)))
+}
 

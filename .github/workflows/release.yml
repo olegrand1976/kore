@@ -75,8 +75,11 @@ jobs:
         if: steps.commits.outputs.empty != 'true'
         id: bump
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          # Gemini est le fournisseur LLM du projet (cf. AI_LLM_PROVIDER,
+          # .env.gemini et internal/modules/ai/adapters/gemini). Sans le secret,
+          # le script retombe sur la décision déterministe Conventional Commits.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           # Passé par l'environnement, jamais interpolé dans le script : un sujet
           # de commit est une entrée non fiable, et ${{ }} est substitué
           # textuellement avant exécution du shell (injection de commande).

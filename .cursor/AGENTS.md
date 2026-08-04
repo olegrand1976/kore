@@ -46,8 +46,9 @@ make up          # stack Docker
 
 - **Portée** : tags git SemVer **uniquement** (pas de bump `package.json`/`go.mod`).
 - **Décision major/minor/patch** :
-  - en GitHub Actions via **évaluation IA (OpenAI)** sur les commits depuis le dernier tag
-  - prévoir un **fallback déterministe** si l’IA échoue (ex: Conventional Commits).
+  - en GitHub Actions via **évaluation IA (Gemini)** sur les commits depuis le dernier tag
+    (`GEMINI_API_KEY` / `GEMINI_MODEL`, comme le reste du projet — pas d’OpenAI)
+  - **fallback déterministe Conventional Commits** si la clé est absente ou l’appel échoue.
 - **Sorties** : création du tag `vX.Y.Z` (et éventuellement GitHub Release + notes).
 
 ## Checklist avant PR UI
