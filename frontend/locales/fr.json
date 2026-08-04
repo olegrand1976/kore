@@ -469,7 +469,9 @@
       "week_incomplete": "Semaine incomplète : tous les jours ouvrés doivent être renseignés.",
       "conflict": "Conflit : action impossible dans l'état actuel.",
       "validation": "Données invalides."
-    }
+    },
+    "work_ref_empty_hint": "Aucune affectation disponible : les affectations sont les demandes TMA, tickets et demandes d'exploitation qui vous sont assignées.",
+    "work_ref_empty_link": "Créer une demande"
   },
   "reporting": {
     "facturation_title": "Statistiques de facturation",
@@ -567,7 +569,14 @@
     "collaborators_required": "Sélectionnez au moins un collaborateur",
     "edit_collaborators": "Modifier l'équipe",
     "save_collaborators": "Enregistrer l'équipe",
-    "save_collaborators_error": "Impossible de mettre à jour les collaborateurs"
+    "save_collaborators_error": "Impossible de mettre à jour les collaborateurs",
+    "field_client": "Client",
+    "client_placeholder": "Sélectionner un client",
+    "new_client": "Nouveau client",
+    "no_client_hint": "Aucun client enregistré : créez-en un pour pouvoir créer la mission.",
+    "client_name": "Raison sociale",
+    "client_tva": "Numéro de TVA",
+    "client_create_error": "La création du client a échoué."
   },
   "conges": {
     "title": "Congés",
@@ -1237,7 +1246,11 @@
     "error_password_required": "Saisissez un mot de passe.",
     "error_password_rules": "Mot de passe trop faible : 8 caractères minimum, avec majuscule, minuscule et chiffre.",
     "error_seat_limit": "Plafond de sièges atteint.",
-    "error_self": "Vous ne pouvez pas modifier votre propre compte de cette façon."
+    "error_self": "Vous ne pouvez pas modifier votre propre compte de cette façon.",
+    "equipe": "Équipe",
+    "equipe_none": "Aucune équipe",
+    "equipe_hint": "L'équipe rattache le collaborateur à une application : c'est ce qui rend ses demandes affectables dans le CRA.",
+    "equipe_empty_hint": "Aucune équipe n'existe encore. Créez-en une depuis Administration → Organisation → Structure."
   },
   "org": {
     "title": "Organisation",
@@ -1254,7 +1267,43 @@
     "url": "URL tenant",
     "preview_title": "Aperçu",
     "preview_hint": "Rendu dans la barre latérale",
-    "choose_file": "Choisir un fichier"
+    "choose_file": "Choisir un fichier",
+    "tabs_label": "Sections de l'organisation",
+    "tab_identite": "Identité",
+    "tab_structure": "Structure",
+    "tree": {
+      "intro": "Société → Site → Service → Application → Équipe. Chaque niveau exige son parent : une équipe rattache les collaborateurs à une application, et c'est ce rattachement qui rend les demandes affectables dans le CRA.",
+      "loading": "Chargement de la structure…",
+      "load_error": "Impossible de charger la structure de l'organisation.",
+      "create_error": "La création a échoué.",
+      "no_societe": "Aucune société : créez d'abord une société.",
+      "level_societe": "Société",
+      "level_site": "Site",
+      "level_service": "Service",
+      "level_application": "Application",
+      "add_site": "Ajouter un site",
+      "add_service": "Ajouter un service",
+      "add_application": "Ajouter une application",
+      "add_equipe": "Ajouter une équipe",
+      "empty_sites": "Aucun site pour cette société.",
+      "empty_services": "Aucun service pour ce site.",
+      "empty_applications": "Aucune application pour ce service.",
+      "empty_equipes": "Aucune équipe pour cette application.",
+      "service_unnamed": "Service sans libellé",
+      "societe_unnamed": "Société sans nom",
+      "members": "{count} collaborateur(s)",
+      "parent": "Rattaché à : {parent}",
+      "field_libelle": "Libellé",
+      "field_type": "Type de service",
+      "type_interne": "Interne",
+      "type_externe": "Externe",
+      "field_responsable_required": "Responsable (obligatoire)",
+      "field_responsable_optional": "Responsable (facultatif)",
+      "responsable_none": "Aucun",
+      "responsable_hint": "Un service sans responsable est refusé par l'API.",
+      "create": "Créer",
+      "creating": "Création…"
+    }
   },
   "landing": {
     "hero_guarantee": "Démo 30 min · Sans engagement",

@@ -37,6 +37,10 @@ func (s *oidcRepoStub) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (
 func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error               { return nil }
 func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error         { return nil }
 func (s *oidcRepoStub) SaveApplication(context.Context, domain.Application) error { return nil }
+func (s *oidcRepoStub) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
+func (s *oidcRepoStub) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
+	return nil, nil
+}
 func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }

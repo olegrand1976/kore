@@ -70,6 +70,12 @@
               {{ orphanWorkRef }}
             </option>
           </select>
+          <p v-if="noWorkRefAvailable" class="activity-line__work-ref-hint">
+            {{ $t('cra.work_ref_empty_hint') }}
+            <NuxtLink to="/demandes/nouveau" class="activity-line__work-ref-link">
+              {{ $t('cra.work_ref_empty_link') }}
+            </NuxtLink>
+          </p>
         </div>
       </div>
       <label v-if="!absence" class="activity-line__billable">
@@ -162,6 +168,13 @@ const orphanWorkRef = computed(() => {
   if (props.workRefOptions.some((opt) => opt.type === type && opt.id === id)) return ''
   return props.workRefLabelFor?.(type, id) ?? `${type} #${id.slice(0, 8)}`
 })
+
+// Une affectation n'est pas une entité à créer : c'est une demande TMA, un ticket
+// ou une demande d'exploitation qui vous est assignée. Sans aucune assignation, le
+// select ne propose rien — on l'explique plutôt que de laisser une liste vide.
+const noWorkRefAvailable = computed(
+  () => props.workRefOptions.length === 0 && !orphanWorkRef.value
+)
 
 const hasHours = computed(() => {
   const value = Number(props.hours)
@@ -299,6 +312,16 @@ const startPartialAbsence = () => {
   border-radius: var(--kore-radius-md);
   background: var(--kore-bg);
   color: var(--kore-text);
+}
+
+.activity-line__work-ref-hint {
+  margin: var(--kore-space-xs) 0 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.activity-line__work-ref-link {
+  color: var(--kore-link);
 }
 
 .activity-line__hours {

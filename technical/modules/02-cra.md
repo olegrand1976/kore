@@ -115,9 +115,33 @@ Réponse `POST /timesheets/{id}/validate` : inclut `invoiceDraft` (`created` | `
 | --- | --- |
 | `cra.timesheets` | `id`, `tenant_id`, `user_id`, `month`, `status`, `commercial_info` (jsonb), `validated_at`, `validated_by` |
 | `cra.week_entries` | `id`, `tenant_id`, `timesheet_id`, `week_number`, `submitted_at` |
-| `cra.time_lines` | `id`, `tenant_id`, `week_entry_id`, `source_type`, `source_id`, `day`, `duration`, `comment`, `origin` (manual/prefill) |
+| `cra.time_lines` | `id`, `tenant_id`, `week_entry_id`, `source_type`, `source_id`, `day`, `duration`, `comment`, `origin` (manual/prefill), `billable`, `work_ref_type`, `work_ref_id` |
 
 Contraintes : `UNIQUE (tenant_id, user_id, month)` ; index `(tenant_id, source_type, source_id)` pour la consolidation ; `origin` distingue saisie manuelle vs pré-remplissage (garantit le non-écrasement).
+
+### 7.1 Affectation d'une ligne : `source_*` vs `work_ref_*`
+
+Une ligne de CRA porte **deux** références, souvent confondues :
+
+| Champ | Rôle | Valeurs |
+| --- | --- | --- |
+| `source_type` / `source_id` | **Nature de l'activité** et objet qui l'a produite | `manual`, `interne`, `formation` (id `default`) ; `mission`, `tma`, `ticket`, `work_request`, `leave` (UUID de l'objet) ; `holiday`, `ett` (date `YYYY-MM-DD`) |
+| `work_ref_type` / `work_ref_id` | **Rattachement facultatif** de la ligne à une demande — ce que l'UI nomme « **Affectation** » | `tma`, `ticket`, `work_request` + UUID, ou NULL |
+
+Points d'attention :
+
+- Les types de `source_type` proposés à la saisie manuelle sont bornés par
+  `org.societes.task_types_enabled` (défaut `["manual","interne","formation","mission"]`).
+- Le sélecteur « Affectation » est alimenté **côté client** par agrégation de
+  `/api/tma/demands`, `/api/tickets`, `/api/work-requests`, filtrée sur `assigneeId == userId` et
+  sur les statuts non terminaux (`useCraWorkRefs.ts`). **Il n'existe pas d'endpoint backend
+  listant les affectations d'un collaborateur** ; un collaborateur sans demande assignée voit donc
+  une liste vide (l'UI l'explique et renvoie vers `/demandes/nouveau`).
+- Aucun pré-remplissage inter-module ne renseigne `work_ref_*` : ces champs sont exclusivement
+  saisis à la main via `PUT /timesheets/{id}/weeks/{week}`.
+- Il n'existe **ni entité « projet » ni entité « tâche »** dans le modèle : les analogues
+  fonctionnels sont `org.applications` (périmètre TMA/budget) et `ssii.missions` (périmètre
+  facturation).
 
 ## 8. Mapping SOLID
 

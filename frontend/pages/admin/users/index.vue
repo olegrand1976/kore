@@ -150,6 +150,18 @@
               <option v-for="p in USER_PROFILES" :key="p" :value="p">{{ p }}</option>
             </select>
           </div>
+          <div class="users-form__field">
+            <label for="user-equipe">{{ $t('users.equipe') }}</label>
+            <select id="user-equipe" v-model="form.equipeId">
+              <option value="">{{ $t('users.equipe_none') }}</option>
+              <option v-for="e in equipeOptions" :key="e.value" :value="e.value">
+                {{ e.label }}
+              </option>
+            </select>
+            <p class="users-hint">
+              {{ equipeOptions.length ? $t('users.equipe_hint') : $t('users.equipe_empty_hint') }}
+            </p>
+          </div>
           <label v-if="editingId" class="users-toggle">
             <input v-model="form.active" type="checkbox" />
             {{ $t('users.active') }}
@@ -170,6 +182,7 @@
 
 <script setup lang="ts">
 import { USER_PROFILES } from '~/composables/useUsers'
+import type { EquipeOption } from '~/composables/useOrganisation'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
@@ -177,13 +190,16 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { user, fetchSession } = useAuth()
-const { list, create, update, deactivate, remove, pickUserId, pickUserLogin, pickUserProfile, pickUserActive } = useUsers()
+const { list, create, update, deactivate, remove, pickUserId, pickUserLogin, pickUserProfile, pickUserActive, pickUserEquipeId } = useUsers()
+const { listEquipes, listApplications, buildEquipeOptions } = useOrganisation()
 
 type UserRow = {
   id: string
   login: string
   profil: string
   active: boolean
+  equipeId: string
+  equipeLabel: string
 }
 
 const users = ref<UserRow[]>([])
@@ -204,8 +220,25 @@ const form = reactive({
   login: '',
   password: '',
   profil: USER_PROFILES[1],
-  active: true
+  active: true,
+  equipeId: ''
 })
+
+// L'équipe porte le rattachement du collaborateur à son application de travail.
+const equipeOptions = ref<EquipeOption[]>([])
+
+const equipeLabelById = (id: string) =>
+  equipeOptions.value.find((e) => e.value === id)?.label ?? ''
+
+const loadEquipes = async () => {
+  try {
+    const [eq, apps] = await Promise.all([listEquipes(), listApplications()])
+    equipeOptions.value = buildEquipeOptions(eq, apps)
+  } catch {
+    // Rattachement facultatif : une liste vide n'empêche pas de créer un compte.
+    equipeOptions.value = []
+  }
+}
 
 const clearFieldErrors = () => {
   fieldErrors.login = ''
@@ -246,6 +279,7 @@ const currentUserId = computed(() => user.value?.userId ?? '')
 const columns = computed(() => [
   { key: 'login', label: t('users.login') },
   { key: 'profil', label: t('users.profile') },
+  { key: 'equipeLabel', label: t('users.equipe') },
   { key: 'active', label: t('users.status') },
   { key: 'actions', label: '' }
 ])
@@ -264,6 +298,12 @@ const listFilters = computed(() => ({
     label: t('users.profile'),
     options: USER_PROFILES.map((p) => ({ value: p, label: p })),
     match: (row: UserRow, value: string) => row.profil === value
+  },
+  equipe: {
+    type: 'select' as const,
+    label: t('users.equipe'),
+    options: equipeOptions.value,
+    match: (row: UserRow, value: string) => row.equipeId === value
   },
   active: {
     type: 'select' as const,
@@ -301,12 +341,17 @@ const {
 const displayRows = computed(() => sortedItems.value)
 
 const mapUsers = (items: Awaited<ReturnType<typeof list>>) =>
-  items.map((item) => ({
-    id: pickUserId(item),
-    login: pickUserLogin(item),
-    profil: pickUserProfile(item),
-    active: pickUserActive(item)
-  }))
+  items.map((item) => {
+    const equipeId = pickUserEquipeId(item)
+    return {
+      id: pickUserId(item),
+      login: pickUserLogin(item),
+      profil: pickUserProfile(item),
+      active: pickUserActive(item),
+      equipeId,
+      equipeLabel: equipeId ? equipeLabelById(equipeId) || '—' : '—'
+    }
+  })
 
 const loadUsers = async () => {
   pending.value = true
@@ -328,6 +373,8 @@ const loadUsers = async () => {
 
 onMounted(async () => {
   await fetchSession()
+  // Les équipes d'abord : loadUsers résout le libellé d'équipe de chaque ligne.
+  await loadEquipes()
   await loadUsers()
 })
 
@@ -337,6 +384,7 @@ const openCreate = () => {
   form.password = ''
   form.profil = USER_PROFILES[1]
   form.active = true
+  form.equipeId = ''
   formError.value = ''
   clearFieldErrors()
   showForm.value = true
@@ -348,6 +396,7 @@ const openEdit = (row: UserRow) => {
   form.password = ''
   form.profil = row.profil
   form.active = row.active
+  form.equipeId = row.equipeId
   formError.value = ''
   clearFieldErrors()
   showForm.value = true
@@ -366,9 +415,11 @@ const save = async () => {
   formError.value = ''
   try {
     if (editingId.value) {
-      const body: { profil: string; active: boolean; password?: string } = {
+      // equipeId toujours envoyé en édition : la chaîne vide détache le collaborateur.
+      const body: { profil: string; active: boolean; password?: string; equipeId: string } = {
         profil: form.profil,
-        active: form.active
+        active: form.active,
+        equipeId: form.equipeId
       }
       if (form.password) body.password = form.password
       await update(editingId.value, body)
@@ -378,7 +429,8 @@ const save = async () => {
       await create({
         login: form.login.trim(),
         password: form.password,
-        profil: form.profil
+        profil: form.profil,
+        ...(form.equipeId ? { equipeId: form.equipeId } : {})
       })
       flash.value = t('users.created')
       flashError.value = false

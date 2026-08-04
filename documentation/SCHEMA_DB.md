@@ -154,6 +154,7 @@ Index :
 | `id` | UUID | PK |
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `site_id` | UUID | NOT NULL → `org.sites(id)` |
+| `libelle` | TEXT | NOT NULL, DEFAULT `''` (migration `0018`) |
 | `type` | TEXT | NOT NULL, DEFAULT `'interne'` |
 | `responsable_id` | UUID | |
 | `commercial_id` | UUID | |

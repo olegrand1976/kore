@@ -93,7 +93,7 @@ Erreurs : `422 MISSION_WITHOUT_COLLABORATOR` (RG-MISS-01), `409 MISSION_ALREADY_
 | Table | Colonnes clés |
 | --- | --- |
 | `ssii.missions` | `id`, `tenant_id`, `client_id`, `start_date`, `end_date`, `tjm`, `currency`, `technologies`, `status`, `responsable_client` |
-| `ssii.mission_members` | `id`, `tenant_id`, `mission_id`, `user_id` |
+| `ssii.mission_collaborators` | `id`, `tenant_id`, `mission_id`, `user_id`, `UNIQUE (mission_id, user_id)` |
 
 Index `(tenant_id, client_id)`, `(tenant_id, status)`.
 

@@ -206,6 +206,24 @@ paths:
     put:
       summary: Mettre à jour un utilisateur
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                profil:
+                  type: string
+                password:
+                  type: string
+                active:
+                  type: boolean
+                equipeId:
+                  type: string
+                  description: |
+                    Rattachement à une équipe. Champ absent = inchangé,
+                    chaîne vide = détachement, UUID = rattachement.
       responses:
         "200":
           description: Mis à jour
@@ -982,6 +1000,12 @@ paths:
         "200":
           description: Reprogrammé
   /sites:
+    get:
+      summary: Liste des sites
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
     post:
       summary: Créer un site
       security: [{ bearerAuth: [] }]
@@ -995,6 +1019,36 @@ paths:
       responses:
         "200":
           description: Liste
+    post:
+      summary: Créer une équipe
+      description: |
+        Rattache une équipe à une application. L'équipe est le pivot entre un
+        collaborateur (org.users.equipe_id) et son application de travail.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [applicationId, libelle]
+              properties:
+                applicationId:
+                  type: string
+                  format: uuid
+                libelle:
+                  type: string
+                responsableId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        "201":
+          description: Équipe créée
+        "403":
+          description: Non autorisé (org:E requis)
+        "422":
+          description: Application manquante
   /services:
     get:
       summary: Liste des services
@@ -1005,9 +1059,30 @@ paths:
     post:
       summary: Créer un service
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteId, responsableId]
+              properties:
+                siteId:
+                  type: string
+                  format: uuid
+                libelle:
+                  type: string
+                type:
+                  type: string
+                  default: interne
+                responsableId:
+                  type: string
+                  format: uuid
       responses:
         "201":
           description: Service créé
+        "422":
+          description: Responsable manquant
   /applications:
     get:
       summary: Liste applications

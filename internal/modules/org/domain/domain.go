@@ -16,6 +16,7 @@ var (
 	ErrWeakPassword              = errors.New("weak password")
 	ErrAccountExpired            = errors.New("account expired")
 	ErrServiceWithoutResponsible = errors.New("service without responsible")
+	ErrEquipeWithoutApplication  = errors.New("equipe without application")
 	ErrSeatLimitReached          = errors.New("seat limit reached")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
@@ -168,6 +169,9 @@ func EffectiveTaskTypesEnabled(types []string) []string {
 	return types
 }
 
+// DefaultServiceType est le type appliqué à un service créé sans type explicite.
+const DefaultServiceType = "interne"
+
 type Site struct {
 	ID        uuid.UUID
 	TenantID  kernel.TenantID
@@ -180,6 +184,8 @@ type Service struct {
 	ID            uuid.UUID
 	TenantID      kernel.TenantID
 	SiteID        uuid.UUID
+	Libelle       string
+	Type          string
 	ResponsableID *uuid.UUID
 }
 
@@ -188,12 +194,24 @@ type Equipe struct {
 	TenantID      kernel.TenantID `json:"tenantId"`
 	ApplicationID uuid.UUID       `json:"applicationId"`
 	Libelle       string          `json:"libelle"`
+	ResponsableID *uuid.UUID      `json:"responsableId,omitempty"`
+}
+
+type SiteSummary struct {
+	ID        uuid.UUID `json:"id"`
+	SocieteID uuid.UUID `json:"societeId"`
+	Libelle   string    `json:"libelle"`
+	Pays      string    `json:"pays,omitempty"`
 }
 
 type ServiceSummary struct {
-	ID        uuid.UUID `json:"id"`
-	SiteID    uuid.UUID `json:"siteId"`
-	SiteLabel string    `json:"siteLabel,omitempty"`
+	ID            uuid.UUID  `json:"id"`
+	SiteID        uuid.UUID  `json:"siteId"`
+	SiteLabel     string     `json:"siteLabel,omitempty"`
+	SocieteID     uuid.UUID  `json:"societeId,omitempty"`
+	Libelle       string     `json:"libelle,omitempty"`
+	Type          string     `json:"type,omitempty"`
+	ResponsableID *uuid.UUID `json:"responsableId,omitempty"`
 }
 
 type Application struct {

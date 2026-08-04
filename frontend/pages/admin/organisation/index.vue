@@ -2,7 +2,32 @@
   <div>
     <AppPageHeader :title="$t('org.title')" :subtitle="$t('org.subtitle')" />
 
-    <div class="split-layout">
+    <nav class="org-tabs" role="tablist" :aria-label="$t('org.tabs_label')">
+      <button
+        type="button"
+        role="tab"
+        class="org-tab"
+        :class="{ 'org-tab--active': tab === 'identite' }"
+        :aria-selected="tab === 'identite'"
+        @click="tab = 'identite'"
+      >
+        {{ $t('org.tab_identite') }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="org-tab"
+        :class="{ 'org-tab--active': tab === 'structure' }"
+        :aria-selected="tab === 'structure'"
+        @click="tab = 'structure'"
+      >
+        {{ $t('org.tab_structure') }}
+      </button>
+    </nav>
+
+    <OrgTree v-if="tab === 'structure'" />
+
+    <div v-else class="split-layout">
       <AppCard padding="lg" class="org-form">
         <form @submit.prevent="save">
           <AppInput id="raison" v-model="form.raisonSociale" :label="$t('org.company_name')" />
@@ -40,6 +65,8 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 
 const { t } = useI18n()
 const { branding, fetchBranding } = useTenantBranding()
+
+const tab = ref<'identite' | 'structure'>('identite')
 
 const form = reactive({
   raisonSociale: '',
@@ -108,6 +135,37 @@ const save = async () => {
 </script>
 
 <style scoped>
+.org-tabs {
+  display: flex;
+  gap: var(--kore-space-xs);
+  margin-bottom: var(--kore-space-lg);
+  border-bottom: 1px solid var(--kore-border);
+}
+
+.org-tab {
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--kore-text-muted);
+  font-family: var(--kore-font);
+  font-size: var(--kore-text-small);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.org-tab:hover { color: var(--kore-text); }
+
+.org-tab--active {
+  color: var(--kore-text);
+  border-bottom-color: var(--kore-brand-gold);
+}
+
+@media (max-width: 768px) {
+  .org-tabs { overflow-x: auto; }
+  .org-tab { white-space: nowrap; }
+}
+
 .org-form form { display: flex; flex-direction: column; gap: var(--kore-space-lg); }
 
 .org-form__hint {

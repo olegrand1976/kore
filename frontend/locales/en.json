@@ -469,7 +469,9 @@
       "week_incomplete": "Incomplete week: all working days must be filled in.",
       "conflict": "Conflict: action not allowed in the current state.",
       "validation": "Invalid data."
-    }
+    },
+    "work_ref_empty_hint": "No assignment available: assignments are the TMA demands, support tickets and work requests assigned to you.",
+    "work_ref_empty_link": "Create a request"
   },
   "reporting": {
     "facturation_title": "Billing statistics",
@@ -567,7 +569,14 @@
     "collaborators_required": "Select at least one collaborator",
     "edit_collaborators": "Edit team",
     "save_collaborators": "Save team",
-    "save_collaborators_error": "Unable to update collaborators"
+    "save_collaborators_error": "Unable to update collaborators",
+    "field_client": "Client",
+    "client_placeholder": "Select a client",
+    "new_client": "New client",
+    "no_client_hint": "No client registered: create one to be able to create the mission.",
+    "client_name": "Legal name",
+    "client_tva": "VAT number",
+    "client_create_error": "Client creation failed."
   },
   "conges": {
     "title": "Leave",
@@ -1237,7 +1246,11 @@
     "error_password_required": "Enter a password.",
     "error_password_rules": "Password too weak: at least 8 characters with uppercase, lowercase and a digit.",
     "error_seat_limit": "Seat limit reached.",
-    "error_self": "You cannot modify your own account this way."
+    "error_self": "You cannot modify your own account this way.",
+    "equipe": "Team",
+    "equipe_none": "No team",
+    "equipe_hint": "The team links the person to an application: that is what makes their requests assignable in the timesheet.",
+    "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure."
   },
   "org": {
     "title": "Organization",
@@ -1254,7 +1267,43 @@
     "url": "Tenant URL",
     "preview_title": "Preview",
     "preview_hint": "Sidebar rendering",
-    "choose_file": "Choose a file"
+    "choose_file": "Choose a file",
+    "tabs_label": "Organisation sections",
+    "tab_identite": "Identity",
+    "tab_structure": "Structure",
+    "tree": {
+      "intro": "Company → Site → Service → Application → Team. Each level requires its parent: a team links people to an application, and that link is what makes requests assignable in the timesheet.",
+      "loading": "Loading structure…",
+      "load_error": "Could not load the organisation structure.",
+      "create_error": "Creation failed.",
+      "no_societe": "No company yet: create a company first.",
+      "level_societe": "Company",
+      "level_site": "Site",
+      "level_service": "Service",
+      "level_application": "Application",
+      "add_site": "Add a site",
+      "add_service": "Add a service",
+      "add_application": "Add an application",
+      "add_equipe": "Add a team",
+      "empty_sites": "No site for this company.",
+      "empty_services": "No service for this site.",
+      "empty_applications": "No application for this service.",
+      "empty_equipes": "No team for this application.",
+      "service_unnamed": "Unnamed service",
+      "societe_unnamed": "Unnamed company",
+      "members": "{count} member(s)",
+      "parent": "Attached to: {parent}",
+      "field_libelle": "Name",
+      "field_type": "Service type",
+      "type_interne": "Internal",
+      "type_externe": "External",
+      "field_responsable_required": "Owner (required)",
+      "field_responsable_optional": "Owner (optional)",
+      "responsable_none": "None",
+      "responsable_hint": "The API rejects a service without an owner.",
+      "create": "Create",
+      "creating": "Creating…"
+    }
   },
   "landing": {
     "hero_guarantee": "30-min demo · No commitment",

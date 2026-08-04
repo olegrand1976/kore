@@ -37,6 +37,10 @@ func (r *totpUserRepo) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (
 func (r *totpUserRepo) SaveSite(context.Context, domain.Site) error               { return nil }
 func (r *totpUserRepo) SaveService(context.Context, domain.Service) error         { return nil }
 func (r *totpUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
+func (r *totpUserRepo) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
+func (r *totpUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
+	return nil, nil
+}
 func (r *totpUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }

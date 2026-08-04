@@ -291,10 +291,45 @@ func (r *Repository) SaveSite(ctx context.Context, s domain.Site) error {
 	return err
 }
 
+func (r *Repository) ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, societe_id, libelle, COALESCE(pays, '')
+		FROM org.sites
+		WHERE tenant_id = $1
+		ORDER BY libelle
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.SiteSummary
+	for rows.Next() {
+		var item domain.SiteSummary
+		if err := rows.Scan(&item.ID, &item.SocieteID, &item.Libelle, &item.Pays); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) SaveService(ctx context.Context, s domain.Service) error {
+	serviceType := s.Type
+	if serviceType == "" {
+		serviceType = domain.DefaultServiceType
+	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.services (id, tenant_id, site_id, responsable_id) VALUES ($1, $2, $3, $4)
-	`, s.ID, s.TenantID.UUID(), s.SiteID, s.ResponsableID)
+		INSERT INTO org.services (id, tenant_id, site_id, libelle, type, responsable_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, s.ID, s.TenantID.UUID(), s.SiteID, s.Libelle, serviceType, s.ResponsableID)
+	return err
+}
+
+func (r *Repository) SaveEquipe(ctx context.Context, e domain.Equipe) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, e.ID, e.TenantID.UUID(), e.ApplicationID, e.Libelle, e.ResponsableID)
 	return err
 }
 
@@ -330,7 +365,7 @@ func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantI
 
 func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, application_id, libelle
+		SELECT id, tenant_id, application_id, libelle, responsable_id
 		FROM org.equipes
 		WHERE tenant_id = $1
 		ORDER BY libelle
@@ -343,7 +378,7 @@ func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([
 	for rows.Next() {
 		var e domain.Equipe
 		var tenantID uuid.UUID
-		if err := rows.Scan(&e.ID, &tenantID, &e.ApplicationID, &e.Libelle); err != nil {
+		if err := rows.Scan(&e.ID, &tenantID, &e.ApplicationID, &e.Libelle, &e.ResponsableID); err != nil {
 			return nil, err
 		}
 		e.TenantID = kernel.NewTenantID(tenantID)
@@ -354,11 +389,12 @@ func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([
 
 func (r *Repository) ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT s.id, s.site_id, COALESCE(st.libelle, '')
+		SELECT s.id, s.site_id, COALESCE(st.libelle, ''), COALESCE(st.societe_id, '00000000-0000-0000-0000-000000000000'::uuid),
+		       COALESCE(s.libelle, ''), COALESCE(s.type, ''), s.responsable_id
 		FROM org.services s
 		LEFT JOIN org.sites st ON st.id = s.site_id
 		WHERE s.tenant_id = $1
-		ORDER BY st.libelle, s.id
+		ORDER BY st.libelle, s.libelle, s.id
 	`, tenant.UUID())
 	if err != nil {
 		return nil, err
@@ -367,7 +403,8 @@ func (r *Repository) ListServices(ctx context.Context, tenant kernel.TenantID) (
 	var out []domain.ServiceSummary
 	for rows.Next() {
 		var item domain.ServiceSummary
-		if err := rows.Scan(&item.ID, &item.SiteID, &item.SiteLabel); err != nil {
+		if err := rows.Scan(&item.ID, &item.SiteID, &item.SiteLabel, &item.SocieteID,
+			&item.Libelle, &item.Type, &item.ResponsableID); err != nil {
 			return nil, err
 		}
 		out = append(out, item)
@@ -520,9 +557,9 @@ func (r *Repository) SetLastSeenVersion(ctx context.Context, tenant kernel.Tenan
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE org.users
-		SET profil = $3, password_hash = $4, active = $5, email = $6
+		SET profil = $3, password_hash = $4, active = $5, email = $6, equipe_id = $7
 		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
-	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active, nullString(u.Email))
+	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active, nullString(u.Email), u.EquipeID)
 	if err != nil {
 		return err
 	}

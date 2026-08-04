@@ -33,6 +33,10 @@ func (r refreshUserRepo) GetSociete(context.Context, kernel.TenantID, uuid.UUID)
 func (r refreshUserRepo) SaveSite(context.Context, domain.Site) error               { return nil }
 func (r refreshUserRepo) SaveService(context.Context, domain.Service) error         { return nil }
 func (r refreshUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
+func (r refreshUserRepo) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
+func (r refreshUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
+	return nil, nil
+}
 func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
 	return nil, nil
 }

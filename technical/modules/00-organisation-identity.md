@@ -45,6 +45,8 @@ type OrganizationService interface {
     CreateSite(ctx context.Context, cmd CreateSiteCommand) (Site, error)
     CreateService(ctx context.Context, cmd CreateServiceCommand) (Service, error)
     CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (Application, error)
+    CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (Equipe, error)
+    ListSites(ctx context.Context, tenant kernel.TenantID) ([]SiteSummary, error)
     AssignServiceResponsible(ctx context.Context, cmd AssignResponsibleCommand) error
 }
 
@@ -115,14 +117,22 @@ type UserIdentityRepository interface {
 | PUT | `/api/v1/admin/identity-providers/{id}` | Admin (E) | Configurer IdP (Enterprise) |
 | POST | `/api/v1/societes` | Admin (E) | Créer société |
 | POST | `/api/v1/sites` | Admin (E) | Créer site |
-| POST | `/api/v1/services` | Admin (E) | Créer service (responsable requis) |
+| GET | `/api/v1/sites` | Admin (L) | Liste des sites (arbre d'administration) |
+| POST | `/api/v1/services` | Admin (E) | Créer service (`libelle`, `type`, responsable requis) |
 | POST | `/api/v1/applications` | Admin (E) | Créer application |
 | GET | `/api/v1/applications/{id}` | selon RBAC | Détail application |
-| POST | `/api/v1/users` | Admin (E) | Créer compte (`XXX_nom`) |
+| POST | `/api/v1/equipes` | Admin (E) | Créer équipe rattachée à une application |
+| GET | `/api/v1/equipes` | Admin / Workflow (L) | Liste des équipes |
+| POST | `/api/v1/users` | Admin (E) | Créer compte (`XXX_nom`, `equipeId` optionnel) |
+| PUT | `/api/v1/users/{id}` | Admin (E) | Modifier profil, mot de passe, activation, `equipeId` |
 | POST | `/api/v1/services/{id}/responsible` | Admin (E) | Affecter responsable |
 | POST | `/api/v1/clients` | Resp. service / Commercial (E) | Créer client |
 
-Erreurs clés : `409 LOGIN_ALREADY_EXISTS`, `422 INVALID_LOGIN_FORMAT`, `422 SERVICE_WITHOUT_RESPONSIBLE`, `401 INVALID_CREDENTIALS`, `403 ACCOUNT_EXPIRED`.
+Erreurs clés : `409 LOGIN_ALREADY_EXISTS`, `422 INVALID_LOGIN_FORMAT`, `422 SERVICE_WITHOUT_RESPONSIBLE`, `422 EQUIPE_WITHOUT_APPLICATION`, `401 INVALID_CREDENTIALS`, `403 ACCOUNT_EXPIRED`.
+
+Sur `PUT /users/{id}`, le champ `equipeId` distingue trois cas : **absent** = rattachement inchangé,
+**chaîne vide** = détachement, **UUID** = rattachement. C'est le seul moyen de réaffecter un
+collaborateur à une autre équipe après la création de son compte.
 
 ## 7. Schéma de données (schéma `org`)
 
@@ -176,11 +186,11 @@ Couverture cible : domaine > 90 %, app > 80 %.
 
 | Élément | Détail |
 | --- | --- |
-| Pages | `login`, `admin/organisation` (arbre société/site/service/app), `admin/users`, `clients` |
-| Composants | `OrgTree`, `UserForm`, `ClientForm` |
-| Composables | `useAuth()`, `useOrganization()`, `useClients()` |
+| Pages | `login`, `admin/organisation` (onglets **Identité** / **Structure**), `admin/users`, `clients` |
+| Composants | `OrgTree` (arbre société → site → service → application → équipe, création par niveau), `UserForm`, `ClientForm` |
+| Composables | `useAuth()`, `useOrganisation()`, `useClients()` |
 | Store Pinia | `auth`, `organization` |
-| Routes BFF | `server/api/auth/*`, `server/api/organisation/*`, `server/api/users/*`, `server/api/clients/*` |
+| Routes BFF | `server/api/auth/*`, `server/api/org/*` (sites, services, applications, equipes, users, clients) |
 | Permissions UI | Menu admin visible profil Administrateur ; clients visibles Resp./Commercial |
 
 ## 11bis. SSO / Fédération d'identité (Phase 1)
@@ -198,7 +208,13 @@ Couverture cible : domaine > 90 %, app > 80 %.
 
 ## 12. Definition of Done
 
-- [x] Hiérarchie org CRUD complète et testée.
+- [x] Hiérarchie org : **création et lecture** de tous les niveaux (société, site, service,
+  application, équipe) exposées en API **et** dans l'écran `admin/organisation` → onglet Structure,
+  couvertes par tests app/HTTP/intégration.
+- [x] Rattachement collaborateur → équipe modifiable après création (`PUT /users/{id}`, champ `equipeId`).
+- [ ] Hiérarchie org : **modification et suppression** des niveaux (aucun `PUT`/`DELETE` sur
+  `sites`, `services`, `applications`, `equipes`) — la correction d'une faute de frappe impose
+  aujourd'hui un passage en base.
 - [x] Auth login/refresh/logout via cookies httpOnly opérationnelle.
 - [x] Matrice RBAC §3.3 chargée et appliquée par middleware.
 - [x] Isolation multi-tenant vérifiée par test d'intégration.

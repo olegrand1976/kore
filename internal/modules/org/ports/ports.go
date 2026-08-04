@@ -31,6 +31,8 @@ type CreateSiteCommand struct {
 type CreateServiceCommand struct {
 	TenantID      kernel.TenantID
 	SiteID        uuid.UUID
+	Libelle       string
+	Type          string
 	ResponsableID uuid.UUID
 }
 
@@ -38,6 +40,13 @@ type CreateApplicationCommand struct {
 	TenantID  kernel.TenantID
 	ServiceID uuid.UUID
 	Libelle   string
+}
+
+type CreateEquipeCommand struct {
+	TenantID      kernel.TenantID
+	ApplicationID uuid.UUID
+	Libelle       string
+	ResponsableID *uuid.UUID
 }
 
 type CreateUserCommand struct {
@@ -55,6 +64,9 @@ type UpdateUserCommand struct {
 	Profile     *domain.Profile
 	Password    string
 	Active      *bool
+	// EquipeID distingue trois cas : nil = ne pas toucher au rattachement,
+	// pointeur vers nil = détacher, pointeur vers une valeur = rattacher.
+	EquipeID **uuid.UUID
 }
 
 type DeleteUserCommand struct {
@@ -90,8 +102,10 @@ type OrganizationRepository interface {
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	SaveSite(ctx context.Context, s domain.Site) error
+	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	SaveService(ctx context.Context, s domain.Service) error
 	SaveApplication(ctx context.Context, a domain.Application) error
+	SaveEquipe(ctx context.Context, e domain.Equipe) error
 	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
@@ -204,6 +218,8 @@ type OrganizationService interface {
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
+	CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (domain.Equipe, error)
+	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
@@ -216,12 +232,13 @@ type OrganizationService interface {
 }
 
 type UserSummary struct {
-	ID      uuid.UUID `json:"id"`
-	Login   string    `json:"login"`
-	Prenom  string    `json:"prenom"`
-	Nom     string    `json:"nom"`
-	Profile string    `json:"profil"`
-	Active  bool      `json:"active"`
+	ID       uuid.UUID  `json:"id"`
+	Login    string     `json:"login"`
+	Prenom   string     `json:"prenom"`
+	Nom      string     `json:"nom"`
+	Profile  string     `json:"profil"`
+	Active   bool       `json:"active"`
+	EquipeID *uuid.UUID `json:"equipeId,omitempty"`
 }
 
 type UserDetail struct {

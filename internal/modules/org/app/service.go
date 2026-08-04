@@ -70,10 +70,16 @@ func (s *organizationService) CreateService(ctx context.Context, cmd ports.Creat
 	if cmd.ResponsableID == uuid.Nil {
 		return domain.Service{}, domain.ErrServiceWithoutResponsible
 	}
+	serviceType := cmd.Type
+	if serviceType == "" {
+		serviceType = domain.DefaultServiceType
+	}
 	service := domain.Service{
 		ID:            uuid.New(),
 		TenantID:      cmd.TenantID,
 		SiteID:        cmd.SiteID,
+		Libelle:       cmd.Libelle,
+		Type:          serviceType,
 		ResponsableID: &cmd.ResponsableID,
 	}
 	return service, s.repo.SaveService(ctx, service)
@@ -87,6 +93,24 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 		Libelle:   cmd.Libelle,
 	}
 	return app, s.repo.SaveApplication(ctx, app)
+}
+
+func (s *organizationService) CreateEquipe(ctx context.Context, cmd ports.CreateEquipeCommand) (domain.Equipe, error) {
+	if cmd.ApplicationID == uuid.Nil {
+		return domain.Equipe{}, domain.ErrEquipeWithoutApplication
+	}
+	equipe := domain.Equipe{
+		ID:            uuid.New(),
+		TenantID:      cmd.TenantID,
+		ApplicationID: cmd.ApplicationID,
+		Libelle:       cmd.Libelle,
+		ResponsableID: cmd.ResponsableID,
+	}
+	return equipe, s.repo.SaveEquipe(ctx, equipe)
+}
+
+func (s *organizationService) ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error) {
+	return s.repo.ListSites(ctx, tenant)
 }
 
 func (s *organizationService) ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error) {
@@ -473,6 +497,9 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		}
 		user.Active = *cmd.Active
 	}
+	if cmd.EquipeID != nil {
+		user.EquipeID = *cmd.EquipeID
+	}
 	if err := s.repo.UpdateUser(ctx, user); err != nil {
 		return ports.UserSummary{}, domain.ErrUserNotFound
 	}
@@ -524,12 +551,13 @@ func (s *userService) MarkReleaseNotesSeen(ctx context.Context, tenant kernel.Te
 
 func userToSummary(u domain.User) ports.UserSummary {
 	return ports.UserSummary{
-		ID:      u.ID,
-		Login:   string(u.Login),
-		Prenom:  u.Prenom,
-		Nom:     u.Nom,
-		Profile: string(u.Profile),
-		Active:  u.Active,
+		ID:       u.ID,
+		Login:    string(u.Login),
+		Prenom:   u.Prenom,
+		Nom:      u.Nom,
+		Profile:  string(u.Profile),
+		Active:   u.Active,
+		EquipeID: u.EquipeID,
 	}
 }
 

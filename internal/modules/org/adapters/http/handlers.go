@@ -51,10 +51,12 @@ func RegisterRoutes(
 		pr.Put("/societes/{id}/settings", updateSocieteSettings(org, authorizer))
 		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
+		pr.Get("/sites", listSites(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
 		pr.Post("/applications", createApplication(org, authorizer))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
+		pr.Post("/equipes", createEquipe(org, authorizer))
 		pr.Get("/equipes", listEquipes(org, authorizer))
 		pr.Get("/services", listServices(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
@@ -227,6 +229,8 @@ func createService(org ports.OrganizationService, authorizer authx.Authorizer) h
 		}
 		var req struct {
 			SiteID        uuid.UUID `json:"siteId"`
+			Libelle       string    `json:"libelle"`
+			Type          string    `json:"type"`
 			ResponsableID uuid.UUID `json:"responsableId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -237,6 +241,8 @@ func createService(org ports.OrganizationService, authorizer authx.Authorizer) h
 		s, err := org.CreateService(r.Context(), ports.CreateServiceCommand{
 			TenantID:      identity.TenantID,
 			SiteID:        req.SiteID,
+			Libelle:       req.Libelle,
+			Type:          req.Type,
 			ResponsableID: req.ResponsableID,
 		})
 		if err != nil {
@@ -299,6 +305,56 @@ func listApplications(org ports.OrganizationService, authorizer authx.Authorizer
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func listSites(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		items, err := org.ListSites(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func createEquipe(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			ApplicationID uuid.UUID  `json:"applicationId"`
+			Libelle       string     `json:"libelle"`
+			ResponsableID *uuid.UUID `json:"responsableId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		e, err := org.CreateEquipe(r.Context(), ports.CreateEquipeCommand{
+			TenantID:      identity.TenantID,
+			ApplicationID: req.ApplicationID,
+			Libelle:       req.Libelle,
+			ResponsableID: req.ResponsableID,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrEquipeWithoutApplication) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusCreated, e)
 	}
 }
 
@@ -663,10 +719,25 @@ func updateUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			Profile  *domain.Profile `json:"profil"`
 			Password string          `json:"password"`
 			Active   *bool           `json:"active"`
+			EquipeID *string         `json:"equipeId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
+		}
+		// equipeId absent = rattachement inchangé ; chaîne vide = détachement.
+		var equipeID **uuid.UUID
+		if req.EquipeID != nil {
+			var parsed *uuid.UUID
+			if *req.EquipeID != "" {
+				id, err := uuid.Parse(*req.EquipeID)
+				if err != nil {
+					httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid equipe id")
+					return
+				}
+				parsed = &id
+			}
+			equipeID = &parsed
 		}
 		identity, _ := authx.FromContext(r.Context())
 		summary, err := users.UpdateUser(r.Context(), ports.UpdateUserCommand{
@@ -676,6 +747,7 @@ func updateUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			Profile:     req.Profile,
 			Password:    req.Password,
 			Active:      req.Active,
+			EquipeID:    equipeID,
 		})
 		if err != nil {
 			writeUserMutationError(w, err)

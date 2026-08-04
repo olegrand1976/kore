@@ -7,6 +7,8 @@ export type OrgUserSummary = {
   Profil?: string
   active?: boolean
   Active?: boolean
+  equipeId?: string
+  EquipeID?: string
 }
 
 export const USER_PROFILES = [
@@ -34,6 +36,10 @@ function pickUserActive(item: OrgUserSummary) {
   return item.active ?? item.Active ?? true
 }
 
+function pickUserEquipeId(item: OrgUserSummary) {
+  return item.equipeId ?? item.EquipeID ?? ''
+}
+
 export function useUsers() {
   const list = async () => {
     const res = await $fetch<{ data?: OrgUserSummary[] }>('/api/org/users')
@@ -41,13 +47,19 @@ export function useUsers() {
     return Array.isArray(payload) ? payload : []
   }
 
-  const create = async (body: { login: string; password: string; profil: string }) => {
+  const create = async (body: {
+    login: string
+    password: string
+    profil: string
+    equipeId?: string
+  }) => {
     return $fetch('/api/org/users', { method: 'POST', body })
   }
 
+  // equipeId absent = rattachement inchangé ; chaîne vide = détachement.
   const update = async (
     id: string,
-    body: { profil?: string; password?: string; active?: boolean }
+    body: { profil?: string; password?: string; active?: boolean; equipeId?: string }
   ) => {
     return $fetch(`/api/org/users/${id}`, { method: 'PUT', body })
   }
@@ -69,6 +81,7 @@ export function useUsers() {
     pickUserId,
     pickUserLogin,
     pickUserProfile,
-    pickUserActive
+    pickUserActive,
+    pickUserEquipeId
   }
 }
