@@ -39,11 +39,20 @@ function nextVersion(current, bump) {
   }
 }
 
+// Le workflow fournit les commits sous forme de liste (« - <sujet> », cf.
+// git log --pretty=format:'- %s') : le marqueur de puce doit être toléré, sinon
+// aucun type conventionnel n'est reconnu et tout devient un patch.
+const BULLET = String.raw`[-*+]\s*`
+
+function conventionalType(text, type) {
+  return new RegExp(String.raw`(^|\n)\s*(?:${BULLET})?${type}(\(.+?\))?!?:`, 'i').test(text)
+}
+
 function fallbackFromCommits(text) {
   const lower = text.toLowerCase()
   if (lower.includes('breaking change') || lower.includes('!:')) return 'major'
-  if (/(^|\n)\s*feat(\(.+\))?:/i.test(text)) return 'minor'
-  if (/(^|\n)\s*fix(\(.+\))?:/i.test(text)) return 'patch'
+  if (conventionalType(text, 'feat')) return 'minor'
+  if (conventionalType(text, 'fix')) return 'patch'
   return 'patch'
 }
 

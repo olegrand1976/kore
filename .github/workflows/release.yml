@@ -52,10 +52,14 @@ jobs:
           else
             echo "empty=false" >> "$GITHUB_OUTPUT"
           fi
+          # Délimiteur non quoté (exigé par $GITHUB_OUTPUT) et unique par run :
+          # un message de commit valant littéralement « EOF » terminerait sinon
+          # la valeur multiligne par erreur.
+          delim="EOF_$(openssl rand -hex 12)"
           {
-            echo "text<<'EOF'"
+            echo "text<<${delim}"
             echo "${commits}"
-            echo "EOF"
+            echo "${delim}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Stop if no new commits
@@ -73,11 +77,15 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          # Passé par l'environnement, jamais interpolé dans le script : un sujet
+          # de commit est une entrée non fiable, et ${{ }} est substitué
+          # textuellement avant exécution du shell (injection de commande).
+          CURRENT_TAG: ${{ steps.last.outputs.tag }}
+          COMMITS: ${{ steps.commits.outputs.text }}
         run: |
           set -euo pipefail
-          current="${{ steps.last.outputs.tag }}"
-          current="${current#v}"
-          json="$(node scripts/ai-semver-bump.mjs --current "${current}" --commits "${{ steps.commits.outputs.text }}")"
+          current="${CURRENT_TAG#v}"
+          json="$(node scripts/ai-semver-bump.mjs --current "${current}" --commits "${COMMITS}")"
           echo "${json}" > bump.json
           next_tag="$(node -e "const j=require('./bump.json'); process.stdout.write(j.nextTag)")"
           echo "next_tag=${next_tag}" >> "$GITHUB_OUTPUT"
