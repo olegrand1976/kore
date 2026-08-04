@@ -5,7 +5,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_OIDC="${ROOT}/.env.oidc"
-ENV_IODC="${ROOT}/.env.iodc"
 ENV_FILE="${ROOT}/.env"
 
 CLIENT_ID="${OIDC_GOOGLE_CLIENT_ID:-}"
@@ -14,10 +13,6 @@ CLIENT_SECRET="${OIDC_GOOGLE_CLIENT_SECRET:-}"
 if [[ -f "$ENV_OIDC" ]]; then
   # shellcheck disable=SC1091
   set -a && source "$ENV_OIDC" && set +a
-elif [[ -f "$ENV_IODC" ]]; then
-  # Compat: certains environnements ont un fichier mal nommé ".env.iodc"
-  # shellcheck disable=SC1091
-  set -a && source "$ENV_IODC" && set +a
 fi
 CLIENT_ID="${OIDC_GOOGLE_CLIENT_ID:-$CLIENT_ID}"
 CLIENT_SECRET="${OIDC_GOOGLE_CLIENT_SECRET:-$CLIENT_SECRET}"
