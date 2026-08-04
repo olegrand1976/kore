@@ -92,7 +92,12 @@ jobs:
           echo "${json}" > bump.json
           next_tag="$(node -e "const j=require('./bump.json'); process.stdout.write(j.nextTag)")"
           echo "next_tag=${next_tag}" >> "$GITHUB_OUTPUT"
+          # bump.json est référencé par le corps de la release : il doit être
+          # lisible dans les logs. « reason » distingue la décision Gemini
+          # (justification du modèle) du repli déterministe (« fallback »).
           echo "Bump decision: ${next_tag}"
+          echo "bump.json:"
+          cat bump.json
 
       - name: Create tag
         if: steps.commits.outputs.empty != 'true'
