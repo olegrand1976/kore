@@ -140,6 +140,8 @@ type OrganizationRepository interface {
 	GetTenant(ctx context.Context, id kernel.TenantID) (domain.Tenant, error)
 	SaveSociete(ctx context.Context, s domain.Societe) error
 	UpdateSociete(ctx context.Context, s domain.Societe) error
+	SaveSocieteLogo(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID, content []byte, contentType string) error
+	GetTenantLogo(ctx context.Context, tenant kernel.TenantID) (content []byte, contentType string, err error)
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	SaveSite(ctx context.Context, s domain.Site) error
@@ -219,13 +221,15 @@ type EntitlementReader interface {
 }
 
 type UpdateSocieteBrandingCommand struct {
-	TenantID      kernel.TenantID
-	SocieteID     uuid.UUID
-	RaisonSociale string
-	Logo          string
-	Adresse       string
-	Siret         string
-	URLTenant     string
+	TenantID        kernel.TenantID
+	SocieteID       uuid.UUID
+	RaisonSociale   string
+	Logo            string
+	LogoContent     []byte
+	LogoContentType string
+	Adresse         string
+	Siret           string
+	URLTenant       string
 }
 
 type UpdateSocieteSettingsCommand struct {
@@ -274,6 +278,7 @@ type OrganizationService interface {
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	UpdateSocieteBranding(ctx context.Context, cmd UpdateSocieteBrandingCommand) (domain.Societe, error)
+	GetTenantLogo(ctx context.Context, tenant kernel.TenantID) (content []byte, contentType string, err error)
 	UpdateSocieteSettings(ctx context.Context, cmd UpdateSocieteSettingsCommand) (domain.Societe, error)
 	CalendarSettingsForUser(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (UserCalendarSettings, error)
 }

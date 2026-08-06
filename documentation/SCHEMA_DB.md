@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 06/08/2026
+> **Dernière mise à jour doc** : 06/08/2026 (logo_content BYTEA)
 
 ---
 
@@ -120,7 +120,9 @@ Index :
 | `id` | UUID | PK |
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `raison_sociale` | TEXT | NOT NULL |
-| `logo` | TEXT | |
+| `logo` | TEXT | URL publique `/api/v1/branding/logo/{tenantId}` |
+| `logo_content` | BYTEA | Binaire logo (≤512 KiB) — migration `0024` |
+| `logo_content_type` | TEXT | MIME (`image/png`, `image/jpeg`, …) — migration `0024` |
 | `devise` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `langue_defaut` | TEXT | NOT NULL, DEFAULT `'fr'` |
 | `adresse` | TEXT | NOT NULL, DEFAULT `''` |

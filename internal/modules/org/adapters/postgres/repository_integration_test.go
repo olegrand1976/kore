@@ -44,3 +44,32 @@ func TestOrg_TenantIsolationSocietes(t *testing.T) {
 	require.Len(t, listA, 1)
 	require.Equal(t, "Alpha SAS", listA[0].RaisonSociale)
 }
+
+func TestOrg_SocieteLogoContentRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	societeID := uuid.New()
+	require.NoError(t, repo.SaveTenant(ctx, domain.Tenant{ID: tenant.UUID(), Name: "LogoCo"}))
+	require.NoError(t, repo.SaveSociete(ctx, domain.Societe{
+		ID:            societeID,
+		TenantID:      tenant,
+		RaisonSociale: "LogoCo SAS",
+		Devise:        "EUR",
+		Logo:          "/api/v1/branding/logo/" + tenant.UUID().String(),
+	}))
+
+	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0x00, 0x01, 0x02}
+	require.NoError(t, repo.SaveSocieteLogo(ctx, tenant, societeID, png, "image/png"))
+
+	content, contentType, err := repo.GetTenantLogo(ctx, tenant)
+	require.NoError(t, err)
+	require.Equal(t, "image/png", contentType)
+	require.Equal(t, png, content)
+
+	other := kernel.NewTenantID(uuid.New())
+	_, _, err = repo.GetTenantLogo(ctx, other)
+	require.ErrorIs(t, err, domain.ErrLogoNotFound)
+}

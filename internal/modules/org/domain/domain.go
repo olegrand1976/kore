@@ -22,6 +22,8 @@ var (
 	ErrInvalidProfile            = errors.New("invalid profile")
 	ErrEquipeNotFound            = errors.New("equipe not found")
 	ErrUserNotFound              = errors.New("user not found")
+	ErrSocieteNotFound           = errors.New("societe not found")
+	ErrLogoNotFound              = errors.New("logo not found")
 	ErrApplicationNotFound       = errors.New("application not found")
 	ErrInvalidModeFacturation    = errors.New("invalid mode facturation")
 	ErrInvalidApplicationLibelle = errors.New("application libelle required")

@@ -51,6 +51,7 @@ PUSH_ENABLED: "false"
 FCM_PROJECT_ID: "${GCP_PROJECT_ID}"
 PDP_PROVIDER: "stub"
 PLATFORM_ADMIN_LOGINS: "ADM_admin,ADM_olivier"
+UPLOADS_DIR: "/data/uploads"
 EOF
 }
 

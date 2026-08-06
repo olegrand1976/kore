@@ -16,9 +16,16 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return $fetch(`${apiBase()}/api/v1/societes/${id}/branding`, {
-    method: 'PUT',
-    headers,
-    body
-  })
+  try {
+    return await $fetch(`${apiBase()}/api/v1/societes/${id}/branding`, {
+      method: 'PUT',
+      headers,
+      body
+    })
+  } catch (err: unknown) {
+    const e = err as { statusCode?: number; status?: number; data?: { error?: { message?: string } }; message?: string }
+    const status = e.statusCode ?? e.status ?? 500
+    const message = e.data?.error?.message ?? e.message ?? 'branding update failed'
+    throw createError({ statusCode: status, message })
+  }
 })

@@ -16,8 +16,9 @@ ENV HOME=/tmp
 ENV CHROME_USER_DATA_DIR=/tmp/chrome-user-data
 COPY --from=build /out/kore-api /kore-api
 RUN useradd -r -u 65532 -g nogroup kore \
-    && mkdir -p /tmp/chrome-user-data \
-    && chown -R kore:nogroup /tmp/chrome-user-data
+    && mkdir -p /tmp/chrome-user-data /data/uploads \
+    && chown -R kore:nogroup /tmp/chrome-user-data /data/uploads
+ENV UPLOADS_DIR=/data/uploads
 USER kore
 EXPOSE 8080
 ENTRYPOINT ["/kore-api"]

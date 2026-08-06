@@ -106,6 +106,44 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 	return err
 }
 
+func (r *Repository) SaveSocieteLogo(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID, content []byte, contentType string) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.societes
+		SET logo_content = $3, logo_content_type = $4
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), societeID, content, nullString(contentType))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrSocieteNotFound
+	}
+	return nil
+}
+
+func (r *Repository) GetTenantLogo(ctx context.Context, tenant kernel.TenantID) ([]byte, string, error) {
+	var content []byte
+	var contentType *string
+	err := r.pool.QueryRow(ctx, `
+		SELECT logo_content, logo_content_type
+		FROM org.societes
+		WHERE tenant_id = $1 AND logo_content IS NOT NULL
+		ORDER BY created_at ASC
+		LIMIT 1
+	`, tenant.UUID()).Scan(&content, &contentType)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, "", domain.ErrLogoNotFound
+		}
+		return nil, "", err
+	}
+	ct := "application/octet-stream"
+	if contentType != nil && *contentType != "" {
+		ct = *contentType
+	}
+	return content, ct, nil
+}
+
 func (r *Repository) ListSocietesCraMailAuto(ctx context.Context) ([]ports.CraMailReminderTarget, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT tenant_id, id, COALESCE(pays, 'FR'), COALESCE(cra_mail_recipients, '[]')

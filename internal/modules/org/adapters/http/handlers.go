@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -47,9 +48,9 @@ func RegisterRoutes(
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/societes", listSocietes(org))
 		pr.Post("/societes", createSociete(org, authorizer, leaveBootstrap))
-		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer, uploadsDir))
+		pr.Put("/societes/{id}/branding", updateSocieteBranding(org, authorizer))
 		pr.Put("/societes/{id}/settings", updateSocieteSettings(org, authorizer))
-		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(uploadsDir))
+		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(org, uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
 		pr.Get("/sites", listSites(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
@@ -739,7 +740,7 @@ func createClient(clients ports.ClientService, authorizer authx.Authorizer) http
 	}
 }
 
-func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Authorizer, uploadsDir string) http.HandlerFunc {
+func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
@@ -751,7 +752,7 @@ func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Autho
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		if err := r.ParseMultipartForm(512 << 10); err != nil {
+		if err := r.ParseMultipartForm(uploads.MaxLogoBytes + (1 << 20)); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid multipart form")
 			return
 		}
@@ -765,16 +766,14 @@ func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Autho
 		}
 		if file, header, err := r.FormFile("logo"); err == nil {
 			defer file.Close()
-			if err := uploads.ValidateLogoFilename(header.Filename); err != nil {
-				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
-				return
-			}
-			logoURL, err := uploads.Store(uploadsDir, identity.TenantID.UUID(), societeID, header.Filename, file)
+			data, err := uploads.ReadAndValidateLogo(file, header.Filename)
 			if err != nil {
 				writeUploadError(w, err)
 				return
 			}
-			cmd.Logo = logoURL
+			cmd.Logo = fmt.Sprintf("/api/v1/branding/logo/%s", identity.TenantID.UUID().String())
+			cmd.LogoContent = data
+			cmd.LogoContentType = uploads.ContentTypeForExt(header.Filename)
 		}
 		societe, err := org.UpdateSocieteBranding(r.Context(), cmd)
 		if err != nil {
@@ -835,7 +834,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 	}
 }
 
-func serveTenantLogo(uploadsDir string) http.HandlerFunc {
+func serveTenantLogo(org ports.OrganizationService, uploadsDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		identity, ok := authx.FromContext(r.Context())
 		if !ok {
@@ -851,6 +850,20 @@ func serveTenantLogo(uploadsDir string) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
+		content, contentType, err := org.GetTenantLogo(r.Context(), identity.TenantID)
+		if err == nil {
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Cache-Control", "private, max-age=3600")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(content)
+			return
+		}
+		if !errors.Is(err, domain.ErrLogoNotFound) {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		// Fallback: legacy filesystem logos (local docker volume).
 		path, ok := uploads.Path(uploadsDir, tenantID)
 		if !ok {
 			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "logo not found")

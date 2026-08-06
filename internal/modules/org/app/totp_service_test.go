@@ -28,6 +28,12 @@ func (r *totpUserRepo) GetTenant(context.Context, kernel.TenantID) (domain.Tenan
 }
 func (r *totpUserRepo) SaveSociete(context.Context, domain.Societe) error   { return nil }
 func (r *totpUserRepo) UpdateSociete(context.Context, domain.Societe) error { return nil }
+func (r *totpUserRepo) SaveSocieteLogo(context.Context, kernel.TenantID, uuid.UUID, []byte, string) error {
+	return nil
+}
+func (r *totpUserRepo) GetTenantLogo(context.Context, kernel.TenantID) ([]byte, string, error) {
+	return nil, "", domain.ErrLogoNotFound
+}
 func (r *totpUserRepo) ListSocietes(_ context.Context, _ kernel.TenantID) ([]domain.Societe, error) {
 	return []domain.Societe{r.societe}, nil
 }

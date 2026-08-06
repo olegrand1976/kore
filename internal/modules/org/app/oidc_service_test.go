@@ -28,6 +28,12 @@ func (s *oidcRepoStub) GetTenant(context.Context, kernel.TenantID) (domain.Tenan
 }
 func (s *oidcRepoStub) SaveSociete(context.Context, domain.Societe) error   { return nil }
 func (s *oidcRepoStub) UpdateSociete(context.Context, domain.Societe) error { return nil }
+func (s *oidcRepoStub) SaveSocieteLogo(context.Context, kernel.TenantID, uuid.UUID, []byte, string) error {
+	return nil
+}
+func (s *oidcRepoStub) GetTenantLogo(context.Context, kernel.TenantID) ([]byte, string, error) {
+	return nil, "", domain.ErrLogoNotFound
+}
 func (s *oidcRepoStub) ListSocietes(context.Context, kernel.TenantID) ([]domain.Societe, error) {
 	return nil, nil
 }

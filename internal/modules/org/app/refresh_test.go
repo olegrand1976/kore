@@ -24,6 +24,12 @@ func (r refreshUserRepo) GetTenant(context.Context, kernel.TenantID) (domain.Ten
 }
 func (r refreshUserRepo) SaveSociete(context.Context, domain.Societe) error   { return nil }
 func (r refreshUserRepo) UpdateSociete(context.Context, domain.Societe) error { return nil }
+func (r refreshUserRepo) SaveSocieteLogo(context.Context, kernel.TenantID, uuid.UUID, []byte, string) error {
+	return nil
+}
+func (r refreshUserRepo) GetTenantLogo(context.Context, kernel.TenantID) ([]byte, string, error) {
+	return nil, "", domain.ErrLogoNotFound
+}
 func (r refreshUserRepo) ListSocietes(context.Context, kernel.TenantID) ([]domain.Societe, error) {
 	return nil, nil
 }

@@ -280,7 +280,16 @@ func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd por
 	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
 		return domain.Societe{}, err
 	}
+	if len(cmd.LogoContent) > 0 {
+		if err := s.repo.SaveSocieteLogo(ctx, cmd.TenantID, cmd.SocieteID, cmd.LogoContent, cmd.LogoContentType); err != nil {
+			return domain.Societe{}, err
+		}
+	}
 	return societe, nil
+}
+
+func (s *organizationService) GetTenantLogo(ctx context.Context, tenant kernel.TenantID) ([]byte, string, error) {
+	return s.repo.GetTenantLogo(ctx, tenant)
 }
 
 func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd ports.UpdateSocieteSettingsCommand) (domain.Societe, error) {
