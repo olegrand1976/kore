@@ -23,6 +23,9 @@ const {
   createSite,
   createService,
   createApplication,
+  updateApplication,
+  deactivateApplication,
+  activateApplication,
   createEquipe,
   orgId,
   orgLabel
@@ -47,6 +50,14 @@ const parentLabel = ref('')
 const submitting = ref(false)
 const formError = ref('')
 const form = reactive({ libelle: '', type: 'interne', responsableId: '' })
+
+const editOpen = ref(false)
+const editSubmitting = ref(false)
+const editError = ref('')
+const editForm = reactive({ id: '', libelle: '' })
+const actionBusyId = ref('')
+
+const isAppActive = (app: OrgApplication) => app.active ?? app.Active ?? true
 
 const load = async () => {
   pending.value = true
@@ -137,6 +148,10 @@ const submit = async () => {
           responsableId: form.responsableId || undefined
         })
         break
+      default: {
+        const _exhaustive: never = modalLevel.value
+        throw new Error(`Unhandled level: ${_exhaustive}`)
+      }
     }
     modalOpen.value = false
     await load()
@@ -144,6 +159,50 @@ const submit = async () => {
     formError.value = extractFetchError(err, t('org.tree.create_error'))
   } finally {
     submitting.value = false
+  }
+}
+
+const openEditApplication = (app: OrgApplication) => {
+  editForm.id = orgId(app)
+  editForm.libelle = orgLabel(app)
+  editError.value = ''
+  editOpen.value = true
+}
+
+const submitEditApplication = async () => {
+  editSubmitting.value = true
+  editError.value = ''
+  try {
+    await updateApplication(editForm.id, { libelle: editForm.libelle })
+    editOpen.value = false
+    await load()
+  } catch (err) {
+    editError.value = extractFetchError(err, t('org.tree.update_error'))
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+const toggleApplicationActive = async (app: OrgApplication) => {
+  const id = orgId(app)
+  if (!id || actionBusyId.value) return
+  const active = isAppActive(app)
+  if (active && !window.confirm(t('org.tree.deactivate_confirm'))) return
+  actionBusyId.value = id
+  try {
+    if (active) {
+      await deactivateApplication(id)
+    } else {
+      await activateApplication(id)
+    }
+    await load()
+  } catch (err) {
+    loadError.value = extractFetchError(
+      err,
+      active ? t('org.tree.deactivate_error') : t('org.tree.activate_error')
+    )
+  } finally {
+    actionBusyId.value = ''
   }
 }
 
@@ -241,9 +300,36 @@ defineExpose({ reload: load })
                     >
                       <div class="org-tree__row">
                         <AppIcon name="apps" />
-                        <span class="org-tree__label">{{ orgLabel(application) }}</span>
+                        <span class="org-tree__label" :class="{ 'org-tree__label--inactive': !isAppActive(application) }">
+                          {{ orgLabel(application) }}
+                        </span>
                         <AppBadge variant="default">{{ $t('org.tree.level_application') }}</AppBadge>
+                        <AppBadge v-if="!isAppActive(application)" variant="warning">
+                          {{ $t('org.tree.inactive_badge') }}
+                        </AppBadge>
                         <AppButton
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          @click="openEditApplication(application)"
+                        >
+                          {{ $t('org.tree.edit_application') }}
+                        </AppButton>
+                        <AppButton
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          :disabled="actionBusyId === orgId(application)"
+                          @click="toggleApplicationActive(application)"
+                        >
+                          {{
+                            isAppActive(application)
+                              ? $t('org.tree.deactivate_application')
+                              : $t('org.tree.activate_application')
+                          }}
+                        </AppButton>
+                        <AppButton
+                          v-if="isAppActive(application)"
                           variant="ghost"
                           size="sm"
                           @click="
@@ -343,6 +429,27 @@ defineExpose({ reload: load })
         </div>
       </form>
     </AppModal>
+
+    <AppModal v-model:open="editOpen" width="sm" :aria-label="$t('org.tree.edit_application_title')">
+      <form class="org-tree__form" @submit.prevent="submitEditApplication">
+        <h2 class="org-tree__form-title">{{ $t('org.tree.edit_application_title') }}</h2>
+        <AppInput
+          id="org-edit-app-libelle"
+          v-model="editForm.libelle"
+          :label="$t('org.tree.field_libelle')"
+          required
+        />
+        <p v-if="editError" class="org-tree__form-error" role="alert">{{ editError }}</p>
+        <div class="org-tree__form-actions">
+          <AppButton variant="ghost" type="button" @click="editOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="editSubmitting">
+            {{ editSubmitting ? $t('org.tree.saving') : $t('org.tree.save') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -377,6 +484,11 @@ defineExpose({ reload: load })
   font-weight: 600;
   font-size: var(--kore-text-small);
   color: var(--kore-text);
+}
+
+.org-tree__label--inactive {
+  color: var(--kore-text-muted);
+  text-decoration: line-through;
 }
 
 .org-tree__hint {

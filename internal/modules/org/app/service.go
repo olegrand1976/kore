@@ -91,8 +91,34 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 		TenantID:  cmd.TenantID,
 		ServiceID: cmd.ServiceID,
 		Libelle:   cmd.Libelle,
+		Active:    true,
 	}
 	return app, s.repo.SaveApplication(ctx, app)
+}
+
+func (s *organizationService) UpdateApplication(ctx context.Context, cmd ports.UpdateApplicationCommand) (domain.Application, error) {
+	app, err := s.repo.GetApplication(ctx, cmd.TenantID, cmd.ApplicationID)
+	if err != nil {
+		return domain.Application{}, domain.ErrApplicationNotFound
+	}
+	if cmd.Libelle != nil {
+		app.Libelle = *cmd.Libelle
+	}
+	if cmd.Active != nil {
+		app.Active = *cmd.Active
+	}
+	if err := s.repo.UpdateApplication(ctx, app); err != nil {
+		return domain.Application{}, err
+	}
+	return app, nil
+}
+
+func (s *organizationService) SetApplicationActive(ctx context.Context, cmd ports.SetApplicationActiveCommand) (domain.Application, error) {
+	return s.UpdateApplication(ctx, ports.UpdateApplicationCommand{
+		TenantID:      cmd.TenantID,
+		ApplicationID: cmd.ApplicationID,
+		Active:        &cmd.Active,
+	})
 }
 
 func (s *organizationService) CreateEquipe(ctx context.Context, cmd ports.CreateEquipeCommand) (domain.Equipe, error) {
@@ -113,8 +139,8 @@ func (s *organizationService) ListSites(ctx context.Context, tenant kernel.Tenan
 	return s.repo.ListSites(ctx, tenant)
 }
 
-func (s *organizationService) ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error) {
-	return s.repo.ListApplications(ctx, tenant)
+func (s *organizationService) ListApplications(ctx context.Context, tenant kernel.TenantID, filter ports.ApplicationListFilter) ([]domain.Application, error) {
+	return s.repo.ListApplications(ctx, tenant, filter)
 }
 
 func (s *organizationService) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {

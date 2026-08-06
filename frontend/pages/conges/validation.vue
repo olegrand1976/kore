@@ -52,7 +52,6 @@
 <script setup lang="ts">
 import type { LeaveRequest } from '~/composables/useLeave'
 import {
-const { apiFetch } = useApiFetch()
   pickLeaveTypeCode,
   pickLeaveTypeLabel,
   useLeave,
@@ -61,6 +60,7 @@ const { apiFetch } = useApiFetch()
 } from '~/composables/useLeave'
 import { useListControls } from '~/composables/useListControls'
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()

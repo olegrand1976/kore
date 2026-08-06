@@ -67,7 +67,10 @@ const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { branding, fetchBranding } = useTenantBranding()
 
-const tab = ref<'identite' | 'structure'>('identite')
+const route = useRoute()
+const tab = ref<'identite' | 'structure'>(
+  route.query.tab === 'structure' ? 'structure' : 'identite'
+)
 
 const form = reactive({
   raisonSociale: '',

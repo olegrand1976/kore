@@ -41,9 +41,10 @@ func (s *oidcRepoStub) SaveEquipe(context.Context, domain.Equipe) error         
 func (s *oidcRepoStub) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
 	return nil, nil
 }
-func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
+func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID, ports.ApplicationListFilter) ([]domain.Application, error) {
 	return nil, nil
 }
+func (s *oidcRepoStub) UpdateApplication(context.Context, domain.Application) error { return nil }
 func (s *oidcRepoStub) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
 	return nil, nil
 }

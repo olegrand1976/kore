@@ -162,6 +162,7 @@ func (r *Runner) ensureApplication3(ctx context.Context, tenant kernel.TenantID)
 		TenantID:  tenant,
 		ServiceID: DemoServiceID,
 		Libelle:   DemoApp3Label,
+		Active:    true,
 	})
 }
 

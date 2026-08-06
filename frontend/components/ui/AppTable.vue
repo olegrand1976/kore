@@ -32,7 +32,14 @@ function cellClass(col: TableColumn) {
 <template>
   <div class="app-table-wrap">
     <p v-if="loading" class="app-table__state">…</p>
-    <AppEmptyState v-else-if="isEmpty" icon="inbox" :title="emptyTitle || 'Aucune donnée'" :description="emptyDescription" />
+    <AppEmptyState
+      v-else-if="isEmpty"
+      icon="inbox"
+      :title="emptyTitle || 'Aucune donnée'"
+      :description="emptyDescription"
+    >
+      <slot name="empty" />
+    </AppEmptyState>
     <table v-else class="app-table">
       <thead>
         <tr>

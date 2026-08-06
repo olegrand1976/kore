@@ -41,9 +41,10 @@ func (r *totpUserRepo) SaveEquipe(context.Context, domain.Equipe) error         
 func (r *totpUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
 	return nil, nil
 }
-func (r *totpUserRepo) ListApplications(context.Context, kernel.TenantID) ([]domain.Application, error) {
+func (r *totpUserRepo) ListApplications(context.Context, kernel.TenantID, ports.ApplicationListFilter) ([]domain.Application, error) {
 	return nil, nil
 }
+func (r *totpUserRepo) UpdateApplication(context.Context, domain.Application) error { return nil }
 func (r *totpUserRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
 	return nil, nil
 }

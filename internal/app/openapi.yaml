@@ -1087,6 +1087,12 @@ paths:
     get:
       summary: Liste applications
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema: { type: string, enum: [true, false, all], default: true }
+          description: Filtre actif (défaut true). all = toutes.
       responses:
         "200":
           description: Liste
@@ -1105,6 +1111,34 @@ paths:
       responses:
         "200":
           description: Détail
+    put:
+      summary: Modifier une application (libellé, active)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Application mise à jour
+        "404":
+          description: Application introuvable
+  /applications/{id}/deactivate:
+    patch:
+      summary: Désactiver une application
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Désactivée
+  /applications/{id}/activate:
+    patch:
+      summary: Réactiver une application
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Réactivée
   /branding/logo/{tenantId}:
     get:
       summary: Logo du tenant

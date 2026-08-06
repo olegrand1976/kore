@@ -42,6 +42,25 @@ type CreateApplicationCommand struct {
 	Libelle   string
 }
 
+// ApplicationListFilter filters ListApplications.
+// Active nil = all applications; true/false filters by the active flag.
+type ApplicationListFilter struct {
+	Active *bool
+}
+
+type UpdateApplicationCommand struct {
+	TenantID      kernel.TenantID
+	ApplicationID uuid.UUID
+	Libelle       *string
+	Active        *bool
+}
+
+type SetApplicationActiveCommand struct {
+	TenantID      kernel.TenantID
+	ApplicationID uuid.UUID
+	Active        bool
+}
+
 type CreateEquipeCommand struct {
 	TenantID      kernel.TenantID
 	ApplicationID uuid.UUID
@@ -105,8 +124,9 @@ type OrganizationRepository interface {
 	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	SaveService(ctx context.Context, s domain.Service) error
 	SaveApplication(ctx context.Context, a domain.Application) error
+	UpdateApplication(ctx context.Context, a domain.Application) error
 	SaveEquipe(ctx context.Context, e domain.Equipe) error
-	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
@@ -218,9 +238,11 @@ type OrganizationService interface {
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
+	UpdateApplication(ctx context.Context, cmd UpdateApplicationCommand) (domain.Application, error)
+	SetApplicationActive(ctx context.Context, cmd SetApplicationActiveCommand) (domain.Application, error)
 	CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (domain.Equipe, error)
 	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
-	ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error)
+	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)

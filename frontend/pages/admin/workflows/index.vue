@@ -102,7 +102,6 @@
 <script setup lang="ts">
 import type { WorkflowDefinition, WorkflowPresetCode } from '~/composables/useWorkflowDefinition'
 import {
-const { apiFetch } = useApiFetch()
   WORKFLOW_PRESET_CODES,
   WORKFLOW_PRESETS,
   buildPayload,
@@ -114,6 +113,7 @@ const { apiFetch } = useApiFetch()
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 

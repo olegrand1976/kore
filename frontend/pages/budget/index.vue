@@ -5,6 +5,24 @@
         <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
           {{ $t('guides.show') }}
         </AppButton>
+        <AppButton
+          v-if="canManageOrg"
+          variant="ghost"
+          size="sm"
+          type="button"
+          @click="navigateTo('/admin/organisation?tab=structure')"
+        >
+          {{ $t('budget.manage_applications') }}
+        </AppButton>
+        <AppButton
+          v-if="canWriteBudget"
+          variant="primary"
+          size="sm"
+          type="button"
+          @click="openCreateModal"
+        >
+          <AppIcon name="add" /> {{ $t('budget.create') }}
+        </AppButton>
       </template>
     </AppPageHeader>
 
@@ -69,6 +87,21 @@
           :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('budget.empty')"
           :empty-description="hasActiveFilters ? undefined : $t('budget.empty_desc')"
         >
+        <template #empty>
+          <div v-if="!hasActiveFilters" class="budget-empty-actions">
+            <AppButton v-if="canWriteBudget" variant="primary" type="button" @click="openCreateModal">
+              <AppIcon name="add" /> {{ $t('budget.create') }}
+            </AppButton>
+            <AppButton
+              v-if="canManageOrg"
+              variant="ghost"
+              type="button"
+              @click="navigateTo('/admin/organisation?tab=structure')"
+            >
+              {{ $t('budget.manage_applications') }}
+            </AppButton>
+          </div>
+        </template>
         <template #cell-application="{ row }">
           <button type="button" class="row-link" @click="navigateTo(`/budget/${row.id}`)">
             {{ row.application }}
@@ -97,13 +130,101 @@
           {{ row.consumed }} / {{ row.planned }} {{ $t('budget.unit_days') }}
         </template>
         <template #cell-actions="{ row }">
-          <AppButton variant="ghost" size="sm" @click="navigateTo(`/budget/${row.id}`)">
-            {{ $t('budget.open') }}
-          </AppButton>
+          <div class="budget-row-actions">
+            <AppButton variant="ghost" size="sm" @click="navigateTo(`/budget/${row.id}`)">
+              {{ $t('budget.open') }}
+            </AppButton>
+            <AppButton
+              v-if="canManageOrg && row.applicationId"
+              variant="ghost"
+              size="sm"
+              type="button"
+              @click="openEditApp(row)"
+            >
+              {{ $t('budget.edit_application') }}
+            </AppButton>
+          </div>
         </template>
       </AppTable>
       </AppCard>
     </template>
+
+    <AppModal v-model:open="createOpen" width="sm" :aria-label="$t('budget.create_title')">
+      <form class="budget-form" @submit.prevent="submitCreate">
+        <h2 class="budget-form__title">{{ $t('budget.create_title') }}</h2>
+        <AppApplicationSelect
+          id="budget-create-app"
+          v-model="createForm.applicationId"
+          :label="$t('budget.form_application')"
+          required
+        />
+        <div class="budget-form__field">
+          <label for="budget-create-type">{{ $t('budget.form_type') }}</label>
+          <select id="budget-create-type" v-model="createForm.type" required>
+            <option value="defaut">{{ $t('budget.type_defaut') }}</option>
+            <option value="specifique">{{ $t('budget.type_specifique') }}</option>
+          </select>
+          <p class="budget-form__hint">{{ $t('budget.type_defaut_help') }}</p>
+        </div>
+        <AppInput
+          id="budget-create-days"
+          v-model="createForm.plannedDays"
+          type="number"
+          step="0.5"
+          min="0"
+          :label="$t('budget.form_planned_days')"
+          required
+        />
+        <AppInput
+          id="budget-create-uo"
+          v-model="createForm.plannedUO"
+          type="number"
+          step="0.5"
+          min="0"
+          :label="$t('budget.form_planned_uo')"
+          required
+        />
+        <AppInput
+          id="budget-create-amount"
+          v-model="createForm.plannedAmountEur"
+          type="number"
+          step="0.01"
+          min="0"
+          :label="$t('budget.form_planned_amount_eur')"
+          required
+        />
+        <p v-if="createError" class="budget-form__error" role="alert">{{ createError }}</p>
+        <div class="budget-form__actions">
+          <AppButton variant="ghost" type="button" @click="createOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="creating">
+            {{ creating ? $t('budget.creating') : $t('budget.create_submit') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal v-model:open="editAppOpen" width="sm" :aria-label="$t('org.tree.edit_application_title')">
+      <form class="budget-form" @submit.prevent="submitEditApp">
+        <h2 class="budget-form__title">{{ $t('org.tree.edit_application_title') }}</h2>
+        <AppInput
+          id="budget-edit-app-libelle"
+          v-model="editAppForm.libelle"
+          :label="$t('org.tree.field_libelle')"
+          required
+        />
+        <p v-if="editAppError" class="budget-form__error" role="alert">{{ editAppError }}</p>
+        <div class="budget-form__actions">
+          <AppButton variant="ghost" type="button" @click="editAppOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="editAppSaving">
+            {{ editAppSaving ? $t('org.tree.saving') : $t('org.tree.save') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -117,6 +238,7 @@ const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 type BudgetRow = {
   id: string
+  applicationId: string
   application: string
   client: string
   typeLabel: string
@@ -128,23 +250,102 @@ type BudgetRow = {
 }
 
 const { t } = useI18n()
-const { list, pickId, tripleValue } = useBudget()
-const { list: listApplications, appById, pickAppLabel, pickAppClient } = useApplications()
+const { list, create, pickId, tripleValue } = useBudget()
+const {
+  list: listApplications,
+  update: updateApplication,
+  appById,
+  pickAppLabel,
+  pickAppClient
+} = useApplications()
 const { budgetTypeLabel, budgetStatus, consumptionPercent } = useBudgetDisplay()
 const { extractFetchError } = useApiError()
+const { can } = usePermissions()
+const { isAdmin } = useAuth()
+
+const canWriteBudget = computed(() => can('budget', 'E'))
+const canManageOrg = computed(() => isAdmin.value && can('org', 'E'))
 
 const loadError = ref('')
+const createOpen = ref(false)
+const creating = ref(false)
+const createError = ref('')
+const createForm = reactive({
+  applicationId: '',
+  type: 'defaut' as 'defaut' | 'specifique',
+  plannedDays: '0',
+  plannedUO: '0',
+  plannedAmountEur: '0'
+})
 
-const { data, pending } = await useAsyncData('budget-list', async () => {
+const editAppOpen = ref(false)
+const editAppSaving = ref(false)
+const editAppError = ref('')
+const editAppForm = reactive({ id: '', libelle: '' })
+
+const { data, pending, refresh } = await useAsyncData('budget-list', async () => {
   loadError.value = ''
   try {
-    const [budgets, applications] = await Promise.all([list(), listApplications()])
+    const [budgets, applications] = await Promise.all([list(), listApplications({ active: 'all' })])
     return { budgets, applications }
   } catch (err) {
     loadError.value = extractFetchError(err)
     return { budgets: [], applications: [] }
   }
 })
+
+const openCreateModal = () => {
+  createForm.applicationId = ''
+  createForm.type = 'defaut'
+  createForm.plannedDays = '0'
+  createForm.plannedUO = '0'
+  createForm.plannedAmountEur = '0'
+  createError.value = ''
+  createOpen.value = true
+}
+
+const submitCreate = async () => {
+  creating.value = true
+  createError.value = ''
+  try {
+    const plannedAmountEur = Number(createForm.plannedAmountEur) || 0
+    await create({
+      applicationId: createForm.applicationId,
+      type: createForm.type,
+      plannedDays: Number(createForm.plannedDays) || 0,
+      plannedUO: Number(createForm.plannedUO) || 0,
+      plannedAmount: Math.round(plannedAmountEur * 100),
+      currency: 'EUR'
+    })
+    createOpen.value = false
+    await refresh()
+  } catch (err) {
+    createError.value = extractFetchError(err, t('budget.create_error'))
+  } finally {
+    creating.value = false
+  }
+}
+
+const openEditApp = (row: BudgetRow) => {
+  editAppForm.id = row.applicationId
+  editAppForm.libelle = row.application
+  editAppError.value = ''
+  editAppOpen.value = true
+}
+
+const submitEditApp = async () => {
+  editAppSaving.value = true
+  editAppError.value = ''
+  try {
+    await updateApplication(editAppForm.id, { libelle: editAppForm.libelle })
+    editAppOpen.value = false
+    await refresh()
+  } catch (err) {
+    editAppError.value = extractFetchError(err, t('org.tree.update_error'))
+  } finally {
+    editAppSaving.value = false
+  }
+}
 
 const appMap = computed(() => appById(data.value?.applications ?? []))
 
@@ -170,6 +371,7 @@ const listItems = computed((): BudgetRow[] =>
     const status = budgetStatus(consumed, planned)
     return {
       id,
+      applicationId: appId,
       application: pickAppLabel(app) || id.slice(0, 8),
       client: pickAppClient(app) || '',
       typeLabel: budgetTypeLabel(type),
@@ -316,5 +518,80 @@ const columns = computed(() => [
   font-size: var(--kore-text-caption);
   color: var(--kore-text-muted);
   white-space: nowrap;
+}
+
+.budget-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
+}
+
+.budget-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: center;
+  margin-top: var(--kore-space-lg);
+}
+
+.budget-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-lg);
+}
+
+.budget-form__title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+}
+
+.budget-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.budget-form__field label {
+  font-size: var(--kore-text-small);
+  font-weight: 500;
+}
+
+.budget-form__field select {
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  color: var(--kore-text);
+  font-size: var(--kore-text-small);
+}
+
+.budget-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.budget-form__error {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-error);
+}
+
+.budget-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--kore-space-sm);
+}
+
+@media (max-width: 768px) {
+  .budget-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .budget-form__actions :deep(.app-button),
+  .budget-empty-actions :deep(.app-button),
+  .budget-row-actions :deep(.app-button) {
+    width: 100%;
+  }
 }
 </style>

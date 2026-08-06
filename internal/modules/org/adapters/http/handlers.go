@@ -56,6 +56,9 @@ func RegisterRoutes(
 		pr.Post("/applications", createApplication(org, authorizer))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
+		pr.Put("/applications/{id}", updateApplication(org, authorizer))
+		pr.Patch("/applications/{id}/deactivate", deactivateApplication(org, authorizer))
+		pr.Patch("/applications/{id}/activate", activateApplication(org, authorizer))
 		pr.Post("/equipes", createEquipe(org, authorizer))
 		pr.Get("/equipes", listEquipes(org, authorizer))
 		pr.Get("/services", listServices(org, authorizer))
@@ -292,6 +295,22 @@ func canReadApplications(ctx context.Context, authorizer authx.Authorizer) bool 
 		authorizer.Can(ctx, "cra", authx.ActionRead)
 }
 
+func parseApplicationActiveFilter(raw string) ports.ApplicationListFilter {
+	switch raw {
+	case "", "true":
+		active := true
+		return ports.ApplicationListFilter{Active: &active}
+	case "false":
+		active := false
+		return ports.ApplicationListFilter{Active: &active}
+	case "all":
+		return ports.ApplicationListFilter{}
+	default:
+		active := true
+		return ports.ApplicationListFilter{Active: &active}
+	}
+}
+
 func listApplications(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !canReadApplications(r.Context(), authorizer) {
@@ -299,7 +318,8 @@ func listApplications(org ports.OrganizationService, authorizer authx.Authorizer
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		items, err := org.ListApplications(r.Context(), identity.TenantID)
+		filter := parseApplicationActiveFilter(r.URL.Query().Get("active"))
+		items, err := org.ListApplications(r.Context(), identity.TenantID, filter)
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
@@ -410,6 +430,90 @@ func getApplication(org ports.OrganizationService, authorizer authx.Authorizer) 
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, item)
+	}
+}
+
+func updateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		appID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application id")
+			return
+		}
+		var req struct {
+			Libelle *string `json:"libelle"`
+			Active  *bool   `json:"active"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if req.Libelle == nil && req.Active == nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "libelle or active required")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := org.UpdateApplication(r.Context(), ports.UpdateApplicationCommand{
+			TenantID:      identity.TenantID,
+			ApplicationID: appID,
+			Libelle:       req.Libelle,
+			Active:        req.Active,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrApplicationNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "application not found")
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
+	}
+}
+
+func deactivateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return setApplicationActiveHandler(org, authorizer, false, "deactivated")
+}
+
+func activateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return setApplicationActiveHandler(org, authorizer, true, "activated")
+}
+
+func setApplicationActiveHandler(
+	org ports.OrganizationService,
+	authorizer authx.Authorizer,
+	active bool,
+	status string,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		appID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		_, err = org.SetApplicationActive(r.Context(), ports.SetApplicationActiveCommand{
+			TenantID:      identity.TenantID,
+			ApplicationID: appID,
+			Active:        active,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrApplicationNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "application not found")
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": status})
 	}
 }
 

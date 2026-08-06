@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 22/07/2026
+> **Dernière mise à jour doc** : 06/08/2026
 
 ---
 
@@ -174,7 +174,10 @@ Index :
 | `budget_defaut_id` | UUID | |
 | `uo_activee` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | `chef_utilisateur_id` | UUID | |
+| `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index** : `idx_org_applications_tenant_active (tenant_id, active)`
 
 ### `org.equipes`
 

@@ -58,7 +58,21 @@ export function useBudget() {
     return apiFetch(`/api/budget/budgets/${budgetId}/recompute`, { method: 'POST', body: period })
   }
 
+  const create = async (payload: {
+    applicationId: string
+    type: 'defaut' | 'specifique'
+    plannedDays: number
+    plannedUO: number
+    plannedAmount: number
+    currency?: string
+  }) => {
+    return apiFetch<{ data?: BudgetItem }>('/api/budget/budgets', {
+      method: 'POST',
+      body: payload
+    })
+  }
+
   const pickId = (b: BudgetItem) => b.id ?? b.ID ?? ''
 
-  return { list, get, addEstimate, addQuote, recompute, tripleValue, pickId }
+  return { list, get, create, addEstimate, addQuote, recompute, tripleValue, pickId }
 }

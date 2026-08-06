@@ -370,6 +370,7 @@ func (r *Runner) ensureApplication(ctx context.Context, tenant kernel.TenantID) 
 		TenantID:  tenant,
 		ServiceID: DemoServiceID,
 		Libelle:   DemoAppLabel,
+		Active:    true,
 	})
 }
 
@@ -383,6 +384,7 @@ func (r *Runner) ensureApplication2(ctx context.Context, tenant kernel.TenantID)
 		TenantID:  tenant,
 		ServiceID: DemoServiceID,
 		Libelle:   DemoApp2Label,
+		Active:    true,
 	})
 }
 

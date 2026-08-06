@@ -335,19 +335,42 @@ func (r *Repository) SaveEquipe(ctx context.Context, e domain.Equipe) error {
 
 func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.applications (id, tenant_id, service_id, libelle) VALUES ($1, $2, $3, $4)
-	`, a.ID, a.TenantID.UUID(), a.ServiceID, a.Libelle)
+		INSERT INTO org.applications (id, tenant_id, service_id, libelle, active)
+		VALUES ($1, $2, $3, $4, $5)
+	`, a.ID, a.TenantID.UUID(), a.ServiceID, a.Libelle, a.Active)
 	return err
 }
 
-func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantID) ([]domain.Application, error) {
-	rows, err := r.pool.Query(ctx, `
+func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.applications
+		SET libelle = $3, active = $4
+		WHERE tenant_id = $1 AND id = $2
+	`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrApplicationNotFound
+	}
+	return nil
+}
+
+func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantID, filter ports.ApplicationListFilter) ([]domain.Application, error) {
+	query := `
 		SELECT id, tenant_id, service_id, libelle,
-		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE)
+		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
+		       active
 		FROM org.applications
-		WHERE tenant_id = $1
-		ORDER BY libelle
-	`, tenant.UUID())
+		WHERE tenant_id = $1`
+	args := []any{tenant.UUID()}
+	if filter.Active != nil {
+		query += ` AND active = $2`
+		args = append(args, *filter.Active)
+	}
+	query += ` ORDER BY libelle`
+
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +438,8 @@ func (r *Repository) ListServices(ctx context.Context, tenant kernel.TenantID) (
 func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, service_id, libelle,
-		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE)
+		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
+		       active
 		FROM org.applications
 		WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
@@ -428,7 +452,7 @@ func scanApplication(row pgx.Row) (domain.Application, error) {
 	var proprietaire, modeFacturation string
 	if err := row.Scan(
 		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
-		&proprietaire, &modeFacturation, &app.UOActivee,
+		&proprietaire, &modeFacturation, &app.UOActivee, &app.Active,
 	); err != nil {
 		return domain.Application{}, err
 	}
@@ -444,7 +468,7 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 	var proprietaire, modeFacturation string
 	if err := rows.Scan(
 		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
-		&proprietaire, &modeFacturation, &app.UOActivee,
+		&proprietaire, &modeFacturation, &app.UOActivee, &app.Active,
 	); err != nil {
 		return domain.Application{}, err
 	}

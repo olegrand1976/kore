@@ -19,6 +19,7 @@ var (
 	ErrEquipeWithoutApplication  = errors.New("equipe without application")
 	ErrSeatLimitReached          = errors.New("seat limit reached")
 	ErrUserNotFound              = errors.New("user not found")
+	ErrApplicationNotFound       = errors.New("application not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
 	ErrInvalidGeminiModel        = errors.New("invalid gemini model")
 	ErrSSONotEnabled             = errors.New("sso not enabled")
@@ -222,6 +223,7 @@ type Application struct {
 	Proprietaire    string          `json:"proprietaire,omitempty"`
 	ModeFacturation string          `json:"modeFacturation,omitempty"`
 	UOActivee       bool            `json:"uoActivee"`
+	Active          bool            `json:"active"`
 }
 
 type ClientContact struct {

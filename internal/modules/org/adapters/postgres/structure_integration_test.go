@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/org/adapters/postgres"
 	"github.com/kore/kore/internal/modules/org/domain"
+	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/db/dbtest"
 	"github.com/kore/kore/pkg/kernel"
 	"github.com/stretchr/testify/require"
@@ -56,6 +57,7 @@ func seedStructure(t *testing.T, repo *postgres.Repository, tenant kernel.Tenant
 		TenantID:  tenant,
 		ServiceID: serviceID,
 		Libelle:   "Portail Client",
+		Active:    true,
 	}))
 
 	return siteID, serviceID, appID
@@ -177,6 +179,39 @@ func TestOrg_SaveServiceDefaultsTypeWhenEmpty(t *testing.T) {
 	for _, s := range services {
 		require.NotEmpty(t, s.Type, "chaque service doit porter un type")
 	}
+}
+
+func TestOrg_UpdateApplicationActiveRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	_, _, appID := seedStructure(t, repo, tenant)
+
+	got, err := repo.GetApplication(ctx, tenant, appID)
+	require.NoError(t, err)
+	require.True(t, got.Active)
+	require.Equal(t, "Portail Client", got.Libelle)
+
+	got.Libelle = "Portail Client V2"
+	got.Active = false
+	require.NoError(t, repo.UpdateApplication(ctx, got))
+
+	updated, err := repo.GetApplication(ctx, tenant, appID)
+	require.NoError(t, err)
+	require.Equal(t, "Portail Client V2", updated.Libelle)
+	require.False(t, updated.Active)
+
+	activeOnly := true
+	active, err := repo.ListApplications(ctx, tenant, ports.ApplicationListFilter{Active: &activeOnly})
+	require.NoError(t, err)
+	require.Empty(t, active)
+
+	all, err := repo.ListApplications(ctx, tenant, ports.ApplicationListFilter{})
+	require.NoError(t, err)
+	require.Len(t, all, 1)
+	require.False(t, all[0].Active)
 }
 
 func TestOrg_UpdateUserPersistsEquipe(t *testing.T) {

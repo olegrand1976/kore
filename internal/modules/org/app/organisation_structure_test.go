@@ -18,11 +18,13 @@ import (
 // les méthodes utiles à la hiérarchie organisation.
 type structureRepo struct {
 	refreshUserRepo
-	savedEquipe   *domain.Equipe
-	savedService  *domain.Service
-	updatedUser   *domain.User
-	sites         []domain.SiteSummary
-	saveEquipeErr error
+	savedEquipe      *domain.Equipe
+	savedService     *domain.Service
+	savedApplication *domain.Application
+	applications     map[uuid.UUID]domain.Application
+	updatedUser      *domain.User
+	sites            []domain.SiteSummary
+	saveEquipeErr    error
 }
 
 func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
@@ -35,6 +37,34 @@ func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
 
 func (r *structureRepo) SaveService(_ context.Context, s domain.Service) error {
 	r.savedService = &s
+	return nil
+}
+
+func (r *structureRepo) SaveApplication(_ context.Context, a domain.Application) error {
+	r.savedApplication = &a
+	if r.applications == nil {
+		r.applications = map[uuid.UUID]domain.Application{}
+	}
+	r.applications[a.ID] = a
+	return nil
+}
+
+func (r *structureRepo) GetApplication(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Application, error) {
+	if app, ok := r.applications[id]; ok {
+		return app, nil
+	}
+	return domain.Application{}, domain.ErrApplicationNotFound
+}
+
+func (r *structureRepo) UpdateApplication(_ context.Context, a domain.Application) error {
+	if r.applications == nil {
+		return domain.ErrApplicationNotFound
+	}
+	if _, ok := r.applications[a.ID]; !ok {
+		return domain.ErrApplicationNotFound
+	}
+	r.applications[a.ID] = a
+	r.savedApplication = &a
 	return nil
 }
 
@@ -249,5 +279,80 @@ func TestUpdateUser_keepsEquipeWhenFieldAbsent(t *testing.T) {
 	}
 	if repo.updatedUser.EquipeID == nil || *repo.updatedUser.EquipeID != current {
 		t.Fatalf("expected equipe unchanged (%v), got %v", current, repo.updatedUser.EquipeID)
+	}
+}
+
+func TestCreateApplication_setsActive(t *testing.T) {
+	repo := &structureRepo{}
+	svc := NewOrganizationService(repo)
+
+	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:  kernel.NewTenantID(uuid.New()),
+		ServiceID: uuid.New(),
+		Libelle:   "CRM",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if !app.Active {
+		t.Fatal("expected new application to be active")
+	}
+	if repo.savedApplication == nil || !repo.savedApplication.Active {
+		t.Fatal("expected SaveApplication with Active=true")
+	}
+}
+
+func TestUpdateApplication_renamesAndDeactivates(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	repo := &structureRepo{applications: map[uuid.UUID]domain.Application{
+		appID: {
+			ID:        appID,
+			TenantID:  tenant,
+			ServiceID: uuid.New(),
+			Libelle:   "Old",
+			Active:    true,
+		},
+	}}
+	svc := NewOrganizationService(repo)
+
+	libelle := "New"
+	active := false
+	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:      tenant,
+		ApplicationID: appID,
+		Libelle:       &libelle,
+		Active:        &active,
+	})
+	if err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	if got.Libelle != "New" || got.Active {
+		t.Fatalf("got %+v", got)
+	}
+
+	_, err = svc.SetApplicationActive(context.Background(), ports.SetApplicationActiveCommand{
+		TenantID:      tenant,
+		ApplicationID: appID,
+		Active:        true,
+	})
+	if err != nil {
+		t.Fatalf("SetApplicationActive: %v", err)
+	}
+	if !repo.applications[appID].Active {
+		t.Fatal("expected application reactivated")
+	}
+}
+
+func TestUpdateApplication_notFound(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	libelle := "x"
+	_, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:      kernel.NewTenantID(uuid.New()),
+		ApplicationID: uuid.New(),
+		Libelle:       &libelle,
+	})
+	if !errors.Is(err, domain.ErrApplicationNotFound) {
+		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
 	}
 }
