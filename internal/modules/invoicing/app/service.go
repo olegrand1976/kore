@@ -17,6 +17,7 @@ type service struct {
 	repo          ports.InvoicingRepository
 	pdp           ports.PDPGateway
 	missionReader ssiiports.MissionReader
+	enabledReader kernel.InvoicingEnabledReader
 }
 
 type Option func(*service)
@@ -33,6 +34,12 @@ func WithMissionReader(reader ssiiports.MissionReader) Option {
 	}
 }
 
+func WithEnabledReader(reader kernel.InvoicingEnabledReader) Option {
+	return func(s *service) {
+		s.enabledReader = reader
+	}
+}
+
 func NewService(repo ports.InvoicingRepository, opts ...Option) ports.InvoicingService {
 	s := &service{repo: repo}
 	for _, opt := range opts {
@@ -41,11 +48,31 @@ func NewService(repo ports.InvoicingRepository, opts ...Option) ports.InvoicingS
 	return s
 }
 
+func (s *service) requireEnabled(ctx context.Context, tenant kernel.TenantID) error {
+	if s.enabledReader == nil {
+		return nil
+	}
+	ok, err := s.enabledReader.IsInvoicingEnabled(ctx, tenant)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return domain.ErrInvoicingDisabled
+	}
+	return nil
+}
+
 func (s *service) List(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, tenant); err != nil {
+		return nil, err
+	}
 	return s.repo.ListInvoices(ctx, tenant)
 }
 
 func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, tenant); err != nil {
+		return domain.Invoice{}, err
+	}
 	inv, err := s.repo.GetInvoice(ctx, tenant, id)
 	if err != nil {
 		return domain.Invoice{}, err
@@ -59,8 +86,13 @@ func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID)
 }
 
 func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, cmd.TenantID); err != nil {
+		return domain.Invoice{}, err
+	}
 	inv := domain.NewInvoice(cmd.TenantID, cmd.ClientID, cmd.Type, cmd.Currency)
+	inv.SourceTimesheetID = cmd.SourceTimesheetID
 	var total, tax int64
+	lines := make([]domain.InvoiceLine, 0, len(cmd.Lines))
 	for _, lineIn := range cmd.Lines {
 		line := domain.InvoiceLine{
 			ID:          uuid.New(),
@@ -74,29 +106,33 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 		lineTotal := int64(float64(line.UnitPrice) * line.Quantity)
 		total += lineTotal
 		tax += int64(float64(lineTotal) * line.TaxRate / 100)
-		if err := s.repo.SaveInvoiceLine(ctx, line); err != nil {
-			return domain.Invoice{}, err
-		}
-		inv.Lines = append(inv.Lines, line)
+		lines = append(lines, line)
 	}
 	inv.TotalAmount = total
 	inv.TaxAmount = tax
 	inv.Status = domain.InvoiceStatusPreparee
-	return inv, s.repo.SaveInvoice(ctx, inv)
+	inv.Lines = lines
+	if err := s.repo.SaveInvoiceWithLines(ctx, inv, lines); err != nil {
+		return domain.Invoice{}, err
+	}
+	return inv, nil
 }
 
 func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCommand) (domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, cmd.TenantID); err != nil {
+		return domain.Invoice{}, err
+	}
 	clientID := cmd.ClientID
 	currency := "EUR"
-	lines := cmd.Lines
-	if cmd.MissionID != nil && s.missionReader != nil && len(lines) == 0 {
+	linesIn := cmd.Lines
+	if cmd.MissionID != nil && s.missionReader != nil && len(linesIn) == 0 {
 		billing, err := s.missionReader.ActiveMissionDays(ctx, cmd.TenantID, *cmd.MissionID, cmd.Period)
 		if err != nil {
 			return domain.Invoice{}, err
 		}
 		clientID = billing.ClientID
 		currency = billing.Currency
-		lines = []ports.InvoiceLineInput{{
+		linesIn = []ports.InvoiceLineInput{{
 			Description: fmt.Sprintf("Mission SSII — %.0f j × TJM", billing.Days),
 			Quantity:    billing.Days,
 			UnitPrice:   billing.TJMAmount,
@@ -104,8 +140,8 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 		}}
 	}
 	inv := domain.NewInvoice(cmd.TenantID, clientID, domain.InvoiceTypeStandard, currency)
-	if len(lines) == 0 {
-		lines = []ports.InvoiceLineInput{{
+	if len(linesIn) == 0 {
+		linesIn = []ports.InvoiceLineInput{{
 			Description: fmt.Sprintf("Prestation virtuelle %s — %s", cmd.Period.Start.Format("2006-01-02"), cmd.Period.End.Format("2006-01-02")),
 			Quantity:    1,
 			UnitPrice:   0,
@@ -113,7 +149,8 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 		}}
 	}
 	var total, tax int64
-	for _, lineIn := range lines {
+	lines := make([]domain.InvoiceLine, 0, len(linesIn))
+	for _, lineIn := range linesIn {
 		line := domain.InvoiceLine{
 			ID:          uuid.New(),
 			TenantID:    cmd.TenantID,
@@ -126,17 +163,21 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 		lineTotal := int64(float64(line.UnitPrice) * line.Quantity)
 		total += lineTotal
 		tax += int64(float64(lineTotal) * line.TaxRate / 100)
-		if err := s.repo.SaveInvoiceLine(ctx, line); err != nil {
-			return domain.Invoice{}, err
-		}
-		inv.Lines = append(inv.Lines, line)
+		lines = append(lines, line)
 	}
 	inv.TotalAmount = total
 	inv.TaxAmount = tax
-	return inv, s.repo.SaveInvoice(ctx, inv)
+	inv.Lines = lines
+	if err := s.repo.SaveInvoiceWithLines(ctx, inv, lines); err != nil {
+		return domain.Invoice{}, err
+	}
+	return inv, nil
 }
 
 func (s *service) Transmit(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, tenant); err != nil {
+		return domain.Invoice{}, err
+	}
 	inv, err := s.Get(ctx, tenant, id)
 	if err != nil {
 		return domain.Invoice{}, err
@@ -199,6 +240,9 @@ func (s *service) SyncPDPStatus(ctx context.Context, evt ports.PDPStatusEvent) e
 }
 
 func (s *service) CreateCreditNote(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) (domain.Invoice, error) {
+	if err := s.requireEnabled(ctx, tenant); err != nil {
+		return domain.Invoice{}, err
+	}
 	orig, err := s.repo.GetInvoice(ctx, tenant, invoiceID)
 	if err != nil {
 		return domain.Invoice{}, err

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kore/kore/internal/modules/invoicing/domain"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
 	"github.com/kore/kore/internal/platform/db"
@@ -26,23 +27,38 @@ func (r *Repository) SaveInvoice(ctx context.Context, inv domain.Invoice) error 
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO invoicing.invoices (
 			id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
 			total_amount = EXCLUDED.total_amount,
 			tax_amount = EXCLUDED.tax_amount,
 			pdp_receipt_id = EXCLUDED.pdp_receipt_id,
-			transmitted_at = EXCLUDED.transmitted_at
+			transmitted_at = EXCLUDED.transmitted_at,
+			source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id)
 	`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
-		inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt)
+		inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
+		inv.SourceTimesheetID)
+	return mapInvoiceSaveError(err)
+}
+
+func mapInvoiceSaveError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if strings.Contains(pgErr.ConstraintName, "source_timesheet") {
+			return domain.ErrAlreadyInvoiced
+		}
+	}
 	return err
 }
 
 func (r *Repository) GetInvoice(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error) {
 	return r.scanInvoice(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
 		FROM invoicing.invoices WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
 }
@@ -50,7 +66,7 @@ func (r *Repository) GetInvoice(ctx context.Context, tenant kernel.TenantID, id 
 func (r *Repository) ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
 		FROM invoicing.invoices WHERE tenant_id = $1 ORDER BY created_at DESC
 	`, tenant.UUID())
 	if err != nil {
@@ -76,6 +92,41 @@ func (r *Repository) SaveInvoiceLine(ctx context.Context, line domain.InvoiceLin
 	`, line.ID, line.TenantID.UUID(), line.InvoiceID, line.Description,
 		line.Quantity, line.UnitPrice, line.TaxRate)
 	return err
+}
+
+func (r *Repository) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO invoicing.invoices (
+				id, tenant_id, client_id, type, status, currency,
+				total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT (id) DO UPDATE SET
+				status = EXCLUDED.status,
+				total_amount = EXCLUDED.total_amount,
+				tax_amount = EXCLUDED.tax_amount,
+				pdp_receipt_id = EXCLUDED.pdp_receipt_id,
+				transmitted_at = EXCLUDED.transmitted_at,
+				source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id)
+		`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
+			inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
+			inv.SourceTimesheetID)
+		if err != nil {
+			return mapInvoiceSaveError(err)
+		}
+		for _, line := range lines {
+			_, err := tx.Exec(ctx, `
+				INSERT INTO invoicing.invoice_lines (
+					id, tenant_id, invoice_id, description, quantity, unit_price, tax_rate
+				) VALUES ($1, $2, $3, $4, $5, $6, $7)
+			`, line.ID, line.TenantID.UUID(), line.InvoiceID, line.Description,
+				line.Quantity, line.UnitPrice, line.TaxRate)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *Repository) ListInvoiceLines(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) ([]domain.InvoiceLine, error) {
@@ -116,16 +167,13 @@ func (r *Repository) SavePDPQueueItem(ctx context.Context, item domain.PDPQueueI
 }
 
 func (r *Repository) InvoiceExistsForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error) {
-	prefix := fmt.Sprintf("CRA/%s/%%", timesheetID)
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
-			SELECT 1
-			FROM invoicing.invoice_lines il
-			INNER JOIN invoicing.invoices i ON i.id = il.invoice_id
-			WHERE i.tenant_id = $1 AND il.description LIKE $2
+			SELECT 1 FROM invoicing.invoices
+			WHERE tenant_id = $1 AND source_timesheet_id = $2
 		)
-	`, tenant.UUID(), prefix).Scan(&exists)
+	`, tenant.UUID(), timesheetID).Scan(&exists)
 	return exists, err
 }
 
@@ -151,7 +199,7 @@ func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	var tenantID uuid.UUID
 	var invType, status string
 	err := row.Scan(&inv.ID, &tenantID, &inv.ClientID, &invType, &status, &inv.Currency,
-		&inv.TotalAmount, &inv.TaxAmount, &inv.PDPReceiptID, &inv.TransmittedAt, &inv.CreatedAt)
+		&inv.TotalAmount, &inv.TaxAmount, &inv.PDPReceiptID, &inv.TransmittedAt, &inv.CreatedAt, &inv.SourceTimesheetID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Invoice{}, domain.ErrInvoiceNotFound

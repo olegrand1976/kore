@@ -48,9 +48,10 @@ const (
 )
 
 type InvoiceDraftOutcome struct {
-	Status    InvoiceDraftStatus `json:"status"`
-	Reason    string             `json:"reason,omitempty"`
-	InvoiceID *uuid.UUID         `json:"invoiceId,omitempty"`
+	Status      InvoiceDraftStatus `json:"status"`
+	Reason      string             `json:"reason,omitempty"`
+	InvoiceID   *uuid.UUID         `json:"invoiceId,omitempty"`
+	TimesheetID *uuid.UUID         `json:"timesheetId,omitempty"`
 }
 
 type ValidateFinalResult struct {
@@ -149,6 +150,7 @@ type CRAService interface {
 	GeneratePDF(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Document, error)
 	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) (ValidateFinalResult, error)
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
+	CreateInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]InvoiceDraftOutcome, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)
@@ -193,6 +195,16 @@ type SocieteCraSettings struct {
 	CraMailAuto        bool
 	CraMailRecipients  []string
 	TaskTypesEnabled   []string
+	DefaultTJMCents    int64
+}
+
+type ApplicationBillingInfo struct {
+	ModeFacturation string
+	DefaultTJMCents int64
+}
+
+type ApplicationBillingReader interface {
+	GetApplicationBilling(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (ApplicationBillingInfo, error)
 }
 
 type UserEmailResolver interface {

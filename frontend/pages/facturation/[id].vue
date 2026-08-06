@@ -65,6 +65,15 @@ definePageMeta({ layout: 'default' })
 const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t } = useI18n()
+const { can } = usePermissions()
+const { isInvoicingEnabled, fetchSettings } = useRequestSettings()
+
+await fetchSettings()
+const invoicingAllowed = isInvoicingEnabled.value && can('invoicing', 'L')
+if (!invoicingAllowed) {
+  await navigateTo('/dashboard')
+}
+
 const id = computed(() => String(route.params.id))
 
 type InvoiceLine = {
@@ -86,7 +95,8 @@ type InvoiceDetail = {
 }
 
 const { data, pending, refresh } = await useFetch<{ data?: InvoiceDetail } | InvoiceDetail>(
-  () => `/api/invoices/${id.value}`
+  () => `/api/invoices/${id.value}`,
+  { immediate: invoicingAllowed }
 )
 
 const invoice = computed(() => {

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"embed"
+	"errors"
 	"net/http"
 	"time"
 
@@ -49,6 +50,7 @@ import (
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
 	invoicingpostgres "github.com/kore/kore/internal/modules/invoicing/adapters/postgres"
 	invoicingapp "github.com/kore/kore/internal/modules/invoicing/app"
+	invoicingdomain "github.com/kore/kore/internal/modules/invoicing/domain"
 	maintenancecra "github.com/kore/kore/internal/modules/maintenance/adapters/cra"
 	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
 	maintenancepostgres "github.com/kore/kore/internal/modules/maintenance/adapters/postgres"
@@ -201,11 +203,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
 		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).
 		WithMissionRateReader(crassii.NewMissionRateReader(ssiiRepo)).
+		WithApplicationBillingReader(craorg.NewApplicationBillingReader(orgRepo)).
 		WithETTRecordReader(ettcra.NewRecordReader(ettRepo))
+	requestSettingsService := orgapp.NewRequestSettingsService(orgRepo)
 	invoicingService := invoicingapp.NewService(
 		invoicingRepo,
 		invoicingapp.WithPDPGateway(invoicingapp.NewPDPGateway(cfg)),
 		invoicingapp.WithMissionReader(ssiicra.NewMissionReader(ssiiRepo, craService)),
+		invoicingapp.WithEnabledReader(requestSettingsService),
 	)
 	craService.WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
@@ -263,7 +268,6 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	ettService := ettapp.NewService(ettRepo, craService, craService, orgRepo)
 	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService), nil)
 	maintenanceService := maintenanceapp.NewService(maintenanceRepo, maintenancecra.NewFeederAdapter(craService))
-	requestSettingsService := orgapp.NewRequestSettingsService(orgRepo)
 
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
 	deps := httpx.Dependencies{
@@ -302,14 +306,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		notifhttp.RegisterRoutes(r, notifService, deviceService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
-		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService)
+		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService, requestSettingsService)
 		congeshttp.RegisterRoutes(r, congesService, leaveTypeConfigService, tokenIssuer, authorizer, billingService)
 		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer, billingService)
 		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService, requestSettingsService)
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
-		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService, cfg.PDPWebhookSecret)
+		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService, requestSettingsService, cfg.PDPWebhookSecret)
 		adminhttp.RegisterRoutes(r, adminService, tokenIssuer, authorizer, billingService)
 		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)
 		ssiihttp.RegisterRoutes(r, ssiiService, tokenIssuer, authorizer, billingService)
@@ -332,6 +336,10 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 				identity, _ := authx.FromContext(req.Context())
 				items, err := invoicingService.List(req.Context(), identity.TenantID)
 				if err != nil {
+					if errors.Is(err, invoicingdomain.ErrInvoicingDisabled) {
+						httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
+						return
+					}
 					httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 					return
 				}

@@ -42,8 +42,9 @@ func updateRequestSettings(svc ports.RequestSettingsService, authorizer authx.Au
 			return
 		}
 		var req struct {
-			ChannelsEnabled domain.ChannelsEnabled `json:"channelsEnabled"`
-			GuidesEnabled   bool                   `json:"guidesEnabled"`
+			ChannelsEnabled  domain.ChannelsEnabled `json:"channelsEnabled"`
+			GuidesEnabled    bool                   `json:"guidesEnabled"`
+			InvoicingEnabled *bool                  `json:"invoicingEnabled"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -51,9 +52,10 @@ func updateRequestSettings(svc ports.RequestSettingsService, authorizer authx.Au
 		}
 		identity, _ := authx.FromContext(r.Context())
 		settings, err := svc.Update(r.Context(), ports.UpdateRequestSettingsCommand{
-			TenantID:        identity.TenantID,
-			ChannelsEnabled: req.ChannelsEnabled,
-			GuidesEnabled:   req.GuidesEnabled,
+			TenantID:         identity.TenantID,
+			ChannelsEnabled:  req.ChannelsEnabled,
+			GuidesEnabled:    req.GuidesEnabled,
+			InvoicingEnabled: req.InvoicingEnabled,
 		})
 		if err != nil {
 			if errors.Is(err, domain.ErrInvalidRequestChannels) {

@@ -8,6 +8,15 @@
         <AppButton variant="secondary" size="sm" @click="exportXml">
           {{ $t('prestations.export_xml') }}
         </AppButton>
+        <AppButton
+          v-if="canCreateInvoices"
+          variant="secondary"
+          size="sm"
+          :disabled="creatingInvoices || !definitiveIds.length"
+          @click="createInvoices"
+        >
+          {{ $t('prestations.create_invoices') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" :disabled="validating" @click="validateAll">
           {{ $t('prestations.validate_all') }}
         </AppButton>
@@ -195,7 +204,11 @@ const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 
 const { t } = useI18n()
 const { statusVariant, statusLabel } = useCraStatus()
-const { mapInvoiceDraftMessage } = useCraError()
+const { mapInvoiceDraftMessage, mapInvoiceDraftReason } = useCraError()
+const { can } = usePermissions()
+const { isInvoicingEnabled, fetchSettings } = useRequestSettings()
+await fetchSettings()
+const canCreateInvoices = computed(() => isInvoicingEnabled.value && can('invoicing', 'E'))
 
 type PrestationRow = {
   id: string
@@ -221,7 +234,7 @@ type EttReport = {
 
 type ValidateResponse = {
   data?: {
-    invoiceDraft?: { status?: string; reason?: string }
+    invoiceDraft?: { status?: string; reason?: string; invoiceId?: string }
   }
 }
 
@@ -232,8 +245,16 @@ type ValidateAllResponse = {
   }
 }
 
+type CreateInvoicesResponse = {
+  data?: {
+    created?: number
+    outcomes?: Array<{ status?: string; reason?: string; invoiceId?: string; timesheetId?: string }>
+  }
+}
+
 const month = ref(new Date().toISOString().slice(0, 7))
 const validating = ref(false)
+const creatingInvoices = ref(false)
 const rowActionId = ref('')
 const actionMsg = ref('')
 const actionError = ref(false)
@@ -315,6 +336,10 @@ const {
 })
 
 const displayRows = computed(() => sortedItems.value)
+
+const definitiveIds = computed(() =>
+  displayRows.value.filter((row) => row.status === 'Définitif').map((row) => row.id)
+)
 
 const kanbanColumns = computed(() =>
   CRA_STATUSES.map((status) => ({
@@ -441,6 +466,46 @@ const validateAll = async () => {
     setActionMsg(t('prestations.action_error'), true)
   } finally {
     validating.value = false
+  }
+}
+
+const createInvoices = async () => {
+  if (!definitiveIds.value.length) {
+    setActionMsg(t('prestations.create_invoices_empty'), true)
+    return
+  }
+  if (!window.confirm(t('prestations.create_invoices_confirm', { n: definitiveIds.value.length }))) {
+    return
+  }
+  creatingInvoices.value = true
+  setActionMsg('')
+  try {
+    const res = await apiFetch<CreateInvoicesResponse>('/api/prestations/create-invoices', {
+      method: 'POST',
+      body: { timesheetIds: definitiveIds.value }
+    })
+    const created = res?.data?.created ?? 0
+    const outcomes = res?.data?.outcomes ?? []
+    const skippedOutcomes = outcomes.filter((o) => o.status !== 'created')
+    const skipped = skippedOutcomes.length
+    let msg = t('prestations.create_invoices_result', { created, skipped })
+    if (skippedOutcomes.length) {
+      const details = skippedOutcomes
+        .slice(0, 5)
+        .map((o) =>
+          t('prestations.create_invoices_skip_item', {
+            id: (o.timesheetId ?? '').slice(0, 8) || '—',
+            reason: mapInvoiceDraftReason(o.reason)
+          })
+        )
+        .join(', ')
+      msg = `${msg} ${t('prestations.create_invoices_skips', { details })}`
+    }
+    setActionMsg(msg, created === 0)
+  } catch {
+    setActionMsg(t('prestations.action_error'), true)
+  } finally {
+    creatingInvoices.value = false
   }
 }
 

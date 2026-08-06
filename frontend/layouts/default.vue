@@ -141,7 +141,7 @@ const { branding, fetchBranding } = useTenantBranding()
 const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { can } = usePermissions()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
-const { fetchSettings, isChannelEnabled, activeChannelCount } = useRequestSettings()
+const { fetchSettings, isChannelEnabled, isInvoicingEnabled, activeChannelCount } = useRequestSettings()
 const { apiFetch } = useApiFetch()
 const drawerOpen = ref(false)
 const craGate = useCraGate()
@@ -248,9 +248,10 @@ type NavItem = {
   label: string
   adminOnly?: boolean
   platformOnly?: boolean
-  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing' | 'ett' | 'integrations' | 'invoicing'
-  rbacModule?: 'support' | 'maintenance'
+  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing' | 'ett' | 'integrations'
+  rbacModule?: 'support' | 'maintenance' | 'invoicing'
   requestChannel?: 'tma' | 'support' | 'maintenance'
+  orgInvoicing?: boolean
   activePrefix?: string
   multiChannelOnly?: boolean
 }
@@ -264,7 +265,7 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), module: 'ett' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
   { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
-  { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), module: 'invoicing' },
+  { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), orgInvoicing: true, rbacModule: 'invoicing' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma', requestChannel: 'tma' },
   { to: '/support', icon: 'confirmation_number', label: t('nav.support'), rbacModule: 'support', requestChannel: 'support' },
   { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), rbacModule: 'maintenance', requestChannel: 'maintenance' },
@@ -289,6 +290,7 @@ const navItems = computed(() =>
     if (item.module && !hasModule(item.module)) return false
     if (item.rbacModule && !can(item.rbacModule, 'L')) return false
     if (item.requestChannel && !isChannelEnabled(item.requestChannel)) return false
+    if (item.orgInvoicing && !isInvoicingEnabled.value) return false
     return true
   })
 )

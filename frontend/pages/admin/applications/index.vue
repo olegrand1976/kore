@@ -118,6 +118,12 @@
           </select>
         </label>
 
+        <label class="apps-form__field">
+          <span>{{ $t('applications.field_default_tjm') }}</span>
+          <input v-model.number="form.defaultTjmEuros" class="apps-form__input" type="number" min="0" step="1" />
+          <span class="muted">{{ $t('applications.field_default_tjm_hint') }}</span>
+        </label>
+
         <label class="apps-form__toggle">
           <input v-model="form.uoActivee" type="checkbox" />
           <span>{{ $t('applications.field_uo') }}</span>
@@ -265,6 +271,7 @@ type AppRow = {
   proprietaire: string
   mode: string
   modeLabel: string
+  defaultTjmCents: number
   uoActivee: boolean
   active: boolean
   equipeCount: number
@@ -296,6 +303,7 @@ const form = reactive({
   libelle: '',
   proprietaire: '',
   modeFacturation: 'temps_passe',
+  defaultTjmEuros: 0,
   uoActivee: false,
   chefUtilisateurId: '',
   budgetDefautId: ''
@@ -505,6 +513,7 @@ const loadAll = async () => {
         proprietaire: pickAppClient(app),
         mode,
         modeLabel: modeLabel(mode),
+        defaultTjmCents: Number(app.defaultTjmCents ?? app.DefaultTJMCents ?? 0),
         uoActivee: app.uoActivee ?? app.UOActivee ?? false,
         active: pickAppActive(app),
         equipeCount: equipeList.filter((e) => (e.applicationId ?? e.ApplicationID) === id).length,
@@ -532,6 +541,7 @@ const openCreate = () => {
   form.libelle = ''
   form.proprietaire = ''
   form.modeFacturation = 'temps_passe'
+  form.defaultTjmEuros = 0
   form.uoActivee = false
   form.chefUtilisateurId = ''
   form.budgetDefautId = ''
@@ -546,6 +556,7 @@ const openEdit = (row: AppRow) => {
   form.libelle = row.libelle
   form.proprietaire = row.proprietaire
   form.modeFacturation = row.mode || 'temps_passe'
+  form.defaultTjmEuros = Math.round((row.defaultTjmCents || 0) / 100)
   form.uoActivee = row.uoActivee
   form.chefUtilisateurId = row.chefUtilisateurId
   form.budgetDefautId = row.budgetDefautId
@@ -578,6 +589,7 @@ const submitForm = async () => {
         libelle: string
         proprietaire: string
         modeFacturation: string
+        defaultTjmCents: number
         uoActivee: boolean
         chefUtilisateurId: string | null
         budgetDefautId?: string | null
@@ -585,6 +597,7 @@ const submitForm = async () => {
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
         modeFacturation: form.modeFacturation,
+        defaultTjmCents: Math.max(0, Math.round((form.defaultTjmEuros || 0) * 100)),
         uoActivee: form.uoActivee,
         chefUtilisateurId: chef
       }
@@ -600,6 +613,7 @@ const submitForm = async () => {
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
         modeFacturation: form.modeFacturation,
+        defaultTjmCents: Math.max(0, Math.round((form.defaultTjmEuros || 0) * 100)),
         uoActivee: form.uoActivee,
         chefUtilisateurId: chef || undefined
       })

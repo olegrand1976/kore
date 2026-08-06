@@ -41,17 +41,19 @@ func (c ChannelsEnabled) IsEnabled(channel kernel.RequestChannel) bool {
 }
 
 type TenantRequestSettings struct {
-	TenantID        kernel.TenantID `json:"tenantId"`
-	ChannelsEnabled ChannelsEnabled `json:"channelsEnabled"`
-	GuidesEnabled   bool            `json:"guidesEnabled"`
-	UpdatedAt       time.Time       `json:"updatedAt"`
+	TenantID         kernel.TenantID `json:"tenantId"`
+	ChannelsEnabled  ChannelsEnabled `json:"channelsEnabled"`
+	GuidesEnabled    bool            `json:"guidesEnabled"`
+	InvoicingEnabled bool            `json:"invoicingEnabled"`
+	UpdatedAt        time.Time       `json:"updatedAt"`
 }
 
 func DefaultTenantRequestSettings(tenant kernel.TenantID) TenantRequestSettings {
 	return TenantRequestSettings{
-		TenantID:        tenant,
-		ChannelsEnabled: DefaultChannelsForNewTenant(),
-		GuidesEnabled:   true,
-		UpdatedAt:       time.Now().UTC(),
+		TenantID:         tenant,
+		ChannelsEnabled:  DefaultChannelsForNewTenant(),
+		GuidesEnabled:    true,
+		InvoicingEnabled: false,
+		UpdatedAt:        time.Now().UTC(),
 	}
 }

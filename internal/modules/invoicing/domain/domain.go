@@ -11,6 +11,10 @@ import (
 var (
 	ErrInvoiceNotFound     = errors.New("invoice not found")
 	ErrInvalidInvoiceState = errors.New("invalid invoice state transition")
+	ErrInvoicingDisabled   = errors.New("invoicing disabled for organisation")
+	ErrAlreadyInvoiced     = errors.New("timesheet already invoiced")
+	ErrZeroUnitPrice       = errors.New("unit price is zero")
+	ErrNoBillableContent   = errors.New("no billable content for invoice")
 )
 
 type InvoiceStatus string
@@ -33,28 +37,29 @@ const (
 )
 
 type Invoice struct {
-	ID            uuid.UUID
-	TenantID      kernel.TenantID
-	ClientID      uuid.UUID
-	Type          InvoiceType
-	Status        InvoiceStatus
-	Currency      string
-	TotalAmount   int64
-	TaxAmount     int64
-	PDPReceiptID  string
-	TransmittedAt *time.Time
-	CreatedAt     time.Time
-	Lines         []InvoiceLine
+	ID                uuid.UUID       `json:"id"`
+	TenantID          kernel.TenantID `json:"tenantId"`
+	ClientID          uuid.UUID       `json:"clientId"`
+	Type              InvoiceType     `json:"type"`
+	Status            InvoiceStatus   `json:"status"`
+	Currency          string          `json:"currency"`
+	TotalAmount       int64           `json:"totalAmount"`
+	TaxAmount         int64           `json:"taxAmount"`
+	PDPReceiptID      string          `json:"pdpReceiptId,omitempty"`
+	TransmittedAt     *time.Time      `json:"transmittedAt,omitempty"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	SourceTimesheetID *uuid.UUID      `json:"sourceTimesheetId,omitempty"`
+	Lines             []InvoiceLine   `json:"lines,omitempty"`
 }
 
 type InvoiceLine struct {
-	ID          uuid.UUID
-	TenantID    kernel.TenantID
-	InvoiceID   uuid.UUID
-	Description string
-	Quantity    float64
-	UnitPrice   int64
-	TaxRate     float64
+	ID          uuid.UUID       `json:"id"`
+	TenantID    kernel.TenantID `json:"tenantId"`
+	InvoiceID   uuid.UUID       `json:"invoiceId"`
+	Description string          `json:"description"`
+	Quantity    float64         `json:"quantity"`
+	UnitPrice   int64           `json:"unitPrice"`
+	TaxRate     float64         `json:"taxRate"`
 }
 
 type PDPQueueItem struct {

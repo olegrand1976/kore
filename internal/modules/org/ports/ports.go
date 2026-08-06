@@ -45,6 +45,7 @@ type CreateApplicationCommand struct {
 	UOActivee         bool
 	ChefUtilisateurID *uuid.UUID
 	BudgetDefautID    *uuid.UUID
+	DefaultTJMCents   int64
 }
 
 // ApplicationListFilter filters ListApplications.
@@ -68,6 +69,7 @@ type UpdateApplicationCommand struct {
 	UOActivee         *bool
 	ChefUtilisateurID **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 	BudgetDefautID    **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
+	DefaultTJMCents   *int64
 }
 
 type SetApplicationActiveCommand struct {
@@ -238,6 +240,7 @@ type UpdateSocieteSettingsCommand struct {
 	TaskTypesEnabled     *[]string
 	TotpDefaultEnabled   *bool
 	TotpUserConfigurable *bool
+	DefaultTJMCents      *int64
 }
 
 type CraMailReminderTarget struct {
@@ -510,14 +513,16 @@ type IdentityProviderService interface {
 }
 
 type UpdateRequestSettingsCommand struct {
-	TenantID        kernel.TenantID
-	ChannelsEnabled domain.ChannelsEnabled
-	GuidesEnabled   bool
+	TenantID         kernel.TenantID
+	ChannelsEnabled  domain.ChannelsEnabled
+	GuidesEnabled    bool
+	InvoicingEnabled *bool // nil = leave unchanged
 }
 
 type RequestSettingsService interface {
 	Get(ctx context.Context, tenant kernel.TenantID) (domain.TenantRequestSettings, error)
 	Update(ctx context.Context, cmd UpdateRequestSettingsCommand) (domain.TenantRequestSettings, error)
+	IsInvoicingEnabled(ctx context.Context, tenant kernel.TenantID) (bool, error)
 }
 
 type RequestSettingsRepository interface {

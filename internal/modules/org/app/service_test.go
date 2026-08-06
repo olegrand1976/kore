@@ -35,6 +35,14 @@ func TestDefaultPermissionsChefEquipeOrgRead(t *testing.T) {
 	perms := app.DefaultPermissions()
 	require.True(t, perms["Chef d'équipe"]["org"][authx.ActionRead])
 	require.False(t, perms["Chef d'équipe"]["conges"][authx.ActionValidate])
+	require.True(t, perms["Chef d'équipe"]["invoicing"][authx.ActionWrite])
+	require.True(t, perms["Chef d'équipe"]["invoicing"][authx.ActionValidate])
+}
+
+func TestDefaultPermissionsResponsableInvoicing(t *testing.T) {
+	perms := app.DefaultPermissions()
+	require.True(t, perms["Responsable de service"]["invoicing"][authx.ActionWrite])
+	require.True(t, perms["Responsable de service"]["invoicing"][authx.ActionValidate])
 }
 
 func TestDefaultPermissionsCollaborateur(t *testing.T) {

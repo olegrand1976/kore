@@ -19,6 +19,10 @@
         <label for="day-capacity">{{ $t('settings.cra.day_capacity') }}</label>
         <input id="day-capacity" v-model.number="dayCapacityMinutes" type="number" min="60" max="1440" step="30">
 
+        <label for="default-tjm">{{ $t('settings.cra.default_tjm') }}</label>
+        <input id="default-tjm" v-model.number="defaultTjmEuros" type="number" min="0" step="1">
+        <p class="hint">{{ $t('settings.cra.default_tjm_hint') }}</p>
+
         <label for="submit-policy">{{ $t('settings.cra.week_submit_policy') }}</label>
         <select id="submit-policy" v-model="weekSubmitPolicy">
           <option value="warn">{{ $t('settings.cra.submit_policy_warn') }}</option>
@@ -74,6 +78,7 @@ type SocieteRow = {
   raisonSociale: string
   weekStartDay?: number
   dayCapacityMinutes?: number
+  defaultTjmCents?: number
   craMailAuto?: boolean
   craMailRecipients?: string[]
   weekSubmitPolicy?: string
@@ -85,6 +90,7 @@ const societes = ref<SocieteRow[]>([])
 const selectedSocieteId = ref('')
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
+const defaultTjmEuros = ref(0)
 const craMailAuto = ref(false)
 const craMailRecipientsText = ref('')
 const weekSubmitPolicy = ref('warn')
@@ -114,6 +120,7 @@ const taskTypeOptions = computed(() => [
 const applyRow = (row?: SocieteRow) => {
   weekStartDay.value = row?.weekStartDay ?? 1
   dayCapacityMinutes.value = row?.dayCapacityMinutes ?? 480
+  defaultTjmEuros.value = Math.round((row?.defaultTjmCents ?? 0) / 100)
   craMailAuto.value = row?.craMailAuto ?? false
   craMailRecipientsText.value = (row?.craMailRecipients ?? []).join('\n')
   weekSubmitPolicy.value = row?.weekSubmitPolicy ?? 'warn'
@@ -130,6 +137,7 @@ const loadSocietes = async () => {
     raisonSociale: s.raisonSociale,
     weekStartDay: s.weekStartDay ?? 1,
     dayCapacityMinutes: s.dayCapacityMinutes ?? 480,
+    defaultTjmCents: s.defaultTjmCents ?? 0,
     craMailAuto: s.craMailAuto ?? false,
     craMailRecipients: s.craMailRecipients ?? [],
     weekSubmitPolicy: s.weekSubmitPolicy ?? 'warn',
@@ -157,6 +165,7 @@ const save = async () => {
       body: {
         weekStartDay: weekStartDay.value,
         dayCapacityMinutes: dayCapacityMinutes.value,
+        defaultTjmCents: Math.max(0, Math.round((defaultTjmEuros.value || 0) * 100)),
         craMailAuto: craMailAuto.value,
         craMailRecipients: craMailRecipientsText.value
           .split(/[\n,;]+/)

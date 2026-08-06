@@ -150,12 +150,18 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Élément | Détail |
 | --- | --- |
-| Pages | `facturation/virtuelles`, `facturation/[id]` (statut PDP), `facturation/avoirs` |
-| Composants | `VirtualInvoiceTable`, `InvoiceReviewPanel`, `PdpStatusBadge` |
-| Composables | `useInvoicing()` |
-| Store Pinia | `facturation` |
-| Routes BFF | `server/api/invoices/*` (le webhook PDP reste côté API Go) |
-| Permissions UI | Écriture/validation profils Manager/Commercial (RBAC §3.3) |
+| Pages | `facturation/`, `facturation/[id]`, activation org dans `admin/organisation` |
+| Composables | `useInvoicing()`, `useRequestSettings()` |
+| Routes BFF | `server/api/invoices/*`, `server/api/prestations/create-invoices` |
+| Permissions UI | Module `invoicing` L/E ; gate org `invoicing_enabled` (hors Stripe) |
+
+## 10ter. Activation org + CRA → facture (V1)
+
+- **Toggle** : `org.tenant_request_settings.invoicing_enabled` (migration `0022`) — pas d'entitlement Stripe.
+- **Source CRA** : `invoicing.invoices.source_timesheet_id` (unique partiel) ; API `POST /prestations/create-invoices` + hook validation définitive.
+- **Tarif vente** : mission TJM > `org.applications.default_tjm_cents` > `org.societes.default_tjm_cents`, converti en €/h via `day_capacity_minutes`.
+- **`mode_facturation`** : `non` / `forfait` → skip facturation temps passé ; `temps_passe` → heures × TH.
+- **UI** : Prestations « Créer factures » sur CRA `Définitif` ; lien facture après validation CRA.
 
 ## 10bis. Phase cible (roadmap)
 

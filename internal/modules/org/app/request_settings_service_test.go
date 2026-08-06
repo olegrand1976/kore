@@ -61,3 +61,48 @@ func TestRequestSettingsIsChannelEnabled(t *testing.T) {
 		t.Fatalf("maintenance should be enabled, got ok=%v err=%v", ok, err)
 	}
 }
+
+func TestRequestSettingsInvoicingToggle(t *testing.T) {
+	repo := &requestSettingsRepoStub{}
+	svc := NewRequestSettingsService(repo)
+	tenant := kernel.TenantID{}
+
+	ok, err := svc.IsInvoicingEnabled(context.Background(), tenant)
+	if err != nil || ok {
+		t.Fatalf("default invoicing should be disabled, got ok=%v err=%v", ok, err)
+	}
+
+	enabled := true
+	updated, err := svc.Update(context.Background(), ports.UpdateRequestSettingsCommand{
+		TenantID:         tenant,
+		ChannelsEnabled:  domain.ChannelsEnabled{TMA: true},
+		GuidesEnabled:    true,
+		InvoicingEnabled: &enabled,
+	})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if !updated.InvoicingEnabled {
+		t.Fatal("expected invoicing enabled on update result")
+	}
+	ok, err = svc.IsInvoicingEnabled(context.Background(), tenant)
+	if err != nil || !ok {
+		t.Fatalf("invoicing should be enabled, got ok=%v err=%v", ok, err)
+	}
+
+	// Omitting InvoicingEnabled must preserve the current value.
+	updated, err = svc.Update(context.Background(), ports.UpdateRequestSettingsCommand{
+		TenantID:        tenant,
+		ChannelsEnabled: domain.ChannelsEnabled{TMA: true, Support: true},
+		GuidesEnabled:   false,
+	})
+	if err != nil {
+		t.Fatalf("update without invoicing flag: %v", err)
+	}
+	if !updated.InvoicingEnabled {
+		t.Fatal("expected invoicing to stay enabled when field omitted")
+	}
+	if updated.GuidesEnabled {
+		t.Fatal("expected guides disabled")
+	}
+}

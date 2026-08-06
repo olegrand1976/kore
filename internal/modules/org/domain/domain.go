@@ -269,6 +269,7 @@ type Societe struct {
 	Siret                string          `json:"siret,omitempty"`
 	URLTenant            string          `json:"urlTenant,omitempty"`
 	SeedProtected        bool            `json:"seedProtected"`
+	DefaultTJMCents      int64           `json:"defaultTjmCents"`
 }
 
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
@@ -361,6 +362,7 @@ type Application struct {
 	ChefUtilisateurID *uuid.UUID      `json:"chefUtilisateurId,omitempty"`
 	BudgetDefautID    *uuid.UUID      `json:"budgetDefautId,omitempty"`
 	Active            bool            `json:"active"`
+	DefaultTJMCents   int64           `json:"defaultTjmCents"`
 }
 
 type ClientContact struct {

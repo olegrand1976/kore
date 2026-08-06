@@ -87,6 +87,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err := r.ensureTenant(ctx); err != nil {
 		return err
 	}
+	if err := r.ensureInvoicingEnabled(ctx, tenant); err != nil {
+		return err
+	}
 	if err := r.ensureTrial(ctx, tenant); err != nil {
 		return err
 	}
@@ -133,6 +136,23 @@ func (r *Runner) Run(ctx context.Context) error {
 
 func (r *Runner) ensureTenant(ctx context.Context) error {
 	return r.deps.OrgRepo.SaveTenant(ctx, orgdomain.Tenant{ID: DemoTenantID, Name: TenantName})
+}
+
+// ensureInvoicingEnabled turns on client invoicing for the demo tenant.
+// Demo seed intentionally re-enables the flag on every run so the sample
+// workspace stays usable after seed-reset (admin toggles are not preserved).
+func (r *Runner) ensureInvoicingEnabled(ctx context.Context, tenant kernel.TenantID) error {
+	if r.deps.Pool == nil {
+		return nil
+	}
+	_, err := r.deps.Pool.Exec(ctx, `
+		INSERT INTO org.tenant_request_settings (tenant_id, channels_enabled, guides_enabled, invoicing_enabled, updated_at)
+		VALUES ($1, '{"tma":true,"support":true,"maintenance":true}'::jsonb, TRUE, TRUE, NOW())
+		ON CONFLICT (tenant_id) DO UPDATE SET
+			invoicing_enabled = TRUE,
+			updated_at = NOW()
+	`, tenant.UUID())
+	return err
 }
 
 func (r *Runner) ensureTrial(ctx context.Context, tenant kernel.TenantID) error {

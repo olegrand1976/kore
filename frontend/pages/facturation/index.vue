@@ -5,10 +5,98 @@
         <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
           {{ $t('guides.show') }}
         </AppButton>
+        <AppButton
+          v-if="canWrite && !showCreate"
+          variant="primary"
+          size="sm"
+          type="button"
+          @click="showCreate = true"
+        >
+          {{ $t('invoicing.create') }}
+        </AppButton>
       </template>
     </AppPageHeader>
 
     <AppSectionGuide ref="guideRef" guide-key="invoicing" />
+
+    <AppCard v-if="showCreate" padding="lg" class="create-card">
+      <h2 class="create-card__title">{{ $t('invoicing.create_title') }}</h2>
+      <form class="create-form" @submit.prevent="onCreate">
+        <label class="create-form__field">
+          <span>{{ $t('invoicing.client') }}</span>
+          <select v-model="createForm.clientId" required>
+            <option disabled value="">{{ $t('invoicing.client_placeholder') }}</option>
+            <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </label>
+
+        <label class="create-form__field">
+          <span>{{ $t('invoicing.currency') }}</span>
+          <select v-model="createForm.currency">
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </label>
+
+        <div class="create-form__lines">
+          <div class="create-form__lines-head">
+            <h3>{{ $t('invoicing.lines_title') }}</h3>
+            <AppButton variant="ghost" size="sm" type="button" @click="addLine">
+              {{ $t('invoicing.add_line') }}
+            </AppButton>
+          </div>
+          <div v-for="(line, idx) in createForm.lines" :key="idx" class="create-form__line">
+            <AppInput
+              :id="`line-desc-${idx}`"
+              v-model="line.description"
+              :label="$t('invoicing.line_description')"
+              required
+            />
+            <AppInput
+              :id="`line-qty-${idx}`"
+              v-model="line.quantity"
+              type="number"
+              :label="$t('invoicing.line_quantity')"
+              required
+            />
+            <AppInput
+              :id="`line-price-${idx}`"
+              v-model="line.unitPriceEur"
+              type="number"
+              :label="$t('invoicing.line_unit_price_eur')"
+              required
+            />
+            <AppInput
+              :id="`line-tax-${idx}`"
+              v-model="line.taxRate"
+              type="number"
+              :label="$t('invoicing.line_tax')"
+              required
+            />
+            <AppButton
+              v-if="createForm.lines.length > 1"
+              variant="ghost"
+              size="sm"
+              type="button"
+              @click="removeLine(idx)"
+            >
+              {{ $t('common.delete') }}
+            </AppButton>
+          </div>
+        </div>
+
+        <div class="create-form__actions">
+          <AppButton variant="ghost" type="button" :disabled="creating" @click="showCreate = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="creating" :loading="creating">
+            {{ $t('invoicing.create_submit') }}
+          </AppButton>
+        </div>
+        <p v-if="createError" class="flash flash--error" role="alert">{{ createError }}</p>
+      </form>
+    </AppCard>
 
     <AppCard padding="lg">
       <AppTable
@@ -40,6 +128,19 @@ definePageMeta({ layout: 'default' })
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const { t } = useI18n()
+const { apiFetch } = useApiFetch()
+const { extractFetchError } = useApiError()
+const { can } = usePermissions()
+const { listClients, orgId } = useOrganisation()
+const { isInvoicingEnabled, fetchSettings } = useRequestSettings()
+
+await fetchSettings()
+const invoicingAllowed = isInvoicingEnabled.value && can('invoicing', 'L')
+if (!invoicingAllowed) {
+  await navigateTo('/dashboard')
+}
+
+const canWrite = computed(() => can('invoicing', 'E'))
 
 type InvoiceRow = {
   id: string
@@ -51,7 +152,9 @@ type InvoiceRow = {
   createdAt: string
 }
 
-const { data, pending } = await useFetch<{ data?: InvoiceRow[] } | InvoiceRow[]>('/api/invoices')
+const { data, pending, refresh } = await useFetch<{ data?: InvoiceRow[] } | InvoiceRow[]>('/api/invoices', {
+  immediate: invoicingAllowed
+})
 
 const invoices = computed(() => {
   const raw = data.value
@@ -68,17 +171,95 @@ const columns = computed(() => [
 ])
 
 const rows = computed(() =>
-  invoices.value.map((inv) => ({
-    id: inv.id.slice(0, 8),
-    rawId: inv.id,
-    clientId: inv.clientId,
-    status: inv.status,
-    type: inv.type,
-    currency: inv.currency ?? 'EUR',
-    totalAmount: inv.totalAmount ?? 0,
-    createdAt: inv.createdAt
-  }))
+  invoices.value.map((inv) => {
+    const rawId = inv.id ?? ''
+    return {
+      id: rawId.slice(0, 8) || '—',
+      rawId,
+      clientId: inv.clientId,
+      status: inv.status,
+      type: inv.type,
+      currency: inv.currency ?? 'EUR',
+      totalAmount: inv.totalAmount ?? 0,
+      createdAt: inv.createdAt
+    }
+  })
 )
+
+type ClientOption = { id: string; label: string }
+type LineForm = {
+  description: string
+  quantity: string
+  unitPriceEur: string
+  taxRate: string
+}
+
+const showCreate = ref(false)
+const creating = ref(false)
+const createError = ref('')
+const clients = ref<ClientOption[]>([])
+const createForm = reactive({
+  clientId: '',
+  currency: 'EUR',
+  lines: [
+    { description: '', quantity: '1', unitPriceEur: '0', taxRate: '20' }
+  ] as LineForm[]
+})
+
+onMounted(async () => {
+  try {
+    const list = await listClients()
+    clients.value = list.map((c) => ({
+      id: orgId(c),
+      label: c.raisonSociale ?? c.RaisonSociale ?? orgId(c)
+    })).filter((c) => c.id)
+  } catch {
+    clients.value = []
+  }
+})
+
+const addLine = () => {
+  createForm.lines.push({ description: '', quantity: '1', unitPriceEur: '0', taxRate: '20' })
+}
+
+const removeLine = (idx: number) => {
+  if (createForm.lines.length <= 1) return
+  createForm.lines.splice(idx, 1)
+}
+
+const onCreate = async () => {
+  creating.value = true
+  createError.value = ''
+  try {
+    const lines = createForm.lines.map((line) => ({
+      description: line.description.trim(),
+      quantity: Number(line.quantity),
+      unitPrice: Math.round(Number(line.unitPriceEur) * 100),
+      taxRate: Number(line.taxRate)
+    }))
+    if (lines.some((l) => !l.description || !(l.quantity > 0))) {
+      createError.value = t('invoicing.create_validation')
+      return
+    }
+    const res = await apiFetch<{ data?: { id?: string } }>('/api/invoices', {
+      method: 'POST',
+      body: {
+        clientId: createForm.clientId,
+        type: 'standard',
+        currency: createForm.currency,
+        lines
+      }
+    })
+    const id = res.data?.id
+    showCreate.value = false
+    await refresh()
+    if (id) await navigateTo(`/facturation/${id}`)
+  } catch (e) {
+    createError.value = extractFetchError(e, t('invoicing.create_error'))
+  } finally {
+    creating.value = false
+  }
+}
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -102,3 +283,94 @@ const statusLabel = (status: string) => t(`invoicing.status.${status}`, status)
 const formatAmount = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)
 </script>
+
+<style scoped>
+.create-card {
+  margin-bottom: var(--kore-space-lg);
+}
+
+.create-card__title {
+  margin: 0 0 var(--kore-space-md);
+  font-size: var(--kore-text-h3);
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-md);
+  max-width: var(--kore-form-wide-max);
+}
+
+.create-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+}
+
+.create-form__field select {
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  color: var(--kore-text);
+  font-family: var(--kore-font);
+}
+
+.create-form__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-md);
+}
+
+.create-form__lines-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-sm);
+}
+
+.create-form__lines-head h3 {
+  margin: 0;
+  font-size: var(--kore-text-small);
+}
+
+.create-form__line {
+  display: grid;
+  gap: var(--kore-space-sm);
+  padding: var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+}
+
+.create-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .create-form__actions :deep(.app-button),
+  .create-form__actions button {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .create-form__line {
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    align-items: end;
+  }
+}
+
+.flash {
+  margin: 0;
+  font-size: var(--kore-text-small);
+}
+
+.flash--error {
+  color: var(--kore-error);
+}
+</style>

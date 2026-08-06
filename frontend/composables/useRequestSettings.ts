@@ -10,7 +10,14 @@ export type TenantRequestSettings = {
   tenantId?: string
   channelsEnabled: ChannelsEnabled
   guidesEnabled: boolean
+  invoicingEnabled: boolean
   updatedAt?: string
+}
+
+export type SaveRequestSettingsPayload = {
+  channelsEnabled: ChannelsEnabled
+  guidesEnabled: boolean
+  invoicingEnabled?: boolean
 }
 
 const defaultChannels: ChannelsEnabled = {
@@ -35,26 +42,39 @@ export function useRequestSettings() {
           maintenance: data?.channelsEnabled?.maintenance ?? defaultChannels.maintenance
         },
         guidesEnabled: data?.guidesEnabled ?? true,
+        invoicingEnabled: data?.invoicingEnabled ?? false,
         updatedAt: data?.updatedAt
       }
       loaded.value = true
     } catch {
-      settings.value = { channelsEnabled: { ...defaultChannels }, guidesEnabled: true }
+      settings.value = {
+        channelsEnabled: { ...defaultChannels },
+        guidesEnabled: true,
+        invoicingEnabled: false
+      }
       loaded.value = true
     }
   }
 
-  const saveSettings = async (payload: Pick<TenantRequestSettings, 'channelsEnabled' | 'guidesEnabled'>) => {
+  const saveSettings = async (payload: SaveRequestSettingsPayload) => {
     const { apiFetch } = useApiFetch()
+    const body: Record<string, unknown> = {
+      channelsEnabled: payload.channelsEnabled,
+      guidesEnabled: payload.guidesEnabled
+    }
+    if (payload.invoicingEnabled !== undefined) {
+      body.invoicingEnabled = payload.invoicingEnabled
+    }
     const res = await apiFetch<{ data?: TenantRequestSettings }>('/api/admin/request-settings', {
       method: 'PUT',
-      body: payload
+      body
     })
     const data = res.data
     if (data) {
       settings.value = {
         channelsEnabled: data.channelsEnabled,
         guidesEnabled: data.guidesEnabled,
+        invoicingEnabled: data.invoicingEnabled ?? false,
         updatedAt: data.updatedAt
       }
     }
@@ -66,6 +86,11 @@ export function useRequestSettings() {
     const ch = settings.value?.channelsEnabled ?? defaultChannels
     return ch[channel] ?? false
   }
+
+  const isInvoicingEnabled = computed(() => {
+    if (!loaded.value) return false
+    return settings.value?.invoicingEnabled ?? false
+  })
 
   const activeChannelCount = computed(() => {
     if (!loaded.value) return 0
@@ -81,6 +106,7 @@ export function useRequestSettings() {
     fetchSettings,
     saveSettings,
     isChannelEnabled,
+    isInvoicingEnabled,
     activeChannelCount,
     guidesEnabled
   }

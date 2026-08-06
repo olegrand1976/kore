@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -43,6 +44,18 @@ func (r *virtualRepo) ListInvoices(context.Context, kernel.TenantID) ([]domain.I
 
 func (r *virtualRepo) SaveInvoiceLine(_ context.Context, line domain.InvoiceLine) error {
 	r.lines = append(r.lines, line)
+	return nil
+}
+
+func (r *virtualRepo) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error {
+	if err := r.SaveInvoice(ctx, inv); err != nil {
+		return err
+	}
+	for _, line := range lines {
+		if err := r.SaveInvoiceLine(ctx, line); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -151,5 +164,121 @@ func TestSyncPDPStatus(t *testing.T) {
 	updated, _ := repo.GetInvoice(context.Background(), tenant, inv.ID)
 	if updated.Status != domain.InvoiceStatusAcceptee {
 		t.Fatalf("expected acceptee, got %s", updated.Status)
+	}
+}
+
+type stubInvoicingEnabled struct {
+	enabled bool
+}
+
+func (s stubInvoicingEnabled) IsInvoicingEnabled(context.Context, kernel.TenantID) (bool, error) {
+	return s.enabled, nil
+}
+
+func TestCreateBlockedWhenInvoicingDisabled(t *testing.T) {
+	repo := &virtualRepo{}
+	svc := NewService(repo, WithEnabledReader(stubInvoicingEnabled{enabled: false}))
+	tenant := kernel.NewTenantID(uuid.New())
+	_, err := svc.Create(context.Background(), ports.CreateInvoiceCommand{
+		TenantID: tenant,
+		ClientID: uuid.New(),
+		Type:     domain.InvoiceTypeStandard,
+		Currency: "EUR",
+		Lines: []ports.InvoiceLineInput{{
+			Description: "Line",
+			Quantity:    1,
+			UnitPrice:   1000,
+			TaxRate:     20,
+		}},
+	})
+	if err == nil || !errors.Is(err, domain.ErrInvoicingDisabled) {
+		t.Fatalf("expected ErrInvoicingDisabled, got %v", err)
+	}
+}
+
+func TestCreateAllowedWhenInvoicingEnabled(t *testing.T) {
+	repo := &virtualRepo{}
+	svc := NewService(repo, WithEnabledReader(stubInvoicingEnabled{enabled: true}))
+	tenant := kernel.NewTenantID(uuid.New())
+	inv, err := svc.Create(context.Background(), ports.CreateInvoiceCommand{
+		TenantID: tenant,
+		ClientID: uuid.New(),
+		Type:     domain.InvoiceTypeStandard,
+		Currency: "EUR",
+		Lines: []ports.InvoiceLineInput{{
+			Description: "Line",
+			Quantity:    1,
+			UnitPrice:   1000,
+			TaxRate:     20,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if inv.Status != domain.InvoiceStatusPreparee {
+		t.Fatalf("expected preparee, got %s", inv.Status)
+	}
+}
+
+// orderingRepo fails if a line is saved before its parent invoice exists.
+type orderingRepo struct {
+	virtualRepo
+	invoiceIDs map[uuid.UUID]struct{}
+}
+
+func (r *orderingRepo) SaveInvoice(ctx context.Context, inv domain.Invoice) error {
+	if r.invoiceIDs == nil {
+		r.invoiceIDs = make(map[uuid.UUID]struct{})
+	}
+	if err := r.virtualRepo.SaveInvoice(ctx, inv); err != nil {
+		return err
+	}
+	r.invoiceIDs[inv.ID] = struct{}{}
+	return nil
+}
+
+func (r *orderingRepo) SaveInvoiceLine(ctx context.Context, line domain.InvoiceLine) error {
+	if _, ok := r.invoiceIDs[line.InvoiceID]; !ok {
+		return errors.New("fk: invoice_lines.invoice_id references missing invoice")
+	}
+	return r.virtualRepo.SaveInvoiceLine(ctx, line)
+}
+
+func (r *orderingRepo) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error {
+	if err := r.SaveInvoice(ctx, inv); err != nil {
+		return err
+	}
+	for _, line := range lines {
+		if err := r.SaveInvoiceLine(ctx, line); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TestCreatePersistsInvoiceBeforeLines(t *testing.T) {
+	repo := &orderingRepo{}
+	svc := NewService(repo)
+	tenant := kernel.NewTenantID(uuid.New())
+	inv, err := svc.Create(context.Background(), ports.CreateInvoiceCommand{
+		TenantID: tenant,
+		ClientID: uuid.New(),
+		Type:     domain.InvoiceTypeStandard,
+		Currency: "EUR",
+		Lines: []ports.InvoiceLineInput{{
+			Description: "Line",
+			Quantity:    2,
+			UnitPrice:   5000,
+			TaxRate:     20,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if len(repo.invoices) != 1 || len(repo.lines) != 1 {
+		t.Fatalf("expected 1 invoice and 1 line, got %d / %d", len(repo.invoices), len(repo.lines))
+	}
+	if inv.ID == uuid.Nil {
+		t.Fatal("expected invoice id")
 	}
 }

@@ -20,7 +20,7 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, invoicingEnabled kernel.InvoicingEnabledReader) {
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/timesheets/recent", listTimesheets(svc, authorizer))
@@ -36,6 +36,7 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Get("/prestations/export.xml", exportPrestationsXML(svc, authorizer))
 		pr.Get("/prestations/billable-summary", billableSummary(svc, authorizer))
 		pr.Post("/prestations/validate-all", validateAllPrestations(svc, authorizer))
+		pr.Post("/prestations/create-invoices", createInvoicesFromPrestations(svc, authorizer, invoicingEnabled))
 		pr.Post("/timesheets/{id}/prefill-holidays", prefillHolidays(svc, authorizer))
 		pr.Post("/timesheets/{id}/prefill-ett", prefillETT(svc, authorizer))
 	})
@@ -379,6 +380,59 @@ func validateAllPrestations(svc ports.CRAService, authorizer authx.Authorizer) h
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, result)
+	}
+}
+
+func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
+		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			TimesheetIDs []string `json:"timesheetIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if len(req.TimesheetIDs) == 0 {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds required")
+			return
+		}
+		const maxCreateInvoiceBatch = 100
+		if len(req.TimesheetIDs) > maxCreateInvoiceBatch {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds max 100")
+			return
+		}
+		ids := make([]uuid.UUID, 0, len(req.TimesheetIDs))
+		for _, raw := range req.TimesheetIDs {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheetId")
+				return
+			}
+			ids = append(ids, id)
+		}
+		identity, _ := authx.FromContext(r.Context())
+		outcomes, err := svc.CreateInvoicesFromTimesheets(r.Context(), identity.TenantID, ids)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		created := 0
+		for _, o := range outcomes {
+			if o.Status == ports.InvoiceDraftCreated {
+				created++
+			}
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]any{
+			"created":  created,
+			"outcomes": outcomes,
+		})
 	}
 }
 

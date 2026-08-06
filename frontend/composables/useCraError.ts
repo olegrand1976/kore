@@ -63,7 +63,8 @@ export function useCraError() {
     mapInvoiceDraftMessage: (
       draft: { status?: string; reason?: string } | null | undefined,
       skippedKey = 'cra.invoice_skipped'
-    ) => mapInvoiceDraftMessage(draft, t, skippedKey)
+    ) => mapInvoiceDraftMessage(draft, t, skippedKey),
+    mapInvoiceDraftReason: (reason: string | undefined) => mapInvoiceDraftReason(reason, t)
   }
 }
 
@@ -73,7 +74,14 @@ const invoiceReasonKeys: Record<string, string> = {
   billable_hours_error: 'cra.invoice_reason.billable_hours_error',
   publish_failed: 'cra.invoice_reason.publish_failed',
   already_exists_or_empty: 'cra.invoice_reason.already_exists_or_empty',
-  invoicing_not_configured: 'cra.invoice_reason.invoicing_not_configured'
+  already_exists: 'cra.invoice_reason.already_exists',
+  invoicing_not_configured: 'cra.invoice_reason.invoicing_not_configured',
+  invoicing_disabled: 'cra.invoice_reason.invoicing_disabled',
+  zero_unit_price: 'cra.invoice_reason.zero_unit_price',
+  billing_mode_disabled: 'cra.invoice_reason.billing_mode_disabled',
+  billing_mode_forfait: 'cra.invoice_reason.billing_mode_forfait',
+  not_definitive: 'cra.invoice_reason.not_definitive',
+  timesheet_not_found: 'cra.invoice_reason.timesheet_not_found'
 }
 
 export function mapInvoiceDraftReason(

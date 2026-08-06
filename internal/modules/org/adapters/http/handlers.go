@@ -274,6 +274,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			UOActivee         bool       `json:"uoActivee"`
 			ChefUtilisateurID *uuid.UUID `json:"chefUtilisateurId"`
 			BudgetDefautID    *uuid.UUID `json:"budgetDefautId"`
+			DefaultTJMCents   int64      `json:"defaultTjmCents"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -289,6 +290,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			UOActivee:         req.UOActivee,
 			ChefUtilisateurID: req.ChefUtilisateurID,
 			BudgetDefautID:    req.BudgetDefautID,
+			DefaultTJMCents:   req.DefaultTJMCents,
 		})
 		if err != nil {
 			if errors.Is(err, domain.ErrInvalidModeFacturation) {
@@ -536,9 +538,18 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			cmd.BudgetDefautID = &ptr
 		}
+		if v, ok := raw["defaultTjmCents"]; ok {
+			var n int64
+			if err := json.Unmarshal(v, &n); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid defaultTjmCents")
+				return
+			}
+			cmd.DefaultTJMCents = &n
+		}
 		if cmd.Libelle == nil && cmd.Active == nil && cmd.Proprietaire == nil &&
 			cmd.ModeFacturation == nil && cmd.UOActivee == nil &&
-			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil {
+			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil &&
+			cmd.DefaultTJMCents == nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
 			return
 		}
@@ -795,6 +806,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			TaskTypesEnabled     *[]string `json:"taskTypesEnabled"`
 			TotpDefaultEnabled   *bool     `json:"totpDefaultEnabled"`
 			TotpUserConfigurable *bool     `json:"totpUserConfigurable"`
+			DefaultTJMCents      *int64    `json:"defaultTjmCents"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -813,6 +825,7 @@ func updateSocieteSettings(org ports.OrganizationService, authorizer authx.Autho
 			TaskTypesEnabled:     req.TaskTypesEnabled,
 			TotpDefaultEnabled:   req.TotpDefaultEnabled,
 			TotpUserConfigurable: req.TotpUserConfigurable,
+			DefaultTJMCents:      req.DefaultTJMCents,
 		})
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())

@@ -133,7 +133,7 @@ export const useCraStore = defineStore('cra', {
     async validateFinal() {
       if (!this.timesheet) return
       const { apiFetch } = useApiFetch()
-      const res = await apiFetch<{ data?: { invoiceDraft?: { status?: string; reason?: string } } }>(
+      const res = await apiFetch<{ data?: { invoiceDraft?: { status?: string; reason?: string; invoiceId?: string } } }>(
         `/api/cra/timesheets/${this.timesheet.id}/validate`,
         { method: 'POST' }
       )

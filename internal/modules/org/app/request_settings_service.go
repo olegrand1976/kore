@@ -32,11 +32,20 @@ func (s *requestSettingsService) Update(ctx context.Context, cmd ports.UpdateReq
 	if !cmd.ChannelsEnabled.AtLeastOne() {
 		return domain.TenantRequestSettings{}, domain.ErrInvalidRequestChannels
 	}
+	current, err := s.Get(ctx, cmd.TenantID)
+	if err != nil {
+		return domain.TenantRequestSettings{}, err
+	}
+	invoicing := current.InvoicingEnabled
+	if cmd.InvoicingEnabled != nil {
+		invoicing = *cmd.InvoicingEnabled
+	}
 	settings := domain.TenantRequestSettings{
-		TenantID:        cmd.TenantID,
-		ChannelsEnabled: cmd.ChannelsEnabled,
-		GuidesEnabled:   cmd.GuidesEnabled,
-		UpdatedAt:       time.Now().UTC(),
+		TenantID:         cmd.TenantID,
+		ChannelsEnabled:  cmd.ChannelsEnabled,
+		GuidesEnabled:    cmd.GuidesEnabled,
+		InvoicingEnabled: invoicing,
+		UpdatedAt:        time.Now().UTC(),
 	}
 	if err := s.repo.SaveTenantRequestSettings(ctx, settings); err != nil {
 		return domain.TenantRequestSettings{}, err
@@ -52,7 +61,16 @@ func (s *requestSettingsService) IsChannelEnabled(ctx context.Context, tenant ke
 	return settings.ChannelsEnabled.IsEnabled(channel), nil
 }
 
+func (s *requestSettingsService) IsInvoicingEnabled(ctx context.Context, tenant kernel.TenantID) (bool, error) {
+	settings, err := s.Get(ctx, tenant)
+	if err != nil {
+		return false, err
+	}
+	return settings.InvoicingEnabled, nil
+}
+
 var (
-	_ ports.RequestSettingsService = (*requestSettingsService)(nil)
-	_ kernel.RequestChannelReader  = (*requestSettingsService)(nil)
+	_ ports.RequestSettingsService  = (*requestSettingsService)(nil)
+	_ kernel.RequestChannelReader   = (*requestSettingsService)(nil)
+	_ kernel.InvoicingEnabledReader = (*requestSettingsService)(nil)
 )

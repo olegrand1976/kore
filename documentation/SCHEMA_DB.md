@@ -137,6 +137,7 @@ Index :
 | `totp_default_enabled` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
 | `totp_user_configurable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |
 | `seed_protected` | BOOLEAN | NOT NULL, DEFAULT FALSE (bloque `seed-reset` si TRUE) |
+| `default_tjm_cents` | BIGINT | NOT NULL, DEFAULT 0, CHECK ≥ 0 (migration `0023`) — TJM défaut société pour facturation CRA |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `org.sites`
@@ -179,6 +180,7 @@ Index :
 | `uo_activee` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | `chef_utilisateur_id` | UUID | |
 | `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `default_tjm_cents` | BIGINT | NOT NULL, DEFAULT 0, CHECK ≥ 0 (migration `0023`) — TJM défaut application |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index** : `idx_org_applications_tenant_active (tenant_id, active)`
@@ -308,13 +310,14 @@ Memberships N–N équipes.
 
 ### `org.tenant_request_settings`
 
-Activation des canaux de demandes (TMA, support, maintenance) et affichage des guides par tenant.
+Activation des canaux de demandes (TMA, support, maintenance), affichage des guides et module facturation métier par tenant.
 
 | Colonne | Type | Contraintes |
 | --- | --- | --- |
 | `tenant_id` | UUID | PK → `org.tenants(id)` ON DELETE CASCADE |
 | `channels_enabled` | JSONB | NOT NULL, DEFAULT `'{"tma":true,"support":true,"maintenance":true}'` |
 | `guides_enabled` | BOOLEAN | NOT NULL, DEFAULT TRUE |
+| `invoicing_enabled` | BOOLEAN | NOT NULL, DEFAULT FALSE (migration `0022`) |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `org.request_attachments`
@@ -1015,6 +1018,7 @@ Facturation métier e-invoicing (PDP/PA).
 | `tax_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `pdp_receipt_id` | TEXT | |
 | `transmitted_at` | TIMESTAMPTZ | |
+| `source_timesheet_id` | UUID | nullable — CRA source (migration `0002`) ; unique partiel `(tenant_id, source_timesheet_id)` |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `invoicing.invoice_lines`

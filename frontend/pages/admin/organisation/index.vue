@@ -17,6 +17,16 @@
         type="button"
         role="tab"
         class="org-tab"
+        :class="{ 'org-tab--active': tab === 'modules' }"
+        :aria-selected="tab === 'modules'"
+        @click="tab = 'modules'"
+      >
+        {{ $t('org.tab_modules') }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="org-tab"
         :class="{ 'org-tab--active': tab === 'structure' }"
         :aria-selected="tab === 'structure'"
         @click="tab = 'structure'"
@@ -26,6 +36,31 @@
     </nav>
 
     <OrgTree v-if="tab === 'structure'" />
+
+    <AppCard v-else-if="tab === 'modules'" padding="lg" class="org-modules">
+      <form class="org-modules__form" @submit.prevent="saveModules">
+        <fieldset class="org-modules__fieldset">
+          <legend>{{ $t('org.modules_title') }}</legend>
+          <p class="org-form__hint">{{ $t('org.modules_hint') }}</p>
+          <label class="org-modules__check">
+            <input v-model="invoicingEnabled" type="checkbox">
+            {{ $t('org.invoicing_enabled') }}
+          </label>
+          <p class="org-form__hint">{{ $t('org.invoicing_enabled_hint') }}</p>
+        </fieldset>
+        <AppButton variant="primary" type="submit" :disabled="savingModules">
+          {{ $t('org.save') }}
+        </AppButton>
+        <p
+          v-if="modulesMessage"
+          class="org-form__msg"
+          :class="{ 'org-form__msg--error': modulesError }"
+          role="status"
+        >
+          {{ modulesMessage }}
+        </p>
+      </form>
+    </AppCard>
 
     <div v-else class="split-layout">
       <AppCard padding="lg" class="org-form">
@@ -65,11 +100,17 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 
 const { apiFetch } = useApiFetch()
 const { t } = useI18n()
+const { extractFetchError } = useApiError()
 const { branding, fetchBranding } = useTenantBranding()
+const { settings, fetchSettings, saveSettings } = useRequestSettings()
 
 const route = useRoute()
-const tab = ref<'identite' | 'structure'>(
-  route.query.tab === 'structure' ? 'structure' : 'identite'
+const tab = ref<'identite' | 'structure' | 'modules'>(
+  route.query.tab === 'structure'
+    ? 'structure'
+    : route.query.tab === 'modules'
+      ? 'modules'
+      : 'identite'
 )
 
 const form = reactive({
@@ -84,10 +125,16 @@ const saving = ref(false)
 const message = ref('')
 const isError = ref(false)
 
+const invoicingEnabled = ref(false)
+const savingModules = ref(false)
+const modulesMessage = ref('')
+const modulesError = ref(false)
+
 onMounted(async () => {
-  await fetchBranding()
+  await Promise.all([fetchBranding(), fetchSettings()])
   form.raisonSociale = branding.value.raisonSociale
   previewUrl.value = branding.value.logoUrl
+  invoicingEnabled.value = settings.value?.invoicingEnabled ?? false
   try {
     const res = await apiFetch<any>('/api/org/societes')
     const first = res?.data?.[0]
@@ -134,6 +181,30 @@ const save = async () => {
     isError.value = true
   } finally {
     saving.value = false
+  }
+}
+
+const saveModules = async () => {
+  savingModules.value = true
+  modulesMessage.value = ''
+  modulesError.value = false
+  try {
+    const channels = settings.value?.channelsEnabled ?? {
+      tma: true,
+      support: false,
+      maintenance: false
+    }
+    await saveSettings({
+      channelsEnabled: { ...channels },
+      guidesEnabled: settings.value?.guidesEnabled ?? true,
+      invoicingEnabled: invoicingEnabled.value
+    })
+    modulesMessage.value = t('org.modules_saved')
+  } catch (e) {
+    modulesError.value = true
+    modulesMessage.value = extractFetchError(e, t('org.modules_save_error'))
+  } finally {
+    savingModules.value = false
   }
 }
 </script>
@@ -203,6 +274,31 @@ const save = async () => {
 }
 
 .org-form__msg--error { color: var(--kore-error); }
+
+.org-modules__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-md);
+  max-width: var(--kore-form-max);
+}
+
+.org-modules__fieldset {
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  padding: var(--kore-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+}
+
+.org-modules__check {
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+  cursor: pointer;
+}
 
 .org-preview h3 {
   margin: 0 0 var(--kore-space-xs);

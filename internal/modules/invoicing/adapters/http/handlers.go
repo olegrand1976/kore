@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -16,21 +17,32 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, pdpWebhookSecret string) {
+func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, invoicingEnabled kernel.InvoicingEnabledReader, pdpWebhookSecret string) {
 	r.Post("/webhooks/pdp", pdpWebhook(svc, pdpWebhookSecret))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
-		pr.Get("/invoices", listInvoices(svc, authorizer))
-		pr.Post("/invoices", createInvoice(svc, authorizer))
-		pr.Get("/invoices/{id}", getInvoice(svc, authorizer))
-		pr.Post("/invoices/compute-virtual", computeVirtual(svc, authorizer))
-		pr.Post("/invoices/{id}/transmit", transmitInvoice(svc, authorizer))
-		pr.Post("/invoices/{id}/credit-note", createCreditNote(svc, authorizer))
+		pr.Get("/invoices", listInvoices(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices", createInvoice(svc, authorizer, invoicingEnabled))
+		pr.Get("/invoices/{id}", getInvoice(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices/compute-virtual", computeVirtual(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices/{id}/transmit", transmitInvoice(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices/{id}/credit-note", createCreditNote(svc, authorizer, invoicingEnabled))
 	})
 }
 
-func listInvoices(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func writeInvoicingErr(w http.ResponseWriter, err error) bool {
+	if errors.Is(err, domain.ErrInvoicingDisabled) {
+		httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
+		return true
+	}
+	return false
+}
+
+func listInvoices(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionRead) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -38,6 +50,9 @@ func listInvoices(svc ports.InvoicingService, authorizer authx.Authorizer) http.
 		identity, _ := authx.FromContext(r.Context())
 		items, err := svc.List(r.Context(), identity.TenantID)
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -45,8 +60,11 @@ func listInvoices(svc ports.InvoicingService, authorizer authx.Authorizer) http.
 	}
 }
 
-func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -61,6 +79,17 @@ func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
+		if req.ClientID == uuid.Nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "clientId required")
+			return
+		}
+		if len(req.Lines) == 0 {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one line required")
+			return
+		}
+		if req.Type == "" {
+			req.Type = domain.InvoiceTypeStandard
+		}
 		identity, _ := authx.FromContext(r.Context())
 		inv, err := svc.Create(r.Context(), ports.CreateInvoiceCommand{
 			TenantID: identity.TenantID,
@@ -70,6 +99,9 @@ func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http
 			Lines:    req.Lines,
 		})
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -77,8 +109,11 @@ func createInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http
 	}
 }
 
-func getInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func getInvoice(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionRead) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -91,6 +126,9 @@ func getInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http.Ha
 		identity, _ := authx.FromContext(r.Context())
 		inv, err := svc.Get(r.Context(), identity.TenantID, id)
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 			return
 		}
@@ -98,8 +136,11 @@ func getInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http.Ha
 	}
 }
 
-func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -129,6 +170,9 @@ func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer) htt
 			Lines:     req.Lines,
 		})
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -136,8 +180,11 @@ func computeVirtual(svc ports.InvoicingService, authorizer authx.Authorizer) htt
 	}
 }
 
-func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -150,6 +197,9 @@ func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) ht
 		identity, _ := authx.FromContext(r.Context())
 		inv, err := svc.Transmit(r.Context(), identity.TenantID, id)
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 			return
 		}
@@ -157,8 +207,11 @@ func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer) ht
 	}
 }
 
-func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer) http.HandlerFunc {
+func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
 		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
@@ -171,6 +224,9 @@ func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer) h
 		identity, _ := authx.FromContext(r.Context())
 		cn, err := svc.CreateCreditNote(r.Context(), identity.TenantID, id)
 		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}

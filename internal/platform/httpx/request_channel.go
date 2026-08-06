@@ -37,3 +37,25 @@ func ChannelEnabled(ctx context.Context, reader kernel.RequestChannelReader, ten
 	}
 	return reader.IsChannelEnabled(ctx, tenant, channel)
 }
+
+// RequireInvoicingEnabled blocks invoicing routes when the tenant disabled the module.
+func RequireInvoicingEnabled(w http.ResponseWriter, r *http.Request, reader kernel.InvoicingEnabledReader) bool {
+	if reader == nil {
+		return true
+	}
+	identity, ok := authx.FromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, ErrCodeUnauthorized, "unauthorized")
+		return false
+	}
+	enabled, err := reader.IsInvoicingEnabled(r.Context(), identity.TenantID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, ErrCodeInternal, err.Error())
+		return false
+	}
+	if !enabled {
+		WriteError(w, http.StatusForbidden, ErrCodeForbidden, "invoicing disabled for organisation")
+		return false
+	}
+	return true
+}

@@ -151,7 +151,10 @@
       @download="downloadPdf"
     />
 
-    <p v-if="validateMsg" class="flash" role="status">{{ validateMsg }}</p>
+    <p v-if="validateMsg" class="flash" role="status">
+      {{ validateMsg }}
+      <NuxtLink v-if="invoiceLink" :to="invoiceLink" class="flash__link">{{ $t('cra.invoice_created_link') }}</NuxtLink>
+    </p>
     <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
     <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
     <p v-if="actionError" class="flash flash--error" role="alert">{{ actionError }}</p>
@@ -274,6 +277,7 @@ const prefillLoading = ref(false)
 const prefillMsg = ref('')
 const actionError = ref('')
 const validateMsg = ref('')
+const invoiceLink = ref('')
 const rejectOpen = ref(false)
 const rejectReason = ref('')
 const rejecting = ref(false)
@@ -477,10 +481,15 @@ const onSubmitWeek = async (weekNumber: number) => {
 const onValidateFinal = async () => {
   actionError.value = ''
   validateMsg.value = ''
+  invoiceLink.value = ''
   try {
     await persistCommercial()
     const draft = await validateFinal()
     validateMsg.value = mapInvoiceDraft(draft)
+    const invoiceId = (draft as { invoiceId?: string } | undefined)?.invoiceId
+    if (draft?.status === 'created' && invoiceId) {
+      invoiceLink.value = `/facturation/${invoiceId}`
+    }
     await loadAnomalies()
   } catch (err) {
     actionError.value = mapCraError(err)
@@ -636,6 +645,11 @@ const downloadPdf = async () => {
 .muted { color: var(--kore-text-muted); }
 
 .flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
+.flash__link {
+  margin-left: var(--kore-space-sm);
+  color: var(--kore-accent);
+  text-decoration: underline;
+}
 
 .cra-detail__anomalies-title {
   margin: 0 0 var(--kore-space-sm);

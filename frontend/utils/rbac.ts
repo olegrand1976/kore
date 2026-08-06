@@ -97,7 +97,8 @@ export const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
     tma: readWriteValidate,
     conges: read,
     budget: readWrite,
-    reporting: read
+    reporting: read,
+    invoicing: readWriteValidate
   },
   'Responsable de service': {
     org: read,
@@ -105,7 +106,8 @@ export const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
     tma: readWriteValidate,
     conges: readWriteValidate,
     budget: readWriteValidate,
-    reporting: read
+    reporting: read,
+    invoicing: readWriteValidate
   }
 }
 

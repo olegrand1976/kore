@@ -65,10 +65,10 @@ export function useEntitlements() {
     }
   }
 
-  const hasModule = (code: ModuleCode) => {
+  const hasModule = (code: string) => {
     if (!loaded.value) return true
     if (modules.value.length === 0) return false
-    return modules.value.includes(code)
+    return modules.value.includes(code as ModuleCode)
   }
 
   const isPastDue = computed(() => status.value === 'past_due')

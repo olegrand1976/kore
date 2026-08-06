@@ -15,3 +15,8 @@ const (
 type RequestChannelReader interface {
 	IsChannelEnabled(ctx context.Context, tenant TenantID, channel RequestChannel) (bool, error)
 }
+
+// InvoicingEnabledReader exposes the org-level invoicing module toggle.
+type InvoicingEnabledReader interface {
+	IsInvoicingEnabled(ctx context.Context, tenant TenantID) (bool, error)
+}

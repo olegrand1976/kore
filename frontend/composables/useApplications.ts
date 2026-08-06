@@ -7,6 +7,8 @@ export type OrgApplication = {
   Proprietaire?: string
   modeFacturation?: string
   ModeFacturation?: string
+  defaultTjmCents?: number
+  DefaultTJMCents?: number
   uoActivee?: boolean
   UOActivee?: boolean
   chefUtilisateurId?: string
@@ -24,6 +26,7 @@ export type ApplicationWriteBody = {
   libelle?: string
   proprietaire?: string
   modeFacturation?: string
+  defaultTjmCents?: number
   uoActivee?: boolean
   chefUtilisateurId?: string | null
   budgetDefautId?: string | null

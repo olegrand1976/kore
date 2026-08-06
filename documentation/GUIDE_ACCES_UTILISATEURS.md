@@ -39,16 +39,19 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Administrateur | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V | L | L/E/V | L/E/V | L/E/V | L/E | L/E | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V |
 | Collaborateur | — | L/E | L/E | L/E | L | — | — | — | — | — | — | — | — | — | — | — |
-| Chef d'équipe | L | L/E/V | L/E/V | L | L/E | L | — | — | — | — | — | — | — | — | — | — |
-| Responsable de service | L | L/E/V | L/E/V | L/E/V | L/E/V | L | — | — | — | — | — | — | — | — | — | — |
+| Chef d'équipe | L | L/E/V | L/E/V | L | L/E | L | — | — | — | — | — | — | L/E/V | — | — | — |
+| Responsable de service | L | L/E/V | L/E/V | L/E/V | L/E/V | L | — | — | — | — | — | — | L/E/V | — | — | — |
 
 ## Fiches profils (comportement UI)
 
 ### Administrateur
 
-- Menus admin : organisation (identité / structure), **applications**, utilisateurs, SSO, workflows, paramètres, abonnement, notifications.
+- Menus admin : organisation (**identité / modules / structure**), **applications**, utilisateurs, SSO, workflows, paramètres, abonnement, notifications.
+- Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
+- Facturation métier : L/E/V si le module org est activé.
+- CRA définitifs → brouillons facture (validation définitive CRA ou Prestations → **Créer factures**, droit Facturation écriture).
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`
 
@@ -61,11 +64,13 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 ### Chef d'équipe
 
 - Validation CRA et TMA ; congés en lecture ; budget L/E ; reporting L.
+- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
 - Compte seed : `CHE_chefdev` / `Chef123!`
 
 ### Responsable de service
 
 - Validation CRA, TMA, congés et budget ; reporting / org en lecture.
+- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
 - Pas d'accès aux paramètres admin (réservé Administrateur).
 - Compte seed : `MGR_manager` / `Manager123!`
 

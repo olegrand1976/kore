@@ -9,18 +9,32 @@ import (
 )
 
 type CreateInvoiceCommand struct {
-	TenantID kernel.TenantID
-	ClientID uuid.UUID
-	Type     domain.InvoiceType
-	Currency string
-	Lines    []InvoiceLineInput
+	TenantID          kernel.TenantID
+	ClientID          uuid.UUID
+	Type              domain.InvoiceType
+	Currency          string
+	Lines             []InvoiceLineInput
+	SourceTimesheetID *uuid.UUID
 }
 
 type InvoiceLineInput struct {
-	Description string
-	Quantity    float64
-	UnitPrice   int64
-	TaxRate     float64
+	Description string  `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	UnitPrice   int64   `json:"unitPrice"`
+	TaxRate     float64 `json:"taxRate"`
+}
+
+type CreateFromCRACommand struct {
+	TenantID       kernel.TenantID
+	TimesheetID    uuid.UUID
+	ClientID       uuid.UUID
+	Month          string
+	BillableHours  float64
+	MissionLabel   string
+	UserLabel      string
+	Currency       string
+	UnitPriceCents int64
+	TaxRate        float64
 }
 
 type ComputeVirtualCommand struct {
@@ -49,19 +63,6 @@ type PDPGateway interface {
 	SyncStatus(ctx context.Context, receiptID string) (domain.InvoiceStatus, error)
 }
 
-type CreateFromCRACommand struct {
-	TenantID       kernel.TenantID
-	TimesheetID    uuid.UUID
-	ClientID       uuid.UUID
-	Month          string
-	BillableHours  float64
-	MissionLabel   string
-	UserLabel      string
-	Currency       string
-	UnitPriceCents int64
-	TaxRate        float64
-}
-
 type InvoicingService interface {
 	List(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error)
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
@@ -78,6 +79,7 @@ type InvoicingRepository interface {
 	GetInvoice(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
 	ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error)
 	SaveInvoiceLine(ctx context.Context, line domain.InvoiceLine) error
+	SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error
 	ListInvoiceLines(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) ([]domain.InvoiceLine, error)
 	SavePDPQueueItem(ctx context.Context, item domain.PDPQueueItem) error
 	InvoiceExistsForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error)

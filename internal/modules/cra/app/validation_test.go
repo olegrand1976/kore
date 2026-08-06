@@ -152,14 +152,18 @@ func TestGeneratePDF_RequiresCommercialInfo(t *testing.T) {
 	}
 }
 
-func TestResolveUnitPriceCents_FromMissionTJM(t *testing.T) {
+func TestResolveSellUnitPriceCents_FromMissionTJM(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	missionID := uuid.New()
 	svc := NewService(nil, nil, nil).WithMissionRateReader(missionRateStub{
 		rate: ports.MissionRate{TJMAmount: 80000, Currency: "EUR"},
 	})
-	ts := domain.Timesheet{TenantID: tenant, UserID: uuid.New()}
-	price, currency := svc.resolveUnitPriceCents(context.Background(), ts, missionID)
+	ts := domain.Timesheet{
+		TenantID:       tenant,
+		UserID:         uuid.New(),
+		CommercialInfo: domain.CommercialInfo{MissionID: &missionID},
+	}
+	price, currency := svc.resolveSellUnitPriceCents(context.Background(), ts)
 	if currency != "EUR" {
 		t.Fatalf("expected EUR, got %s", currency)
 	}

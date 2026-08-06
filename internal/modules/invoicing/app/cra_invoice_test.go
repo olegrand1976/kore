@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -30,6 +31,18 @@ func (r *craInvoiceRepo) ListInvoices(context.Context, kernel.TenantID) ([]domai
 
 func (r *craInvoiceRepo) SaveInvoiceLine(context.Context, domain.InvoiceLine) error { return nil }
 
+func (r *craInvoiceRepo) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error {
+	if err := r.SaveInvoice(ctx, inv); err != nil {
+		return err
+	}
+	for _, line := range lines {
+		if err := r.SaveInvoiceLine(ctx, line); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *craInvoiceRepo) ListInvoiceLines(context.Context, kernel.TenantID, uuid.UUID) ([]domain.InvoiceLine, error) {
 	return nil, nil
 }
@@ -48,7 +61,7 @@ func TestCreateFromCRAValidation_Idempotent(t *testing.T) {
 	repo := &craInvoiceRepo{exists: true}
 	svc := NewService(repo)
 	tenant := kernel.NewTenantID(uuid.New())
-	inv, err := svc.CreateFromCRAValidation(context.Background(), ports.CreateFromCRACommand{
+	_, err := svc.CreateFromCRAValidation(context.Background(), ports.CreateFromCRACommand{
 		TenantID:       tenant,
 		TimesheetID:    uuid.New(),
 		ClientID:       uuid.New(),
@@ -58,11 +71,11 @@ func TestCreateFromCRAValidation_Idempotent(t *testing.T) {
 		UserLabel:      "User",
 		UnitPriceCents: 10000,
 	})
-	if err != nil {
-		t.Fatalf("CreateFromCRAValidation: %v", err)
+	if err == nil {
+		t.Fatal("expected ErrAlreadyInvoiced")
 	}
-	if inv.ID != uuid.Nil {
-		t.Fatalf("expected empty invoice on duplicate, got %v", inv.ID)
+	if !errors.Is(err, domain.ErrAlreadyInvoiced) {
+		t.Fatalf("expected ErrAlreadyInvoiced, got %v", err)
 	}
 	if len(repo.saved) != 0 {
 		t.Fatal("expected no save when invoice already exists")
@@ -96,5 +109,25 @@ func TestCreateFromCRAValidation_CreatesDraft(t *testing.T) {
 	}
 	if repo.saved[0].ClientID != clientID {
 		t.Fatalf("unexpected client id: %v", repo.saved[0].ClientID)
+	}
+	if repo.saved[0].SourceTimesheetID == nil {
+		t.Fatal("expected source timesheet id")
+	}
+}
+
+func TestCreateFromCRAValidation_ZeroUnitPrice(t *testing.T) {
+	repo := &craInvoiceRepo{}
+	svc := NewService(repo)
+	tenant := kernel.NewTenantID(uuid.New())
+	_, err := svc.CreateFromCRAValidation(context.Background(), ports.CreateFromCRACommand{
+		TenantID:       tenant,
+		TimesheetID:    uuid.New(),
+		ClientID:       uuid.New(),
+		Month:          "2026-07",
+		BillableHours:  8,
+		UnitPriceCents: 0,
+	})
+	if !errors.Is(err, domain.ErrZeroUnitPrice) {
+		t.Fatalf("expected ErrZeroUnitPrice, got %v", err)
 	}
 }

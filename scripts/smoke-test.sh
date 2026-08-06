@@ -2,10 +2,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Preserve caller override before sourcing .env (local/dev port conflicts).
+API_PORT_PRESET="${KORE_API_PORT:-}"
 if [ -f "$ROOT/.env" ]; then
   set -a && source "$ROOT/.env" && set +a
 fi
-API_PORT="${KORE_API_PORT:-8081}"
+API_PORT="${API_PORT_PRESET:-${KORE_API_PORT:-8081}}"
 
 echo "== Kore MVP smoke test (API :$API_PORT) =="
 
@@ -79,5 +81,43 @@ test "$MGR_TOKEN" != "null"
 
 curl -sf "http://localhost:${API_PORT}/api/v1/demands" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/users" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+
+# Facturation org : settings + liste factures (toggle seed = enabled)
+curl -sf "http://localhost:${API_PORT}/api/v1/request-settings" -H "Authorization: Bearer $TOKEN" \
+  | jq -e '.data.invoicingEnabled == true or .data.InvoicingEnabled == true' >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/invoices" -H "Authorization: Bearer $TOKEN" >/dev/null
+
+# create-invoices : endpoint joignable ; CRA inconnu → skipped (timesheet_not_found)
+CREATE_INV=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/prestations/create-invoices" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"timesheetIds":["00000000-0000-0000-0000-000000000001"]}')
+echo "$CREATE_INV" | jq -e '.data.created == 0' >/dev/null
+echo "$CREATE_INV" | jq -e '.data.outcomes[0].reason == "timesheet_not_found" or .data.outcomes[0].Reason == "timesheet_not_found"' >/dev/null
+echo "$CREATE_INV" | jq -e '.data.outcomes[0].timesheetId != null or .data.outcomes[0].TimesheetID != null' >/dev/null
+
+# Manager (Responsable) : même endpoint create-invoices (RBAC invoicing E)
+CREATE_INV_MGR=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/prestations/create-invoices" \
+  -H "Authorization: Bearer $MGR_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"timesheetIds":["00000000-0000-0000-0000-000000000001"]}')
+echo "$CREATE_INV_MGR" | jq -e '.data.created == 0' >/dev/null
+
+# Toggle off → 403 sur liste factures, puis restore (préserver channelsEnabled)
+RS=$(curl -sf "http://localhost:${API_PORT}/api/v1/request-settings" -H "Authorization: Bearer $TOKEN")
+RS_CHANNELS=$(echo "$RS" | jq -c '.data.channelsEnabled // .data.ChannelsEnabled')
+RS_GUIDES=$(echo "$RS" | jq -c '.data.guidesEnabled // .data.GuidesEnabled')
+curl -sf -X PUT "http://localhost:${API_PORT}/api/v1/admin/request-settings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"channelsEnabled\":$RS_CHANNELS,\"guidesEnabled\":$RS_GUIDES,\"invoicingEnabled\":false}" >/dev/null
+INV_OFF_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${API_PORT}/api/v1/invoices" \
+  -H "Authorization: Bearer $TOKEN")
+test "$INV_OFF_CODE" = "403"
+curl -sf -X PUT "http://localhost:${API_PORT}/api/v1/admin/request-settings" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"channelsEnabled\":$RS_CHANNELS,\"guidesEnabled\":$RS_GUIDES,\"invoicingEnabled\":true}" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/invoices" -H "Authorization: Bearer $TOKEN" >/dev/null
 
 echo "Smoke test OK"

@@ -12,8 +12,9 @@ type noopRequestSettingsService struct{}
 
 func (noopRequestSettingsService) Get(context.Context, kernel.TenantID) (domain.TenantRequestSettings, error) {
 	return domain.TenantRequestSettings{
-		ChannelsEnabled: domain.DefaultChannelsLegacy(),
-		GuidesEnabled:   true,
+		ChannelsEnabled:  domain.DefaultChannelsLegacy(),
+		GuidesEnabled:    true,
+		InvoicingEnabled: true,
 	}, nil
 }
 
@@ -25,10 +26,18 @@ func (noopRequestSettingsService) IsChannelEnabled(context.Context, kernel.Tenan
 	return true, nil
 }
 
+func (noopRequestSettingsService) IsInvoicingEnabled(context.Context, kernel.TenantID) (bool, error) {
+	return true, nil
+}
+
 func NoopRequestSettingsService() ports.RequestSettingsService {
 	return noopRequestSettingsService{}
 }
 
 func NoopRequestChannelReader() kernel.RequestChannelReader {
+	return noopRequestSettingsService{}
+}
+
+func NoopInvoicingEnabledReader() kernel.InvoicingEnabledReader {
 	return noopRequestSettingsService{}
 }

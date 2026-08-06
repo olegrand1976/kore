@@ -26,6 +26,7 @@ const save = async () => {
   message.value = ''
   isError.value = false
   try {
+    // Omit invoicingEnabled so PUT does not reset the org module toggle.
     await saveSettings({
       channelsEnabled: { ...channels.value },
       guidesEnabled: guidesEnabled.value

@@ -102,6 +102,9 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 	if cmd.BudgetDefautID != nil {
 		return domain.Application{}, domain.ErrBudgetNotAllowedOnCreate
 	}
+	if cmd.DefaultTJMCents < 0 {
+		return domain.Application{}, fmt.Errorf("defaultTjmCents must be >= 0")
+	}
 	app := domain.Application{
 		ID:                uuid.New(),
 		TenantID:          cmd.TenantID,
@@ -112,6 +115,7 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 		UOActivee:         cmd.UOActivee,
 		ChefUtilisateurID: cmd.ChefUtilisateurID,
 		Active:            true,
+		DefaultTJMCents:   cmd.DefaultTJMCents,
 	}
 	return app, s.repo.SaveApplication(ctx, app)
 }
@@ -163,6 +167,12 @@ func (s *organizationService) UpdateApplication(ctx context.Context, cmd ports.U
 			}
 			app.BudgetDefautID = *cmd.BudgetDefautID
 		}
+	}
+	if cmd.DefaultTJMCents != nil {
+		if *cmd.DefaultTJMCents < 0 {
+			return domain.Application{}, fmt.Errorf("defaultTjmCents must be >= 0")
+		}
+		app.DefaultTJMCents = *cmd.DefaultTJMCents
 	}
 	if err := s.repo.UpdateApplication(ctx, app); err != nil {
 		return domain.Application{}, err
@@ -291,6 +301,12 @@ func (s *organizationService) UpdateSocieteSettings(ctx context.Context, cmd por
 			return domain.Societe{}, fmt.Errorf("dayCapacityMinutes must be between 1 and 1440")
 		}
 		societe.DayCapacityMinutes = cap
+	}
+	if cmd.DefaultTJMCents != nil {
+		if *cmd.DefaultTJMCents < 0 {
+			return domain.Societe{}, fmt.Errorf("defaultTjmCents must be >= 0")
+		}
+		societe.DefaultTJMCents = *cmd.DefaultTJMCents
 	}
 	if cmd.CraMailAuto != nil {
 		societe.CraMailAuto = *cmd.CraMailAuto
@@ -924,6 +940,7 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 			"conges":    read,
 			"budget":    readWrite,
 			"reporting": read,
+			"invoicing": readWriteValidate,
 		},
 		"Responsable de service": {
 			"org":       read,
@@ -932,6 +949,7 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 			"conges":    readWriteValidate,
 			"budget":    readWriteValidate,
 			"reporting": read,
+			"invoicing": readWriteValidate,
 		},
 	}
 }

@@ -9,6 +9,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "save": "Save",
+    "saving": "Saving…",
+    "actions": "Actions",
     "close": "Close",
     "list": {
       "search": "Search",
@@ -22,9 +24,7 @@
       "filter_all": "All",
       "no_results": "No results for these filters",
       "kanban_unknown": "Other"
-    },
-    "saving": "Saving…",
-    "actions": "Actions"
+    }
   },
   "nav": {
     "modules": "Modules",
@@ -48,14 +48,14 @@
     "billing": "Subscription",
     "notifications": "Notifications",
     "organisation": "Organization",
+    "applications": "Applications",
     "users": "Users",
     "identity_providers": "SSO sign-in",
     "integrations": "Integrations",
     "settings": "Settings",
     "platform": "Platform",
     "profile": "My profile",
-    "help": "Help",
-    "applications": "Applications"
+    "help": "Help"
   },
   "help": {
     "title": "Help",
@@ -112,9 +112,12 @@
         "admin": {
           "summary": "Full tenant setup and access to all subscribed modules.",
           "bullets": [
-            "Admin area: organisation (identity, structure), applications, users, SSO, workflows, settings, subscription.",
+            "Admin area: organisation (identity, modules, structure), applications, users, SSO, workflows, settings, subscription.",
+            "Organisation → Modules: enable / disable client invoicing (outside SaaS subscription).",
             "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
+            "Invoicing: available when the organisation module is enabled (R/W/V).",
+            "Definitive timesheets → invoice drafts (CRA validation or Deliverables → Create invoices).",
             "Support and maintenance: full rights when channels are enabled.",
             "Self-edit: can add other profiles, but cannot remove own Administrator or deactivate own account."
           ],
@@ -136,6 +139,7 @@
             "Timesheets and TMA: read, write and validate.",
             "Leave: read (no validation).",
             "Budget: read and write; reporting read.",
+            "Invoicing: R/W/V when the organisation module is enabled (CRA / Deliverables drafts).",
             "Organization: read."
           ],
           "seed": "CHE_chefdev / Chef123!"
@@ -145,6 +149,7 @@
           "bullets": [
             "Timesheets, TMA, leave and budget: read, write and validate.",
             "Reporting and organization: read.",
+            "Invoicing: R/W/V when the organisation module is enabled (CRA / Deliverables drafts).",
             "No access to admin settings (Administrator only)."
           ],
           "seed": "MGR_manager / Manager123!"
@@ -483,7 +488,14 @@
       "billable_hours_error": "billable hours calculation error",
       "publish_failed": "draft creation failed",
       "already_exists_or_empty": "draft already exists or empty",
+      "already_exists": "invoice already exists for this timesheet",
       "invoicing_not_configured": "billing module not configured",
+      "invoicing_disabled": "invoicing disabled for the organization",
+      "zero_unit_price": "no sell rate (mission / application / company TJM)",
+      "billing_mode_disabled": "application billing mode is « none »",
+      "billing_mode_forfait": "fixed-price mode — not time-and-materials",
+      "not_definitive": "timesheet is not definitive",
+      "timesheet_not_found": "timesheet not found",
       "unknown": "unknown reason"
     },
     "download_hint": "Complete commercial information to enable download.",
@@ -511,6 +523,7 @@
     "validate_final": "Final validation",
     "validated_ok": "Timesheet finally validated.",
     "invoice_created": "Validated — invoice draft created.",
+    "invoice_created_link": "Open invoice",
     "invoice_skipped": "Validated — no invoice draft ({reason}).",
     "week_submitted": "Week submitted",
     "add_activity": "Add activity",
@@ -620,6 +633,12 @@
     "invoice_created": "Validated — invoice draft created.",
     "invoice_skipped": "Validated — no invoice draft ({reason}).",
     "invoice_unavailable": "Validated — billing unavailable.",
+    "create_invoices": "Create invoices",
+    "create_invoices_confirm": "Create invoice drafts for {n} definitive timesheet(s) currently shown?",
+    "create_invoices_result": "{created} invoice(s) created, {skipped} skipped.",
+    "create_invoices_empty": "No definitive timesheet available.",
+    "create_invoices_skips": "Skipped: {details}",
+    "create_invoices_skip_item": "{id} ({reason})",
     "col_user": "Consultant",
     "col_hours": "Hours",
     "col_weeks": "Weeks",
@@ -753,6 +772,15 @@
     "not_found": "Invoice not found",
     "back": "Back",
     "open": "Open",
+    "create": "New invoice",
+    "create_title": "Create an invoice",
+    "create_submit": "Create",
+    "create_error": "Could not create the invoice.",
+    "create_validation": "Check the client and lines (description and quantity > 0).",
+    "client": "Client",
+    "client_placeholder": "Select a client",
+    "currency": "Currency",
+    "add_line": "Add a line",
     "transmit": "Transmit to PDP",
     "transmit_error": "PDP transmission failed.",
     "pdp_receipt": "PDP receipt",
@@ -761,7 +789,8 @@
     "line_description": "Description",
     "line_quantity": "Quantity",
     "line_unit_price": "Unit price",
-    "line_tax": "VAT",
+    "line_unit_price_eur": "Unit price (€)",
+    "line_tax": "VAT %",
     "col_id": "Ref.",
     "col_status": "Status",
     "col_type": "Type",
@@ -1006,9 +1035,9 @@
     "invoicing": {
       "title": "What is this module for?",
       "items": [
-        "View invoices generated from validated timesheets and services.",
-        "Track statuses (draft, issued, paid) and amounts per client.",
-        "Open an invoice to see line details and history."
+        "View and create client invoices (module enabled under Organisation → Modules).",
+        "Generate drafts from definitive timesheets (CRA validation or Deliverables → Create invoices).",
+        "Rate: mission TJM, else application default TJM, else company default TJM (converted to €/h)."
       ]
     },
     "missions": {
@@ -1023,8 +1052,8 @@
       "title": "What is this module for?",
       "items": [
         "Validate service timesheets before invoicing or export.",
-        "Filter and sort services by status, client or period.",
-        "Export the validated batch as XML for external integration."
+        "Create invoice drafts for definitive timesheets (Invoicing write permission).",
+        "Filter, sort and export the validated batch (XML)."
       ]
     },
     "dashboard": {
@@ -1379,12 +1408,12 @@
     "error_last_admin": "Cannot remove the last administrator of the tenant.",
     "equipe": "Team",
     "equipes": "Teams",
+    "application_filter": "Application",
     "equipe_none": "No team",
     "equipe_hint": "The team links the person to an application: that is what makes their requests assignable in the timesheet.",
     "equipes_hint": "Multiple teams allowed: the person is linked to each associated application.",
     "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure.",
-    "active_self_hint": "You cannot deactivate your own account.",
-    "application_filter": "Application"
+    "active_self_hint": "You cannot deactivate your own account."
   },
   "org": {
     "title": "Organization",
@@ -1403,8 +1432,16 @@
     "preview_hint": "Sidebar rendering",
     "choose_file": "Choose a file",
     "tabs_label": "Organisation sections",
+    "tabs_label": "Organisation sections",
     "tab_identite": "Identity",
+    "tab_modules": "Modules",
     "tab_structure": "Structure",
+    "modules_title": "Business modules",
+    "modules_hint": "Enable modules available for this organisation (independent from the SaaS subscription).",
+    "invoicing_enabled": "Client invoicing",
+    "invoicing_enabled_hint": "Shows the Invoicing menu and allows creating / transmitting business invoices.",
+    "modules_saved": "Module settings saved",
+    "modules_save_error": "Could not save module settings",
     "tree": {
       "intro": "Company → Site → Service → Application → Team. Each level requires its parent: a team links people to an application, and that link is what makes requests assignable in the timesheet.",
       "loading": "Loading structure…",
@@ -1642,6 +1679,8 @@
       "week_start_day": "Week start day",
       "week_start_hint": "Used to split weeks in monthly timesheets for the tenant.",
       "day_capacity": "Daily capacity (minutes)",
+      "default_tjm": "Company default TJM (€)",
+      "default_tjm_hint": "Fallback sell rate when mission/application has no TJM.",
       "week_submit_policy": "Week submit policy",
       "submit_policy_warn": "Warn on incomplete days",
       "submit_policy_block": "Block on incomplete days",
@@ -1809,6 +1848,8 @@
     "field_libelle": "Label",
     "field_proprietaire": "Owner",
     "field_mode": "Billing mode",
+    "field_default_tjm": "Default TJM (€)",
+    "field_default_tjm_hint": "Used when the mission has no TJM (cents on the API).",
     "field_uo": "UO enabled",
     "field_chef": "User lead",
     "field_chef_none": "None",

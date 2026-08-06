@@ -28,6 +28,7 @@ type Service struct {
 	emails     ports.UserEmailResolver
 	invoices   ports.InvoiceDraftPublisher
 	missions   ports.MissionRateReader
+	apps       ports.ApplicationBillingReader
 	ettRecords ports.ETTRecordReader
 }
 
@@ -82,6 +83,13 @@ func (s *Service) WithInvoicePublisher(publisher ports.InvoiceDraftPublisher) *S
 func (s *Service) WithMissionRateReader(reader ports.MissionRateReader) *Service {
 	if reader != nil {
 		s.missions = reader
+	}
+	return s
+}
+
+func (s *Service) WithApplicationBillingReader(reader ports.ApplicationBillingReader) *Service {
+	if reader != nil {
+		s.apps = reader
 	}
 	return s
 }
