@@ -51,7 +51,109 @@
     "integrations": "Integrations",
     "settings": "Settings",
     "platform": "Platform",
-    "profile": "My profile"
+    "profile": "My profile",
+    "help": "Help"
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Usage guides based on your access rights",
+    "open": "Open",
+    "back": "Back to help",
+    "your_profiles": "Your profiles",
+    "your_profiles_hint": "Effective rights are the union of all assigned profiles.",
+    "topics": {
+      "access": {
+        "title": "Access by profile",
+        "description": "Menus, actions and L/E/V matrix for each RBAC profile."
+      }
+    },
+    "access": {
+      "title": "Access by profile",
+      "subtitle": "MVP rights currently wired in Kore",
+      "legend_title": "Legend",
+      "legend_l": "Read",
+      "legend_e": "Write",
+      "legend_v": "Validate",
+      "legend_none": "No access",
+      "union_note": "A user may hold several profiles: permissions are united (the broadest right wins).",
+      "your_access": "Your access",
+      "badge_yours": "Your profile",
+      "unknown_profiles": "Profile(s) not listed in the MVP: {profiles}. API rights still apply if configured in the database.",
+      "matrix_title": "Profile × module matrix (MVP)",
+      "matrix_hint": "Source: frontend permissions (mirrors DefaultPermissions on the API).",
+      "col_profile": "Profile",
+      "profiles_title": "Profile details",
+      "seed_label": "Demo account",
+      "planned_title": "Planned profiles (not wired yet)",
+      "planned_hint": "Functional specification catalogue — rights will be enabled as features ship.",
+      "planned_fallback": "Planned profile — description forthcoming.",
+      "modules": {
+        "org": "Org",
+        "cra": "Timesheets",
+        "tma": "TMA",
+        "conges": "Leave",
+        "budget": "Budget",
+        "reporting": "Reporting",
+        "support": "Support",
+        "maintenance": "Ops",
+        "workflow": "Workflow",
+        "billing": "Billing",
+        "notifications": "Notif.",
+        "integrations": "Integr.",
+        "invoicing": "Invoic.",
+        "admin": "Admin",
+        "ssii": "SSII",
+        "ett": "ETT"
+      },
+      "profiles": {
+        "admin": {
+          "summary": "Full tenant setup and access to all subscribed modules.",
+          "bullets": [
+            "Admin area: organization, users, SSO, workflows, settings, subscription.",
+            "Timesheets, TMA, leave, budget: read, write and validate.",
+            "Support and maintenance: full rights when channels are enabled."
+          ],
+          "seed": "ADM_admin / Admin123!"
+        },
+        "collaborateur": {
+          "summary": "Day-to-day operational entry (timesheets, requests, leave).",
+          "bullets": [
+            "Timesheets and TMA: read and write (no validation).",
+            "Leave: submit and track own requests.",
+            "Budget: read only.",
+            "No access to administration menus."
+          ],
+          "seed": "COL_collab / Collab123!"
+        },
+        "chef_equipe": {
+          "summary": "Team lead: validate timesheets/TMA and track budget.",
+          "bullets": [
+            "Timesheets and TMA: read, write and validate.",
+            "Leave: read (no validation).",
+            "Budget: read and write; reporting read.",
+            "Organization: read."
+          ],
+          "seed": "CHE_chefdev / Chef123!"
+        },
+        "responsable": {
+          "summary": "Service manager: extended validations and budgets.",
+          "bullets": [
+            "Timesheets, TMA, leave and budget: read, write and validate.",
+            "Reporting and organization: read.",
+            "No access to admin settings (Administrator only)."
+          ],
+          "seed": "MGR_manager / Manager123!"
+        }
+      },
+      "planned": {
+        "utilisateur": "Create user requests / incidents.",
+        "commercial": "Customers, missions, forecast invoicing.",
+        "support": "Helpdesk ticket handling.",
+        "chef_utilisateur": "Upstream TMA request validation (gate).",
+        "client_externe": "Incident filing and tracking for external customers.",
+        "sous_traitant": "Consumption tracking / contractor timesheets."
+      }
+    }
   },
   "profile": {
     "title": "My profile",

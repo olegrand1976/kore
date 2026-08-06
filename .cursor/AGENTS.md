@@ -58,18 +58,24 @@ make up          # stack Docker
 3. i18n : zéro string FR hardcodé dans templates
 4. Tokens charte, pas de couleurs ad hoc
 5. `npm run build` + `go build ./...`
-6. Si parcours UI critique : spec Playwright (`frontend/e2e/smoke/`) ou extension d'une existante
-7. Logique composable/BFF : test Vitest (`frontend/tests/`)
+6. **Flux de tests** : Vitest et/ou Playwright smoke étendus pour la feature (même PR) — règle `feature-tests-sync`
+7. Si parcours UI critique : spec Playwright (`frontend/e2e/smoke/`) ou extension d'une existante
+8. Logique composable/BFF : test Vitest (`frontend/tests/`)
+9. Si RBAC / menus changent : maj Aide (`/aide`, i18n `help.*`) + `documentation/GUIDE_ACCES_UTILISATEURS.md`
 
 ## Checklist avant PR backend (migrations)
 
 1. Migration `.up.sql` + test d'intégration si pertinent
 2. **`documentation/SCHEMA_DB.md` à jour** (même PR que la migration)
-3. `go test ./...` + `make migrate`
-4. Nouvelle règle métier → test domain ; nouveau use case → test app (fakes ports)
-5. Alter SQL → `*_integration_test.go` (round-trip ou contrainte)
+3. Si `DefaultPermissions` / profils changent : maj `frontend/utils/rbac.ts` + guide d'accès (Aide + doc)
+4. **Flux de tests** : domain/app (+ intégration / smoke API si impact) dans la même PR — règle `feature-tests-sync`
+5. `go test ./...` + `make migrate`
+6. Nouvelle règle métier → test domain ; nouveau use case → test app (fakes ports)
+7. Alter SQL → `*_integration_test.go` (round-trip ou contrainte)
 
 ## Tests (filet anti-régression)
+
+Toute nouvelle feature **doit** étendre ce filet (pas de livraison « tests plus tard »).
 
 ```bash
 make test              # unitaires Go
@@ -97,4 +103,5 @@ CI : jobs `backend`, `frontend`, `integration`, `e2e`, `smoke` — voir `technic
 | CRA | `internal/modules/cra/`, `frontend/pages/cra/` |
 | Org/branding | `internal/modules/org/`, `frontend/pages/admin/organisation/` |
 | Schéma DB | `documentation/SCHEMA_DB.md`, `internal/modules/*/migrations/` |
+| Aide / accès | `frontend/pages/aide/`, `documentation/GUIDE_ACCES_UTILISATEURS.md`, `frontend/utils/rbac.ts` |
 | Wiki GitHub | sync auto au deploy (`scripts/sync-github-wiki.sh`) |

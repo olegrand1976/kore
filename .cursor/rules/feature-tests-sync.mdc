@@ -1,0 +1,41 @@
+---
+description: Mettre à jour le flux de tests à chaque nouvelle fonctionnalité (même PR)
+globs: internal/modules/**,frontend/pages/**,frontend/server/api/**,frontend/composables/**,frontend/e2e/**,scripts/smoke-test.sh
+alwaysApply: false
+---
+
+# Flux de tests — synchro à chaque feature
+
+Référence : [`technical/foundation/06-testing-strategy.md`](../../technical/foundation/06-testing-strategy.md)
+
+## Règle
+
+Toute **nouvelle implémentation de fonctionnalité** (API, BFF, UI, migration, RBAC) doit **mettre à jour le flux de tests dans la même PR** — pas de feature livrée sans filet anti-régression adapté.
+
+Ne pas se contenter de « ça marche en manuel » : étendre ou créer les tests au niveau pertinent de la pyramide.
+
+## Checklist agent (obligatoire)
+
+Selon la nature du changement, couvrir **au minimum** les couches touchées :
+
+| Couche touchée | Tests à créer / étendre |
+| --- | --- |
+| Règle métier / use case Go | `*_test.go` domain et/ou app (fakes ports) |
+| Migration / contrainte SQL | `*_integration_test.go` (tag `integration`) si round-trip ou contrainte |
+| Nouvel endpoint / contrat | `internal/app/openapi.yaml` + tests handler / contrat |
+| BFF Nitro / composable | Vitest `frontend/tests/` (dont `tests/bff/`) |
+| Parcours UI critique (auth, CRA, admin, paiement…) | Playwright `frontend/e2e/smoke/` — nouvelle spec ou extension |
+| Surface API smoke | `scripts/smoke-test.sh` si endpoint public / ready path impacté |
+
+## Ordre de travail recommandé
+
+1. Implémenter la feature.
+2. **Immédiatement** : écrire/étendre les tests du niveau le plus bas pertinent (domain → app → integration → e2e).
+3. Vérifier localement les cibles concernées (`make test`, `make test-frontend`, `make test-integration`, `make test-e2e`, `make smoke` selon impact).
+4. Ne pas merger une feature dont le seul filet est un test manuel non automatisé.
+
+## Ne pas oublier
+
+- Seed / comptes démo : si le parcours e2e dépend d'un nouveau compte ou d'un état seed, mettre à jour `internal/seed/` et la spec Playwright.
+- RBAC : si droits ou menus changent, mettre aussi à jour le guide d'accès (règle `guide-acces-doc`).
+- Diff minimal : étendre une spec smoke existante plutôt que dupliquer un parcours entier quand c'est possible.

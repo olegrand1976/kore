@@ -26,7 +26,8 @@ make up && make migrate && make seed
 2. BFF : `frontend/server/api/` + `apiAuthHeaders`
 3. UI : page + i18n FR/EN
 4. Mobile : skill `kore-responsive-check`
-5. Build : `go build ./...` && `npm run build`
+5. **Tests (même PR)** : domain/app Go → Vitest BFF/composables → Playwright smoke si parcours critique → smoke API si besoin (règle `feature-tests-sync`)
+6. Build : `go build ./...` && `npm run build`
 
 ## Migrations SQL
 
@@ -40,3 +41,4 @@ make up && make migrate && make seed
 - `.cursor/AGENTS.md`
 - `documentation/CHARTE_GRAPHIQUE.md`
 - `documentation/SCHEMA_DB.md`
+- `documentation/GUIDE_ACCES_UTILISATEURS.md` (Aide in-app `/aide` — à tenir synchronisé avec RBAC)

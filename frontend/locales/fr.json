@@ -51,7 +51,109 @@
     "integrations": "Intégrations",
     "settings": "Paramètres",
     "platform": "Plateforme",
-    "profile": "Mon profil"
+    "profile": "Mon profil",
+    "help": "Aide"
+  },
+  "help": {
+    "title": "Aide",
+    "subtitle": "Guides d'utilisation selon vos accès",
+    "open": "Ouvrir",
+    "back": "Retour à l'aide",
+    "your_profiles": "Vos profils",
+    "your_profiles_hint": "Les droits effectifs sont l'union de tous vos profils assignés.",
+    "topics": {
+      "access": {
+        "title": "Accès par profil",
+        "description": "Menus, actions et matrice L/E/V pour chaque profil RBAC."
+      }
+    },
+    "access": {
+      "title": "Accès par profil",
+      "subtitle": "Droits MVP actuellement branchés dans Kore",
+      "legend_title": "Légende",
+      "legend_l": "Lecture",
+      "legend_e": "Écriture",
+      "legend_v": "Validation",
+      "legend_none": "Pas d'accès",
+      "union_note": "Un utilisateur peut cumuler plusieurs profils : les permissions sont unies (le droit le plus large gagne).",
+      "your_access": "Vos accès",
+      "badge_yours": "Votre profil",
+      "unknown_profiles": "Profil(s) non listé(s) dans le MVP : {profiles}. Les droits API s'appliquent s'ils sont configurés en base.",
+      "matrix_title": "Matrice profil × module (MVP)",
+      "matrix_hint": "Source : permissions frontend (miroir de DefaultPermissions côté API).",
+      "col_profile": "Profil",
+      "profiles_title": "Détail par profil",
+      "seed_label": "Compte démo",
+      "planned_title": "Profils prévus (pas encore branchés)",
+      "planned_hint": "Catalogue de la spécification fonctionnelle — droits à brancher au fil des livraisons.",
+      "planned_fallback": "Profil prévu — description à venir.",
+      "modules": {
+        "org": "Org",
+        "cra": "CRA",
+        "tma": "TMA",
+        "conges": "Congés",
+        "budget": "Budget",
+        "reporting": "Reporting",
+        "support": "Support",
+        "maintenance": "Maint.",
+        "workflow": "Workflow",
+        "billing": "Billing",
+        "notifications": "Notif.",
+        "integrations": "Intégr.",
+        "invoicing": "Factur.",
+        "admin": "Admin",
+        "ssii": "SSII",
+        "ett": "ETT"
+      },
+      "profiles": {
+        "admin": {
+          "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
+          "bullets": [
+            "Accès à l'administration : organisation, utilisateurs, SSO, workflows, paramètres, abonnement.",
+            "CRA, TMA, congés, budget : lecture, écriture et validation.",
+            "Support et maintenance : droits complets lorsque les canaux sont activés."
+          ],
+          "seed": "ADM_admin / Admin123!"
+        },
+        "collaborateur": {
+          "summary": "Saisie opérationnelle du quotidien (CRA, demandes, congés).",
+          "bullets": [
+            "CRA et TMA : lecture et écriture (pas de validation).",
+            "Congés : dépôt et suivi de ses demandes.",
+            "Budget : consultation seule.",
+            "Pas d'accès aux menus d'administration."
+          ],
+          "seed": "COL_collab / Collab123!"
+        },
+        "chef_equipe": {
+          "summary": "Encadrement d'équipe : validation CRA/TMA et suivi budgétaire.",
+          "bullets": [
+            "CRA et TMA : lecture, écriture et validation.",
+            "Congés : lecture (pas de validation).",
+            "Budget : lecture et écriture ; reporting en lecture.",
+            "Organisation : lecture."
+          ],
+          "seed": "CHE_chefdev / Chef123!"
+        },
+        "responsable": {
+          "summary": "Pilotage de service : validations étendues et budgets.",
+          "bullets": [
+            "CRA, TMA, congés et budget : lecture, écriture et validation.",
+            "Reporting et organisation en lecture.",
+            "Pas d'accès aux paramètres d'administration (réservés à Administrateur)."
+          ],
+          "seed": "MGR_manager / Manager123!"
+        }
+      },
+      "planned": {
+        "utilisateur": "Création de demandes / incidents (canal utilisateur).",
+        "commercial": "Clients, missions, facturation prévisionnelle.",
+        "support": "Prise en charge tickets helpdesk.",
+        "chef_utilisateur": "Validation amont des demandes TMA (gate).",
+        "client_externe": "Déclaration d'incidents et suivi côté client.",
+        "sous_traitant": "Suivi de consommation / CRA prestataire."
+      }
+    }
   },
   "profile": {
     "title": "Mon profil",

@@ -40,5 +40,5 @@ export function useAuth() {
     )
   )
 
-  return { user, fetchSession, isAdmin, isManager, isPlatformAdmin }
+  return { user, fetchSession, isAdmin, isManager, isPlatformAdmin, effectiveProfiles }
 }

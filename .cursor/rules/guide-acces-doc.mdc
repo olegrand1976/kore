@@ -1,0 +1,41 @@
+---
+description: Tenir le guide d'accès (Aide in-app + doc) à jour à chaque évolution RBAC / menus
+globs: frontend/utils/rbac.ts,frontend/layouts/default.vue,frontend/pages/aide/**,frontend/locales/**,internal/modules/org/app/service.go,internal/platform/authx/**,documentation/GUIDE_ACCES_UTILISATEURS.md
+alwaysApply: false
+---
+
+# Guide d'accès utilisateurs — documentation à jour
+
+Références :
+- In-app : [`/aide`](../../frontend/pages/aide/) (hub) et [`/aide/acces`](../../frontend/pages/aide/acces.vue)
+- Doc wiki : [`documentation/GUIDE_ACCES_UTILISATEURS.md`](../../documentation/GUIDE_ACCES_UTILISATEURS.md)
+- Matrice code : `DefaultPermissions()` + `frontend/utils/rbac.ts`
+
+## Quand mettre à jour
+
+Toute PR qui **ajoute, modifie ou retire** :
+
+- des entrées dans `DefaultPermissions()` / `PROFILE_PERMISSIONS`
+- des profils RBAC (`authx`, `org/domain`)
+- des items de navigation ou middlewares d'accès (`admin.ts`, `adminOnly`, etc.)
+- des textes `help.*` / pages Aide
+
+doit mettre à jour **dans la même PR** :
+
+1. `documentation/GUIDE_ACCES_UTILISATEURS.md` (matrice, fiches, date)
+2. i18n `frontend/locales/fr.json` et `en.json` (clés `help.*`)
+3. Le miroir front `frontend/utils/rbac.ts` si la matrice API change (et inversement)
+
+## Checklist agent (obligatoire)
+
+1. Lire `DefaultPermissions()` et `PROFILE_PERMISSIONS` — ils doivent rester alignés.
+2. Mettre à jour la matrice MVP et les fiches profils (doc + i18n).
+3. Si un profil passe de « prévu » à « branché » : le retirer de `PLANNED_RBAC_PROFILES` / section prévue, l'ajouter aux implémentés.
+4. Mettre à jour la date « Dernière mise à jour doc » en en-tête du markdown.
+5. Vérifier que `/aide` et `/aide/acces` restent cohérents (pas de string hardcodée).
+
+## Ne pas oublier
+
+- Multi-profils = union des droits (documenté dans le guide).
+- Menus `adminOnly` restent réservés à `Administrateur` même si le profil a des droits module.
+- Le wiki GitHub est resynchronisé au deploy : le markdown repo doit être à jour avant merge sur `main`.

@@ -78,6 +78,10 @@ func TestCRAService_Submit(t *testing.T) {
 
 ## 7. Definition of Done (fondation testing)
 
+**Règle projet** : toute nouvelle fonctionnalité met à jour le flux de tests **dans la même PR**
+(règle agent `feature-tests-sync`, contexte `.cursor/rules/kore-context.mdc`). Pas de feature
+livrée avec « tests plus tard ».
+
 - [x] Standard table-driven + fakes des ports documenté.
 - [x] testcontainers en place pour l'intégration DB.
 - [x] Port `Clock` prévu pour le déterminisme temporel.
@@ -89,8 +93,10 @@ func TestCRAService_Submit(t *testing.T) {
 1. Nouvelle règle métier → test domain table-driven.
 2. Nouveau use case → test app avec fake ports.
 3. Nouveau / alter SQL → test intégration repo (contrainte ou round-trip).
-4. Nouveau parcours UI critique → spec Playwright smoke ou extension d'une existante.
-5. CI verte (backend + frontend + integration + e2e) avant merge.
+4. BFF / composable touché → test Vitest (`frontend/tests/`).
+5. Nouveau parcours UI critique → spec Playwright smoke ou extension d'une existante.
+6. Surface API smoke impactée → `scripts/smoke-test.sh` mis à jour.
+7. CI verte (backend + frontend + integration + e2e) avant merge.
 
 ### Commandes Makefile
 

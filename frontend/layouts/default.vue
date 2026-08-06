@@ -276,7 +276,8 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), adminOnly: true },
   { to: '/admin/integrations', icon: 'hub', label: t('nav.integrations'), adminOnly: true, module: 'integrations' },
   { to: '/admin/workflows', icon: 'account_tree', label: t('nav.workflows'), adminOnly: true },
-  { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), adminOnly: true, activePrefix: '/admin/parametres' }
+  { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), adminOnly: true, activePrefix: '/admin/parametres' },
+  { to: '/aide', icon: 'help', label: t('nav.help'), activePrefix: '/aide' }
 ])
 
 const navItems = computed(() =>
@@ -296,6 +297,7 @@ const mainNavItems = computed(() =>
     (item) =>
       ![
         '/compte',
+        '/aide',
         '/admin/notifications',
         '/admin/organisation',
         '/admin/users',
@@ -313,6 +315,7 @@ const settingsNavItems = computed(() => {
 
   return [
     byTo.get('/compte'),
+    byTo.get('/aide'),
     byTo.get('/admin/notifications'),
     byTo.get('/admin/organisation'),
     byTo.get('/admin/users'),

@@ -505,3 +505,19 @@ describe('useListControls', () => {
     expect(controls.sortedItems.value[0]?.title).toBe('Gamma')
   })
 })
+
+describe('rbac formatRbacCell / rbacCan', () => {
+  it('formats L/E/V cells from PROFILE_PERMISSIONS', async () => {
+    const { formatRbacCell, rbacCan, isImplementedRbacProfile } = await import('../utils/rbac')
+    expect(formatRbacCell('Collaborateur', 'cra')).toBe('L/E')
+    expect(formatRbacCell("Chef d'équipe", 'conges')).toBe('L')
+    expect(formatRbacCell('Administrateur', 'org')).toBe('L/E/V')
+    expect(formatRbacCell('Administrateur', 'ett')).toBe('L/E/V')
+    expect(formatRbacCell('Collaborateur', 'org')).toBe('—')
+    expect(rbacCan('Collaborateur', 'budget', 'L')).toBe(true)
+    expect(rbacCan('Collaborateur', 'budget', 'E')).toBe(false)
+    expect(rbacCan(['Collaborateur', "Chef d'équipe"], 'cra', 'V')).toBe(true)
+    expect(isImplementedRbacProfile('Administrateur')).toBe(true)
+    expect(isImplementedRbacProfile('Commercial')).toBe(false)
+  })
+})

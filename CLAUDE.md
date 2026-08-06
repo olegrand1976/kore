@@ -133,6 +133,13 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) : jobs `backend`, `int
 1. **Migration jamais modifiée après merge** → toute évolution = nouvelle migration numérotée.
 2. Toute migration met à jour [documentation/SCHEMA_DB.md](documentation/SCHEMA_DB.md) **dans la
    même PR**, et ajoute un `*_integration_test.go` si contrainte/round-trip à vérifier.
+2bis. Toute évolution RBAC / menus met à jour l'Aide in-app (`frontend/pages/aide/`, i18n `help.*`)
+   et [documentation/GUIDE_ACCES_UTILISATEURS.md](documentation/GUIDE_ACCES_UTILISATEURS.md)
+   **dans la même PR** (miroir `DefaultPermissions` ↔ `frontend/utils/rbac.ts`).
+2ter. Toute **nouvelle fonctionnalité** met à jour le **flux de tests** dans la **même PR**
+   (domain/app Go, intégration si SQL, Vitest BFF/composables, Playwright smoke si parcours
+   critique, `scripts/smoke-test.sh` si surface API) — cf. règle `feature-tests-sync` et
+   [technical/foundation/06-testing-strategy.md](technical/foundation/06-testing-strategy.md).
 3. Nouvel endpoint → `internal/app/openapi.yaml` mis à jour (test de contrat sinon rouge).
 4. Aucun secret committé ; toute clé nouvelle documentée dans `.env.example` (prod = Secret Manager).
 5. Avant PR UI : responsive ≤768px (drawer + bottom nav, CTAs pleine largeur), i18n, tokens charte,
@@ -159,6 +166,7 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) : jobs `backend`, `int
 | Sujet | Fichier |
 | --- | --- |
 | Fonctionnel complet (modules, processus, RG) | [documentation/SPECIFICATION_FONCTIONNELLE.md](documentation/SPECIFICATION_FONCTIONNELLE.md) |
+| Accès par profil (Aide in-app) | [documentation/GUIDE_ACCES_UTILISATEURS.md](documentation/GUIDE_ACCES_UTILISATEURS.md) — UI `/aide` |
 | Schéma DB | [documentation/SCHEMA_DB.md](documentation/SCHEMA_DB.md) |
 | Charte graphique | [documentation/CHARTE_GRAPHIQUE.md](documentation/CHARTE_GRAPHIQUE.md) |
 | Index technique + ordre de construction | [technical/README.md](technical/README.md) |
