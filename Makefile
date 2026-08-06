@@ -25,9 +25,9 @@ KORE_REDIS_PORT    ?= 6381
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env up up-infra up-front front down migrate seed seed-reset logs ps restart ready smoke \
+.PHONY: help env up up-infra up-front front down migrate seed seed-reset bootstrap-llit logs ps restart ready smoke \
         build api test test-integration test-frontend test-e2e test-all lint sqlc frontend-dev frontend-install \
-        gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-postdeploy-staging gcp-smoke gcp-domain gcp-github-deploy
+        gcp-setup gcp-config gcp-deploy gcp-deploy-jobs gcp-postdeploy gcp-postdeploy-staging gcp-bootstrap-llit gcp-smoke gcp-domain gcp-github-deploy
 
 ## Affiche les cibles disponibles
 help:
@@ -40,7 +40,8 @@ help:
 	@echo "  make down         Arrête et supprime les conteneurs"
 	@echo "  make migrate      Applique les migrations (service one-shot)"
 	@echo "  make seed         Seed demo complet (tenant, org, CRA, congés, TMA, budget…)"
-	@echo "  make seed-reset   Réinitialise et recharge le jeu de données demo"
+	@echo "  make seed-reset   Réinit demo (refusé si société seed_protected)"
+	@echo "  make bootstrap-llit Société LL-IT protégée + ADM_olivier"
 	@echo "  make ready        Vérifie /health et /ready"
 	@echo "  make smoke        Smoke test API complet"
 	@echo "  make test         Tests unitaires Go"
@@ -59,8 +60,9 @@ help:
 	@echo "  make gcp-github-deploy  Workload Identity Federation GitHub Actions"
 	@echo "  make gcp-deploy         Cloud Build → API + frontend"
 	@echo "  make gcp-deploy-jobs    Cloud Run Jobs (migrate, seed)"
-	@echo "  make gcp-postdeploy         Smoke test après deploy CI"
-	@echo "  make gcp-postdeploy-staging Seed reset + smoke (branche staging)"
+	@echo "  make gcp-postdeploy         Smoke test après deploy CI (sans seed-reset)"
+	@echo "  make gcp-bootstrap-llit     Staging : société LL-IT + ADM_olivier"
+	@echo "  make gcp-postdeploy-staging Seed reset + smoke (interdit si seed_protected)"
 	@echo "  make gcp-postdeploy-full    Première install : migrate + seed + smoke"
 	@echo "  make gcp-domain         Domaine custom kore.ll-it-sc.be"
 	@echo "  make gcp-smoke          Smoke test services déployés"
@@ -123,6 +125,15 @@ seed-reset: env
 	$(COMPOSE) up -d db redis
 	$(COMPOSE) run --rm --build --no-deps api seed reset
 	@echo "→ seed reset appliqué — voir internal/seed/constants.go pour les comptes"
+
+## Bootstrap production LL-IT : société protégée + ADM_olivier
+## Mot de passe : KORE_PROD_ADMIN_PASSWORD (sinon généré et affiché une seule fois)
+bootstrap-llit: env
+	$(COMPOSE) up -d db redis
+	$(COMPOSE) run --rm --build --no-deps \
+		-e KORE_PROD_ADMIN_PASSWORD \
+		api bootstrap-llit
+	@echo "→ bootstrap-llit appliqué (société seed_protected + ADM_olivier)"
 
 ## Logs API
 logs:
@@ -208,12 +219,17 @@ gcp-deploy:
 gcp-deploy-jobs:
 	gcloud builds submit --config=infra/gcp/cloudbuild-jobs.yaml --project=$(GCP_PROJECT_ID)
 
-## Postdeploy : jobs migrate/seed + smoke
+## Postdeploy : jobs + smoke
 gcp-postdeploy:
 	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
 	bash infra/gcp/postdeploy.sh
 
-## Postdeploy staging : seed reset + smoke (CI branche staging)
+## Bootstrap LL-IT + ADM_olivier sur staging GCP (idempotent)
+gcp-bootstrap-llit:
+	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
+	bash infra/gcp/postdeploy.sh --bootstrap-llit
+
+## Postdeploy staging : seed reset + smoke (interdit si société seed_protected)
 gcp-postdeploy-staging:
 	chmod +x infra/gcp/*.sh infra/gcp/lib/*.sh
 	bash infra/gcp/postdeploy.sh --seed-reset

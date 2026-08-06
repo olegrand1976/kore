@@ -51,9 +51,9 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 			id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
 			day_capacity_minutes, cra_mail_auto, week_submit_policy, cra_gate_mode,
 			adresse, siret, url_tenant, cra_mail_recipients,
-			totp_default_enabled, totp_user_configurable, task_types_enabled
+			totp_default_enabled, totp_user_configurable, task_types_enabled, seed_protected
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		ON CONFLICT (id) DO UPDATE SET
 			raison_sociale = EXCLUDED.raison_sociale,
 			devise = EXCLUDED.devise,
@@ -69,7 +69,8 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 			cra_mail_recipients = EXCLUDED.cra_mail_recipients,
 			totp_default_enabled = EXCLUDED.totp_default_enabled,
 			totp_user_configurable = EXCLUDED.totp_user_configurable,
-			task_types_enabled = EXCLUDED.task_types_enabled
+			task_types_enabled = EXCLUDED.task_types_enabled,
+			seed_protected = EXCLUDED.seed_protected
 	`, s.ID, s.TenantID.UUID(), s.RaisonSociale, nullString(s.Logo), s.Devise, pays,
 		normalizeWeekStartDay(s.WeekStartDay),
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
@@ -77,7 +78,8 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
 		normalizeCraGateMode(s.CraGateMode),
 		s.Adresse, s.Siret, s.URLTenant, encodeMailRecipients(s.CraMailRecipients),
-		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
+		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled),
+		s.SeedProtected)
 	return err
 }
 
@@ -87,7 +89,7 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
 			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11,
 			cra_gate_mode = $12, cra_mail_recipients = $13, totp_default_enabled = $14, totp_user_configurable = $15,
-			task_types_enabled = $16
+			task_types_enabled = $16, seed_protected = $17
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
 		s.Adresse, s.Siret, s.URLTenant,
@@ -97,7 +99,8 @@ func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error 
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
 		normalizeCraGateMode(s.CraGateMode),
 		encodeMailRecipients(s.CraMailRecipients),
-		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled))
+		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled),
+		s.SeedProtected)
 	return err
 }
 
@@ -140,7 +143,8 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
-		       COALESCE(task_types_enabled, '[]')
+		       COALESCE(task_types_enabled, '[]'),
+		       COALESCE(seed_protected, FALSE)
 		FROM org.societes WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
 	return scanSociete(row)
@@ -157,8 +161,10 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 		       COALESCE(cra_mail_recipients, '[]'),
 		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
-		       COALESCE(task_types_enabled, '[]')
-		FROM org.societes WHERE tenant_id = $1 ORDER BY raison_sociale
+		       COALESCE(task_types_enabled, '[]'),
+		       COALESCE(seed_protected, FALSE)
+		FROM org.societes WHERE tenant_id = $1
+		ORDER BY raison_sociale
 	`, tenant.UUID())
 	if err != nil {
 		return nil, err
@@ -180,13 +186,14 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
-	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
+	var craMailAuto, totpDefaultEnabled, totpUserConfigurable, seedProtected bool
 	var weekSubmitPolicy, craGateMode string
 	var recipientsRaw []byte
 	var taskTypesRaw []byte
 	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
-		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw)
+		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
+		&seedProtected)
 	if err != nil {
 		return domain.Societe{}, err
 	}
@@ -205,6 +212,7 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	s.URLTenant = urlTenant
 	s.TotpDefaultEnabled = totpDefaultEnabled
 	s.TotpUserConfigurable = totpUserConfigurable
+	s.SeedProtected = seedProtected
 	return s, nil
 }
 
@@ -213,13 +221,14 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var tenantID uuid.UUID
 	var logo, adresse, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
-	var craMailAuto, totpDefaultEnabled, totpUserConfigurable bool
+	var craMailAuto, totpDefaultEnabled, totpUserConfigurable, seedProtected bool
 	var weekSubmitPolicy, craGateMode string
 	var recipientsRaw []byte
 	var taskTypesRaw []byte
 	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
-		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw); err != nil {
+		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
+		&seedProtected); err != nil {
 		return domain.Societe{}, err
 	}
 	s.TenantID = kernel.NewTenantID(tenantID)
@@ -237,6 +246,7 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	s.URLTenant = urlTenant
 	s.TotpDefaultEnabled = totpDefaultEnabled
 	s.TotpUserConfigurable = totpUserConfigurable
+	s.SeedProtected = seedProtected
 	return s, nil
 }
 

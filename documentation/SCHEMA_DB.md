@@ -133,6 +133,7 @@ Index :
 | `task_types_enabled` | JSONB | NOT NULL, DEFAULT `'[]'` (catalogue types activité CRA ; vide = défaut manual/interne/formation/mission) |
 | `totp_default_enabled` | BOOLEAN | NOT NULL, DEFAULT `FALSE` |
 | `totp_user_configurable` | BOOLEAN | NOT NULL, DEFAULT `TRUE` |
+| `seed_protected` | BOOLEAN | NOT NULL, DEFAULT FALSE (bloque `seed-reset` si TRUE) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `org.sites`

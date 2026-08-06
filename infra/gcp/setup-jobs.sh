@@ -54,4 +54,15 @@ gcloud run jobs deploy kore-seed-reset \
   --command=/kore-api --args=seed,reset \
   --quiet
 
-echo "Jobs déployés : kore-migrate, kore-seed, kore-seed-reset"
+gcloud run jobs deploy kore-bootstrap-llit \
+  --project="$GCP_PROJECT_ID" --image="$IMAGE" --region="$GCP_RUN_REGION" \
+  --service-account="$SA" \
+  --memory=512Mi --cpu=1 --task-timeout=600 --max-retries=0 \
+  --set-cloudsql-instances="$CLOUDSQL_INSTANCE" \
+  --vpc-connector="$CONNECTOR" --vpc-egress=private-ranges-only \
+  --env-vars-file="$API_ENV_FILE" \
+  --set-secrets="$(kore_bootstrap_llit_secrets)" \
+  --command=/kore-api --args=bootstrap-llit \
+  --quiet
+
+echo "Jobs déployés : kore-migrate, kore-seed, kore-seed-reset, kore-bootstrap-llit"

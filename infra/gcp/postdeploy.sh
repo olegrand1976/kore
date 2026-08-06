@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Postdeploy Kore : jobs + smoke (+ migrate/seed optionnels).
-# Usage: ./infra/gcp/postdeploy.sh [--migrate] [--seed | --seed-reset]
+# Postdeploy Kore : jobs + smoke (+ migrate/seed/bootstrap optionnels).
+# Usage: ./infra/gcp/postdeploy.sh [--migrate] [--seed | --seed-reset] [--bootstrap-llit]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,11 +10,13 @@ source "${SCRIPT_DIR}/lib/gcp-env.sh"
 RUN_MIGRATE=false
 RUN_SEED=false
 RUN_SEED_RESET=false
+RUN_BOOTSTRAP_LLIT=false
 for arg in "$@"; do
   case "$arg" in
     --migrate) RUN_MIGRATE=true ;;
     --seed) RUN_SEED=true ;;
     --seed-reset) RUN_SEED_RESET=true ;;
+    --bootstrap-llit) RUN_BOOTSTRAP_LLIT=true ;;
     --skip-seed) RUN_SEED=false; RUN_SEED_RESET=false ;;
   esac
 done
@@ -43,6 +45,10 @@ elif $RUN_SEED; then
   run_job "kore-seed"
 fi
 
+if $RUN_BOOTSTRAP_LLIT; then
+  run_job "kore-bootstrap-llit"
+fi
+
 bash "${SCRIPT_DIR}/smoke-test.sh"
 
 API_URL="$(api_run_url)"
@@ -54,6 +60,5 @@ Postdeploy terminé.
   API       : ${API_URL:-non déployée}
   Frontend  : ${FE_URL:-non déployé}
   Custom    : ${PUBLIC_SITE_URL}
-  Admin     : ADM_admin (mot de passe seed — voir internal/seed/constants.go)
-
+  Admin     : ADM_admin (seed) / ADM_olivier (bootstrap-llit)
 EOF

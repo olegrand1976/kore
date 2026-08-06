@@ -154,6 +154,7 @@ type Societe struct {
 	Adresse              string          `json:"adresse,omitempty"`
 	Siret                string          `json:"siret,omitempty"`
 	URLTenant            string          `json:"urlTenant,omitempty"`
+	SeedProtected        bool            `json:"seedProtected"`
 }
 
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)

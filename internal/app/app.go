@@ -400,6 +400,10 @@ func (a *Application) Seed(ctx context.Context) error {
 	return a.seed.Run(ctx)
 }
 
+func (a *Application) BootstrapLLIT(ctx context.Context) error {
+	return a.seed.BootstrapLLIT(ctx)
+}
+
 func (a *Application) ResetSeed(ctx context.Context) error {
 	if err := a.seed.ResetDemoTenant(ctx); err != nil {
 		return err

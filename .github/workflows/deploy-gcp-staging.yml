@@ -52,9 +52,9 @@ jobs:
             --config=infra/gcp/cloudbuild.yaml \
             --project="${GCP_PROJECT_ID}"
 
-      - name: Postdeploy (seed reset + smoke)
+      - name: Postdeploy (bootstrap LL-IT + smoke)
         run: |
-          bash infra/gcp/postdeploy.sh --seed-reset
+          bash infra/gcp/postdeploy.sh --bootstrap-llit
 
       - name: Summary
         run: |

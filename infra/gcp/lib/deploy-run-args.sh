@@ -50,6 +50,7 @@ PROMPT_GUARD_BLOCK: "true"
 PUSH_ENABLED: "false"
 FCM_PROJECT_ID: "${GCP_PROJECT_ID}"
 PDP_PROVIDER: "stub"
+PLATFORM_ADMIN_LOGINS: "ADM_admin,ADM_olivier"
 EOF
 }
 
@@ -106,6 +107,15 @@ kore_migrate_secrets() {
     secrets="DATABASE_URL=kore-database-url:latest"
   fi
   secrets+=",TOTP_ENCRYPTION_KEY=kore-totp-encryption-key:latest"
+  printf '%s' "$secrets"
+}
+
+kore_bootstrap_llit_secrets() {
+  local secrets
+  secrets="$(kore_migrate_secrets)"
+  if kore_has_secret_version "kore-prod-admin-password"; then
+    secrets+=",KORE_PROD_ADMIN_PASSWORD=kore-prod-admin-password:latest"
+  fi
   printf '%s' "$secrets"
 }
 

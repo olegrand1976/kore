@@ -38,9 +38,13 @@ make gcp-domain
 ## CI/CD
 
 - **CI** : `.github/workflows/ci.yml` (tests sur chaque PR)
-- **Deploy** : `.github/workflows/deploy-gcp.yml` (push `staging` → Cloud Build → seed reset → smoke sur `kore.ll-it-sc.be`)
+- **Deploy** : `.github/workflows/deploy-gcp-staging.yml` (push `staging` → Cloud Build → **smoke only**, sans seed-reset)
 - **Main** : pas de déploiement GCP automatique pour l'instant
 - **Wiki** : job `sync-wiki` — publie `documentation/`, `technical/` et `db/migrations/README.md` sur [le wiki du projet](https://github.com/olegrand1976/kore/wiki) via `scripts/sync-github-wiki.sh`
+
+> **Production / société protégée** : dès qu'une société a `seed_protected = true` (via `make bootstrap-llit` / `make gcp-bootstrap-llit`), `seed-reset` et le job Cloud Run `kore-seed-reset` sont **refusés**. Ne jamais relancer `--seed-reset` sur un environnement LL-IT.
+>
+> Compte admin prod : `ADM_olivier` — créé en local (`make bootstrap-llit`) et à chaque deploy staging (`--bootstrap-llit`). Mot de passe : env `KORE_PROD_ADMIN_PASSWORD` ou secret GCP `kore-prod-admin-password` ; sinon généré une fois (logs du job).
 
 Secret GitHub requis pour le wiki (le `GITHUB_TOKEN` ne peut pas pousser vers le dépôt `.wiki`) :
 
@@ -56,11 +60,13 @@ Secrets GitHub (configurés via WIF, pas de clé JSON) :
 ```bash
 make gcp-deploy          # Rebuild + migrate + deploy API + frontend
 make gcp-deploy-jobs     # Redéployer les Cloud Run Jobs uniquement
-make gcp-postdeploy          # Smoke test (après deploy CI)
-make gcp-postdeploy-staging  # Seed reset + smoke (staging)
+make gcp-postdeploy          # Smoke test (après deploy CI) — sans seed-reset
+make gcp-postdeploy-staging  # Legacy : seed reset + smoke (interdit si société seed_protected)
 make gcp-smoke           # Vérifier /health et /ready
+make bootstrap-llit      # Local : société LL-IT protégée + ADM_olivier
 ```
 
+> Ne pas utiliser `make gcp-postdeploy-staging` (seed-reset) sur un environnement avec organisation protégée.
 ## PDF CRA (Chromium)
 
 L'image API (`deploy/Dockerfile.api`) embarque Chromium (`CHROME_PATH=/usr/bin/chromium`) pour la génération PDF CRA. En local sans Chrome, la génération PDF renvoie une erreur explicite (pas de fallback HTML).

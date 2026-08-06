@@ -2,14 +2,26 @@ package seed
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/kore/kore/pkg/kernel"
 )
 
 // ResetDemoTenant supprime les données métier du tenant demo pour permettre un re-seed complet.
+// Refusé si une société seed_protected existe sur le tenant.
 func (r *Runner) ResetDemoTenant(ctx context.Context) error {
 	tid := DemoTenantID
+	tenant := kernel.NewTenantID(tid)
+
+	protected, err := r.hasSeedProtectedSociete(ctx, tenant)
+	if err != nil {
+		return err
+	}
+	if protected {
+		return fmt.Errorf("%w : seed-reset impossible tant qu'une société seed_protected existe", ErrSeedProtected)
+	}
+
 	log.Println("seed: reset du tenant demo…")
 
 	stmts := []struct {

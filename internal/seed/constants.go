@@ -3,11 +3,13 @@ package seed
 import "github.com/google/uuid"
 
 const (
-	TenantName = "Kore Demo"
+	TenantName = "LL-IT Software and Computer"
 
 	AdminLogin    = "ADM_admin"
 	AdminEmail    = "lalouviere.it.sc@gmail.com"
 	AdminPassword = "Admin123!"
+
+	ProdAdminLogin = "ADM_olivier"
 
 	GoogleIdPName   = "Google"
 	GoogleIssuer    = "https://accounts.google.com"
@@ -26,7 +28,7 @@ const (
 	CommercialLogin = "COM_commercial"
 	CommercialPass  = "Commercial123!"
 
-	DemoSocieteName  = "Kore Demo SAS"
+	DemoSocieteName  = "LL-IT Software and Computer"
 	DemoSiteLabel    = "Paris HQ"
 	DemoAppLabel     = "Portail Client ACME"
 	DemoApp2Label    = "Refonte ERP Globex"

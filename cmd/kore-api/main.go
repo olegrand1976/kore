@@ -33,6 +33,12 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "bootstrap-llit" {
+		if err := runBootstrapLLIT(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if err := runServer(); err != nil {
 		log.Fatal(err)
 	}
@@ -88,6 +94,27 @@ func runSeedReset() error {
 		return err
 	}
 	return application.ResetSeed(ctx)
+}
+
+func runBootstrapLLIT() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	application, err := app.New(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer application.Close()
+	if err := application.Migrate(ctx); err != nil {
+		return err
+	}
+	if err := application.BootstrapLLIT(ctx); err != nil {
+		return err
+	}
+	log.Println("bootstrap-llit: terminé")
+	return nil
 }
 
 func runServer() error {

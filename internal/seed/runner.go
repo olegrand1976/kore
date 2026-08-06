@@ -318,7 +318,13 @@ func (r *Runner) ensureGoogleIdentityProvider(ctx context.Context, tenant kernel
 
 func (r *Runner) ensureSociete(ctx context.Context, tenant kernel.TenantID) error {
 	exists, err := r.rowExists(ctx, `SELECT EXISTS(SELECT 1 FROM org.societes WHERE id = $1)`, DemoSocieteID)
-	if err != nil || exists {
+	if err != nil {
+		return err
+	}
+	if exists {
+		_, err := r.deps.Pool.Exec(ctx, `
+			UPDATE org.societes SET raison_sociale = $2 WHERE id = $1
+		`, DemoSocieteID, DemoSocieteName)
 		return err
 	}
 	return r.deps.OrgRepo.SaveSociete(ctx, orgdomain.Societe{
