@@ -6,8 +6,15 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE_FILE="${ROOT}/deploy/docker-compose.test.yml"
 # Avoid colliding with other repos that also use a "deploy/" compose project name.
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-kore-test}"
-API_PORT="${KORE_API_PORT:-8081}"
-FRONTEND_PORT="${KORE_FRONTEND_PORT:-3001}"
+# Preserve caller override (local port conflicts with other stacks).
+API_PORT_PRESET="${KORE_API_PORT:-}"
+FRONTEND_PORT_PRESET="${KORE_FRONTEND_PORT:-}"
+if [ -f "${ROOT}/.env" ]; then
+  set -a && source "${ROOT}/.env" && set +a
+fi
+API_PORT="${API_PORT_PRESET:-${KORE_API_PORT:-8081}}"
+FRONTEND_PORT="${FRONTEND_PORT_PRESET:-${KORE_FRONTEND_PORT:-3001}}"
+export PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:${FRONTEND_PORT}}"
 API_PID=""
 FRONT_PID=""
 
@@ -67,8 +74,9 @@ wait_tcp localhost 6382 60
 sleep 3
 docker compose -f "${COMPOSE_FILE}" ps
 
-export DATABASE_URL="${DATABASE_URL:-postgres://kore:kore@localhost:5433/kore_test?sslmode=disable}"
-export REDIS_ADDR="${REDIS_ADDR:-localhost:6382}"
+# Force test-stack DSN (ignore .env DATABASE_URL pointing at compose hostname "db").
+export DATABASE_URL="postgres://kore:kore@localhost:5433/kore_test?sslmode=disable"
+export REDIS_ADDR="localhost:6382"
 export HTTP_ADDR=":${API_PORT}"
 export JWT_SIGNING_KEY="${JWT_SIGNING_KEY:-ci-e2e-test-key}"
 export DEV_SEED_ENABLED="${DEV_SEED_ENABLED:-true}"
