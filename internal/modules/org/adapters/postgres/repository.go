@@ -612,9 +612,12 @@ func (r *Repository) SetLastSeenVersion(ctx context.Context, tenant kernel.Tenan
 }
 
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
-	// Callers that only set EquipeID (legacy) still get a junction row; intentional
-	// detach clears EquipeIDs before SyncPrimaryMemberships in the app layer.
-	if len(u.EquipeIDs) == 0 && u.EquipeID != nil {
+	// Align slices before sync:
+	// - EquipeID nil = detach all (legacy callers clear only the primary field)
+	// - EquipeID set + empty EquipeIDs = hydrate from primary
+	if u.EquipeID == nil {
+		u.EquipeIDs = []uuid.UUID{}
+	} else if len(u.EquipeIDs) == 0 {
 		hydrateEquipeIDsFromPrimary(&u)
 	}
 	u.SyncPrimaryMemberships()

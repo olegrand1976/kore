@@ -254,8 +254,10 @@ func TestOrg_UpdateUserPersistsEquipe(t *testing.T) {
 
 	// Détachement.
 	attached.EquipeID = nil
+	attached.EquipeIDs = []uuid.UUID{}
 	require.NoError(t, repo.UpdateUser(ctx, attached))
 	detached, err := repo.FindUserByID(ctx, tenant, userID)
 	require.NoError(t, err)
 	require.Nil(t, detached.EquipeID)
+	require.Empty(t, detached.EquipeIDs)
 }
