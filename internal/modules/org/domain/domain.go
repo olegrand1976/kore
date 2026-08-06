@@ -24,6 +24,8 @@ var (
 	ErrUserNotFound              = errors.New("user not found")
 	ErrApplicationNotFound       = errors.New("application not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
+	ErrCannotDemoteSelf          = errors.New("cannot remove own administrator profile")
+	ErrLastAdmin                 = errors.New("cannot remove the last administrator")
 	ErrInvalidGeminiModel        = errors.New("invalid gemini model")
 	ErrSSONotEnabled             = errors.New("sso not enabled")
 	ErrInvalidIDPToken           = errors.New("invalid idp token")
@@ -108,6 +110,24 @@ func ValidateProfiles(profiles []Profile) error {
 		}
 	}
 	return nil
+}
+
+// HasAdminProfile reports whether the user holds the Administrateur profile
+// (membership list or legacy primary column).
+func (u User) HasAdminProfile() bool {
+	if ProfilesContain(u.Profiles, ProfileAdmin) {
+		return true
+	}
+	return u.Profile == ProfileAdmin
+}
+
+func ProfilesContain(profiles []Profile, want Profile) bool {
+	for _, p := range profiles {
+		if p == want {
+			return true
+		}
+	}
+	return false
 }
 
 type ActivationPeriod struct {

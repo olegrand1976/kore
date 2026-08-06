@@ -1009,7 +1009,9 @@ func writeUserMutationError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
-	case errors.Is(err, domain.ErrCannotModifySelf):
+	case errors.Is(err, domain.ErrCannotModifySelf),
+		errors.Is(err, domain.ErrCannotDemoteSelf),
+		errors.Is(err, domain.ErrLastAdmin):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrWeakPassword), errors.Is(err, domain.ErrProfilesRequired),
 		errors.Is(err, domain.ErrInvalidProfile), errors.Is(err, domain.ErrEquipeNotFound):

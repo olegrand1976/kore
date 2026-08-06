@@ -111,7 +111,8 @@
           "bullets": [
             "Admin area: organization, users, SSO, workflows, settings, subscription.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
-            "Support and maintenance: full rights when channels are enabled."
+            "Support and maintenance: full rights when channels are enabled.",
+            "Self-edit: can add other profiles, but cannot remove own Administrator or deactivate own account."
           ],
           "seed": "ADM_admin / Admin123!"
         },
@@ -1329,7 +1330,7 @@
     "profile": "Profile",
     "profiles": "Profiles",
     "profiles_hint": "Multiple profiles allowed: permissions are combined (union).",
-    "profiles_self_hint": "You cannot change your own profiles.",
+    "profiles_admin_locked_hint": "You can add other profiles, but you cannot remove your own Administrator profile.",
     "status": "Status",
     "active": "Active",
     "inactive": "Inactive",
@@ -1369,14 +1370,15 @@
     "error_profiles_required": "Select at least one profile.",
     "error_equipe_not_found": "Team not found in your organization.",
     "error_seat_limit": "Seat limit reached.",
-    "error_self": "You cannot modify your own account this way.",
+    "error_self": "You cannot deactivate or delete your own account.",
+    "error_cannot_demote_self": "You cannot remove your own Administrator profile.",
+    "error_last_admin": "Cannot remove the last administrator of the tenant.",
     "equipe": "Team",
     "equipes": "Teams",
     "equipe_none": "No team",
     "equipe_hint": "The team links the person to an application: that is what makes their requests assignable in the timesheet.",
     "equipes_hint": "Multiple teams allowed: the person is linked to each associated application.",
     "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure.",
-    "equipes_self_hint": "You cannot change your own teams.",
     "active_self_hint": "You cannot deactivate your own account."
   },
   "org": {

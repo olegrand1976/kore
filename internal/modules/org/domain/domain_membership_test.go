@@ -61,3 +61,24 @@ func TestValidateProfiles(t *testing.T) {
 		t.Fatalf("valid: %v", err)
 	}
 }
+
+func TestHasAdminProfile(t *testing.T) {
+	if !(User{Profiles: []Profile{ProfileAdmin}}).HasAdminProfile() {
+		t.Fatal("expected true from Profiles")
+	}
+	if !(User{Profile: ProfileAdmin}).HasAdminProfile() {
+		t.Fatal("expected true from legacy Profile")
+	}
+	if (User{Profiles: []Profile{ProfileCollaborateur}}).HasAdminProfile() {
+		t.Fatal("expected false for collaborateur")
+	}
+}
+
+func TestProfilesContain(t *testing.T) {
+	if !ProfilesContain([]Profile{ProfileAdmin, ProfileCollaborateur}, ProfileAdmin) {
+		t.Fatal("expected contain")
+	}
+	if ProfilesContain([]Profile{ProfileCollaborateur}, ProfileAdmin) {
+		t.Fatal("expected miss")
+	}
+}

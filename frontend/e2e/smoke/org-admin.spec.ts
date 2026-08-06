@@ -48,6 +48,10 @@ test.describe('org admin', () => {
     await expect(collabRow).toBeVisible({ timeout: 20_000 })
     await collabRow.getByRole('button', { name: /modifier|edit/i }).click()
 
+    const profileCheckbox = page.locator('label.users-check', { hasText: "Chef d'équipe" }).locator('input[type="checkbox"]')
+    await expect(profileCheckbox).toBeEnabled()
+    await profileCheckbox.check()
+
     const equipeCheckbox = page.locator('label.users-check', { hasText: teamName }).locator('input[type="checkbox"]')
     await expect(equipeCheckbox).toBeVisible()
     await equipeCheckbox.check()
@@ -57,5 +61,38 @@ test.describe('org admin', () => {
     await expect(
       page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(new RegExp(teamName))
     ).toBeVisible({ timeout: 20_000 })
+    await expect(
+      page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(/chef d'équipe/i)
+    ).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('self-edit keeps Administrateur locked and allows other profiles', async ({ page }) => {
+    await page.goto('/admin/users')
+    const adminRow = page.locator('tbody tr', { hasText: 'ADM_admin' }).first()
+    await expect(adminRow).toBeVisible({ timeout: 20_000 })
+    await adminRow.getByRole('button', { name: /modifier|edit/i }).click()
+
+    const adminProfile = page
+      .locator('label.users-check', { hasText: 'Administrateur' })
+      .locator('input[type="checkbox"]')
+    const chefProfile = page
+      .locator('label.users-check', { hasText: "Chef d'équipe" })
+      .locator('input[type="checkbox"]')
+    const activeToggle = page.locator('label.users-toggle input[type="checkbox"]')
+
+    await expect(adminProfile).toBeChecked()
+    await expect(adminProfile).toBeDisabled()
+    await expect(chefProfile).toBeEnabled()
+    await expect(activeToggle).toBeDisabled()
+
+    await chefProfile.check()
+    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+
+    await expect(
+      page.locator('tbody tr', { hasText: 'ADM_admin' }).first().getByText(/chef d'équipe/i)
+    ).toBeVisible({ timeout: 20_000 })
+    await expect(
+      page.locator('tbody tr', { hasText: 'ADM_admin' }).first().getByText(/administrateur/i)
+    ).toBeVisible()
   })
 })

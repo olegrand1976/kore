@@ -25,6 +25,7 @@ type structureRepo struct {
 	updatedUser      *domain.User
 	sites            []domain.SiteSummary
 	equipes          []domain.Equipe
+	listedUsers      []domain.User
 	saveEquipeErr    error
 }
 
@@ -81,6 +82,16 @@ func (r *structureRepo) ListSites(context.Context, kernel.TenantID) ([]domain.Si
 func (r *structureRepo) UpdateUser(_ context.Context, u domain.User) error {
 	r.updatedUser = &u
 	return nil
+}
+
+func (r *structureRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.User, error) {
+	if len(r.listedUsers) > 0 {
+		return r.listedUsers, nil
+	}
+	if r.user.ID != uuid.Nil {
+		return []domain.User{r.user}, nil
+	}
+	return nil, nil
 }
 
 func TestCreateEquipe_persistsWithApplication(t *testing.T) {
@@ -267,14 +278,17 @@ func TestUpdateUser_detachesEquipe(t *testing.T) {
 	}
 }
 
-func TestUpdateUser_blocksSelfEquipeChange(t *testing.T) {
+func TestUpdateUser_allowsSelfEquipeChange(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	current := uuid.New()
 	user := equipeTestUser(tenant, &current)
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	other := uuid.New()
+	repo := &structureRepo{
+		refreshUserRepo: refreshUserRepo{user: user},
+		equipes:         []domain.Equipe{{ID: other, TenantID: tenant}},
+	}
 	svc := newUserServiceForEquipe(t, repo)
 
-	other := uuid.New()
 	ids := []uuid.UUID{other}
 	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
 		TenantID:    tenant,
@@ -282,11 +296,140 @@ func TestUpdateUser_blocksSelfEquipeChange(t *testing.T) {
 		ActorUserID: user.ID,
 		EquipeIDs:   &ids,
 	})
+	if err != nil {
+		t.Fatalf("UpdateUser self equipe: %v", err)
+	}
+	if repo.updatedUser == nil {
+		t.Fatal("expected self equipe change to be persisted")
+	}
+	if len(repo.updatedUser.EquipeIDs) != 1 || repo.updatedUser.EquipeIDs[0] != other {
+		t.Fatalf("EquipeIDs = %v, want [%v]", repo.updatedUser.EquipeIDs, other)
+	}
+}
+
+func TestUpdateUser_allowsSelfProfilesChange(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	user := equipeTestUser(tenant, nil)
+	user.Profile = domain.ProfileAdmin
+	user.Profiles = []domain.Profile{domain.ProfileAdmin}
+	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	svc := newUserServiceForEquipe(t, repo)
+
+	profiles := []domain.Profile{domain.ProfileAdmin, domain.ProfileCollaborateur}
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      user.ID,
+		ActorUserID: user.ID,
+		Profiles:    &profiles,
+	})
+	if err != nil {
+		t.Fatalf("UpdateUser self profiles: %v", err)
+	}
+	if repo.updatedUser == nil {
+		t.Fatal("expected self profiles change to be persisted")
+	}
+	if len(repo.updatedUser.Profiles) != 2 {
+		t.Fatalf("Profiles = %v, want 2", repo.updatedUser.Profiles)
+	}
+}
+
+func TestUpdateUser_blocksSelfDeactivate(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	user := equipeTestUser(tenant, nil)
+	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	svc := newUserServiceForEquipe(t, repo)
+
+	active := false
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      user.ID,
+		ActorUserID: user.ID,
+		Active:      &active,
+	})
 	if !errors.Is(err, domain.ErrCannotModifySelf) {
 		t.Fatalf("err = %v, want ErrCannotModifySelf", err)
 	}
 	if repo.updatedUser != nil {
-		t.Fatal("expected no persistence on self equipe change")
+		t.Fatal("expected no persistence on self deactivate")
+	}
+}
+
+func TestUpdateUser_blocksSelfDemoteAdmin(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	user := equipeTestUser(tenant, nil)
+	user.Profile = domain.ProfileAdmin
+	user.Profiles = []domain.Profile{domain.ProfileAdmin}
+	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	svc := newUserServiceForEquipe(t, repo)
+
+	profiles := []domain.Profile{domain.ProfileCollaborateur}
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      user.ID,
+		ActorUserID: user.ID,
+		Profiles:    &profiles,
+	})
+	if !errors.Is(err, domain.ErrCannotDemoteSelf) {
+		t.Fatalf("err = %v, want ErrCannotDemoteSelf", err)
+	}
+	if repo.updatedUser != nil {
+		t.Fatal("expected no persistence on self demotion")
+	}
+}
+
+func TestUpdateUser_blocksLastAdminDemote(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	admin := equipeTestUser(tenant, nil)
+	admin.Profile = domain.ProfileAdmin
+	admin.Profiles = []domain.Profile{domain.ProfileAdmin}
+	repo := &structureRepo{
+		refreshUserRepo: refreshUserRepo{user: admin},
+		listedUsers:     []domain.User{admin},
+	}
+	svc := newUserServiceForEquipe(t, repo)
+
+	profiles := []domain.Profile{domain.ProfileCollaborateur}
+	actor := uuid.New()
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      admin.ID,
+		ActorUserID: actor,
+		Profiles:    &profiles,
+	})
+	if !errors.Is(err, domain.ErrLastAdmin) {
+		t.Fatalf("err = %v, want ErrLastAdmin", err)
+	}
+	if repo.updatedUser != nil {
+		t.Fatal("expected no persistence on last-admin demotion")
+	}
+}
+
+func TestUpdateUser_allowsDemoteWhenOtherAdminExists(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	admin := equipeTestUser(tenant, nil)
+	admin.Profile = domain.ProfileAdmin
+	admin.Profiles = []domain.Profile{domain.ProfileAdmin}
+	other := equipeTestUser(tenant, nil)
+	other.Profile = domain.ProfileAdmin
+	other.Profiles = []domain.Profile{domain.ProfileAdmin}
+	repo := &structureRepo{
+		refreshUserRepo: refreshUserRepo{user: admin},
+		listedUsers:     []domain.User{admin, other},
+	}
+	svc := newUserServiceForEquipe(t, repo)
+
+	profiles := []domain.Profile{domain.ProfileCollaborateur}
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      admin.ID,
+		ActorUserID: other.ID,
+		Profiles:    &profiles,
+	})
+	if err != nil {
+		t.Fatalf("UpdateUser demote with other admin: %v", err)
+	}
+	if repo.updatedUser == nil || domain.ProfilesContain(repo.updatedUser.Profiles, domain.ProfileAdmin) {
+		t.Fatalf("expected demotion persisted without admin, got %+v", repo.updatedUser)
 	}
 }
 

@@ -511,9 +511,6 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		return ports.UserSummary{}, domain.ErrUserNotFound
 	}
 	if cmd.Profiles != nil || cmd.Profile != nil {
-		if cmd.UserID == cmd.ActorUserID {
-			return ports.UserSummary{}, domain.ErrCannotModifySelf
-		}
 		var profiles []domain.Profile
 		if cmd.Profiles != nil {
 			profiles = uniqueProfiles(*cmd.Profiles)
@@ -521,6 +518,9 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 			profiles = []domain.Profile{*cmd.Profile}
 		}
 		if err := domain.ValidateProfiles(profiles); err != nil {
+			return ports.UserSummary{}, err
+		}
+		if err := s.assertAdminDemotionAllowed(ctx, cmd, user, profiles); err != nil {
 			return ports.UserSummary{}, err
 		}
 		user.Profiles = profiles
@@ -540,6 +540,11 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		if cmd.UserID == cmd.ActorUserID {
 			return ports.UserSummary{}, domain.ErrCannotModifySelf
 		}
+		if !*cmd.Active && user.Active && user.HasAdminProfile() {
+			if err := s.assertNotLastActiveAdmin(ctx, cmd.TenantID, user.ID); err != nil {
+				return ports.UserSummary{}, err
+			}
+		}
 		if *cmd.Active && !user.Active {
 			limit, err := s.entitlement.GetSeatLimit(ctx, cmd.TenantID)
 			if err != nil {
@@ -554,11 +559,6 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 			}
 		}
 		user.Active = *cmd.Active
-	}
-	if cmd.EquipeIDs != nil || cmd.EquipeID != nil {
-		if cmd.UserID == cmd.ActorUserID {
-			return ports.UserSummary{}, domain.ErrCannotModifySelf
-		}
 	}
 	if cmd.EquipeIDs != nil {
 		user.EquipeIDs = uniqueUUIDs(*cmd.EquipeIDs)
@@ -597,6 +597,11 @@ func (s *userService) DeactivateUser(ctx context.Context, cmd ports.DeleteUserCo
 	if !user.Active {
 		return nil
 	}
+	if user.HasAdminProfile() {
+		if err := s.assertNotLastActiveAdmin(ctx, cmd.TenantID, user.ID); err != nil {
+			return err
+		}
+	}
 	user.Active = false
 	if err := s.repo.UpdateUser(ctx, user); err != nil {
 		return domain.ErrUserNotFound
@@ -607,6 +612,15 @@ func (s *userService) DeactivateUser(ctx context.Context, cmd ports.DeleteUserCo
 func (s *userService) DeleteUser(ctx context.Context, cmd ports.DeleteUserCommand) error {
 	if cmd.UserID == cmd.ActorUserID {
 		return domain.ErrCannotModifySelf
+	}
+	user, err := s.repo.FindUserByID(ctx, cmd.TenantID, cmd.UserID)
+	if err != nil {
+		return domain.ErrUserNotFound
+	}
+	if user.Active && user.HasAdminProfile() {
+		if err := s.assertNotLastActiveAdmin(ctx, cmd.TenantID, user.ID); err != nil {
+			return err
+		}
 	}
 	if err := s.repo.SoftDeleteUser(ctx, cmd.TenantID, cmd.UserID, s.clock().UTC()); err != nil {
 		return domain.ErrUserNotFound
@@ -680,6 +694,35 @@ func uniqueUUIDs(in []uuid.UUID) []uuid.UUID {
 		out = append(out, id)
 	}
 	return out
+}
+
+func (s *userService) assertAdminDemotionAllowed(
+	ctx context.Context,
+	cmd ports.UpdateUserCommand,
+	user domain.User,
+	profiles []domain.Profile,
+) error {
+	if !user.HasAdminProfile() || domain.ProfilesContain(profiles, domain.ProfileAdmin) {
+		return nil
+	}
+	if cmd.UserID == cmd.ActorUserID {
+		return domain.ErrCannotDemoteSelf
+	}
+	return s.assertNotLastActiveAdmin(ctx, cmd.TenantID, user.ID)
+}
+
+func (s *userService) assertNotLastActiveAdmin(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) error {
+	users, err := s.repo.ListUsers(ctx, tenant)
+	if err != nil {
+		return err
+	}
+	for _, u := range users {
+		if u.ID == userID || !u.Active || !u.HasAdminProfile() {
+			continue
+		}
+		return nil
+	}
+	return domain.ErrLastAdmin
 }
 
 func (s *userService) assertEquipesInTenant(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) error {

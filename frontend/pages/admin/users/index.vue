@@ -173,13 +173,15 @@
                 v-model="form.profils"
                 type="checkbox"
                 :value="p"
-                :disabled="editingSelf"
+                :disabled="isAdminProfileLocked(p)"
               />
               {{ p }}
             </label>
             <p v-if="fieldErrors.profils" class="users-field-error" role="alert">{{ fieldErrors.profils }}</p>
             <p class="users-hint">
-              {{ editingSelf ? $t('users.profiles_self_hint') : $t('users.profiles_hint') }}
+              {{ editingSelf && form.profils.includes('Administrateur')
+                ? $t('users.profiles_admin_locked_hint')
+                : $t('users.profiles_hint') }}
             </p>
           </fieldset>
           <fieldset class="users-form__field users-checkgroup">
@@ -191,13 +193,10 @@
                   v-model="form.equipeIds"
                   type="checkbox"
                   :value="e.value"
-                  :disabled="editingSelf"
                 />
                 {{ e.label }}
               </label>
-              <p class="users-hint">
-                {{ editingSelf ? $t('users.equipes_self_hint') : $t('users.equipes_hint') }}
-              </p>
+              <p class="users-hint">{{ $t('users.equipes_hint') }}</p>
             </template>
           </fieldset>
           <label v-if="editingId" class="users-toggle">
@@ -335,6 +334,10 @@ const validateForm = (): boolean => {
 
 const currentUserId = computed(() => user.value?.userId ?? '')
 const editingSelf = computed(() => !!editingId.value && editingId.value === currentUserId.value)
+
+/** Self-edit : on ne peut pas retirer son propre profil Administrateur (lockout). */
+const isAdminProfileLocked = (profile: string) =>
+  editingSelf.value && profile === 'Administrateur' && form.profils.includes('Administrateur')
 
 const columns = computed(() => [
   { key: 'login', label: t('users.login') },
@@ -485,11 +488,13 @@ const save = async () => {
         active?: boolean
         password?: string
         equipeIds?: string[]
-      } = {}
+      } = {
+        profils: [...form.profils],
+        equipeIds: [...form.equipeIds]
+      }
+      // Self-edit : profils/équipes OK ; pas de désactivation de son propre compte.
       if (!editingSelf.value) {
-        body.profils = [...form.profils]
         body.active = form.active
-        body.equipeIds = [...form.equipeIds]
       }
       if (form.password) body.password = form.password
       await update(editingId.value, body)
@@ -550,6 +555,8 @@ function mapUserError(err: unknown) {
   if (message.includes('equipe not found')) return t('users.error_equipe_not_found')
   if (message.includes('seat limit reached')) return t('users.error_seat_limit')
   if (message.includes('cannot modify own account')) return t('users.error_self')
+  if (message.includes('cannot remove own administrator')) return t('users.error_cannot_demote_self')
+  if (message.includes('cannot remove the last administrator')) return t('users.error_last_admin')
   return message
 }
 </script>

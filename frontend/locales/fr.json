@@ -111,7 +111,8 @@
           "bullets": [
             "Accès à l'administration : organisation, utilisateurs, SSO, workflows, paramètres, abonnement.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
-            "Support et maintenance : droits complets lorsque les canaux sont activés."
+            "Support et maintenance : droits complets lorsque les canaux sont activés.",
+            "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte."
           ],
           "seed": "ADM_admin / Admin123!"
         },
@@ -1329,7 +1330,7 @@
     "profile": "Profil",
     "profiles": "Profils",
     "profiles_hint": "Plusieurs profils possibles : les permissions sont cumulées (union).",
-    "profiles_self_hint": "Vous ne pouvez pas modifier vos propres profils.",
+    "profiles_admin_locked_hint": "Vous pouvez ajouter d'autres profils, mais pas retirer votre propre profil Administrateur.",
     "status": "Statut",
     "active": "Actif",
     "inactive": "Inactif",
@@ -1369,14 +1370,15 @@
     "error_profiles_required": "Sélectionnez au moins un profil.",
     "error_equipe_not_found": "Équipe introuvable dans votre organisation.",
     "error_seat_limit": "Plafond de sièges atteint.",
-    "error_self": "Vous ne pouvez pas modifier votre propre compte de cette façon.",
+    "error_self": "Vous ne pouvez pas désactiver ou supprimer votre propre compte.",
+    "error_cannot_demote_self": "Vous ne pouvez pas retirer votre propre profil Administrateur.",
+    "error_last_admin": "Impossible de retirer le dernier administrateur du tenant.",
     "equipe": "Équipe",
     "equipes": "Équipes",
     "equipe_none": "Aucune équipe",
     "equipe_hint": "L'équipe rattache le collaborateur à une application : c'est ce qui rend ses demandes affectables dans le CRA.",
     "equipes_hint": "Plusieurs équipes possibles : le collaborateur est rattaché à chaque application associée.",
     "equipe_empty_hint": "Aucune équipe n'existe encore. Créez-en une depuis Administration → Organisation → Structure.",
-    "equipes_self_hint": "Vous ne pouvez pas modifier vos propres équipes.",
     "active_self_hint": "Vous ne pouvez pas désactiver votre propre compte."
   },
   "org": {
