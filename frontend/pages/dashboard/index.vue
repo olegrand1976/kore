@@ -125,14 +125,25 @@
         :hint="budgetOverrunHint"
         to="/budget"
       />
-      <AppCard v-if="showModule('cra') && stats.craRequired && stats.craAlert" padding="lg" class="dashboard__cra-alert">
-        <p class="dashboard__cra-alert-text">{{ $t('dashboard.cra_alert') }}</p>
-        <AppButton variant="primary" size="sm" to="/cra">{{ $t('dashboard.quick_cra') }}</AppButton>
-      </AppCard>
-
-      <AppCard v-if="showModule('cra')" padding="lg" hoverable class="kpi-card kpi-card--action">
-        <div class="feature-card__icon"><AppIcon name="edit_calendar" /></div>
-        <p class="kpi-card__label">{{ $t('nav.cra') }}</p>
+      <AppCard
+        v-if="showModule('cra')"
+        padding="lg"
+        hoverable
+        class="kpi-card kpi-card--action"
+        :class="{ 'kpi-card--action-alert': showCraAlert }"
+      >
+        <div
+          class="feature-card__icon"
+          :class="showCraAlert ? 'feature-card__icon--warn' : 'feature-card__icon--gold'"
+        >
+          <AppIcon name="edit_calendar" />
+        </div>
+        <div class="kpi-card__body">
+          <p class="kpi-card__label">{{ $t('nav.cra') }}</p>
+          <p v-if="showCraAlert" class="kpi-card__hint">
+            {{ $t('dashboard.cra_alert') }}
+          </p>
+        </div>
         <AppButton variant="primary" size="sm" to="/cra">{{ $t('dashboard.quick_cra') }}</AppButton>
       </AppCard>
     </AppKpiGrid>
@@ -200,6 +211,7 @@ watch(
 const stats = computed(() => dashboardData.value?.stats ?? emptyStats())
 const charts = computed(() => dashboardData.value?.charts ?? emptyCharts())
 const statErrors = computed<DashboardStatErrors>(() => dashboardData.value?.errors ?? {})
+const showCraAlert = computed(() => stats.value.craRequired && stats.value.craAlert)
 
 const activeModulesCount = computed(() => {
   if (!loaded.value) return '—'
@@ -319,23 +331,22 @@ const billingAmountDisplay = computed(() => {
   gap: var(--kore-space-md);
 }
 
-.kpi-card--action .kpi-card__label {
+.kpi-card--action .kpi-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
   margin-bottom: auto;
 }
 
-.dashboard__cra-alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--kore-space-md);
-  margin-bottom: var(--kore-space-lg);
-  border-left: 4px solid var(--kore-warning);
+.kpi-card--action .kpi-card__hint {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+  line-height: 1.35;
 }
 
-.dashboard__cra-alert-text {
-  margin: 0;
-  color: var(--kore-text);
+.kpi-card--action-alert {
+  border-left: 4px solid var(--kore-warning);
 }
 
 @media (max-width: 768px) {
