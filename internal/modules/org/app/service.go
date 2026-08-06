@@ -537,7 +537,7 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		user.PasswordHash = hash
 	}
 	if cmd.Active != nil {
-		if !*cmd.Active && cmd.UserID == cmd.ActorUserID {
+		if cmd.UserID == cmd.ActorUserID {
 			return ports.UserSummary{}, domain.ErrCannotModifySelf
 		}
 		if *cmd.Active && !user.Active {
@@ -554,6 +554,11 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 			}
 		}
 		user.Active = *cmd.Active
+	}
+	if cmd.EquipeIDs != nil || cmd.EquipeID != nil {
+		if cmd.UserID == cmd.ActorUserID {
+			return ports.UserSummary{}, domain.ErrCannotModifySelf
+		}
 	}
 	if cmd.EquipeIDs != nil {
 		user.EquipeIDs = uniqueUUIDs(*cmd.EquipeIDs)

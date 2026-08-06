@@ -1273,7 +1273,9 @@
     "equipe_none": "No team",
     "equipe_hint": "The team links the person to an application: that is what makes their requests assignable in the timesheet.",
     "equipes_hint": "Multiple teams allowed: the person is linked to each associated application.",
-    "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure."
+    "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure.",
+    "equipes_self_hint": "You cannot change your own teams.",
+    "active_self_hint": "You cannot deactivate your own account."
   },
   "org": {
     "title": "Organization",

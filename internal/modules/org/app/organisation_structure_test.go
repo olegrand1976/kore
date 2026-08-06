@@ -267,6 +267,29 @@ func TestUpdateUser_detachesEquipe(t *testing.T) {
 	}
 }
 
+func TestUpdateUser_blocksSelfEquipeChange(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	current := uuid.New()
+	user := equipeTestUser(tenant, &current)
+	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	svc := newUserServiceForEquipe(t, repo)
+
+	other := uuid.New()
+	ids := []uuid.UUID{other}
+	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
+		TenantID:    tenant,
+		UserID:      user.ID,
+		ActorUserID: user.ID,
+		EquipeIDs:   &ids,
+	})
+	if !errors.Is(err, domain.ErrCannotModifySelf) {
+		t.Fatalf("err = %v, want ErrCannotModifySelf", err)
+	}
+	if repo.updatedUser != nil {
+		t.Fatal("expected no persistence on self equipe change")
+	}
+}
+
 func TestUpdateUser_keepsEquipeWhenFieldAbsent(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	current := uuid.New()

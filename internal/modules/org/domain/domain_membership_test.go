@@ -38,6 +38,18 @@ func TestSyncPrimaryMemberships_detachesEmptySlice(t *testing.T) {
 	}
 }
 
+func TestSyncPrimaryMemberships_setsPrimaryFromEquipeIDsWhenNil(t *testing.T) {
+	a := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	b := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	u := User{
+		EquipeIDs: []uuid.UUID{a, b},
+	}
+	u.SyncPrimaryMemberships()
+	if u.EquipeID == nil || *u.EquipeID != a {
+		t.Fatalf("EquipeID = %v, want %v", u.EquipeID, a)
+	}
+}
+
 func TestValidateProfiles(t *testing.T) {
 	if err := ValidateProfiles(nil); err != ErrProfilesRequired {
 		t.Fatalf("nil: %v", err)

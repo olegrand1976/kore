@@ -1273,7 +1273,9 @@
     "equipe_none": "Aucune équipe",
     "equipe_hint": "L'équipe rattache le collaborateur à une application : c'est ce qui rend ses demandes affectables dans le CRA.",
     "equipes_hint": "Plusieurs équipes possibles : le collaborateur est rattaché à chaque application associée.",
-    "equipe_empty_hint": "Aucune équipe n'existe encore. Créez-en une depuis Administration → Organisation → Structure."
+    "equipe_empty_hint": "Aucune équipe n'existe encore. Créez-en une depuis Administration → Organisation → Structure.",
+    "equipes_self_hint": "Vous ne pouvez pas modifier vos propres équipes.",
+    "active_self_hint": "Vous ne pouvez pas désactiver votre propre compte."
   },
   "org": {
     "title": "Organisation",

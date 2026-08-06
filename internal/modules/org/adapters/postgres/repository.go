@@ -612,12 +612,9 @@ func (r *Repository) SetLastSeenVersion(ctx context.Context, tenant kernel.Tenan
 }
 
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
-	// Align slices before sync:
-	// - EquipeID nil = detach all (legacy callers clear only the primary field)
-	// - EquipeID set + empty EquipeIDs = hydrate from primary
-	if u.EquipeID == nil {
-		u.EquipeIDs = []uuid.UUID{}
-	} else if len(u.EquipeIDs) == 0 {
+	// Callers must clear EquipeIDs (empty non-nil slice) to detach; SyncPrimaryMemberships
+	// then sets EquipeID=nil. EquipeID set + empty EquipeIDs hydrates from the primary column.
+	if len(u.EquipeIDs) == 0 && u.EquipeID != nil {
 		hydrateEquipeIDsFromPrimary(&u)
 	}
 	u.SyncPrimaryMemberships()

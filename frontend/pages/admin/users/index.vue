@@ -187,16 +187,24 @@
             <p v-if="!equipeOptions.length" class="users-hint">{{ $t('users.equipe_empty_hint') }}</p>
             <template v-else>
               <label v-for="e in equipeOptions" :key="e.value" class="users-check">
-                <input v-model="form.equipeIds" type="checkbox" :value="e.value" />
+                <input
+                  v-model="form.equipeIds"
+                  type="checkbox"
+                  :value="e.value"
+                  :disabled="editingSelf"
+                />
                 {{ e.label }}
               </label>
-              <p class="users-hint">{{ $t('users.equipes_hint') }}</p>
+              <p class="users-hint">
+                {{ editingSelf ? $t('users.equipes_self_hint') : $t('users.equipes_hint') }}
+              </p>
             </template>
           </fieldset>
           <label v-if="editingId" class="users-toggle">
-            <input v-model="form.active" type="checkbox" />
+            <input v-model="form.active" type="checkbox" :disabled="editingSelf" />
             {{ $t('users.active') }}
           </label>
+          <p v-if="editingId && editingSelf" class="users-hint">{{ $t('users.active_self_hint') }}</p>
           <div class="users-form__actions">
             <AppButton variant="ghost" size="sm" type="button" @click="closeForm">
               {{ $t('common.cancel') }}
@@ -474,15 +482,14 @@ const save = async () => {
     if (editingId.value) {
       const body: {
         profils?: string[]
-        active: boolean
+        active?: boolean
         password?: string
-        equipeIds: string[]
-      } = {
-        active: form.active,
-        equipeIds: [...form.equipeIds]
-      }
+        equipeIds?: string[]
+      } = {}
       if (!editingSelf.value) {
         body.profils = [...form.profils]
+        body.active = form.active
+        body.equipeIds = [...form.equipeIds]
       }
       if (form.password) body.password = form.password
       await update(editingId.value, body)
