@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  coerceBudgetDefautId,
   defaultBudgetsForApplication,
   filterByApplicationId,
   isDefaultBudgetType,
@@ -43,5 +44,11 @@ describe('useApplications pickers', () => {
       { id: 'd3', applicationId: 'app-b', type: 'defaut' }
     ]
     expect(defaultBudgetsForApplication(items, 'app-a').map((i) => i.id)).toEqual(['d1', 'd2'])
+  })
+
+  it('clears stale budgetDefautId outside allowed default budgets', () => {
+    expect(coerceBudgetDefautId('', ['d1'])).toBe('')
+    expect(coerceBudgetDefautId('d1', ['d1', 'd2'])).toBe('d1')
+    expect(coerceBudgetDefautId('stale', ['d1'])).toBe('')
   })
 })

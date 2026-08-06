@@ -297,7 +297,8 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			if errors.Is(err, domain.ErrUserNotFound) ||
 				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
-				errors.Is(err, domain.ErrBudgetNotFound) {
+				errors.Is(err, domain.ErrBudgetNotFound) ||
+				errors.Is(err, domain.ErrBudgetNotAllowedOnCreate) {
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
@@ -473,48 +474,73 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application id")
 			return
 		}
-		var req struct {
-			Libelle           *string          `json:"libelle"`
-			Active            *bool            `json:"active"`
-			Proprietaire      *string          `json:"proprietaire"`
-			ModeFacturation   *string          `json:"modeFacturation"`
-			UOActivee         *bool            `json:"uoActivee"`
-			ChefUtilisateurID *json.RawMessage `json:"chefUtilisateurId"`
-			BudgetDefautID    *json.RawMessage `json:"budgetDefautId"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var raw map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		if req.Libelle == nil && req.Active == nil && req.Proprietaire == nil &&
-			req.ModeFacturation == nil && req.UOActivee == nil &&
-			req.ChefUtilisateurID == nil && req.BudgetDefautID == nil {
-			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
-			return
+		cmd := ports.UpdateApplicationCommand{ApplicationID: appID}
+		if v, ok := raw["libelle"]; ok {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid libelle")
+				return
+			}
+			cmd.Libelle = &s
 		}
-		cmd := ports.UpdateApplicationCommand{
-			ApplicationID:   appID,
-			Libelle:         req.Libelle,
-			Active:          req.Active,
-			Proprietaire:    req.Proprietaire,
-			ModeFacturation: req.ModeFacturation,
-			UOActivee:       req.UOActivee,
+		if v, ok := raw["active"]; ok {
+			var b bool
+			if err := json.Unmarshal(v, &b); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid active")
+				return
+			}
+			cmd.Active = &b
 		}
-		if req.ChefUtilisateurID != nil {
-			ptr, err := parseOptionalUUIDField(*req.ChefUtilisateurID)
+		if v, ok := raw["proprietaire"]; ok {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid proprietaire")
+				return
+			}
+			cmd.Proprietaire = &s
+		}
+		if v, ok := raw["modeFacturation"]; ok {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid modeFacturation")
+				return
+			}
+			cmd.ModeFacturation = &s
+		}
+		if v, ok := raw["uoActivee"]; ok {
+			var b bool
+			if err := json.Unmarshal(v, &b); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid uoActivee")
+				return
+			}
+			cmd.UOActivee = &b
+		}
+		if v, ok := raw["chefUtilisateurId"]; ok {
+			ptr, err := parseOptionalUUIDField(v)
 			if err != nil {
 				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid chefUtilisateurId")
 				return
 			}
 			cmd.ChefUtilisateurID = &ptr
 		}
-		if req.BudgetDefautID != nil {
-			ptr, err := parseOptionalUUIDField(*req.BudgetDefautID)
+		if v, ok := raw["budgetDefautId"]; ok {
+			ptr, err := parseOptionalUUIDField(v)
 			if err != nil {
 				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid budgetDefautId")
 				return
 			}
 			cmd.BudgetDefautID = &ptr
+		}
+		if cmd.Libelle == nil && cmd.Active == nil && cmd.Proprietaire == nil &&
+			cmd.ModeFacturation == nil && cmd.UOActivee == nil &&
+			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
+			return
 		}
 		identity, _ := authx.FromContext(r.Context())
 		cmd.TenantID = identity.TenantID

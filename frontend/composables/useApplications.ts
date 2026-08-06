@@ -91,6 +91,12 @@ export function defaultBudgetsForApplication<
   )
 }
 
+/** Keep selection only if it is a known default-type budget; otherwise clear (stale FK). */
+export function coerceBudgetDefautId(selected: string, allowedIds: readonly string[]): string {
+  if (!selected) return ''
+  return allowedIds.includes(selected) ? selected : ''
+}
+
 export function useApplications() {
   const { apiFetch } = useApiFetch()
 

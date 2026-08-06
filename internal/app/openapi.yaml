@@ -1153,7 +1153,6 @@ paths:
                 modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
                 uoActivee: { type: boolean }
                 chefUtilisateurId: { type: string, format: uuid, nullable: true }
-                budgetDefautId: { type: string, format: uuid, nullable: true }
       responses:
         "201":
           description: Application créée

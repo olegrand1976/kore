@@ -282,6 +282,31 @@ func TestUpdateApplication_proprietaireOnly(t *testing.T) {
 	}
 }
 
+func TestUpdateApplication_clearBudgetDefautHTTP(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"budgetDefautId": nil,
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.updated == nil || svc.updated.BudgetDefautID == nil {
+		t.Fatalf("expected BudgetDefautID set on command, got %+v", svc.updated)
+	}
+	if *svc.updated.BudgetDefautID != nil {
+		t.Fatalf("expected clear (ptr to nil), got %v", *svc.updated.BudgetDefautID)
+	}
+}
+
 func TestUpdateApplication_notFoundHTTP(t *testing.T) {
 	appID := uuid.New()
 	svc := &applicationOrgService{err: domain.ErrApplicationNotFound}

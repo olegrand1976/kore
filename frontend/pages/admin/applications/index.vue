@@ -195,7 +195,7 @@
               </li>
             </ul>
             <p v-else class="muted">{{ $t('applications.empty_budgets') }}</p>
-            <label v-if="defaultBudgetOptions.length" class="apps-form__field">
+            <label class="apps-form__field">
               <span>{{ $t('applications.field_budget_defaut') }}</span>
               <select v-model="form.budgetDefautId" class="apps-form__input">
                 <option value="">{{ $t('applications.field_budget_defaut_none') }}</option>
@@ -203,9 +203,6 @@
               </select>
               <span class="muted apps-form__hint">{{ $t('applications.field_budget_defaut_hint') }}</span>
             </label>
-            <p v-else-if="editBudgets.length" class="muted apps-form__hint">
-              {{ $t('applications.field_budget_defaut_hint') }}
-            </p>
             <AppButton variant="secondary" size="sm" type="button" @click="goCreateBudget">
               {{ $t('applications.create_budget') }}
             </AppButton>
@@ -228,6 +225,7 @@
 <script setup lang="ts">
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import {
+  coerceBudgetDefautId,
   defaultBudgetsForApplication,
   isDefaultBudgetType
 } from '~/composables/useApplications'
@@ -458,17 +456,22 @@ const defaultBudgetOptions = computed(() => {
   if (!editingId.value) return []
   return defaultBudgetsForApplication(budgets.value, editingId.value).map((b) => {
     const type = String(b.type ?? b.Type ?? '').toLowerCase()
+    const id = pickBudgetId(b)
+    const short = id.length > 8 ? id.slice(0, 8) : id
     return {
-      id: pickBudgetId(b),
-      label: type || pickBudgetId(b)
+      id,
+      label: type ? `${type} (${short})` : short
     }
   })
 })
 
-const suggestDefaultBudgetIfEmpty = () => {
-  if (!editingId.value || form.budgetDefautId) return
-  const first = defaultBudgetOptions.value[0]
-  if (first) form.budgetDefautId = first.id
+/** Drop stale FK values that are not a default-type budget for this app. */
+const sanitizeFormBudgetDefaut = () => {
+  if (!editingId.value) return
+  form.budgetDefautId = coerceBudgetDefautId(
+    form.budgetDefautId,
+    defaultBudgetOptions.value.map((b) => b.id)
+  )
 }
 
 const loadAll = async () => {
@@ -509,7 +512,7 @@ const loadAll = async () => {
         budgetDefautId: pickAppBudgetDefautId(app)
       }
     })
-    suggestDefaultBudgetIfEmpty()
+    sanitizeFormBudgetDefaut()
   } catch (err) {
     if ((err as { statusCode?: number })?.statusCode === 403) {
       forbidden.value = true
@@ -549,7 +552,7 @@ const openEdit = (row: AppRow) => {
   formError.value = ''
   newEquipeLibelle.value = ''
   showForm.value = true
-  suggestDefaultBudgetIfEmpty()
+  sanitizeFormBudgetDefaut()
 }
 
 const closeForm = () => {
@@ -567,16 +570,29 @@ const submitForm = async () => {
   saving.value = true
   try {
     const chef = form.chefUtilisateurId || null
-    const budgetDefaut = form.budgetDefautId || null
     if (editingId.value) {
-      await update(editingId.value, {
+      const originalBudget =
+        rows.value.find((r) => r.id === editingId.value)?.budgetDefautId ?? ''
+      const nextBudget = form.budgetDefautId || null
+      const body: {
+        libelle: string
+        proprietaire: string
+        modeFacturation: string
+        uoActivee: boolean
+        chefUtilisateurId: string | null
+        budgetDefautId?: string | null
+      } = {
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
         modeFacturation: form.modeFacturation,
         uoActivee: form.uoActivee,
-        chefUtilisateurId: chef,
-        budgetDefautId: budgetDefaut
-      })
+        chefUtilisateurId: chef
+      }
+      // Only touch FK when the select actually changed (or stale value was cleared).
+      if ((form.budgetDefautId || '') !== originalBudget) {
+        body.budgetDefautId = nextBudget
+      }
+      await update(editingId.value, body)
       flash.value = t('applications.updated')
     } else {
       await create({

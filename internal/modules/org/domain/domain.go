@@ -26,6 +26,7 @@ var (
 	ErrInvalidModeFacturation    = errors.New("invalid mode facturation")
 	ErrInvalidApplicationLibelle = errors.New("application libelle required")
 	ErrBudgetNotFound            = errors.New("budget not found for application")
+	ErrBudgetNotAllowedOnCreate  = errors.New("budgetDefautId cannot be set on create")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
 	ErrCannotDemoteSelf          = errors.New("cannot remove own administrator profile")
 	ErrLastAdmin                 = errors.New("cannot remove the last administrator")

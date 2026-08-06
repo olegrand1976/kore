@@ -539,7 +539,7 @@ func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
 		Libelle:        "X",
 		BudgetDefautID: &budgetID,
 	})
-	if !errors.Is(err, domain.ErrBudgetNotFound) {
+	if !errors.Is(err, domain.ErrBudgetNotAllowedOnCreate) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -717,6 +717,19 @@ func TestUpdateApplication_budgetDefaut(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrBudgetNotFound) {
 		t.Fatalf("err = %v, want ErrBudgetNotFound for non-default budget", err)
+	}
+
+	clear := (*uuid.UUID)(nil)
+	got, err = svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:       tenant,
+		ApplicationID:  appID,
+		BudgetDefautID: &clear,
+	})
+	if err != nil {
+		t.Fatalf("clear budget: %v", err)
+	}
+	if got.BudgetDefautID != nil {
+		t.Fatal("expected budget cleared")
 	}
 }
 

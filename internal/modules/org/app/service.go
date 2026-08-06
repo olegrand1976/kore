@@ -100,7 +100,7 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 	}
 	// Un budget est déjà lié à une application : impossible de poser budgetDefautId à la création.
 	if cmd.BudgetDefautID != nil {
-		return domain.Application{}, domain.ErrBudgetNotFound
+		return domain.Application{}, domain.ErrBudgetNotAllowedOnCreate
 	}
 	app := domain.Application{
 		ID:                uuid.New(),
