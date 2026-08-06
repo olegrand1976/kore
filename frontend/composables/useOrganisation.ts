@@ -98,7 +98,10 @@ export function useOrganisation() {
   const listServices = async () => unwrap<OrgService>(await apiFetch('/api/org/services'))
   const listApplications = async () =>
     unwrap<OrgApplication>(await apiFetch('/api/org/applications?active=all'))
-  const listEquipes = async () => unwrap<OrgEquipe>(await apiFetch('/api/org/equipes'))
+  const listEquipes = async (opts?: { applicationId?: string }) => {
+    const qs = opts?.applicationId ? `?applicationId=${encodeURIComponent(opts.applicationId)}` : ''
+    return unwrap<OrgEquipe>(await apiFetch(`/api/org/equipes${qs}`))
+  }
 
   const createSite = (body: { societeId: string; libelle: string; pays?: string }) =>
     apiFetch('/api/org/sites', { method: 'POST', body })
@@ -110,17 +113,12 @@ export function useOrganisation() {
     responsableId: string
   }) => apiFetch('/api/org/services', { method: 'POST', body })
 
-  const createApplication = (body: { serviceId: string; libelle: string }) =>
-    apiFetch('/api/org/applications', { method: 'POST', body })
-
-  const updateApplication = (id: string, body: { libelle?: string; active?: boolean }) =>
-    apiFetch(`/api/org/applications/${id}`, { method: 'PUT', body })
-
-  const deactivateApplication = (id: string) =>
-    apiFetch(`/api/org/applications/${id}/deactivate`, { method: 'PATCH' })
-
-  const activateApplication = (id: string) =>
-    apiFetch(`/api/org/applications/${id}/activate`, { method: 'PATCH' })
+  const {
+    create: createApplication,
+    update: updateApplication,
+    deactivate: deactivateApplication,
+    activate: activateApplication
+  } = useApplications()
 
   const createEquipe = (body: { applicationId: string; libelle: string; responsableId?: string }) =>
     apiFetch('/api/org/equipes', { method: 'POST', body })

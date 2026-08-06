@@ -229,7 +229,9 @@ const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { user, fetchSession } = useAuth()
 const { list, create, update, deactivate, remove, pickUserId, pickUserLogin, pickUserProfiles, pickUserActive, pickUserEquipeIds } = useUsers()
-const { listEquipes, listApplications, buildEquipeOptions } = useOrganisation()
+const { listEquipes, listApplications, buildEquipeOptions, orgId } = useOrganisation()
+const applicationFilterOptions = ref<{ value: string; label: string }[]>([])
+const equipeAppById = ref<Map<string, string>>(new Map())
 
 type UserRow = {
   id: string
@@ -240,6 +242,7 @@ type UserRow = {
   equipeId: string
   equipeIds: string[]
   equipeLabel: string
+  applicationIds: string[]
 }
 
 const users = ref<UserRow[]>([])
@@ -280,9 +283,20 @@ const loadEquipes = async () => {
   try {
     const [eq, apps] = await Promise.all([listEquipes(), listApplications()])
     equipeOptions.value = buildEquipeOptions(eq, apps)
+    applicationFilterOptions.value = apps.map((a) => ({
+      value: orgId(a),
+      label: a.libelle ?? a.Libelle ?? orgId(a)
+    }))
+    const map = new Map<string, string>()
+    for (const e of eq) {
+      map.set(orgId(e), e.applicationId ?? e.ApplicationID ?? '')
+    }
+    equipeAppById.value = map
   } catch {
     // Rattachement facultatif : une liste vide n'empêche pas de créer un compte.
     equipeOptions.value = []
+    applicationFilterOptions.value = []
+    equipeAppById.value = new Map()
   }
 }
 
@@ -368,6 +382,12 @@ const listFilters = computed(() => ({
     options: equipeOptions.value,
     match: (row: UserRow, value: string) => row.equipeIds.includes(value)
   },
+  application: {
+    type: 'select' as const,
+    label: t('users.application_filter'),
+    options: applicationFilterOptions.value,
+    match: (row: UserRow, value: string) => !value || row.applicationIds.includes(value)
+  },
   active: {
     type: 'select' as const,
     label: t('users.status'),
@@ -407,6 +427,13 @@ const mapUsers = (items: Awaited<ReturnType<typeof list>>) =>
   items.map((item) => {
     const equipeIds = pickUserEquipeIds(item)
     const profils = pickUserProfiles(item)
+    const applicationIds = [
+      ...new Set(
+        equipeIds
+          .map((id) => equipeAppById.value.get(id) ?? '')
+          .filter(Boolean)
+      )
+    ]
     return {
       id: pickUserId(item),
       login: pickUserLogin(item),
@@ -415,7 +442,8 @@ const mapUsers = (items: Awaited<ReturnType<typeof list>>) =>
       active: pickUserActive(item),
       equipeId: equipeIds[0] ?? '',
       equipeIds,
-      equipeLabel: formatEquipeLabels(equipeIds)
+      equipeLabel: formatEquipeLabels(equipeIds),
+      applicationIds
     }
   })
 

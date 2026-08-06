@@ -27,6 +27,25 @@ type structureRepo struct {
 	equipes          []domain.Equipe
 	listedUsers      []domain.User
 	saveEquipeErr    error
+	users            map[uuid.UUID]domain.User
+	budgetOK         map[uuid.UUID]bool
+}
+
+func (r *structureRepo) BudgetBelongsToApplication(_ context.Context, _ kernel.TenantID, budgetID, _ uuid.UUID) (bool, error) {
+	if r.budgetOK == nil {
+		return false, nil
+	}
+	return r.budgetOK[budgetID], nil
+}
+
+func (r *structureRepo) FindUserByID(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.User, error) {
+	if r.users != nil {
+		if u, ok := r.users[id]; ok {
+			return u, nil
+		}
+		return domain.User{}, domain.ErrUserNotFound
+	}
+	return r.refreshUserRepo.FindUserByID(context.Background(), kernel.TenantID{}, id)
 }
 
 func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
@@ -38,7 +57,7 @@ func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
 	return nil
 }
 
-func (r *structureRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+func (r *structureRepo) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return r.equipes, nil
 }
 
@@ -474,8 +493,93 @@ func TestCreateApplication_setsActive(t *testing.T) {
 	if !app.Active {
 		t.Fatal("expected new application to be active")
 	}
+	if app.ModeFacturation != domain.DefaultModeFacturation {
+		t.Fatalf("mode = %q, want default", app.ModeFacturation)
+	}
 	if repo.savedApplication == nil || !repo.savedApplication.Active {
 		t.Fatal("expected SaveApplication with Active=true")
+	}
+}
+
+func TestCreateApplication_persistsRichFields(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	chefID := uuid.New()
+	repo := &structureRepo{}
+	repo.users = map[uuid.UUID]domain.User{
+		chefID: {ID: chefID, TenantID: tenant, Login: "CHEF_user", Active: true},
+	}
+	svc := NewOrganizationService(repo)
+
+	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:          tenant,
+		ServiceID:         uuid.New(),
+		Libelle:           "Portail",
+		Proprietaire:      "Client ACME",
+		ModeFacturation:   domain.ModeFacturationForfait,
+		UOActivee:         true,
+		ChefUtilisateurID: &chefID,
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if app.Proprietaire != "Client ACME" || app.ModeFacturation != domain.ModeFacturationForfait || !app.UOActivee {
+		t.Fatalf("got %+v", app)
+	}
+	if app.ChefUtilisateurID == nil || *app.ChefUtilisateurID != chefID {
+		t.Fatalf("chef = %v", app.ChefUtilisateurID)
+	}
+}
+
+func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
+	budgetID := uuid.New()
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:       kernel.NewTenantID(uuid.New()),
+		ServiceID:      uuid.New(),
+		Libelle:        "X",
+		BudgetDefautID: &budgetID,
+	})
+	if !errors.Is(err, domain.ErrBudgetNotFound) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCreateApplication_rejectsEmptyLibelle(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:  kernel.NewTenantID(uuid.New()),
+		ServiceID: uuid.New(),
+		Libelle:   "   ",
+	})
+	if !errors.Is(err, domain.ErrInvalidApplicationLibelle) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCreateApplication_rejectsInvalidMode(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:        kernel.NewTenantID(uuid.New()),
+		ServiceID:       uuid.New(),
+		Libelle:         "X",
+		ModeFacturation: "inconnu",
+	})
+	if !errors.Is(err, domain.ErrInvalidModeFacturation) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestCreateApplication_rejectsUnknownChef(t *testing.T) {
+	chefID := uuid.New()
+	svc := NewOrganizationService(&structureRepo{users: map[uuid.UUID]domain.User{}})
+	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:          kernel.NewTenantID(uuid.New()),
+		ServiceID:         uuid.New(),
+		Libelle:           "X",
+		ChefUtilisateurID: &chefID,
+	})
+	if !errors.Is(err, domain.ErrUserNotFound) {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -521,6 +625,101 @@ func TestUpdateApplication_renamesAndDeactivates(t *testing.T) {
 	}
 }
 
+func TestUpdateApplication_richFields(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	chefID := uuid.New()
+	repo := &structureRepo{
+		applications: map[uuid.UUID]domain.Application{
+			appID: {
+				ID:              appID,
+				TenantID:        tenant,
+				ServiceID:       uuid.New(),
+				Libelle:         "App",
+				ModeFacturation: domain.ModeFacturationTempsPasse,
+				Active:          true,
+			},
+		},
+	}
+	repo.users = map[uuid.UUID]domain.User{
+		chefID: {ID: chefID, TenantID: tenant, Login: "CHEF_user", Active: true},
+	}
+	svc := NewOrganizationService(repo)
+
+	prop := "Société X"
+	mode := domain.ModeFacturationNon
+	uo := true
+	chefPtr := &chefID
+	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:          tenant,
+		ApplicationID:     appID,
+		Proprietaire:      &prop,
+		ModeFacturation:   &mode,
+		UOActivee:         &uo,
+		ChefUtilisateurID: &chefPtr,
+	})
+	if err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	if got.Proprietaire != prop || got.ModeFacturation != mode || !got.UOActivee {
+		t.Fatalf("got %+v", got)
+	}
+	if got.ChefUtilisateurID == nil || *got.ChefUtilisateurID != chefID {
+		t.Fatalf("chef = %v", got.ChefUtilisateurID)
+	}
+
+	var clear *uuid.UUID
+	got, err = svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:          tenant,
+		ApplicationID:     appID,
+		ChefUtilisateurID: &clear,
+	})
+	if err != nil {
+		t.Fatalf("clear chef: %v", err)
+	}
+	if got.ChefUtilisateurID != nil {
+		t.Fatal("expected chef cleared")
+	}
+}
+
+func TestUpdateApplication_budgetDefaut(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	budgetID := uuid.New()
+	repo := &structureRepo{
+		applications: map[uuid.UUID]domain.Application{
+			appID: {ID: appID, TenantID: tenant, ServiceID: uuid.New(), Libelle: "App", Active: true},
+		},
+		// Simulates EXISTS (... AND type = 'defaut')
+		budgetOK: map[uuid.UUID]bool{budgetID: true},
+	}
+	svc := NewOrganizationService(repo)
+	budgetPtr := &budgetID
+	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:       tenant,
+		ApplicationID:  appID,
+		BudgetDefautID: &budgetPtr,
+	})
+	if err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	if got.BudgetDefautID == nil || *got.BudgetDefautID != budgetID {
+		t.Fatalf("budget = %v", got.BudgetDefautID)
+	}
+
+	// Budget not marked as default-type for the app → rejected (specifique / other app).
+	specific := uuid.New()
+	specificPtr := &specific
+	_, err = svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:       tenant,
+		ApplicationID:  appID,
+		BudgetDefautID: &specificPtr,
+	})
+	if !errors.Is(err, domain.ErrBudgetNotFound) {
+		t.Fatalf("err = %v, want ErrBudgetNotFound for non-default budget", err)
+	}
+}
+
 func TestUpdateApplication_notFound(t *testing.T) {
 	svc := NewOrganizationService(&structureRepo{})
 	libelle := "x"
@@ -531,5 +730,17 @@ func TestUpdateApplication_notFound(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrApplicationNotFound) {
 		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
+	}
+}
+
+func TestSetApplicationActive_notFound(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.SetApplicationActive(context.Background(), ports.SetApplicationActiveCommand{
+		TenantID:      kernel.NewTenantID(uuid.New()),
+		ApplicationID: uuid.New(),
+		Active:        false,
+	})
+	if !errors.Is(err, domain.ErrApplicationNotFound) {
+		t.Fatalf("err = %v", err)
 	}
 }

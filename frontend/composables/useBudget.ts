@@ -33,8 +33,9 @@ function tripleValue(triple: BudgetTriple | undefined, key: 'days' | 'uo' | 'amo
 
 export function useBudget() {
   const { apiFetch } = useApiFetch()
-  const list = async () => {
-    const res = await apiFetch<{ data?: BudgetItem[] }>('/api/budget/budgets')
+  const list = async (opts?: { applicationId?: string }) => {
+    const qs = opts?.applicationId ? `?applicationId=${encodeURIComponent(opts.applicationId)}` : ''
+    const res = await apiFetch<{ data?: BudgetItem[] }>(`/api/budget/budgets${qs}`)
     return res?.data ?? []
   }
 

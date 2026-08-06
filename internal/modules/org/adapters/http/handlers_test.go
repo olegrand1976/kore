@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
@@ -161,6 +162,174 @@ func TestCreateEquipe_badRequestOnInvalidBody(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+type applicationOrgService struct {
+	ports.OrganizationService
+	created *ports.CreateApplicationCommand
+	updated *ports.UpdateApplicationCommand
+	active  *ports.SetApplicationActiveCommand
+	listed  []domain.Application
+	app     domain.Application
+	err     error
+}
+
+func (s *applicationOrgService) CreateApplication(_ context.Context, cmd ports.CreateApplicationCommand) (domain.Application, error) {
+	if s.err != nil {
+		return domain.Application{}, s.err
+	}
+	s.created = &cmd
+	return domain.Application{
+		ID:                uuid.New(),
+		TenantID:          cmd.TenantID,
+		ServiceID:         cmd.ServiceID,
+		Libelle:           cmd.Libelle,
+		Proprietaire:      cmd.Proprietaire,
+		ModeFacturation:   cmd.ModeFacturation,
+		UOActivee:         cmd.UOActivee,
+		ChefUtilisateurID: cmd.ChefUtilisateurID,
+		BudgetDefautID:    cmd.BudgetDefautID,
+		Active:            true,
+	}, nil
+}
+
+func (s *applicationOrgService) UpdateApplication(_ context.Context, cmd ports.UpdateApplicationCommand) (domain.Application, error) {
+	if s.err != nil {
+		return domain.Application{}, s.err
+	}
+	s.updated = &cmd
+	app := s.app
+	if app.ID == uuid.Nil {
+		app.ID = cmd.ApplicationID
+	}
+	if cmd.Libelle != nil {
+		app.Libelle = *cmd.Libelle
+	}
+	if cmd.Proprietaire != nil {
+		app.Proprietaire = *cmd.Proprietaire
+	}
+	if cmd.ModeFacturation != nil {
+		app.ModeFacturation = *cmd.ModeFacturation
+	}
+	if cmd.UOActivee != nil {
+		app.UOActivee = *cmd.UOActivee
+	}
+	if cmd.Active != nil {
+		app.Active = *cmd.Active
+	}
+	return app, nil
+}
+
+func (s *applicationOrgService) SetApplicationActive(_ context.Context, cmd ports.SetApplicationActiveCommand) (domain.Application, error) {
+	if s.err != nil {
+		return domain.Application{}, s.err
+	}
+	s.active = &cmd
+	return domain.Application{ID: cmd.ApplicationID, Active: cmd.Active}, nil
+}
+
+func (s *applicationOrgService) ListApplications(context.Context, kernel.TenantID, ports.ApplicationListFilter) ([]domain.Application, error) {
+	return s.listed, s.err
+}
+
+func TestCreateApplication_created(t *testing.T) {
+	svc := &applicationOrgService{}
+	handler := createApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	serviceID := uuid.New()
+	chefID := uuid.New()
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodPost, "/applications", map[string]any{
+		"serviceId":         serviceID.String(),
+		"libelle":           "Portail",
+		"proprietaire":      "ACME",
+		"modeFacturation":   "forfait",
+		"uoActivee":         true,
+		"chefUtilisateurId": chefID.String(),
+	}))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201, body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.created == nil || svc.created.Libelle != "Portail" || svc.created.Proprietaire != "ACME" {
+		t.Fatalf("created = %+v", svc.created)
+	}
+	if svc.created.ChefUtilisateurID == nil || *svc.created.ChefUtilisateurID != chefID {
+		t.Fatalf("chef = %v", svc.created.ChefUtilisateurID)
+	}
+}
+
+func TestUpdateApplication_proprietaireOnly(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"proprietaire": "Société Y",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.updated == nil || svc.updated.Proprietaire == nil || *svc.updated.Proprietaire != "Société Y" {
+		t.Fatalf("updated = %+v", svc.updated)
+	}
+}
+
+func TestUpdateApplication_notFoundHTTP(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{err: domain.ErrApplicationNotFound}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"libelle": "X",
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestDeactivateApplication_ok(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{}
+	handler := deactivateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	req := requestWithIdentity(t, http.MethodPatch, "/applications/"+appID.String()+"/deactivate", nil)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if svc.active == nil || svc.active.Active {
+		t.Fatalf("active cmd = %+v", svc.active)
+	}
+}
+
+func TestListApplications_activeAll(t *testing.T) {
+	svc := &applicationOrgService{listed: []domain.Application{{Libelle: "A"}, {Libelle: "B"}}}
+	handler := listApplications(svc, stubAuthorizer{module: "org", action: authx.ActionRead, allow: true})
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodGet, "/applications?active=all", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 

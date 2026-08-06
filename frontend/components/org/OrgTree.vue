@@ -319,6 +319,14 @@ defineExpose({ reload: load })
                           variant="ghost"
                           size="sm"
                           type="button"
+                          @click="navigateTo(`/admin/applications?id=${orgId(application)}`)"
+                        >
+                          {{ $t('applications.open_in_admin') }}
+                        </AppButton>
+                        <AppButton
+                          variant="ghost"
+                          size="sm"
+                          type="button"
                           :disabled="actionBusyId === orgId(application)"
                           @click="toggleApplicationActive(application)"
                         >

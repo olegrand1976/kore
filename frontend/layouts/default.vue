@@ -248,7 +248,7 @@ type NavItem = {
   label: string
   adminOnly?: boolean
   platformOnly?: boolean
-  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing'
+  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing' | 'ett' | 'integrations' | 'invoicing'
   rbacModule?: 'support' | 'maintenance'
   requestChannel?: 'tma' | 'support' | 'maintenance'
   activePrefix?: string
@@ -272,6 +272,7 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
   { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
+  { to: '/admin/applications', icon: 'apps', label: t('nav.applications'), adminOnly: true },
   { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true },
   { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), adminOnly: true },
   { to: '/admin/integrations', icon: 'hub', label: t('nav.integrations'), adminOnly: true, module: 'integrations' },
@@ -300,6 +301,7 @@ const mainNavItems = computed(() =>
         '/aide',
         '/admin/notifications',
         '/admin/organisation',
+        '/admin/applications',
         '/admin/users',
         '/admin/identity-providers',
         '/admin/workflows',
@@ -318,6 +320,7 @@ const settingsNavItems = computed(() => {
     byTo.get('/aide'),
     byTo.get('/admin/notifications'),
     byTo.get('/admin/organisation'),
+    byTo.get('/admin/applications'),
     byTo.get('/admin/users'),
     byTo.get('/admin/identity-providers'),
     byTo.get('/admin/integrations'),

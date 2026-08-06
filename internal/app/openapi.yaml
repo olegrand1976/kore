@@ -893,6 +893,12 @@ paths:
     get:
       summary: Liste budgets
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: applicationId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Filtre par application
       responses:
         "200":
           description: Liste
@@ -1044,6 +1050,12 @@ paths:
     get:
       summary: Liste des équipes
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: applicationId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Filtre par application
       responses:
         "200":
           description: Liste
@@ -1127,6 +1139,21 @@ paths:
     post:
       summary: Créer une application
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serviceId, libelle]
+              properties:
+                serviceId: { type: string, format: uuid }
+                libelle: { type: string }
+                proprietaire: { type: string }
+                modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
+                uoActivee: { type: boolean }
+                chefUtilisateurId: { type: string, format: uuid, nullable: true }
+                budgetDefautId: { type: string, format: uuid, nullable: true }
       responses:
         "201":
           description: Application créée
@@ -1140,10 +1167,24 @@ paths:
         "200":
           description: Détail
     put:
-      summary: Modifier une application (libellé, active)
+      summary: Modifier une application (libellé, active, paramétrage §4.3)
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                libelle: { type: string }
+                active: { type: boolean }
+                proprietaire: { type: string }
+                modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
+                uoActivee: { type: boolean }
+                chefUtilisateurId: { type: string, format: uuid, nullable: true }
+                budgetDefautId: { type: string, format: uuid, nullable: true }
       responses:
         "200":
           description: Application mise à jour
@@ -1387,8 +1428,28 @@ paths:
     post:
       summary: Créer facture
       security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clientId, lines]
+              properties:
+                clientId: { type: string, format: uuid }
+                type: { type: string, enum: [standard, credit_note] }
+                currency: { type: string }
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      description: { type: string }
+                      quantity: { type: number }
+                      unitPrice: { type: integer, description: Montant unitaire en centimes }
+                      taxRate: { type: number }
       responses:
         "201": { description: Créé }
+        "403": { description: Facturation désactivée pour l'organisation }
   /invoices/{id}:
     get:
       summary: Détail facture

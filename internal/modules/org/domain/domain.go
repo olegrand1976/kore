@@ -23,6 +23,9 @@ var (
 	ErrEquipeNotFound            = errors.New("equipe not found")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrApplicationNotFound       = errors.New("application not found")
+	ErrInvalidModeFacturation    = errors.New("invalid mode facturation")
+	ErrInvalidApplicationLibelle = errors.New("application libelle required")
+	ErrBudgetNotFound            = errors.New("budget not found for application")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
 	ErrCannotDemoteSelf          = errors.New("cannot remove own administrator profile")
 	ErrLastAdmin                 = errors.New("cannot remove the last administrator")
@@ -326,15 +329,37 @@ type ServiceSummary struct {
 	ResponsableID *uuid.UUID `json:"responsableId,omitempty"`
 }
 
+// Mode facturation values for an Application (spec §4.3 Non / Forfait / Réel).
+const (
+	ModeFacturationNon        = "non"
+	ModeFacturationForfait    = "forfait"
+	ModeFacturationTempsPasse = "temps_passe" // « Réel »
+	DefaultModeFacturation    = ModeFacturationTempsPasse
+)
+
+func NormalizeModeFacturation(raw string) (string, error) {
+	if raw == "" {
+		return DefaultModeFacturation, nil
+	}
+	switch raw {
+	case ModeFacturationNon, ModeFacturationForfait, ModeFacturationTempsPasse:
+		return raw, nil
+	default:
+		return "", ErrInvalidModeFacturation
+	}
+}
+
 type Application struct {
-	ID              uuid.UUID       `json:"id"`
-	TenantID        kernel.TenantID `json:"tenantId"`
-	ServiceID       uuid.UUID       `json:"serviceId"`
-	Libelle         string          `json:"libelle"`
-	Proprietaire    string          `json:"proprietaire,omitempty"`
-	ModeFacturation string          `json:"modeFacturation,omitempty"`
-	UOActivee       bool            `json:"uoActivee"`
-	Active          bool            `json:"active"`
+	ID                uuid.UUID       `json:"id"`
+	TenantID          kernel.TenantID `json:"tenantId"`
+	ServiceID         uuid.UUID       `json:"serviceId"`
+	Libelle           string          `json:"libelle"`
+	Proprietaire      string          `json:"proprietaire,omitempty"`
+	ModeFacturation   string          `json:"modeFacturation,omitempty"`
+	UOActivee         bool            `json:"uoActivee"`
+	ChefUtilisateurID *uuid.UUID      `json:"chefUtilisateurId,omitempty"`
+	BudgetDefautID    *uuid.UUID      `json:"budgetDefautId,omitempty"`
+	Active            bool            `json:"active"`
 }
 
 type ClientContact struct {

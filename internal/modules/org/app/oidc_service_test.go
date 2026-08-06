@@ -45,7 +45,7 @@ func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID, ports.
 	return nil, nil
 }
 func (s *oidcRepoStub) UpdateApplication(context.Context, domain.Application) error { return nil }
-func (s *oidcRepoStub) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+func (s *oidcRepoStub) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return nil, nil
 }
 func (s *oidcRepoStub) ListServices(context.Context, kernel.TenantID) ([]domain.ServiceSummary, error) {
@@ -53,6 +53,9 @@ func (s *oidcRepoStub) ListServices(context.Context, kernel.TenantID) ([]domain.
 }
 func (s *oidcRepoStub) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
+}
+func (s *oidcRepoStub) BudgetBelongsToApplication(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (bool, error) {
+	return false, nil
 }
 func (s *oidcRepoStub) SaveUser(_ context.Context, u domain.User) error {
 	if s.users == nil {

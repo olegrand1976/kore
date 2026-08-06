@@ -9,19 +9,90 @@ export type OrgApplication = {
   ModeFacturation?: string
   uoActivee?: boolean
   UOActivee?: boolean
+  chefUtilisateurId?: string
+  ChefUtilisateurID?: string
+  budgetDefautId?: string
+  BudgetDefautID?: string
   active?: boolean
   Active?: boolean
   serviceId?: string
   ServiceID?: string
 }
 
+export type ApplicationWriteBody = {
+  serviceId?: string
+  libelle?: string
+  proprietaire?: string
+  modeFacturation?: string
+  uoActivee?: boolean
+  chefUtilisateurId?: string | null
+  budgetDefautId?: string | null
+  active?: boolean
+}
+
+export const MODE_FACTURATION_VALUES = ['non', 'forfait', 'temps_passe'] as const
+export type ModeFacturation = (typeof MODE_FACTURATION_VALUES)[number]
+
+export function pickAppId(app: OrgApplication | undefined | null) {
+  return app?.id ?? app?.ID ?? ''
+}
+
+export function pickAppLabel(app: OrgApplication | undefined | null) {
+  return app?.libelle ?? app?.Libelle ?? ''
+}
+
+export function pickAppClient(app: OrgApplication | undefined | null) {
+  return app?.proprietaire ?? app?.Proprietaire ?? ''
+}
+
+export function pickAppActive(app: OrgApplication | undefined | null) {
+  return app?.active ?? app?.Active ?? true
+}
+
+export function pickAppServiceId(app: OrgApplication | undefined | null) {
+  return app?.serviceId ?? app?.ServiceID ?? ''
+}
+
+export function pickAppMode(app: OrgApplication | undefined | null) {
+  return app?.modeFacturation ?? app?.ModeFacturation ?? 'temps_passe'
+}
+
+export function pickAppChefId(app: OrgApplication | undefined | null) {
+  return app?.chefUtilisateurId ?? app?.ChefUtilisateurID ?? ''
+}
+
+export function pickAppBudgetDefautId(app: OrgApplication | undefined | null) {
+  return app?.budgetDefautId ?? app?.BudgetDefautID ?? ''
+}
+
+/** RG-BUD-01: default budget type is stored as "defaut" (legacy "default" accepted in UI). */
+export function isDefaultBudgetType(type: string | undefined | null): boolean {
+  const normalized = String(type ?? '').toLowerCase()
+  return normalized === 'defaut' || normalized === 'default'
+}
+
+export function filterByApplicationId<T extends { applicationId?: string; ApplicationID?: string }>(
+  items: T[],
+  applicationId: string
+) {
+  return items.filter((item) => (item.applicationId ?? item.ApplicationID ?? '') === applicationId)
+}
+
+export function defaultBudgetsForApplication<
+  T extends {
+    applicationId?: string
+    ApplicationID?: string
+    type?: string
+    Type?: string
+  }
+>(items: T[], applicationId: string): T[] {
+  return filterByApplicationId(items, applicationId).filter((item) =>
+    isDefaultBudgetType(item.type ?? item.Type)
+  )
+}
+
 export function useApplications() {
   const { apiFetch } = useApiFetch()
-  const pickAppId = (app: OrgApplication) => app.id ?? app.ID ?? ''
-  const pickAppLabel = (app: OrgApplication | undefined | null) => app?.libelle ?? app?.Libelle ?? ''
-  const pickAppClient = (app: OrgApplication | undefined | null) => app?.proprietaire ?? app?.Proprietaire ?? ''
-  const pickAppActive = (app: OrgApplication | undefined | null) =>
-    app?.active ?? app?.Active ?? true
 
   const list = async (opts?: { active?: 'true' | 'false' | 'all' }) => {
     const active = opts?.active ?? 'true'
@@ -35,7 +106,14 @@ export function useApplications() {
     return (res?.data ?? res) as OrgApplication
   }
 
-  const update = async (id: string, body: { libelle?: string; active?: boolean }) => {
+  const create = async (body: ApplicationWriteBody & { serviceId: string; libelle: string }) => {
+    return apiFetch<{ data?: OrgApplication }>('/api/org/applications', {
+      method: 'POST',
+      body
+    })
+  }
+
+  const update = async (id: string, body: ApplicationWriteBody) => {
     return apiFetch<{ data?: OrgApplication }>(`/api/org/applications/${id}`, {
       method: 'PUT',
       body
@@ -62,6 +140,7 @@ export function useApplications() {
   return {
     list,
     get,
+    create,
     update,
     deactivate,
     activate,
@@ -69,6 +148,11 @@ export function useApplications() {
     pickAppId,
     pickAppLabel,
     pickAppClient,
-    pickAppActive
+    pickAppActive,
+    pickAppServiceId,
+    pickAppMode,
+    pickAppChefId,
+    pickAppBudgetDefautId,
+    filterByApplicationId
   }
 }

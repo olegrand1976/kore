@@ -22,7 +22,9 @@
       "filter_all": "All",
       "no_results": "No results for these filters",
       "kanban_unknown": "Other"
-    }
+    },
+    "saving": "Saving…",
+    "actions": "Actions"
   },
   "nav": {
     "modules": "Modules",
@@ -52,7 +54,8 @@
     "settings": "Settings",
     "platform": "Platform",
     "profile": "My profile",
-    "help": "Help"
+    "help": "Help",
+    "applications": "Applications"
   },
   "help": {
     "title": "Help",
@@ -109,7 +112,8 @@
         "admin": {
           "summary": "Full tenant setup and access to all subscribed modules.",
           "bullets": [
-            "Admin area: organization, users, SSO, workflows, settings, subscription.",
+            "Admin area: organisation (identity, structure), applications, users, SSO, workflows, settings, subscription.",
+            "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
             "Support and maintenance: full rights when channels are enabled.",
             "Self-edit: can add other profiles, but cannot remove own Administrator or deactivate own account."
@@ -1379,7 +1383,8 @@
     "equipe_hint": "The team links the person to an application: that is what makes their requests assignable in the timesheet.",
     "equipes_hint": "Multiple teams allowed: the person is linked to each associated application.",
     "equipe_empty_hint": "No team exists yet. Create one from Administration → Organisation → Structure.",
-    "active_self_hint": "You cannot deactivate your own account."
+    "active_self_hint": "You cannot deactivate your own account.",
+    "application_filter": "Application"
   },
   "org": {
     "title": "Organization",
@@ -1777,5 +1782,64 @@
       "save_success": "AI model updated",
       "save_error": "Unable to save model"
     }
+  },
+  "applications": {
+    "title": "Applications",
+    "subtitle": "TMA scopes, teams and budgets",
+    "add": "Add",
+    "loading": "Loading…",
+    "forbidden": "Administrators only",
+    "empty": "No applications",
+    "search_placeholder": "Search an application…",
+    "col_libelle": "Label",
+    "col_service": "Service",
+    "col_proprietaire": "Owner",
+    "col_mode": "Billing",
+    "col_equipes": "Teams",
+    "col_status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "deactivate_confirm": "Deactivate application \"{name}\"?",
+    "create_title": "New application",
+    "edit_title": "Edit application",
+    "field_service": "Parent service",
+    "field_service_placeholder": "Choose a service",
+    "field_libelle": "Label",
+    "field_proprietaire": "Owner",
+    "field_mode": "Billing mode",
+    "field_uo": "UO enabled",
+    "field_chef": "User lead",
+    "field_chef_none": "None",
+    "mode_non": "Non-billable",
+    "mode_forfait": "Fixed price",
+    "mode_temps_passe": "Time & materials",
+    "section_equipes": "Teams",
+    "section_users": "Users",
+    "section_budgets": "Budgets",
+    "empty_equipes": "No linked teams",
+    "empty_users": "No users via teams",
+    "empty_budgets": "No linked budgets",
+    "new_equipe_placeholder": "New team name",
+    "add_equipe": "Add team",
+    "users_hint": "Tick collaborators assigned to a team of this application.",
+    "membership_equipe": "Team for assignment",
+    "membership_users": "Members",
+    "membership_need_equipe": "Create a team first to assign users.",
+    "membership_updated": "Assignment updated",
+    "manage_users": "Manage users",
+    "budget_default": "Default",
+    "field_budget_defaut": "Default budget (org reference)",
+    "field_budget_defaut_none": "None",
+    "field_budget_defaut_hint": "Only budgets of type Default (RG-BUD-01) can be linked here.",
+    "create_budget": "Create budget",
+    "validation_required": "Service and label are required",
+    "created": "Application created",
+    "updated": "Application updated",
+    "activated": "Application activated",
+    "deactivated": "Application deactivated",
+    "equipe_created": "Team created",
+    "open_in_admin": "Open"
   }
 }

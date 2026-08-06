@@ -37,9 +37,14 @@ type CreateServiceCommand struct {
 }
 
 type CreateApplicationCommand struct {
-	TenantID  kernel.TenantID
-	ServiceID uuid.UUID
-	Libelle   string
+	TenantID          kernel.TenantID
+	ServiceID         uuid.UUID
+	Libelle           string
+	Proprietaire      string
+	ModeFacturation   string
+	UOActivee         bool
+	ChefUtilisateurID *uuid.UUID
+	BudgetDefautID    *uuid.UUID
 }
 
 // ApplicationListFilter filters ListApplications.
@@ -48,11 +53,21 @@ type ApplicationListFilter struct {
 	Active *bool
 }
 
+// EquipeListFilter filters ListEquipes. ApplicationID nil = all equipes.
+type EquipeListFilter struct {
+	ApplicationID *uuid.UUID
+}
+
 type UpdateApplicationCommand struct {
-	TenantID      kernel.TenantID
-	ApplicationID uuid.UUID
-	Libelle       *string
-	Active        *bool
+	TenantID          kernel.TenantID
+	ApplicationID     uuid.UUID
+	Libelle           *string
+	Active            *bool
+	Proprietaire      *string
+	ModeFacturation   *string
+	UOActivee         *bool
+	ChefUtilisateurID **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
+	BudgetDefautID    **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 }
 
 type SetApplicationActiveCommand struct {
@@ -132,9 +147,11 @@ type OrganizationRepository interface {
 	UpdateApplication(ctx context.Context, a domain.Application) error
 	SaveEquipe(ctx context.Context, e domain.Equipe) error
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
-	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
+	ListEquipes(ctx context.Context, tenant kernel.TenantID, filter EquipeListFilter) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
+	// BudgetBelongsToApplication is true only for a budget of type "defaut" on that application (RG-BUD-01).
+	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)
@@ -248,7 +265,7 @@ type OrganizationService interface {
 	CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (domain.Equipe, error)
 	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
-	ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error)
+	ListEquipes(ctx context.Context, tenant kernel.TenantID, filter EquipeListFilter) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)

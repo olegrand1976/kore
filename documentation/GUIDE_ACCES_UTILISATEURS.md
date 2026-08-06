@@ -46,7 +46,8 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Administrateur
 
-- Menus admin : organisation, utilisateurs, SSO, workflows, paramètres, abonnement, notifications.
+- Menus admin : organisation (identité / structure), **applications**, utilisateurs, SSO, workflows, paramètres, abonnement, notifications.
+- Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`

@@ -344,19 +344,33 @@ func (r *Repository) SaveEquipe(ctx context.Context, e domain.Equipe) error {
 }
 
 func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) error {
+	mode := a.ModeFacturation
+	if mode == "" {
+		mode = domain.DefaultModeFacturation
+	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.applications (id, tenant_id, service_id, libelle, active)
-		VALUES ($1, $2, $3, $4, $5)
-	`, a.ID, a.TenantID.UUID(), a.ServiceID, a.Libelle, a.Active)
+		INSERT INTO org.applications (
+			id, tenant_id, service_id, libelle, proprietaire, mode_facturation,
+			uo_activee, chef_utilisateur_id, budget_defaut_id, active
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, a.ID, a.TenantID.UUID(), a.ServiceID, a.Libelle, nullIfEmpty(a.Proprietaire), mode,
+		a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active)
 	return err
 }
 
 func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application) error {
+	mode := a.ModeFacturation
+	if mode == "" {
+		mode = domain.DefaultModeFacturation
+	}
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE org.applications
-		SET libelle = $3, active = $4
+		SET libelle = $3, active = $4, proprietaire = $5, mode_facturation = $6,
+		    uo_activee = $7, chef_utilisateur_id = $8, budget_defaut_id = $9
 		WHERE tenant_id = $1 AND id = $2
-	`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active)
+	`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active, nullIfEmpty(a.Proprietaire), mode,
+		a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID)
 	if err != nil {
 		return err
 	}
@@ -366,11 +380,18 @@ func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application
 	return nil
 }
 
+func nullIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantID, filter ports.ApplicationListFilter) ([]domain.Application, error) {
 	query := `
 		SELECT id, tenant_id, service_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
-		       active
+		       chef_utilisateur_id, budget_defaut_id, active
 		FROM org.applications
 		WHERE tenant_id = $1`
 	args := []any{tenant.UUID()}
@@ -396,13 +417,19 @@ func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantI
 	return out, rows.Err()
 }
 
-func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {
-	rows, err := r.pool.Query(ctx, `
+func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID, filter ports.EquipeListFilter) ([]domain.Equipe, error) {
+	query := `
 		SELECT id, tenant_id, application_id, libelle, responsable_id
 		FROM org.equipes
-		WHERE tenant_id = $1
-		ORDER BY libelle
-	`, tenant.UUID())
+		WHERE tenant_id = $1`
+	args := []any{tenant.UUID()}
+	if filter.ApplicationID != nil {
+		query += ` AND application_id = $2`
+		args = append(args, *filter.ApplicationID)
+	}
+	query += ` ORDER BY libelle`
+
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -449,11 +476,18 @@ func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID,
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, service_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
-		       active
+		       chef_utilisateur_id, budget_defaut_id, active
 		FROM org.applications
 		WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
-	return scanApplication(row)
+	app, err := scanApplication(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Application{}, domain.ErrApplicationNotFound
+		}
+		return domain.Application{}, err
+	}
+	return app, nil
 }
 
 func scanApplication(row pgx.Row) (domain.Application, error) {
@@ -462,7 +496,8 @@ func scanApplication(row pgx.Row) (domain.Application, error) {
 	var proprietaire, modeFacturation string
 	if err := row.Scan(
 		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
-		&proprietaire, &modeFacturation, &app.UOActivee, &app.Active,
+		&proprietaire, &modeFacturation, &app.UOActivee,
+		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active,
 	); err != nil {
 		return domain.Application{}, err
 	}
@@ -478,7 +513,8 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 	var proprietaire, modeFacturation string
 	if err := rows.Scan(
 		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
-		&proprietaire, &modeFacturation, &app.UOActivee, &app.Active,
+		&proprietaire, &modeFacturation, &app.UOActivee,
+		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active,
 	); err != nil {
 		return domain.Application{}, err
 	}
@@ -513,12 +549,28 @@ func (r *Repository) FindUserByID(ctx context.Context, tenant kernel.TenantID, i
 		FROM org.users WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), id))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.User{}, domain.ErrUserNotFound
+		}
 		return domain.User{}, err
 	}
 	if err := r.loadUserMemberships(ctx, &u); err != nil {
 		return domain.User{}, err
 	}
 	return u, nil
+}
+
+// BudgetBelongsToApplication reports whether budgetID is the application default
+// budget (same tenant + application + type 'defaut' — RG-BUD-01 source of truth).
+func (r *Repository) BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM budget.budgets
+			WHERE tenant_id = $1 AND id = $2 AND application_id = $3 AND type = 'defaut'
+		)
+	`, tenant.UUID(), budgetID, applicationID).Scan(&exists)
+	return exists, err
 }
 
 func (r *Repository) FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (ports.UserDetail, error) {

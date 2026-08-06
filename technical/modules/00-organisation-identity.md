@@ -119,10 +119,13 @@ type UserIdentityRepository interface {
 | POST | `/api/v1/sites` | Admin (E) | Créer site |
 | GET | `/api/v1/sites` | Admin (L) | Liste des sites (arbre d'administration) |
 | POST | `/api/v1/services` | Admin (E) | Créer service (`libelle`, `type`, responsable requis) |
-| POST | `/api/v1/applications` | Admin (E) | Créer application |
+| POST | `/api/v1/applications` | Admin (E) | Créer application (libellé, propriétaire, mode facturation, UO, chef, budget défaut) |
+| GET | `/api/v1/applications` | selon RBAC | Liste (`?active=true|false|all`) |
 | GET | `/api/v1/applications/{id}` | selon RBAC | Détail application |
+| PUT | `/api/v1/applications/{id}` | Admin (E) | Modifier libellé, active, paramétrage §4.3 |
+| PATCH | `/api/v1/applications/{id}/activate\|deactivate` | Admin (E) | Soft activate/deactivate |
 | POST | `/api/v1/equipes` | Admin (E) | Créer équipe rattachée à une application |
-| GET | `/api/v1/equipes` | Admin / Workflow (L) | Liste des équipes |
+| GET | `/api/v1/equipes` | Admin / Workflow (L) | Liste des équipes (`?applicationId=`) |
 | POST | `/api/v1/users` | Admin (E) | Créer compte (login libre, `equipeId` optionnel) |
 | PUT | `/api/v1/users/{id}` | Admin (E) | Modifier profil, mot de passe, activation, `equipeId` |
 | POST | `/api/v1/services/{id}/responsible` | Admin (E) | Affecter responsable |
@@ -186,8 +189,8 @@ Couverture cible : domaine > 90 %, app > 80 %.
 
 | Élément | Détail |
 | --- | --- |
-| Pages | `login`, `admin/organisation` (onglets **Identité** / **Structure**), `admin/users`, `clients` |
-| Composants | `OrgTree` (arbre société → site → service → application → équipe, création par niveau), `UserForm`, `ClientForm` |
+| Pages | `login`, `admin/organisation` (Identité / Structure), `admin/applications`, `admin/users`, `clients` |
+| Composants | `OrgTree` (arbre société → site → service → application → équipe), fiche Applications (liste + modal), `UserForm`, `ClientForm` |
 | Composables | `useAuth()`, `useOrganisation()`, `useClients()` |
 | Store Pinia | `auth`, `organization` |
 | Routes BFF | `server/api/auth/*`, `server/api/org/*` (sites, services, applications, equipes, users, clients) |
@@ -211,10 +214,12 @@ Couverture cible : domaine > 90 %, app > 80 %.
 - [x] Hiérarchie org : **création et lecture** de tous les niveaux (société, site, service,
   application, équipe) exposées en API **et** dans l'écran `admin/organisation` → onglet Structure,
   couvertes par tests app/HTTP/intégration.
+- [x] Applications : **update** paramétrage §4.3 (propriétaire, mode facturation, UO, chef, budget défaut)
+  + soft deactivate ; page admin `/admin/applications`.
 - [x] Rattachement collaborateur → équipe modifiable après création (`PUT /users/{id}`, champ `equipeId`).
-- [ ] Hiérarchie org : **modification et suppression** des niveaux (aucun `PUT`/`DELETE` sur
-  `sites`, `services`, `applications`, `equipes`) — la correction d'une faute de frappe impose
-  aujourd'hui un passage en base.
+- [ ] Hiérarchie org : **modification et suppression** des niveaux site/service/équipe (aucun `PUT`/`DELETE`
+  sur `sites`, `services`, `equipes`) — la correction d'une faute de frappe impose aujourd'hui un
+  passage en base.
 - [x] Auth login/refresh/logout via cookies httpOnly opérationnelle.
 - [x] Matrice RBAC §3.3 chargée et appliquée par middleware.
 - [x] Isolation multi-tenant vérifiée par test d'intégration.

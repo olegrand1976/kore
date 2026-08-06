@@ -41,7 +41,7 @@ func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID, port
 	return nil, nil
 }
 func (r refreshUserRepo) UpdateApplication(context.Context, domain.Application) error { return nil }
-func (r refreshUserRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+func (r refreshUserRepo) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return nil, nil
 }
 func (r refreshUserRepo) ListServices(context.Context, kernel.TenantID) ([]domain.ServiceSummary, error) {
@@ -49,6 +49,9 @@ func (r refreshUserRepo) ListServices(context.Context, kernel.TenantID) ([]domai
 }
 func (r refreshUserRepo) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
+}
+func (r refreshUserRepo) BudgetBelongsToApplication(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (bool, error) {
+	return false, nil
 }
 func (r refreshUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {

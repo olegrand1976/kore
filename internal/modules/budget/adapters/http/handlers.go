@@ -76,6 +76,20 @@ func listBudgets(budgets ports.BudgetService, authorizer authx.Authorizer) http.
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
+		if raw := r.URL.Query().Get("applicationId"); raw != "" {
+			appID, err := uuid.Parse(raw)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid applicationId")
+				return
+			}
+			filtered := make([]domain.Budget, 0, len(items))
+			for _, b := range items {
+				if b.ApplicationID == appID {
+					filtered = append(filtered, b)
+				}
+			}
+			items = filtered
+		}
 		httpx.WriteData(w, http.StatusOK, items)
 	}
 }

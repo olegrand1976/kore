@@ -22,7 +22,9 @@
       "filter_all": "Tous",
       "no_results": "Aucun résultat pour ces filtres",
       "kanban_unknown": "Autre"
-    }
+    },
+    "saving": "Enregistrement…",
+    "actions": "Actions"
   },
   "nav": {
     "modules": "Modules",
@@ -52,7 +54,8 @@
     "settings": "Paramètres",
     "platform": "Plateforme",
     "profile": "Mon profil",
-    "help": "Aide"
+    "help": "Aide",
+    "applications": "Applications"
   },
   "help": {
     "title": "Aide",
@@ -109,7 +112,8 @@
         "admin": {
           "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
           "bullets": [
-            "Accès à l'administration : organisation, utilisateurs, SSO, workflows, paramètres, abonnement.",
+            "Accès à l'administration : organisation (identité, structure), applications, utilisateurs, SSO, workflows, paramètres, abonnement.",
+            "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
             "Support et maintenance : droits complets lorsque les canaux sont activés.",
             "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte."
@@ -1379,7 +1383,8 @@
     "equipe_hint": "L'équipe rattache le collaborateur à une application : c'est ce qui rend ses demandes affectables dans le CRA.",
     "equipes_hint": "Plusieurs équipes possibles : le collaborateur est rattaché à chaque application associée.",
     "equipe_empty_hint": "Aucune équipe n'existe encore. Créez-en une depuis Administration → Organisation → Structure.",
-    "active_self_hint": "Vous ne pouvez pas désactiver votre propre compte."
+    "active_self_hint": "Vous ne pouvez pas désactiver votre propre compte.",
+    "application_filter": "Application"
   },
   "org": {
     "title": "Organisation",
@@ -1777,5 +1782,64 @@
       "save_success": "Modèle IA mis à jour",
       "save_error": "Impossible d'enregistrer le modèle"
     }
+  },
+  "applications": {
+    "title": "Applications",
+    "subtitle": "Périmètres TMA, équipes et budgets",
+    "add": "Ajouter",
+    "loading": "Chargement…",
+    "forbidden": "Accès réservé aux administrateurs",
+    "empty": "Aucune application",
+    "search_placeholder": "Rechercher une application…",
+    "col_libelle": "Libellé",
+    "col_service": "Service",
+    "col_proprietaire": "Propriétaire",
+    "col_mode": "Facturation",
+    "col_equipes": "Équipes",
+    "col_status": "Statut",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "deactivate_confirm": "Désactiver l'application « {name} » ?",
+    "create_title": "Nouvelle application",
+    "edit_title": "Modifier l'application",
+    "field_service": "Service parent",
+    "field_service_placeholder": "Choisir un service",
+    "field_libelle": "Libellé",
+    "field_proprietaire": "Propriétaire",
+    "field_mode": "Mode de facturation",
+    "field_uo": "UO activée",
+    "field_chef": "Chef utilisateur",
+    "field_chef_none": "Aucun",
+    "mode_non": "Non facturable",
+    "mode_forfait": "Forfait",
+    "mode_temps_passe": "Réel (temps passé)",
+    "section_equipes": "Équipes",
+    "section_users": "Utilisateurs",
+    "section_budgets": "Budgets",
+    "empty_equipes": "Aucune équipe rattachée",
+    "empty_users": "Aucun utilisateur via les équipes",
+    "empty_budgets": "Aucun budget lié",
+    "new_equipe_placeholder": "Nom de la nouvelle équipe",
+    "add_equipe": "Ajouter une équipe",
+    "users_hint": "Cochez les collaborateurs rattachés à une équipe de cette application.",
+    "membership_equipe": "Équipe pour l'affectation",
+    "membership_users": "Membres",
+    "membership_need_equipe": "Créez d'abord une équipe pour affecter des utilisateurs.",
+    "membership_updated": "Affectation mise à jour",
+    "manage_users": "Gérer les utilisateurs",
+    "budget_default": "Défaut",
+    "field_budget_defaut": "Budget défaut (référence org)",
+    "field_budget_defaut_none": "Aucun",
+    "field_budget_defaut_hint": "Seuls les budgets de type Défaut (RG-BUD-01) peuvent être liés ici.",
+    "create_budget": "Créer un budget",
+    "validation_required": "Service et libellé sont obligatoires",
+    "created": "Application créée",
+    "updated": "Application mise à jour",
+    "activated": "Application activée",
+    "deactivated": "Application désactivée",
+    "equipe_created": "Équipe créée",
+    "open_in_admin": "Ouvrir"
   }
 }

@@ -9,7 +9,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const { budgetTypeLabel, normalizeBudgetType } = useBudgetDisplay()
-const { pickAppLabel, pickAppClient } = useApplications()
+const { pickAppLabel, pickAppClient, pickAppId } = useApplications()
 
 const clientLabel = computed(() => pickAppClient(props.application) || t('budget.context_empty_client'))
 const isDefault = computed(() => normalizeBudgetType(props.budgetType) === 'defaut')
@@ -21,7 +21,16 @@ const isDefault = computed(() => normalizeBudgetType(props.budgetType) === 'defa
     <dl class="budget-context__dl">
       <div>
         <dt>{{ $t('budget.context_application') }}</dt>
-        <dd>{{ pickAppLabel(application) || $t('budget.col_empty') }}</dd>
+        <dd>
+          <NuxtLink
+            v-if="pickAppId(application)"
+            class="budget-context__link"
+            :to="`/admin/applications?id=${pickAppId(application)}`"
+          >
+            {{ pickAppLabel(application) || $t('budget.col_empty') }}
+          </NuxtLink>
+          <template v-else>{{ pickAppLabel(application) || $t('budget.col_empty') }}</template>
+        </dd>
       </div>
       <div>
         <dt>{{ $t('budget.context_client') }}</dt>
@@ -69,6 +78,11 @@ const isDefault = computed(() => normalizeBudgetType(props.budgetType) === 'defa
 .budget-context__dl dd {
   margin: 0;
   text-align: right;
+}
+
+.budget-context__link {
+  color: var(--kore-accent);
+  text-decoration: underline;
 }
 
 .budget-context__role {

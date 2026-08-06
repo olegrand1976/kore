@@ -81,7 +81,7 @@ func TestOrg_SaveEquipeRoundTrip(t *testing.T) {
 		ResponsableID: &responsable,
 	}))
 
-	equipes, err := repo.ListEquipes(ctx, tenant)
+	equipes, err := repo.ListEquipes(ctx, tenant, ports.EquipeListFilter{})
 	require.NoError(t, err)
 	require.Len(t, equipes, 1)
 	require.Equal(t, equipeID, equipes[0].ID)
@@ -93,7 +93,7 @@ func TestOrg_SaveEquipeRoundTrip(t *testing.T) {
 	// Isolation multi-tenant : une autre organisation ne voit pas cette équipe.
 	other := kernel.NewTenantID(uuid.New())
 	require.NoError(t, repo.SaveTenant(ctx, domain.Tenant{ID: other.UUID(), Name: "Autre"}))
-	otherEquipes, err := repo.ListEquipes(ctx, other)
+	otherEquipes, err := repo.ListEquipes(ctx, other, ports.EquipeListFilter{})
 	require.NoError(t, err)
 	require.Empty(t, otherEquipes)
 }
@@ -113,7 +113,7 @@ func TestOrg_SaveEquipeWithoutResponsable(t *testing.T) {
 		Libelle:       "Équipe sans responsable",
 	}))
 
-	equipes, err := repo.ListEquipes(ctx, tenant)
+	equipes, err := repo.ListEquipes(ctx, tenant, ports.EquipeListFilter{})
 	require.NoError(t, err)
 	require.Len(t, equipes, 1)
 	require.Nil(t, equipes[0].ResponsableID)
@@ -196,12 +196,18 @@ func TestOrg_UpdateApplicationActiveRoundTrip(t *testing.T) {
 
 	got.Libelle = "Portail Client V2"
 	got.Active = false
+	got.Proprietaire = "ACME"
+	got.ModeFacturation = domain.ModeFacturationForfait
+	got.UOActivee = true
 	require.NoError(t, repo.UpdateApplication(ctx, got))
 
 	updated, err := repo.GetApplication(ctx, tenant, appID)
 	require.NoError(t, err)
 	require.Equal(t, "Portail Client V2", updated.Libelle)
 	require.False(t, updated.Active)
+	require.Equal(t, "ACME", updated.Proprietaire)
+	require.Equal(t, domain.ModeFacturationForfait, updated.ModeFacturation)
+	require.True(t, updated.UOActivee)
 
 	activeOnly := true
 	active, err := repo.ListApplications(ctx, tenant, ports.ApplicationListFilter{Active: &activeOnly})

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -86,12 +87,31 @@ func (s *organizationService) CreateService(ctx context.Context, cmd ports.Creat
 }
 
 func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.CreateApplicationCommand) (domain.Application, error) {
+	libelle := strings.TrimSpace(cmd.Libelle)
+	if libelle == "" {
+		return domain.Application{}, domain.ErrInvalidApplicationLibelle
+	}
+	mode, err := domain.NormalizeModeFacturation(cmd.ModeFacturation)
+	if err != nil {
+		return domain.Application{}, err
+	}
+	if err := s.assertChefInTenant(ctx, cmd.TenantID, cmd.ChefUtilisateurID); err != nil {
+		return domain.Application{}, err
+	}
+	// Un budget est déjà lié à une application : impossible de poser budgetDefautId à la création.
+	if cmd.BudgetDefautID != nil {
+		return domain.Application{}, domain.ErrBudgetNotFound
+	}
 	app := domain.Application{
-		ID:        uuid.New(),
-		TenantID:  cmd.TenantID,
-		ServiceID: cmd.ServiceID,
-		Libelle:   cmd.Libelle,
-		Active:    true,
+		ID:                uuid.New(),
+		TenantID:          cmd.TenantID,
+		ServiceID:         cmd.ServiceID,
+		Libelle:           libelle,
+		Proprietaire:      strings.TrimSpace(cmd.Proprietaire),
+		ModeFacturation:   mode,
+		UOActivee:         cmd.UOActivee,
+		ChefUtilisateurID: cmd.ChefUtilisateurID,
+		Active:            true,
 	}
 	return app, s.repo.SaveApplication(ctx, app)
 }
@@ -102,15 +122,79 @@ func (s *organizationService) UpdateApplication(ctx context.Context, cmd ports.U
 		return domain.Application{}, domain.ErrApplicationNotFound
 	}
 	if cmd.Libelle != nil {
-		app.Libelle = *cmd.Libelle
+		libelle := strings.TrimSpace(*cmd.Libelle)
+		if libelle == "" {
+			return domain.Application{}, domain.ErrInvalidApplicationLibelle
+		}
+		app.Libelle = libelle
 	}
 	if cmd.Active != nil {
 		app.Active = *cmd.Active
+	}
+	if cmd.Proprietaire != nil {
+		app.Proprietaire = strings.TrimSpace(*cmd.Proprietaire)
+	}
+	if cmd.ModeFacturation != nil {
+		mode, err := domain.NormalizeModeFacturation(*cmd.ModeFacturation)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		app.ModeFacturation = mode
+	}
+	if cmd.UOActivee != nil {
+		app.UOActivee = *cmd.UOActivee
+	}
+	if cmd.ChefUtilisateurID != nil {
+		if *cmd.ChefUtilisateurID == nil {
+			app.ChefUtilisateurID = nil
+		} else {
+			if err := s.assertChefInTenant(ctx, cmd.TenantID, *cmd.ChefUtilisateurID); err != nil {
+				return domain.Application{}, err
+			}
+			app.ChefUtilisateurID = *cmd.ChefUtilisateurID
+		}
+	}
+	if cmd.BudgetDefautID != nil {
+		if *cmd.BudgetDefautID == nil {
+			app.BudgetDefautID = nil
+		} else {
+			if err := s.assertBudgetForApplication(ctx, cmd.TenantID, *cmd.BudgetDefautID, app.ID); err != nil {
+				return domain.Application{}, err
+			}
+			app.BudgetDefautID = *cmd.BudgetDefautID
+		}
 	}
 	if err := s.repo.UpdateApplication(ctx, app); err != nil {
 		return domain.Application{}, err
 	}
 	return app, nil
+}
+
+func (s *organizationService) assertChefInTenant(ctx context.Context, tenant kernel.TenantID, chefID *uuid.UUID) error {
+	if chefID == nil {
+		return nil
+	}
+	if _, err := s.repo.FindUserByID(ctx, tenant, *chefID); err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return domain.ErrUserNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *organizationService) assertBudgetForApplication(ctx context.Context, tenant kernel.TenantID, budgetID *uuid.UUID, applicationID uuid.UUID) error {
+	if budgetID == nil {
+		return nil
+	}
+	ok, err := s.repo.BudgetBelongsToApplication(ctx, tenant, *budgetID, applicationID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return domain.ErrBudgetNotFound
+	}
+	return nil
 }
 
 func (s *organizationService) SetApplicationActive(ctx context.Context, cmd ports.SetApplicationActiveCommand) (domain.Application, error) {
@@ -143,8 +227,8 @@ func (s *organizationService) ListApplications(ctx context.Context, tenant kerne
 	return s.repo.ListApplications(ctx, tenant, filter)
 }
 
-func (s *organizationService) ListEquipes(ctx context.Context, tenant kernel.TenantID) ([]domain.Equipe, error) {
-	return s.repo.ListEquipes(ctx, tenant)
+func (s *organizationService) ListEquipes(ctx context.Context, tenant kernel.TenantID, filter ports.EquipeListFilter) ([]domain.Equipe, error) {
+	return s.repo.ListEquipes(ctx, tenant, filter)
 }
 
 func (s *organizationService) ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error) {
@@ -729,7 +813,7 @@ func (s *userService) assertEquipesInTenant(ctx context.Context, tenant kernel.T
 	if len(ids) == 0 {
 		return nil
 	}
-	equipes, err := s.repo.ListEquipes(ctx, tenant)
+	equipes, err := s.repo.ListEquipes(ctx, tenant, ports.EquipeListFilter{})
 	if err != nil {
 		return err
 	}

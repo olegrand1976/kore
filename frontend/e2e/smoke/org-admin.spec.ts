@@ -95,4 +95,29 @@ test.describe('org admin', () => {
       page.locator('tbody tr', { hasText: 'ADM_admin' }).first().getByText(/administrateur/i)
     ).toBeVisible()
   })
+
+  test('applications admin page can create and deactivate', async ({ page }) => {
+    const appName = `E2E App ${Date.now()}`
+
+    await page.goto('/admin/applications')
+    await expect(page.getByRole('heading', { name: /applications/i })).toBeVisible({
+      timeout: 20_000
+    })
+
+    await page.getByRole('button', { name: /ajouter|add/i }).first().click()
+    const serviceSelect = page.locator('select.apps-form__input').first()
+    await expect(serviceSelect).toBeVisible()
+    const options = serviceSelect.locator('option')
+    const optionCount = await options.count()
+    expect(optionCount).toBeGreaterThan(1)
+    await serviceSelect.selectOption({ index: 1 })
+    await page.locator('input.apps-form__input').first().fill(appName)
+    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+    await expect(page.getByText(appName)).toBeVisible({ timeout: 20_000 })
+
+    const row = page.locator('tbody tr', { hasText: appName }).first()
+    page.once('dialog', (dialog) => dialog.accept())
+    await row.getByRole('button', { name: /désactiver|deactivate/i }).click()
+    await expect(row.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
+  })
 })

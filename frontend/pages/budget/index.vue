@@ -10,7 +10,7 @@
           variant="ghost"
           size="sm"
           type="button"
-          @click="navigateTo('/admin/organisation?tab=structure')"
+          @click="navigateTo('/admin/applications')"
         >
           {{ $t('budget.manage_applications') }}
         </AppButton>
@@ -96,7 +96,7 @@
               v-if="canManageOrg"
               variant="ghost"
               type="button"
-              @click="navigateTo('/admin/organisation?tab=structure')"
+              @click="navigateTo('/admin/applications')"
             >
               {{ $t('budget.manage_applications') }}
             </AppButton>
@@ -294,8 +294,8 @@ const { data, pending, refresh } = await useAsyncData('budget-list', async () =>
   }
 })
 
-const openCreateModal = () => {
-  createForm.applicationId = ''
+const openCreateModal = (presetApplicationId = '') => {
+  createForm.applicationId = presetApplicationId
   createForm.type = 'defaut'
   createForm.plannedDays = '0'
   createForm.plannedUO = '0'
@@ -462,6 +462,14 @@ const columns = computed(() => [
   { key: 'days', label: t('budget.col_days') },
   { key: 'actions', label: '' }
 ])
+
+const route = useRoute()
+onMounted(() => {
+  if (route.query.create === '1') {
+    const appId = typeof route.query.applicationId === 'string' ? route.query.applicationId : ''
+    openCreateModal(appId)
+  }
+})
 </script>
 
 <style scoped>

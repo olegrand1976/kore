@@ -267,8 +267,13 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			return
 		}
 		var req struct {
-			ServiceID uuid.UUID `json:"serviceId"`
-			Libelle   string    `json:"libelle"`
+			ServiceID         uuid.UUID  `json:"serviceId"`
+			Libelle           string     `json:"libelle"`
+			Proprietaire      string     `json:"proprietaire"`
+			ModeFacturation   string     `json:"modeFacturation"`
+			UOActivee         bool       `json:"uoActivee"`
+			ChefUtilisateurID *uuid.UUID `json:"chefUtilisateurId"`
+			BudgetDefautID    *uuid.UUID `json:"budgetDefautId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -276,11 +281,26 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 		}
 		identity, _ := authx.FromContext(r.Context())
 		a, err := org.CreateApplication(r.Context(), ports.CreateApplicationCommand{
-			TenantID:  identity.TenantID,
-			ServiceID: req.ServiceID,
-			Libelle:   req.Libelle,
+			TenantID:          identity.TenantID,
+			ServiceID:         req.ServiceID,
+			Libelle:           req.Libelle,
+			Proprietaire:      req.Proprietaire,
+			ModeFacturation:   req.ModeFacturation,
+			UOActivee:         req.UOActivee,
+			ChefUtilisateurID: req.ChefUtilisateurID,
+			BudgetDefautID:    req.BudgetDefautID,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrInvalidModeFacturation) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrUserNotFound) ||
+				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
+				errors.Is(err, domain.ErrBudgetNotFound) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
@@ -386,7 +406,16 @@ func listEquipes(org ports.OrganizationService, authorizer authx.Authorizer) htt
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		items, err := org.ListEquipes(r.Context(), identity.TenantID)
+		filter := ports.EquipeListFilter{}
+		if raw := r.URL.Query().Get("applicationId"); raw != "" {
+			appID, err := uuid.Parse(raw)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid applicationId")
+				return
+			}
+			filter.ApplicationID = &appID
+		}
+		items, err := org.ListEquipes(r.Context(), identity.TenantID, filter)
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
@@ -445,27 +474,61 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			return
 		}
 		var req struct {
-			Libelle *string `json:"libelle"`
-			Active  *bool   `json:"active"`
+			Libelle           *string          `json:"libelle"`
+			Active            *bool            `json:"active"`
+			Proprietaire      *string          `json:"proprietaire"`
+			ModeFacturation   *string          `json:"modeFacturation"`
+			UOActivee         *bool            `json:"uoActivee"`
+			ChefUtilisateurID *json.RawMessage `json:"chefUtilisateurId"`
+			BudgetDefautID    *json.RawMessage `json:"budgetDefautId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		if req.Libelle == nil && req.Active == nil {
-			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "libelle or active required")
+		if req.Libelle == nil && req.Active == nil && req.Proprietaire == nil &&
+			req.ModeFacturation == nil && req.UOActivee == nil &&
+			req.ChefUtilisateurID == nil && req.BudgetDefautID == nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
 			return
 		}
+		cmd := ports.UpdateApplicationCommand{
+			ApplicationID:   appID,
+			Libelle:         req.Libelle,
+			Active:          req.Active,
+			Proprietaire:    req.Proprietaire,
+			ModeFacturation: req.ModeFacturation,
+			UOActivee:       req.UOActivee,
+		}
+		if req.ChefUtilisateurID != nil {
+			ptr, err := parseOptionalUUIDField(*req.ChefUtilisateurID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid chefUtilisateurId")
+				return
+			}
+			cmd.ChefUtilisateurID = &ptr
+		}
+		if req.BudgetDefautID != nil {
+			ptr, err := parseOptionalUUIDField(*req.BudgetDefautID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid budgetDefautId")
+				return
+			}
+			cmd.BudgetDefautID = &ptr
+		}
 		identity, _ := authx.FromContext(r.Context())
-		item, err := org.UpdateApplication(r.Context(), ports.UpdateApplicationCommand{
-			TenantID:      identity.TenantID,
-			ApplicationID: appID,
-			Libelle:       req.Libelle,
-			Active:        req.Active,
-		})
+		cmd.TenantID = identity.TenantID
+		item, err := org.UpdateApplication(r.Context(), cmd)
 		if err != nil {
 			if errors.Is(err, domain.ErrApplicationNotFound) {
 				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "application not found")
+				return
+			}
+			if errors.Is(err, domain.ErrInvalidModeFacturation) ||
+				errors.Is(err, domain.ErrUserNotFound) ||
+				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
+				errors.Is(err, domain.ErrBudgetNotFound) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
@@ -473,6 +536,18 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 		}
 		httpx.WriteData(w, http.StatusOK, item)
 	}
+}
+
+// parseOptionalUUIDField decodes JSON null → nil pointer, or a UUID string → *uuid.
+func parseOptionalUUIDField(raw json.RawMessage) (*uuid.UUID, error) {
+	if string(raw) == "null" {
+		return nil, nil
+	}
+	var id uuid.UUID
+	if err := json.Unmarshal(raw, &id); err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 func deactivateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
