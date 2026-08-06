@@ -19,6 +19,8 @@
 
     <AppSectionGuide ref="guideRef" guide-key="cra" />
 
+    <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
+
     <AppKpiGrid compact>
       <AppKpiCard
         icon="list_alt"
@@ -208,8 +210,6 @@
         </AppKanbanBoard>
       </AppCard>
     </template>
-
-    <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
   </div>
 </template>
 
@@ -262,6 +262,7 @@ const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
 const { mapCraError } = useCraError()
 const { canValidateCra, canReadReporting } = usePermissions()
+const { apiFetch } = useApiFetch()
 
 const creating = ref(false)
 const errorMsg = ref('')
@@ -450,7 +451,9 @@ const openCurrentMonth = async () => {
   creating.value = true
   errorMsg.value = ''
   try {
-    const res = await $fetch<any>(`/api/cra/timesheets?month=${currentMonthKey()}`)
+    const res = await apiFetch<{ data?: { id?: string }; id?: string }>(
+      `/api/cra/timesheets?month=${currentMonthKey()}`
+    )
     const ts = res?.data ?? res
     if (ts?.id) {
       await navigateTo(`/cra/${ts.id}`)

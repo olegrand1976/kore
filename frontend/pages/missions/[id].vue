@@ -146,6 +146,7 @@ import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 type MissionCollaborator = {
   userId?: string
   login?: string
@@ -214,7 +215,7 @@ const saveCollaborators = async () => {
   }
   staffSaving.value = true
   try {
-    await $fetch(`/api/ssii/missions/${id.value}/collaborators`, {
+    await apiFetch(`/api/ssii/missions/${id.value}/collaborators`, {
       method: 'PUT',
       body: { collaboratorIds: selectedCollaboratorIds.value }
     })

@@ -49,12 +49,13 @@ function rollingWindow60(date = new Date()) {
 
 export function useReporting() {
   const fetchGantt = async (params?: { start?: string; end?: string; window?: string }) => {
+    const { apiFetch } = useApiFetch()
     const period = params?.window === '60' || (!params?.start && !params?.end)
       ? rollingWindow60()
       : params?.start && params?.end
         ? params
         : monthPeriod()
-    const res = await $fetch<{
+    const res = await apiFetch<{
       data?: {
         period?: ReportingPeriod
         Period?: ReportingPeriod
@@ -82,12 +83,13 @@ export function useReporting() {
   }
 
   const fetchPlanning = async (params?: { start?: string; end?: string; window?: string }) => {
+    const { apiFetch } = useApiFetch()
     const period = params?.window === '60' || (!params?.start && !params?.end)
       ? rollingWindow60()
       : params?.start && params?.end
         ? params
         : monthPeriod()
-    const res = await $fetch<{
+    const res = await apiFetch<{
       data?: {
         rows?: Array<Record<string, unknown>>
         Rows?: Array<Record<string, unknown>>
@@ -110,8 +112,9 @@ export function useReporting() {
   }
 
   const fetchBillingStats = async (params?: { start?: string; end?: string; window?: string }) => {
+    const { apiFetch } = useApiFetch()
     const period = params?.window === '60' ? rollingWindow60() : monthPeriod()
-    const res = await $fetch<{
+    const res = await apiFetch<{
       data?: {
         totalAmount?: number
         TotalAmount?: number

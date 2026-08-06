@@ -32,29 +32,30 @@ function tripleValue(triple: BudgetTriple | undefined, key: 'days' | 'uo' | 'amo
 }
 
 export function useBudget() {
+  const { apiFetch } = useApiFetch()
   const list = async () => {
-    const res = await $fetch<{ data?: BudgetItem[] }>('/api/budget/budgets')
+    const res = await apiFetch<{ data?: BudgetItem[] }>('/api/budget/budgets')
     return res?.data ?? []
   }
 
   const get = async (id: string) => {
-    const res = await $fetch<{ data?: BudgetItem }>(`/api/budget/budgets/${id}`)
+    const res = await apiFetch<{ data?: BudgetItem }>(`/api/budget/budgets/${id}`)
     return res?.data ?? res
   }
 
   const addEstimate = async (budgetId: string, payload: { demandId: string; effortDays: number; effortUO: number }) => {
-    return $fetch(`/api/budget/budgets/${budgetId}/estimates`, { method: 'POST', body: payload })
+    return apiFetch(`/api/budget/budgets/${budgetId}/estimates`, { method: 'POST', body: payload })
   }
 
   const addQuote = async (
     budgetId: string,
     payload: { demandId: string; amount: number; effortDays: number; effortUO: number; supersedesEstimateId?: string }
   ) => {
-    return $fetch(`/api/budget/budgets/${budgetId}/quotes`, { method: 'POST', body: payload })
+    return apiFetch(`/api/budget/budgets/${budgetId}/quotes`, { method: 'POST', body: payload })
   }
 
   const recompute = async (budgetId: string, period: { start: string; end: string }) => {
-    return $fetch(`/api/budget/budgets/${budgetId}/recompute`, { method: 'POST', body: period })
+    return apiFetch(`/api/budget/budgets/${budgetId}/recompute`, { method: 'POST', body: period })
   }
 
   const pickId = (b: BudgetItem) => b.id ?? b.ID ?? ''

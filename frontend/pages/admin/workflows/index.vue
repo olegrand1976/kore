@@ -102,6 +102,7 @@
 <script setup lang="ts">
 import type { WorkflowDefinition, WorkflowPresetCode } from '~/composables/useWorkflowDefinition'
 import {
+const { apiFetch } = useApiFetch()
   WORKFLOW_PRESET_CODES,
   WORKFLOW_PRESETS,
   buildPayload,
@@ -142,7 +143,7 @@ const loadWorkflow = async (code: WorkflowPresetCode) => {
   errorMsg.value = ''
   if (!isHydrating.value) flash.value = ''
   try {
-    const res = await $fetch<{ data?: Parameters<typeof normalizeDefinition>[0] }>(
+    const res = await apiFetch<{ data?: Parameters<typeof normalizeDefinition>[0] }>(
       `/api/admin/workflows/${encodeURIComponent(code)}`
     )
     const raw = (res?.data ?? res) as Parameters<typeof normalizeDefinition>[0]
@@ -180,7 +181,7 @@ const saveWorkflow = async () => {
   errorMsg.value = ''
   flash.value = ''
   try {
-    await $fetch('/api/admin/workflows', {
+    await apiFetch('/api/admin/workflows', {
       method: 'POST',
       body: buildPayload(editor.value)
     })

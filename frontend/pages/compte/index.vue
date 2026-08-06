@@ -115,6 +115,7 @@ import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default', narrow: true })
 
+const { apiFetch } = useApiFetch()
 type UserDetail = {
   id?: string
   login?: string
@@ -234,7 +235,7 @@ const confirmWizard = async () => {
   totpError.value = false
   try {
     if (wizardMode.value === 'enable') {
-      const res = await $fetch<{ data?: { backupCodes?: string[] } }>('/api/org/users/me/2fa/confirm', {
+      const res = await apiFetch<{ data?: { backupCodes?: string[] } }>('/api/org/users/me/2fa/confirm', {
         method: 'POST',
         body: { code: totpCode.value, password: confirmPassword.value }
       })
@@ -245,7 +246,7 @@ const confirmWizard = async () => {
         await refreshTotp()
       }
     } else {
-      await $fetch('/api/org/users/me/2fa/disable', {
+      await apiFetch('/api/org/users/me/2fa/disable', {
         method: 'POST',
         body: { code: totpCode.value, password: confirmPassword.value }
       })

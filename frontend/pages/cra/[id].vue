@@ -181,6 +181,7 @@ import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
 
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
@@ -205,7 +206,7 @@ const pdfPreviewUrl = ref('')
 
 const loadOrgSettings = async () => {
   try {
-    const res = await $fetch<{
+    const res = await apiFetch<{
       data?: {
         weekStartDay?: number
         dayCapacityMinutes?: number
@@ -248,7 +249,7 @@ const loadOrgSettings = async () => {
 
 const loadMissions = async () => {
   try {
-    const res = await $fetch<{ data: Array<Record<string, unknown>> }>('/api/ssii/missions')
+    const res = await apiFetch<{ data: Array<Record<string, unknown>> }>('/api/ssii/missions')
     missions.value = (res.data ?? []).map((item) => {
       const clientName = String(item.clientName ?? item.ClientName ?? '')
       const startDate = String(item.startDate ?? item.StartDate ?? '').slice(0, 10)
@@ -301,7 +302,7 @@ const loadPrefillETT = async () => {
   prefillMsg.value = ''
   actionError.value = ''
   try {
-    const res = await $fetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-ett`, {
+    const res = await apiFetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-ett`, {
       method: 'POST'
     })
     await load(id.value)
@@ -384,7 +385,7 @@ const loadPrefillHolidays = async () => {
   prefillLoading.value = true
   prefillMsg.value = ''
   try {
-    const res = await $fetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-holidays`, {
+    const res = await apiFetch<{ data?: { added?: number } }>(`/api/cra/timesheets/${id.value}/prefill-holidays`, {
       method: 'POST'
     })
     await load(id.value)
@@ -504,7 +505,7 @@ const confirmReject = async () => {
 
 const persistCommercial = async () => {
   const local = (commercialFormRef.value?.local ?? commercial) as typeof commercial
-  await $fetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
+  await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
     method: 'PUT',
     body: {
       client: local.client,
@@ -536,7 +537,7 @@ const saveCommercial = async () => {
 }
 
 const fetchPdfBlob = async () =>
-  $fetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
+  apiFetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
 
 const revokePdfPreviewUrl = () => {
   if (pdfPreviewUrl.value) {

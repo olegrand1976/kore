@@ -66,6 +66,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 
 type SocieteRow = {
@@ -123,7 +124,7 @@ const applyRow = (row?: SocieteRow) => {
 }
 
 const loadSocietes = async () => {
-  const res = await $fetch<{ data: SocieteRow[] }>('/api/org/societes')
+  const res = await apiFetch<{ data: SocieteRow[] }>('/api/org/societes')
   societes.value = (res.data ?? []).map((s) => ({
     id: s.id,
     raisonSociale: s.raisonSociale,
@@ -151,7 +152,7 @@ const save = async () => {
   message.value = ''
   isError.value = false
   try {
-    await $fetch(`/api/org/societes/${selectedSocieteId.value}/settings`, {
+    await apiFetch(`/api/org/societes/${selectedSocieteId.value}/settings`, {
       method: 'PUT',
       body: {
         weekStartDay: weekStartDay.value,

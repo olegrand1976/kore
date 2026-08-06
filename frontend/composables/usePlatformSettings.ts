@@ -7,6 +7,7 @@ export type PlatformSettings = {
 type ApiEnvelope<T> = { data?: T }
 
 export function usePlatformSettings() {
+  const { apiFetch } = useApiFetch()
   const settings = ref<PlatformSettings | null>(null)
   const pending = ref(false)
   const saving = ref(false)
@@ -17,7 +18,7 @@ export function usePlatformSettings() {
     pending.value = true
     error.value = false
     try {
-      const res = await $fetch<ApiEnvelope<PlatformSettings>>('/api/platform/settings')
+      const res = await apiFetch<ApiEnvelope<PlatformSettings>>('/api/platform/settings')
       settings.value = res.data ?? null
     } catch {
       settings.value = null
@@ -31,7 +32,7 @@ export function usePlatformSettings() {
     saving.value = true
     saveError.value = false
     try {
-      const res = await $fetch<ApiEnvelope<PlatformSettings>>('/api/platform/settings', {
+      const res = await apiFetch<ApiEnvelope<PlatformSettings>>('/api/platform/settings', {
         method: 'PUT',
         body: { geminiModel }
       })

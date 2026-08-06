@@ -7,6 +7,7 @@ type SetupResponse = {
 }
 
 export function useTwoFactorSetup() {
+  const { apiFetch } = useApiFetch()
   const otpauthUrl = ref('')
   const manualSecret = ref('')
   const qrCodeDataUrl = ref('')
@@ -19,10 +20,14 @@ export function useTwoFactorSetup() {
     loading.value = true
     error.value = ''
     try {
-      const res = await $fetch<SetupResponse>(endpoint, {
+      const fetchOptions = {
         method: options?.method ?? 'POST',
         body: options?.body
-      })
+      }
+      // Auth enrollment stays on raw $fetch (no session refresh loop on login).
+      const res = endpoint.startsWith('/api/auth/')
+        ? await $fetch<SetupResponse>(endpoint, fetchOptions)
+        : await apiFetch<SetupResponse>(endpoint, fetchOptions)
       otpauthUrl.value = res?.data?.otpauthUrl ?? ''
       manualSecret.value = res?.data?.secret ?? ''
       qrCodeDataUrl.value = res?.data?.qrCodeDataUrl ?? ''

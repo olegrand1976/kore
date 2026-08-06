@@ -19,13 +19,14 @@ import type { DashboardGridItem } from '~/components/reporting/DashboardGrid.vue
 
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t } = useI18n()
 const code = computed(() => String(route.params.code ?? 'cra'))
 
 const { data, pending, error } = await useAsyncData(
   () => `dashboard-${code.value}`,
-  () => $fetch<{ data?: Record<string, unknown> }>(`/api/dashboards/${code.value}`)
+  () => apiFetch<{ data?: Record<string, unknown> }>(`/api/dashboards/${code.value}`)
 )
 
 const items = computed((): DashboardGridItem[] => {

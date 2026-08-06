@@ -52,6 +52,7 @@
 <script setup lang="ts">
 import type { LeaveRequest } from '~/composables/useLeave'
 import {
+const { apiFetch } = useApiFetch()
   pickLeaveTypeCode,
   pickLeaveTypeLabel,
   useLeave,
@@ -111,7 +112,7 @@ async function loadValidationData(): Promise<ValidationPayload> {
     return { items, logins: {} }
   }
   try {
-    const res = await $fetch<{ data?: OrgUser[] }>('/api/org/users')
+    const res = await apiFetch<{ data?: OrgUser[] }>('/api/org/users')
     return { items, logins: buildLoginMap(res?.data ?? []) }
   } catch {
     return { items, logins: {} }

@@ -41,8 +41,9 @@ function pickUserEquipeId(item: OrgUserSummary) {
 }
 
 export function useUsers() {
+  const { apiFetch } = useApiFetch()
   const list = async () => {
-    const res = await $fetch<{ data?: OrgUserSummary[] }>('/api/org/users')
+    const res = await apiFetch<{ data?: OrgUserSummary[] }>('/api/org/users')
     const payload = res?.data ?? res
     return Array.isArray(payload) ? payload : []
   }
@@ -53,7 +54,7 @@ export function useUsers() {
     profil: string
     equipeId?: string
   }) => {
-    return $fetch('/api/org/users', { method: 'POST', body })
+    return apiFetch('/api/org/users', { method: 'POST', body })
   }
 
   // equipeId absent = rattachement inchangé ; chaîne vide = détachement.
@@ -61,15 +62,15 @@ export function useUsers() {
     id: string,
     body: { profil?: string; password?: string; active?: boolean; equipeId?: string }
   ) => {
-    return $fetch(`/api/org/users/${id}`, { method: 'PUT', body })
+    return apiFetch(`/api/org/users/${id}`, { method: 'PUT', body })
   }
 
   const deactivate = async (id: string) => {
-    return $fetch(`/api/org/users/${id}/deactivate`, { method: 'PATCH' })
+    return apiFetch(`/api/org/users/${id}/deactivate`, { method: 'PATCH' })
   }
 
   const remove = async (id: string) => {
-    return $fetch(`/api/org/users/${id}`, { method: 'DELETE' })
+    return apiFetch(`/api/org/users/${id}`, { method: 'DELETE' })
   }
 
   return {

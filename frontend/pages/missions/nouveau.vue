@@ -95,6 +95,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { user } = useAuth()
 const { listClients, createClient, orgId } = useOrganisation()
@@ -188,7 +189,7 @@ async function submit() {
     if (form.endDate) {
       body.endDate = new Date(form.endDate).toISOString()
     }
-    const res = await $fetch<{ data?: { id?: string } }>('/api/ssii/missions', {
+    const res = await apiFetch<{ data?: { id?: string } }>('/api/ssii/missions', {
       method: 'POST',
       body
     })

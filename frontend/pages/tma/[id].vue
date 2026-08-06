@@ -58,6 +58,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t } = useI18n()
 const { fetchSession } = useAuth()
@@ -132,7 +133,7 @@ const { data: demand, pending, refresh } = await useAsyncData(
 
 if (can('tma', 'V')) {
   try {
-    const res = await $fetch<{ data?: Array<{ id?: string; ID?: string; login?: string; Login?: string }> }>('/api/org/users')
+    const res = await apiFetch<{ data?: Array<{ id?: string; ID?: string; login?: string; Login?: string }> }>('/api/org/users')
     const list = res?.data ?? []
     teamUsers.value = list.map((u) => ({
       id: u.id ?? u.ID ?? '',

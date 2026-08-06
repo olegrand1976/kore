@@ -81,6 +81,7 @@ const emptyCharts = (): DashboardCharts => ({
 })
 
 export function useDashboardStats() {
+  const { apiFetch } = useApiFetch()
   const { hasModule } = useEntitlements()
   const { canValidateConges, can } = usePermissions()
   const { statusLabel: craStatusLabel } = useCraStatus()
@@ -128,7 +129,7 @@ export function useDashboardStats() {
         (async () => {
           let required = false
           try {
-            const profile = await $fetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
+            const profile = await apiFetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
             required = profile?.data?.craRequis ?? false
             stats.craRequired = required
           } catch {
@@ -136,7 +137,7 @@ export function useDashboardStats() {
             return
           }
           try {
-            const res = await $fetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
+            const res = await apiFetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
             const items = (res?.data ?? []) as Array<{
               status?: string
               Status?: string

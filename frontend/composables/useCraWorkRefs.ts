@@ -31,6 +31,7 @@ export const decodeWorkRef = (value: string): { type: string; id: string } => {
 }
 
 export function useCraWorkRefs() {
+  const { apiFetch } = useApiFetch()
   const { t } = useI18n()
   const options = ref<CraWorkRefOption[]>([])
 
@@ -64,9 +65,9 @@ export function useCraWorkRefs() {
     }
 
     const [tmaRes, ticketRes, workRes] = await Promise.allSettled([
-      $fetch<{ data?: Record<string, unknown>[] }>('/api/tma/demands'),
-      $fetch<{ data?: Record<string, unknown>[] }>('/api/tickets'),
-      $fetch<{ data?: Record<string, unknown>[] }>('/api/work-requests')
+      apiFetch<{ data?: Record<string, unknown>[] }>('/api/tma/demands'),
+      apiFetch<{ data?: Record<string, unknown>[] }>('/api/tickets'),
+      apiFetch<{ data?: Record<string, unknown>[] }>('/api/work-requests')
     ])
 
     const next: CraWorkRefOption[] = []

@@ -63,6 +63,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { branding, fetchBranding } = useTenantBranding()
 
@@ -85,7 +86,7 @@ onMounted(async () => {
   form.raisonSociale = branding.value.raisonSociale
   previewUrl.value = branding.value.logoUrl
   try {
-    const res = await $fetch<any>('/api/org/societes')
+    const res = await apiFetch<any>('/api/org/societes')
     const first = res?.data?.[0]
     if (first) {
       form.adresse = first.adresse ?? ''
@@ -121,7 +122,7 @@ const save = async () => {
     body.append('siret', form.siret)
     body.append('urlTenant', form.urlTenant)
     if (form.logoFile) body.append('logo', form.logoFile)
-    await $fetch(`/api/org/societes/${branding.value.societeId}/branding`, { method: 'PUT', body })
+    await apiFetch(`/api/org/societes/${branding.value.societeId}/branding`, { method: 'PUT', body })
     await fetchBranding()
     previewUrl.value = branding.value.logoUrl
     message.value = t('org.saved')

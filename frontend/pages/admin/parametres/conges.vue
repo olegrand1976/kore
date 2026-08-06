@@ -107,6 +107,7 @@ import { pickLeaveTypeCode, pickLeaveTypeLabel, pickSortOrder, pickTracksBalance
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { fetchForSociete } = useLeaveTypeConfigs()
@@ -158,7 +159,7 @@ const rows = computed(() =>
 )
 
 const loadSocietes = async () => {
-  const res = await $fetch<{ data?: Array<{ id?: string; ID?: string; raisonSociale?: string; RaisonSociale?: string; pays?: string; Pays?: string }> }>(
+  const res = await apiFetch<{ data?: Array<{ id?: string; ID?: string; raisonSociale?: string; RaisonSociale?: string; pays?: string; Pays?: string }> }>(
     '/api/org/societes'
   )
   societes.value = (res?.data ?? []).map((item) => {
@@ -223,7 +224,7 @@ const save = async () => {
   formError.value = ''
   try {
     if (editingId.value) {
-      await $fetch(`/api/conges/leave-type-configs/${editingId.value}`, {
+      await apiFetch(`/api/conges/leave-type-configs/${editingId.value}`, {
         method: 'PUT',
         body: {
           label: form.label,
@@ -235,7 +236,7 @@ const save = async () => {
       flash.value = t('settings.conges.saved')
       flashError.value = false
     } else {
-      await $fetch('/api/conges/leave-type-configs', {
+      await apiFetch('/api/conges/leave-type-configs', {
         method: 'POST',
         body: {
           societeId: selectedSocieteId.value,
@@ -261,7 +262,7 @@ const save = async () => {
 const remove = async (row: { id: string; code: string }) => {
   if (!confirm(t('settings.conges.delete_confirm', { code: row.code }))) return
   try {
-    await $fetch(`/api/conges/leave-type-configs/${row.id}`, { method: 'DELETE' })
+    await apiFetch(`/api/conges/leave-type-configs/${row.id}`, { method: 'DELETE' })
     flash.value = t('settings.conges.deleted')
     flashError.value = false
     await loadConfigs()
@@ -276,7 +277,7 @@ const confirmReset = async () => {
   resetting.value = true
   resetError.value = ''
   try {
-    await $fetch('/api/conges/leave-type-configs/reset', {
+    await apiFetch('/api/conges/leave-type-configs/reset', {
       method: 'POST',
       body: { societeId: selectedSocieteId.value, confirm: true }
     })

@@ -39,6 +39,7 @@ function toDueAtISO(raw?: string) {
 }
 
 export function useMaintenance() {
+  const { apiFetch } = useApiFetch()
   const pickId = (w: WorkRequest) => w.id ?? w.ID ?? ''
   const pickSubject = (w: WorkRequest) => w.subject ?? w.Subject ?? ''
   const pickState = (w: WorkRequest) => w.state ?? w.State ?? ''
@@ -50,17 +51,17 @@ export function useMaintenance() {
   const pickDescription = (w: WorkRequest) => w.description ?? w.Description ?? ''
 
   const list = async () => {
-    const res = await $fetch<{ data?: WorkRequest[] }>('/api/work-requests')
+    const res = await apiFetch<{ data?: WorkRequest[] }>('/api/work-requests')
     return res?.data ?? []
   }
 
   const get = async (id: string) => {
-    const res = await $fetch<{ data?: WorkRequest }>(`/api/work-requests/${id}`)
+    const res = await apiFetch<{ data?: WorkRequest }>(`/api/work-requests/${id}`)
     return (res?.data ?? res) as WorkRequest
   }
 
   const create = async (payload: CreateWorkRequestPayload) => {
-    const res = await $fetch<{ data?: WorkRequest }>('/api/work-requests', {
+    const res = await apiFetch<{ data?: WorkRequest }>('/api/work-requests', {
       method: 'POST',
       body: {
         ...payload,
@@ -71,7 +72,7 @@ export function useMaintenance() {
   }
 
   const assign = async (id: string, assigneeId: string) => {
-    const res = await $fetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/assign`, {
+    const res = await apiFetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/assign`, {
       method: 'POST',
       body: { assigneeId }
     })
@@ -79,7 +80,7 @@ export function useMaintenance() {
   }
 
   const progress = async (id: string, consumptionDays: number) => {
-    const res = await $fetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/progress`, {
+    const res = await apiFetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/progress`, {
       method: 'POST',
       body: { consumptionDays }
     })
@@ -87,7 +88,7 @@ export function useMaintenance() {
   }
 
   const complete = async (id: string) => {
-    const res = await $fetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/complete`, { method: 'POST' })
+    const res = await apiFetch<{ data?: WorkRequest }>(`/api/work-requests/${id}/complete`, { method: 'POST' })
     return (res?.data ?? res) as WorkRequest
   }
 

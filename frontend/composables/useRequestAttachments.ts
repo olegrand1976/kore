@@ -18,11 +18,12 @@ export const REQUEST_RESOURCE = {
 export type RequestResourceKey = keyof typeof REQUEST_RESOURCE
 
 export function useRequestAttachments() {
+  const { apiFetch } = useApiFetch()
   const pickId = (att: RequestAttachment) => att.id ?? att.ID ?? ''
   const pickFileName = (att: RequestAttachment) => att.fileName ?? att.FileName ?? ''
 
   const list = async (resourceType: string, resourceId: string) => {
-    const res = await $fetch<{ data?: RequestAttachment[] }>('/api/request-attachments', {
+    const res = await apiFetch<{ data?: RequestAttachment[] }>('/api/request-attachments', {
       query: { resourceType, resourceId }
     })
     return res?.data ?? []
@@ -33,7 +34,7 @@ export function useRequestAttachments() {
     form.append('resourceType', resourceType)
     form.append('resourceId', resourceId)
     form.append('file', file)
-    const res = await $fetch<{ data?: RequestAttachment }>('/api/request-attachments', {
+    const res = await apiFetch<{ data?: RequestAttachment }>('/api/request-attachments', {
       method: 'POST',
       body: form
     })

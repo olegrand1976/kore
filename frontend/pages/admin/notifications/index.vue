@@ -161,6 +161,7 @@
 <script setup lang="ts">
 import { useListControls } from '~/composables/useListControls'
 
+const { apiFetch } = useApiFetch()
 type NotificationRule = {
   id?: string
   ID?: string
@@ -342,13 +343,13 @@ const save = async () => {
     }
     if (editingCode.value) {
       const row = ruleRows.value.find((r) => r.code === editingCode.value)
-      await $fetch(`/api/notifications/rules/${row?.id || editingCode.value}`, {
+      await apiFetch(`/api/notifications/rules/${row?.id || editingCode.value}`, {
         method: 'PUT',
         body: payload
       })
       flash.value = t('notifications.saved')
     } else {
-      await $fetch('/api/notifications/rules', { method: 'POST', body: payload })
+      await apiFetch('/api/notifications/rules', { method: 'POST', body: payload })
       flash.value = t('notifications.created')
     }
     flashError.value = false

@@ -34,6 +34,7 @@ export type PlatformOverview = {
 type ApiEnvelope<T> = { data?: T }
 
 export function usePlatformOverview() {
+  const { apiFetch } = useApiFetch()
   const overview = ref<PlatformOverview | null>(null)
   const pending = ref(false)
   const error = ref(false)
@@ -44,7 +45,7 @@ export function usePlatformOverview() {
     error.value = false
     forbidden.value = false
     try {
-      const res = await $fetch<ApiEnvelope<PlatformOverview>>('/api/platform/overview')
+      const res = await apiFetch<ApiEnvelope<PlatformOverview>>('/api/platform/overview')
       overview.value = res.data ?? null
     } catch (e: unknown) {
       overview.value = null

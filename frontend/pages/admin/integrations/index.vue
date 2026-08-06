@@ -61,6 +61,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 
 type Connection = { id: string; type: string; provider: string; status: string }
@@ -132,7 +133,7 @@ const syncingId = ref('')
 const connectFec = async () => {
   connectPending.value = true
   try {
-    await $fetch('/api/integrations/connections', {
+    await apiFetch('/api/integrations/connections', {
       method: 'POST',
       body: { type: 'accounting', provider: 'fec', credentialsRef: 'local' }
     })
@@ -145,7 +146,7 @@ const connectFec = async () => {
 const syncConnection = async (connId: string) => {
   syncingId.value = connId
   try {
-    await $fetch(`/api/integrations/connections/${connId}/sync`, { method: 'POST' })
+    await apiFetch(`/api/integrations/connections/${connId}/sync`, { method: 'POST' })
     await Promise.all([refreshConn(), refreshLogs()])
   } finally {
     syncingId.value = ''
@@ -156,7 +157,7 @@ const createKey = async () => {
   keyPending.value = true
   plainKey.value = ''
   try {
-    const res = await $fetch<{ data?: { plainKey?: string }; plainKey?: string }>('/api/integrations/api-keys', {
+    const res = await apiFetch<{ data?: { plainKey?: string }; plainKey?: string }>('/api/integrations/api-keys', {
       method: 'POST',
       body: { name: `API ${new Date().toISOString().slice(0, 10)}` }
     })

@@ -229,6 +229,7 @@
 </template>
 
 <script setup lang="ts">
+const { apiFetch } = useApiFetch()
 type ProviderPreset = 'google' | 'azure'
 
 type HowtoStep = {
@@ -474,7 +475,7 @@ const save = async () => {
   message.value = ''
   isError.value = false
   try {
-    await $fetch(`/api/admin/identity-providers/${idpId.value}`, {
+    await apiFetch(`/api/admin/identity-providers/${idpId.value}`, {
       method: 'PUT',
       body: { ...form }
     })

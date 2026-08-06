@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+const { apiFetch } = useApiFetch()
 type TenantAISettings = {
   enabled?: boolean
   Enabled?: boolean
@@ -100,7 +101,7 @@ const enable = async () => {
   enabling.value = true
   formError.value = ''
   try {
-    await $fetch('/api/ai/settings/enable', {
+    await apiFetch('/api/ai/settings/enable', {
       method: 'POST',
       body: {
         noticeAccepted: noticeAccepted.value,

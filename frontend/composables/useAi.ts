@@ -39,6 +39,7 @@ export type ChatResponse = {
 }
 
 export function useAi() {
+  const { apiFetch } = useApiFetch()
   const { extractFetchError } = useApiError()
 
   const generateAnalysisDraft = async (payload: {
@@ -46,45 +47,45 @@ export function useAi() {
     subject?: string
     applicationId?: string
   }): Promise<AnalysisDraftResponse> => {
-    return $fetch<AnalysisDraftResponse>('/api/ai/tma/analysis-draft', {
+    return apiFetch<AnalysisDraftResponse>('/api/ai/tma/analysis-draft', {
       method: 'POST',
       body: payload
     })
   }
 
   const classifyDemand = async (subject: string) => {
-    return $fetch<{ category: string; confidence: number; requestId: string }>(
+    return apiFetch<{ category: string; confidence: number; requestId: string }>(
       '/api/ai/tma/classify',
       { method: 'POST', body: { subject } }
     )
   }
 
   const fetchBriefing = async (params: Record<string, string | number>) => {
-    return $fetch<BriefingResponse>('/api/ai/dashboard/briefing', { query: params })
+    return apiFetch<BriefingResponse>('/api/ai/dashboard/briefing', { query: params })
   }
 
   const fetchManagerContext = async (leaveRequestId: string) => {
-    return $fetch<ManagerContextResponse>('/api/ai/conges/manager-context', {
+    return apiFetch<ManagerContextResponse>('/api/ai/conges/manager-context', {
       method: 'POST',
       body: { leaveRequestId }
     })
   }
 
   const estimateBudgetEffort = async (demandId: string, budgetId: string) => {
-    return $fetch<BudgetEstimateResponse>('/api/ai/budget/estimate-effort', {
+    return apiFetch<BudgetEstimateResponse>('/api/ai/budget/estimate-effort', {
       method: 'POST',
       body: { demandId, budgetId }
     })
   }
 
   const suggestBudgetDemands = async (budgetId: string, q = '') => {
-    return $fetch<DemandSuggestion[]>('/api/ai/budget/demand-suggest', {
+    return apiFetch<DemandSuggestion[]>('/api/ai/budget/demand-suggest', {
       query: { budgetId, q }
     })
   }
 
   const suggestCraPrefill = async (timesheetId: string, weekNumber?: number) => {
-    return $fetch<{ lines: Array<{ day: string; duration: number; comment: string }>; requestId: string }>(
+    return apiFetch<{ lines: Array<{ day: string; duration: number; comment: string }>; requestId: string }>(
       '/api/ai/cra/prefill-suggest',
       { method: 'POST', body: { timesheetId, weekNumber } }
     )
@@ -98,27 +99,27 @@ export function useAi() {
   }
 
   const fetchSettings = async () => {
-    return $fetch<{ data?: Record<string, unknown> }>('/api/ai/settings')
+    return apiFetch<{ data?: Record<string, unknown> }>('/api/ai/settings')
   }
 
   const enableAI = async (payload: { noticeAccepted: boolean; workersInformed: boolean }) => {
-    return $fetch('/api/ai/settings/enable', { method: 'POST', body: payload })
+    return apiFetch('/api/ai/settings/enable', { method: 'POST', body: payload })
   }
 
   const fetchSimilarDemands = async (query: { subject: string; applicationId?: string; limit?: number }) => {
-    return $fetch('/api/ai/tma/similar', { query })
+    return apiFetch('/api/ai/tma/similar', { query })
   }
 
   const fetchCraAnomalies = async (timesheetId: string) => {
-    return $fetch('/api/ai/cra/anomalies', { query: { timesheetId } })
+    return apiFetch('/api/ai/cra/anomalies', { query: { timesheetId } })
   }
 
   const explainWorkflow = async (instanceId: string) => {
-    return $fetch('/api/ai/workflow/explain', { query: { instanceId } })
+    return apiFetch('/api/ai/workflow/explain', { query: { instanceId } })
   }
 
   const explainRequest = async (requestId: string) => {
-    return $fetch(`/api/ai/explain/${requestId}`)
+    return apiFetch(`/api/ai/explain/${requestId}`)
   }
 
   return {

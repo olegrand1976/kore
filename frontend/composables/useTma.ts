@@ -45,6 +45,7 @@ export type TmaAnalysis = {
 }
 
 export function useTma() {
+  const { apiFetch } = useApiFetch()
   const pickId = (d: TmaDemand) => d.id ?? d.ID ?? ''
   const pickSubject = (d: TmaDemand) => d.subject ?? d.Subject ?? ''
   const pickStatus = (d: TmaDemand) => d.status ?? d.Status ?? ''
@@ -75,17 +76,17 @@ export function useTma() {
     demands.map(toGanttItem).filter((item): item is TmaGanttItem => item !== null)
 
   const list = async () => {
-    const res = await $fetch<{ data?: TmaDemand[] }>('/api/tma/demands')
+    const res = await apiFetch<{ data?: TmaDemand[] }>('/api/tma/demands')
     return res?.data ?? []
   }
 
   const get = async (id: string) => {
-    const res = await $fetch<{ data?: TmaDemand }>(`/api/tma/demands/${id}`)
+    const res = await apiFetch<{ data?: TmaDemand }>(`/api/tma/demands/${id}`)
     return (res?.data ?? res) as TmaDemand
   }
 
   const getAnalysis = async (id: string) => {
-    const res = await $fetch<{ data?: TmaAnalysis }>(`/api/tma/demands/${id}/analysis`)
+    const res = await apiFetch<{ data?: TmaAnalysis }>(`/api/tma/demands/${id}/analysis`)
     return (res?.data ?? res) as TmaAnalysis
   }
 
@@ -103,7 +104,7 @@ export function useTma() {
           return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString()
         })()
       : undefined
-    const res = await $fetch<{ data?: TmaDemand }>('/api/tma/demands', {
+    const res = await apiFetch<{ data?: TmaDemand }>('/api/tma/demands', {
       method: 'POST',
       body: { ...payload, dueAt }
     })
@@ -111,16 +112,16 @@ export function useTma() {
   }
 
   const validateCreation = (id: string) =>
-    $fetch(`/api/tma/demands/${id}/validate-creation`, { method: 'POST' })
+    apiFetch(`/api/tma/demands/${id}/validate-creation`, { method: 'POST' })
 
   const assign = (id: string, assigneeId: string) =>
-    $fetch(`/api/tma/demands/${id}/assign`, { method: 'POST', body: { assigneeId } })
+    apiFetch(`/api/tma/demands/${id}/assign`, { method: 'POST', body: { assigneeId } })
 
   const takeOver = (id: string) =>
-    $fetch(`/api/tma/demands/${id}/take-over`, { method: 'POST' })
+    apiFetch(`/api/tma/demands/${id}/take-over`, { method: 'POST' })
 
   const saveAnalysis = (id: string, analysis: TmaAnalysis) =>
-    $fetch(`/api/tma/demands/${id}/analysis`, {
+    apiFetch(`/api/tma/demands/${id}/analysis`, {
       method: 'POST',
       body: {
         functional: analysis.functional ?? analysis.Functional ?? '',
@@ -131,10 +132,10 @@ export function useTma() {
     })
 
   const resolve = (id: string) =>
-    $fetch(`/api/tma/demands/${id}/resolve`, { method: 'POST' })
+    apiFetch(`/api/tma/demands/${id}/resolve`, { method: 'POST' })
 
   const reopen = (id: string, reason: string) =>
-    $fetch(`/api/tma/demands/${id}/reopen`, { method: 'POST', body: { reason } })
+    apiFetch(`/api/tma/demands/${id}/reopen`, { method: 'POST', body: { reason } })
 
   const exportXml = () => window.open('/api/tma/demands/export.xml', '_blank')
 

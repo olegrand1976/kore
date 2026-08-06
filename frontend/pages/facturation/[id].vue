@@ -62,6 +62,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t } = useI18n()
 const id = computed(() => String(route.params.id))
@@ -120,7 +121,7 @@ const onTransmit = async () => {
   errorMsg.value = ''
   transmitting.value = true
   try {
-    await $fetch(`/api/invoices/${id.value}/transmit`, { method: 'POST' })
+    await apiFetch(`/api/invoices/${id.value}/transmit`, { method: 'POST' })
     await refresh()
   } catch {
     errorMsg.value = t('invoicing.transmit_error')

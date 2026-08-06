@@ -188,6 +188,7 @@ import { syncListMonthFilter, useListControls } from '~/composables/useListContr
 
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
@@ -428,7 +429,7 @@ const validateAll = async () => {
   validating.value = true
   setActionMsg('')
   try {
-    const res = await $fetch<ValidateAllResponse>('/api/prestations/validate-all', {
+    const res = await apiFetch<ValidateAllResponse>('/api/prestations/validate-all', {
       method: 'POST',
       body: { month: month.value }
     })
@@ -447,7 +448,7 @@ const validateRow = async (row: PrestationRow) => {
   rowActionId.value = row.id
   setActionMsg('')
   try {
-    const res = await $fetch<ValidateResponse>(`/api/cra/timesheets/${row.id}/validate`, { method: 'POST' })
+    const res = await apiFetch<ValidateResponse>(`/api/cra/timesheets/${row.id}/validate`, { method: 'POST' })
     setActionMsg(invoiceDraftMessage(res?.data?.invoiceDraft))
     await refresh()
   } catch {
@@ -460,7 +461,7 @@ const validateRow = async (row: PrestationRow) => {
 const downloadPdf = async (row: PrestationRow) => {
   setActionMsg('')
   try {
-    const res = await $fetch<Blob>(`/api/cra/timesheets/${row.id}/pdf`, { method: 'POST', responseType: 'blob' })
+    const res = await apiFetch<Blob>(`/api/cra/timesheets/${row.id}/pdf`, { method: 'POST', responseType: 'blob' })
     const url = URL.createObjectURL(res)
     const link = document.createElement('a')
     link.href = url
@@ -487,7 +488,7 @@ const confirmReject = async () => {
   rejecting.value = true
   setActionMsg('')
   try {
-    await $fetch(`/api/cra/timesheets/${rejectTarget.value.id}/reject`, {
+    await apiFetch(`/api/cra/timesheets/${rejectTarget.value.id}/reject`, {
       method: 'POST',
       body: { reason: rejectReason.value.trim() }
     })

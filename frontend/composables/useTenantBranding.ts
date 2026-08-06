@@ -1,4 +1,5 @@
 export function useTenantBranding() {
+  const { apiFetch } = useApiFetch()
   const branding = useState('tenant-branding', () => ({
     logoUrl: null as string | null,
     raisonSociale: '',
@@ -16,7 +17,7 @@ export function useTenantBranding() {
 
   const fetchBranding = async () => {
     try {
-      const res = await $fetch<{ data: Array<{ id: string; raisonSociale: string; logo?: string; tenantId?: string }> }>('/api/org/societes')
+      const res = await apiFetch<{ data: Array<{ id: string; raisonSociale: string; logo?: string; tenantId?: string }> }>('/api/org/societes')
       const first = res.data?.[0]
       if (first) {
         branding.value = {

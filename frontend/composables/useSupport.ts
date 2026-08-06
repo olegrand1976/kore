@@ -50,6 +50,7 @@ function toDueAtISO(raw?: string) {
 }
 
 export function useSupport() {
+  const { apiFetch } = useApiFetch()
   const pickId = (t: SupportTicket) => t.id ?? t.ID ?? ''
   const pickSubject = (t: SupportTicket) => t.subject ?? t.Subject ?? ''
   const pickState = (t: SupportTicket) => t.state ?? t.State ?? ''
@@ -60,17 +61,17 @@ export function useSupport() {
   const pickAssigneeId = (t: SupportTicket) => t.assigneeId ?? t.AssigneeID ?? ''
 
   const list = async () => {
-    const res = await $fetch<{ data?: SupportTicket[] }>('/api/tickets')
+    const res = await apiFetch<{ data?: SupportTicket[] }>('/api/tickets')
     return res?.data ?? []
   }
 
   const get = async (id: string) => {
-    const res = await $fetch<{ data?: SupportTicket }>(`/api/tickets/${id}`)
+    const res = await apiFetch<{ data?: SupportTicket }>(`/api/tickets/${id}`)
     return (res?.data ?? res) as SupportTicket
   }
 
   const create = async (payload: CreateTicketPayload) => {
-    const res = await $fetch<{ data?: SupportTicket }>('/api/tickets', {
+    const res = await apiFetch<{ data?: SupportTicket }>('/api/tickets', {
       method: 'POST',
       body: {
         ...payload,
@@ -81,7 +82,7 @@ export function useSupport() {
   }
 
   const assign = async (id: string, assigneeId: string) => {
-    const res = await $fetch<{ data?: SupportTicket }>(`/api/tickets/${id}/assign`, {
+    const res = await apiFetch<{ data?: SupportTicket }>(`/api/tickets/${id}/assign`, {
       method: 'POST',
       body: { assigneeId }
     })
@@ -89,17 +90,17 @@ export function useSupport() {
   }
 
   const takeOver = async (id: string) => {
-    const res = await $fetch<{ data?: SupportTicket }>(`/api/tickets/${id}/take-over`, { method: 'POST' })
+    const res = await apiFetch<{ data?: SupportTicket }>(`/api/tickets/${id}/take-over`, { method: 'POST' })
     return (res?.data ?? res) as SupportTicket
   }
 
   const resolve = async (id: string) => {
-    const res = await $fetch<{ data?: SupportTicket }>(`/api/tickets/${id}/resolve`, { method: 'POST' })
+    const res = await apiFetch<{ data?: SupportTicket }>(`/api/tickets/${id}/resolve`, { method: 'POST' })
     return (res?.data ?? res) as SupportTicket
   }
 
   const addReply = async (id: string, content: string) => {
-    const res = await $fetch<{ data?: TicketReply }>(`/api/tickets/${id}/replies`, {
+    const res = await apiFetch<{ data?: TicketReply }>(`/api/tickets/${id}/replies`, {
       method: 'POST',
       body: { content }
     })

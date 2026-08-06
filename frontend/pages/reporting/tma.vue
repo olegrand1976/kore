@@ -18,6 +18,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 
 const columns = computed(() => [
@@ -26,7 +27,7 @@ const columns = computed(() => [
 ])
 
 const { data, pending, error } = await useAsyncData('report-tma-summary', () =>
-  $fetch<{ data?: { rows?: Array<Record<string, unknown>>; Rows?: Array<Record<string, unknown>> } }>(
+  apiFetch<{ data?: { rows?: Array<Record<string, unknown>>; Rows?: Array<Record<string, unknown>> } }>(
     '/api/reports/run',
     { method: 'POST', body: { reportCode: 'tma_summary', params: {} } }
   )

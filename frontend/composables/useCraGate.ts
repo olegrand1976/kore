@@ -6,6 +6,7 @@ function currentMonthKey() {
 }
 
 export function useCraGate() {
+  const { apiFetch } = useApiFetch()
   const blocked = ref(false)
   const loading = ref(true)
   const currentTimesheetId = ref<string | null>(null)
@@ -13,14 +14,14 @@ export function useCraGate() {
   const refresh = async () => {
     loading.value = true
     try {
-      const profile = await $fetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
+      const profile = await apiFetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
       const required = profile?.data?.craRequis ?? false
       if (!required) {
         blocked.value = false
         currentTimesheetId.value = null
         return
       }
-      const res = await $fetch<{ data?: CraTimesheet[] }>('/api/cra/timesheets/recent?limit=6')
+      const res = await apiFetch<{ data?: CraTimesheet[] }>('/api/cra/timesheets/recent?limit=6')
       const items = (res?.data ?? []) as CraTimesheet[]
       blocked.value = isCraMonthIncomplete(items)
       const current = items.find((ts) => (ts.month ?? ts.Month) === currentMonthKey())

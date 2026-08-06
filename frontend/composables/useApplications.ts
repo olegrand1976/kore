@@ -12,17 +12,18 @@ export type OrgApplication = {
 }
 
 export function useApplications() {
+  const { apiFetch } = useApiFetch()
   const pickAppId = (app: OrgApplication) => app.id ?? app.ID ?? ''
   const pickAppLabel = (app: OrgApplication | undefined | null) => app?.libelle ?? app?.Libelle ?? ''
   const pickAppClient = (app: OrgApplication | undefined | null) => app?.proprietaire ?? app?.Proprietaire ?? ''
 
   const list = async () => {
-    const res = await $fetch<{ data?: OrgApplication[] }>('/api/org/applications')
+    const res = await apiFetch<{ data?: OrgApplication[] }>('/api/org/applications')
     return res?.data ?? []
   }
 
   const get = async (id: string) => {
-    const res = await $fetch<{ data?: OrgApplication }>(`/api/org/applications/${id}`)
+    const res = await apiFetch<{ data?: OrgApplication }>(`/api/org/applications/${id}`)
     return (res?.data ?? res) as OrgApplication
   }
 

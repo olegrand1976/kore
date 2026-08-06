@@ -40,6 +40,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const { t } = useI18n()
@@ -57,7 +58,7 @@ type MissionRow = {
 }
 
 const { data, pending, error } = await useAsyncData('missions-list', () =>
-  $fetch<{ data?: MissionRow[] }>('/api/ssii/missions')
+  apiFetch<{ data?: MissionRow[] }>('/api/ssii/missions')
 )
 
 const columns = computed(() => [

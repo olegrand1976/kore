@@ -34,6 +34,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
+const { apiFetch } = useApiFetch()
 const { t, locale } = useI18n()
 
 type WorkRecord = {
@@ -51,7 +52,7 @@ const message = ref('')
 const errorMsg = ref('')
 
 const { data, pending, refresh } = await useAsyncData('ett-records', () =>
-  $fetch<{ data?: WorkRecord[] }>('/api/ett/records')
+  apiFetch<{ data?: WorkRecord[] }>('/api/ett/records')
 )
 
 const records = computed(() => data.value?.data ?? [])
@@ -101,7 +102,7 @@ async function clockIn() {
   message.value = ''
   clockingIn.value = true
   try {
-    await $fetch('/api/ett/clock-in', { method: 'POST', body: {} })
+    await apiFetch('/api/ett/clock-in', { method: 'POST', body: {} })
     message.value = t('ett.clock_in_ok')
     await refresh()
   } catch {
@@ -116,7 +117,7 @@ async function clockOut() {
   message.value = ''
   clockingOut.value = true
   try {
-    await $fetch('/api/ett/clock-out', { method: 'POST', body: {} })
+    await apiFetch('/api/ett/clock-out', { method: 'POST', body: {} })
     message.value = t('ett.clock_out_ok')
     await refresh()
   } catch {
