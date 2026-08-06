@@ -40,7 +40,7 @@ sequenceDiagram
 - OIDC Authorization Code Flow (Azure AD, Google Workspace)
 - PKCE obligatoire pour clients publics (Flutter)
 - Émission JWT Kore après validation IdP (claims mappés)
-- Liaison JIT (Just-In-Time) ou rattachement compte `XXX_nom` existant
+- Liaison JIT (Just-In-Time) ou rattachement compte existant
 - Login password inchangé (dual-mode)
 
 **Hors DoD initiale** (phases ultérieures) :
@@ -78,7 +78,7 @@ Erreurs : `401 INVALID_IDP_TOKEN`, `403 SSO_NOT_ENABLED`, `409 IDENTITY_ALREADY_
 | `profile` | Attribut IdP mappé ou défaut `Collaborateur` | Config admin par tenant |
 | `email` | `email` IdP | Pour liaison compte existant |
 
-**JIT** : si `subject` inconnu et email correspond à un `XXX_nom` actif → liaison ; sinon création utilisateur si sièges disponibles (module 14).
+**JIT** : si `subject` inconnu et email correspond à un compte actif → liaison ; sinon création utilisateur si sièges disponibles (module 14).
 
 ## 6. Ports (platform/authx + module 00)
 

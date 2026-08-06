@@ -124,7 +124,7 @@
             id="user-login"
             v-model="form.login"
             :label="$t('users.login')"
-            placeholder="COL_olivier"
+            placeholder="olivier"
             :error="fieldErrors.login"
             required
           />
@@ -254,7 +254,7 @@ const flash = ref('')
 const flashError = ref(false)
 const fieldErrors = reactive({ login: '', password: '', passwordConfirm: '', profils: '' })
 
-const LOGIN_PATTERN = /^[A-Z]{3}_[a-z0-9_]+$/
+const LOGIN_PATTERN = /^[a-zA-Z][a-zA-Z0-9._-]{2,63}$/
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
 const form = reactive({

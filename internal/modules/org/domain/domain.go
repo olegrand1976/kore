@@ -44,7 +44,9 @@ var (
 	Err2FARateLimited            = errors.New("too many 2fa attempts")
 )
 
-var loginPattern = regexp.MustCompile(`^[A-Z]{3}_[a-z0-9_]+$`)
+// loginPattern accepts an optional XXX_ profile/company prefix (legacy seed style)
+// or a plain identifier: olivier, jean.dupont, COL_olivier, ADM_admin.
+var loginPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9._-]{2,63}$`)
 
 type Login string
 

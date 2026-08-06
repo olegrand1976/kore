@@ -13,9 +13,16 @@ func TestLoginValid(t *testing.T) {
 		login string
 		ok    bool
 	}{
-		{"valid", "ABC_jean", true},
-		{"invalid lowercase prefix", "abc_jean", false},
-		{"invalid no underscore", "ABCjean", false},
+		{"valid with prefix", "ABC_jean", true},
+		{"valid without prefix", "olivier", true},
+		{"valid dotted", "jean.dupont", true},
+		{"valid hyphen", "jean-dupont", true},
+		{"valid mixed case", "JeanDupont", true},
+		{"valid seed style", "ADM_admin", true},
+		{"invalid too short", "ab", false},
+		{"invalid starts with digit", "1olivier", false},
+		{"invalid space", "jean dupont", false},
+		{"invalid special char", "jean@dupont", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

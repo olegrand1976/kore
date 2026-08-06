@@ -5,7 +5,7 @@
 ## 1. Référence fonctionnelle
 
 - Spec §4 (modèle organisationnel), §3 (acteurs, profils, matrice RBAC §3.3), §11 (entités Société, Site, Service, Application, Équipe, Utilisateur, Client).
-- Règles : RG-ORG-01 (login `XXX_nom`), RG-ORG-02 (Manager = Assistante), RG-SEC-01 (données privées), RG-SEC-02 (activation/expiration).
+- Règles : RG-ORG-01 (login libre, préfixe `XXX_` optionnel), RG-ORG-02 (Manager = Assistante), RG-SEC-01 (données privées), RG-SEC-02 (activation/expiration).
 - Processus : PR-08.1 (mise en place initiale, 7 étapes).
 - Fondations : [04-auth-rbac.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/04-auth-rbac.md), [01-architecture.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/01-architecture.md).
 
@@ -26,13 +26,13 @@ flowchart LR
 ## 3. Modèle de domaine
 
 - **Agrégat Organisation** : `Societe` (racine tenant) -> `Site` -> `Service` -> `Application` -> `Equipe`.
-- **Entité Utilisateur** : `login` (VO `Login` format `XXX_nom`), `profil` (VO `Profile`), `typeCompte` (Interne/Client/Prestataire), `craRequis`, `salarieETT`, période d'activation (VO `ActivationPeriod`).
+- **Entité Utilisateur** : `login` (VO `Login` — identifiant libre, préfixe `XXX_` optionnel), `profil` (VO `Profile`), `typeCompte` (Interne/Client/Prestataire), `craRequis`, `salarieETT`, période d'activation (VO `ActivationPeriod`).
 - **Entité Client** : référentiel client (raison sociale, contacts, TVA).
 - **Value objects** : `Login`, `Profile`, `ActivationPeriod`, `TenantID`.
 - **Invariants** :
   - Un `Service` a un responsable (PR-08.1 étape 3) — ADMIN temporaire toléré.
   - `Application` avec TMA : budget par défaut obligatoire (RG-BUD-01, vérifié pleinement en brique 04/05).
-  - `Login` respecte `XXX_nom` (RG-ORG-01).
+  - `Login` respecte le format libre RG-ORG-01 (3–64 car., préfixe `XXX_` optionnel).
   - Manager et Assistante = même profil socle (RG-ORG-02).
 
 ## 4. Ports
@@ -123,7 +123,7 @@ type UserIdentityRepository interface {
 | GET | `/api/v1/applications/{id}` | selon RBAC | Détail application |
 | POST | `/api/v1/equipes` | Admin (E) | Créer équipe rattachée à une application |
 | GET | `/api/v1/equipes` | Admin / Workflow (L) | Liste des équipes |
-| POST | `/api/v1/users` | Admin (E) | Créer compte (`XXX_nom`, `equipeId` optionnel) |
+| POST | `/api/v1/users` | Admin (E) | Créer compte (login libre, `equipeId` optionnel) |
 | PUT | `/api/v1/users/{id}` | Admin (E) | Modifier profil, mot de passe, activation, `equipeId` |
 | POST | `/api/v1/services/{id}/responsible` | Admin (E) | Affecter responsable |
 | POST | `/api/v1/clients` | Resp. service / Commercial (E) | Créer client |
@@ -201,7 +201,7 @@ Couverture cible : domaine > 90 %, app > 80 %.
 | --- | --- |
 | Admin UI | `admin/identity-providers` — configurer Azure AD / Google (Enterprise) |
 | BFF | `server/api/auth/oidc/*` — proxy authorize/callback |
-| Liaison | Rattachement compte `XXX_nom` existant ou création JIT (si sièges disponibles) |
+| Liaison | Rattachement compte existant ou création JIT (si sièges disponibles) |
 
 - [ ] IdP configurable par tenant Administrateur.
 - [ ] Liaison JIT testée ; refus si plafond sièges (module 14).

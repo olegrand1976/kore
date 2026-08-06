@@ -129,7 +129,7 @@ type Authorizer interface {
 | --- | --- |
 | RG-SEC-01 — données perso privées | Filtrage champ (mail/téléphone) selon profil du demandeur dans la couche `app`/DTO |
 | RG-SEC-02 — période activation/expiration | Vérification `date_activation`/`date_expiration` au login + refus si expiré |
-| RG-ORG-01 — login `XXX_nom` | Validation format à la création utilisateur (module 00) |
+| RG-ORG-01 — login libre (préfixe `XXX_` optionnel) | Validation format à la création utilisateur (module 00) |
 | TLS | Terminaison HTTPS (reverse proxy/infra), cookies `Secure` |
 | Mots de passe | Hash `argon2id` ou `bcrypt` (coût configurable) |
 

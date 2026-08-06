@@ -1343,11 +1343,11 @@
     "password_confirm": "Confirm password",
     "password_optional": "New password (optional)",
     "password_hint": "At least 8 characters, with one uppercase, one lowercase and one digit.",
-    "login_hint": "Format: XXX_name (e.g. COL_dupont)",
+    "login_hint": "3–64 characters: letters, digits, ., _ or - (e.g. olivier or COL_dupont)",
     "howto": {
       "title": "Before creating the account",
       "login_title": "Login",
-      "login_body": "Required format XXX_name: 3 uppercase letters, an underscore, then a lowercase name (letters, digits or _). Example: COL_olivier — “olivier” alone is rejected.",
+      "login_body": "Free-form identifier (3–64 characters): starts with a letter, then letters, digits, period, underscore or hyphen. The XXX_ prefix (e.g. COL_olivier) is still accepted but no longer required — “olivier” is valid.",
       "profile_title": "Profiles",
       "profile_body": "One or more profiles. Permissions are combined. Administrator: full access. Collaborator: timesheets / requests. Team lead: timesheet validation. Service manager: leave + budget.",
       "password_title": "Password"
@@ -1361,7 +1361,7 @@
     "deleted": "User deleted.",
     "error_generic": "An error occurred",
     "error_login_exists": "This login already exists.",
-    "error_login_format": "Invalid format. Use XXX_name (3 uppercase letters, underscore, lowercase name).",
+    "error_login_format": "Invalid format. 3–64 characters, must start with a letter (letters, digits, ., _ or -).",
     "error_login_required": "Enter a login.",
     "error_password_required": "Enter a password.",
     "error_password_rules": "Password too weak: at least 8 characters with uppercase, lowercase and a digit.",

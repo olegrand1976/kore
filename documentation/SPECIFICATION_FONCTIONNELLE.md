@@ -212,7 +212,7 @@ Légende : **L** = Lecture, **E** = Écriture, **V** = Validation, **—** = pas
 
 | Règle | Valeur | Référence |
 | --- | --- | --- |
-| Format login | XXX_nom (3 lettres société) | RG-ORG-01 |
+| Format login | Identifiant libre (3–64 car., préfixe XXX_ optionnel) | RG-ORG-01 |
 | Période activation | Date début/fin | RG-SEC-02 |
 | Langue | FR / EN | — |
 | Doit saisir CRA | Oui sauf profil Utilisateur | PR-08.1 |
@@ -792,7 +792,7 @@ Module **Plannings, tableaux de bord et reporting** : périmètre couvert par le
 | 1 | Contrôler infos société (utilisées dans PDF) | Admin | Compte admin actif | Société paramétrée |
 | 2 | Créer tous les sites (géolocalisation, budget TMA) | Admin | Société OK | Sites créés |
 | 3 | Créer services (responsable obligatoire) | Admin | Sites créés | Services créés |
-| 4 | Créer comptes utilisateurs (profil, CRA, XXX_nom) | Admin | Services créés | Comptes actifs |
+| 4 | Créer comptes utilisateurs (profil, CRA, identifiant) | Admin | Services créés | Comptes actifs |
 | 5 | Affecter responsables de service | Admin | Comptes créés | Hiérarchie complète |
 | 6 | Configurer visibilité résolution TMA | Admin | Module TMA activé | UI adaptée |
 | 7 | Personnaliser workflows (types, états, exclusions) | Admin | Applications créées | Workflows actifs |
@@ -825,7 +825,7 @@ Module **Plannings, tableaux de bord et reporting** : périmètre couvert par le
 
 #### Critères d'acceptation
 
-- [ ] Un utilisateur peut se connecter avec son compte XXX_nom
+- [ ] Un utilisateur peut se connecter avec son identifiant
 - [ ] Un incident peut être créé après étape 7
 - [ ] Les workflows envoient les mails configurés
 
@@ -1589,7 +1589,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | RG-ETT-02 | L'ETT concerne uniquement les salariés sous contrat (indépendants exclus). | ETT | PR-08.6 | — |
 | RG-ETT-03 | Un relevé ETT manquant sur jour ouvré génère une alerte avant clôture mensuelle. | ETT | PR-08.6 | — |
 | RG-PREST-01 | Le manager peut valider tous les CRA du mois en une action globale. | Prestations | PR-08.8 | US-PREST-01 |
-| RG-ORG-01 | Format de compte utilisateur : XXX_nom (3 lettres société + nom). | Organisation | PR-08.1 | US-SETUP-01 |
+| RG-ORG-01 | Format de compte utilisateur : identifiant libre (3–64 caractères, lettre puis [A-Za-z0-9._-]) ; préfixe XXX_ optionnel (rétrocompatibilité). | Organisation | PR-08.1 | US-SETUP-01 |
 | RG-ORG-02 | Manager et Assistante partagent le même profil RBAC. | Organisation | — | — |
 
 **Total** : 24 règles de gestion identifiées et testables.
@@ -1717,7 +1717,7 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 
 ### Utilisateur
 
-**Attributs** : Login XXX_nom, profil, langue, CRA requis, type compte, période activation, salarié ETT
+**Attributs** : Login (identifiant libre, préfixe XXX_ optionnel), profil, langue, CRA requis, type compte, période activation, salarié ETT
 **Relations** : Équipe → N Utilisateur
 
 | Attribut | Type fonctionnel | Obligatoire | Règle |
@@ -2351,7 +2351,7 @@ Source : `beehive/bhive demarrage.pdf`
 | 1 | Contrôler infos société (utilisées dans PDF) | Admin | Compte admin actif | Société paramétrée |
 | 2 | Créer tous les sites (géolocalisation, budget TMA) | Admin | Société OK | Sites créés |
 | 3 | Créer services (responsable obligatoire) | Admin | Sites créés | Services créés |
-| 4 | Créer comptes utilisateurs (profil, CRA, XXX_nom) | Admin | Services créés | Comptes actifs |
+| 4 | Créer comptes utilisateurs (profil, CRA, identifiant) | Admin | Services créés | Comptes actifs |
 | 5 | Affecter responsables de service | Admin | Comptes créés | Hiérarchie complète |
 | 6 | Configurer visibilité résolution TMA | Admin | Module TMA activé | UI adaptée |
 | 7 | Personnaliser workflows (types, états, exclusions) | Admin | Applications créées | Workflows actifs |
@@ -2366,7 +2366,7 @@ Source : `beehive/bhive demarrage.pdf`
 
 ### Critères d'acceptation mise en place
 
-- Un utilisateur peut se connecter avec son compte XXX_nom
+- Un utilisateur peut se connecter avec son identifiant
 - Un incident peut être créé après étape 7
 - Les workflows envoient les mails configurés
 
