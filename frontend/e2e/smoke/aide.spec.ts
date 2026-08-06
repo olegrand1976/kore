@@ -13,7 +13,7 @@ test.describe('aide', () => {
     await expect(page.getByRole('heading', { name: /^aide$|^help$/i })).toBeVisible({
       timeout: 20_000
     })
-    await expect(page.getByText(/vos profils|your profiles/i)).toBeVisible()
+    await expect(page.getByRole('heading', { name: /vos profils|your profiles/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /accès par profil|access by profile/i })).toBeVisible()
 
     await page.getByRole('link', { name: /accès par profil|access by profile/i }).click()
