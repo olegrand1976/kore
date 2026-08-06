@@ -32,23 +32,23 @@ func (s *Service) tryPublishValidationInvoice(ctx context.Context, ts domain.Tim
 			Reason: "client_unresolved",
 		})
 	}
-	billableMinutes, err := s.BillableMinutesForMonth(ctx, ts.TenantID, ts.UserID, ts.Month)
+	billableMinutes, skipReason, err := s.invoiceableBillableMinutes(ctx, ts)
 	if err != nil {
 		return withTS(ports.InvoiceDraftOutcome{
 			Status: ports.InvoiceDraftSkipped,
 			Reason: "billable_hours_error",
 		})
 	}
+	if skipReason != "" {
+		return withTS(ports.InvoiceDraftOutcome{
+			Status: ports.InvoiceDraftSkipped,
+			Reason: skipReason,
+		})
+	}
 	if billableMinutes <= 0 {
 		return withTS(ports.InvoiceDraftOutcome{
 			Status: ports.InvoiceDraftSkipped,
 			Reason: "no_billable_hours",
-		})
-	}
-	if reason := s.billingModeSkipReason(ctx, ts); reason != "" {
-		return withTS(ports.InvoiceDraftOutcome{
-			Status: ports.InvoiceDraftSkipped,
-			Reason: reason,
 		})
 	}
 	userLabel := userLabelForTimesheet(ctx, s, ts)
@@ -90,6 +90,8 @@ func mapPublishError(err error) ports.InvoiceDraftOutcome {
 		return ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "zero_unit_price"}
 	case errors.Is(err, invoicingdomain.ErrNoBillableContent):
 		return ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "no_billable_hours"}
+	case errors.Is(err, invoicingdomain.ErrInvalidInvoiceLine):
+		return ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "publish_failed"}
 	default:
 		return ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "publish_failed"}
 	}
@@ -121,6 +123,106 @@ func (s *Service) CreateInvoicesFromTimesheets(ctx context.Context, tenant kerne
 	return out, nil
 }
 
+// invoiceableBillableMinutes scopes hours to a single billing bucket (unique invoice per CRA):
+// - mission resolved → only that mission's billable lines (other missions/apps excluded)
+// - else → only temps_passe application lines for the dominant app, or other billable lines if none
+// Application mode non/forfait is excluded; lookup errors are fail-closed.
+func (s *Service) invoiceableBillableMinutes(ctx context.Context, ts domain.Timesheet) (int, string, error) {
+	missionID := s.resolveMissionID(ctx, ts)
+	var missionMinutes int
+	var dominantAppMinutes int
+	var otherMinutes int
+	var sawNon, sawForfait bool
+	var lookupFailed bool
+
+	dominantApp := dominantApplicationFromLines(ts)
+	dominantAppKey := ""
+	if dominantApp != uuid.Nil {
+		dominantAppKey = dominantApp.String()
+	}
+
+	for _, week := range ts.Weeks {
+		for _, line := range week.Lines {
+			if !line.Billable || line.Duration.Minutes <= 0 {
+				continue
+			}
+			switch line.Source.Type {
+			case "holiday":
+				continue
+			case "mission":
+				if missionID == nil {
+					continue
+				}
+				if line.Source.ID == missionID.String() {
+					missionMinutes += line.Duration.Minutes
+				}
+			case "application":
+				if missionID != nil {
+					// One invoice per CRA: do not mix application hours with a mission bucket.
+					continue
+				}
+				if dominantAppKey == "" || line.Source.ID != dominantAppKey {
+					continue
+				}
+				if s.apps == nil {
+					lookupFailed = true
+					continue
+				}
+				appUUID, err := uuid.Parse(line.Source.ID)
+				if err != nil {
+					lookupFailed = true
+					continue
+				}
+				info, err := s.apps.GetApplicationBilling(ctx, ts.TenantID, appUUID)
+				if err != nil {
+					lookupFailed = true
+					continue
+				}
+				switch info.ModeFacturation {
+				case orgdomain.ModeFacturationNon:
+					sawNon = true
+				case orgdomain.ModeFacturationForfait:
+					sawForfait = true
+				default:
+					dominantAppMinutes += line.Duration.Minutes
+				}
+			default:
+				if missionID != nil {
+					continue
+				}
+				otherMinutes += line.Duration.Minutes
+			}
+		}
+	}
+
+	if missionID != nil {
+		if missionMinutes > 0 {
+			return missionMinutes, "", nil
+		}
+		if lookupFailed {
+			return 0, "billing_mode_unresolved", nil
+		}
+		return 0, "no_billable_hours", nil
+	}
+
+	if dominantAppMinutes > 0 {
+		return dominantAppMinutes, "", nil
+	}
+	if lookupFailed {
+		return 0, "billing_mode_unresolved", nil
+	}
+	if sawNon {
+		return 0, "billing_mode_disabled", nil
+	}
+	if sawForfait {
+		return 0, "billing_mode_forfait", nil
+	}
+	if otherMinutes > 0 {
+		return otherMinutes, "", nil
+	}
+	return 0, "no_billable_hours", nil
+}
+
 func userLabelForTimesheet(ctx context.Context, s *Service, ts domain.Timesheet) string {
 	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, ts.TenantID, ts.Month)
 	if err != nil {
@@ -145,6 +247,9 @@ func (s *Service) resolveClientID(ctx context.Context, ts domain.Timesheet) *uui
 	if ts.CommercialInfo.ClientID != nil && *ts.CommercialInfo.ClientID != uuid.Nil {
 		return ts.CommercialInfo.ClientID
 	}
+	if s.repo == nil {
+		return nil
+	}
 	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, ts.TenantID, ts.Month)
 	if err != nil {
 		return nil
@@ -163,6 +268,9 @@ func (s *Service) resolveMissionID(ctx context.Context, ts domain.Timesheet) *uu
 	}
 	if id := dominantMissionFromLines(ts); id != uuid.Nil {
 		return &id
+	}
+	if s.repo == nil {
+		return nil
 	}
 	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, ts.TenantID, ts.Month)
 	if err != nil {
@@ -230,28 +338,6 @@ func dominantApplicationFromLines(ts domain.Timesheet) uuid.UUID {
 		return uuid.Nil
 	}
 	return id
-}
-
-func (s *Service) billingModeSkipReason(ctx context.Context, ts domain.Timesheet) string {
-	if s.apps == nil {
-		return ""
-	}
-	appID := dominantApplicationFromLines(ts)
-	if appID == uuid.Nil {
-		return ""
-	}
-	info, err := s.apps.GetApplicationBilling(ctx, ts.TenantID, appID)
-	if err != nil {
-		return ""
-	}
-	switch info.ModeFacturation {
-	case orgdomain.ModeFacturationNon:
-		return "billing_mode_disabled"
-	case orgdomain.ModeFacturationForfait:
-		return "billing_mode_forfait"
-	default:
-		return ""
-	}
 }
 
 // resolveSellUnitPriceCents: mission TJM > application default TJM > société default TJM → hourly cents.

@@ -275,6 +275,7 @@ describe('mapInvoiceDraftReason', () => {
     expect(mapInvoiceDraftReason('client_unresolved', t)).toBe('cra.invoice_reason.client_unresolved')
     expect(mapInvoiceDraftReason('zero_unit_price', t)).toBe('cra.invoice_reason.zero_unit_price')
     expect(mapInvoiceDraftReason('invoicing_disabled', t)).toBe('cra.invoice_reason.invoicing_disabled')
+    expect(mapInvoiceDraftReason('billing_mode_unresolved', t)).toBe('cra.invoice_reason.billing_mode_unresolved')
     expect(mapInvoiceDraftMessage({ status: 'unavailable' }, t)).toBe('cra.invoice_unavailable')
   })
 })

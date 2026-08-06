@@ -89,11 +89,22 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 	if err := s.requireEnabled(ctx, cmd.TenantID); err != nil {
 		return domain.Invoice{}, err
 	}
+	if len(cmd.Lines) == 0 {
+		return domain.Invoice{}, domain.ErrInvalidInvoiceLine
+	}
 	inv := domain.NewInvoice(cmd.TenantID, cmd.ClientID, cmd.Type, cmd.Currency)
 	inv.SourceTimesheetID = cmd.SourceTimesheetID
 	var total, tax int64
 	lines := make([]domain.InvoiceLine, 0, len(cmd.Lines))
 	for _, lineIn := range cmd.Lines {
+		lineTotal, err := domain.LineNetCents(lineIn.UnitPrice, lineIn.Quantity)
+		if err != nil {
+			return domain.Invoice{}, err
+		}
+		lineTax, err := domain.LineTaxCents(lineTotal, lineIn.TaxRate)
+		if err != nil {
+			return domain.Invoice{}, err
+		}
 		line := domain.InvoiceLine{
 			ID:          uuid.New(),
 			TenantID:    cmd.TenantID,
@@ -103,9 +114,8 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 			UnitPrice:   lineIn.UnitPrice,
 			TaxRate:     lineIn.TaxRate,
 		}
-		lineTotal := int64(float64(line.UnitPrice) * line.Quantity)
 		total += lineTotal
-		tax += int64(float64(lineTotal) * line.TaxRate / 100)
+		tax += lineTax
 		lines = append(lines, line)
 	}
 	inv.TotalAmount = total
@@ -141,16 +151,19 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 	}
 	inv := domain.NewInvoice(cmd.TenantID, clientID, domain.InvoiceTypeStandard, currency)
 	if len(linesIn) == 0 {
-		linesIn = []ports.InvoiceLineInput{{
-			Description: fmt.Sprintf("Prestation virtuelle %s — %s", cmd.Period.Start.Format("2006-01-02"), cmd.Period.End.Format("2006-01-02")),
-			Quantity:    1,
-			UnitPrice:   0,
-			TaxRate:     20,
-		}}
+		return domain.Invoice{}, domain.ErrNoBillableContent
 	}
 	var total, tax int64
 	lines := make([]domain.InvoiceLine, 0, len(linesIn))
 	for _, lineIn := range linesIn {
+		lineTotal, err := domain.LineNetCents(lineIn.UnitPrice, lineIn.Quantity)
+		if err != nil {
+			return domain.Invoice{}, err
+		}
+		lineTax, err := domain.LineTaxCents(lineTotal, lineIn.TaxRate)
+		if err != nil {
+			return domain.Invoice{}, err
+		}
 		line := domain.InvoiceLine{
 			ID:          uuid.New(),
 			TenantID:    cmd.TenantID,
@@ -160,9 +173,8 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 			UnitPrice:   lineIn.UnitPrice,
 			TaxRate:     lineIn.TaxRate,
 		}
-		lineTotal := int64(float64(line.UnitPrice) * line.Quantity)
 		total += lineTotal
-		tax += int64(float64(lineTotal) * line.TaxRate / 100)
+		tax += lineTax
 		lines = append(lines, line)
 	}
 	inv.TotalAmount = total

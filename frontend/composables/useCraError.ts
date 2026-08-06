@@ -80,6 +80,7 @@ const invoiceReasonKeys: Record<string, string> = {
   zero_unit_price: 'cra.invoice_reason.zero_unit_price',
   billing_mode_disabled: 'cra.invoice_reason.billing_mode_disabled',
   billing_mode_forfait: 'cra.invoice_reason.billing_mode_forfait',
+  billing_mode_unresolved: 'cra.invoice_reason.billing_mode_unresolved',
   not_definitive: 'cra.invoice_reason.not_definitive',
   timesheet_not_found: 'cra.invoice_reason.timesheet_not_found'
 }

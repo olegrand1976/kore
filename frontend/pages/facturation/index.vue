@@ -237,7 +237,7 @@ const onCreate = async () => {
       unitPrice: Math.round(Number(line.unitPriceEur) * 100),
       taxRate: Number(line.taxRate)
     }))
-    if (lines.some((l) => !l.description || !(l.quantity > 0))) {
+    if (lines.some((l) => !l.description || !(l.quantity > 0) || !(l.unitPrice > 0) || Number.isNaN(l.taxRate) || l.taxRate < 0)) {
       createError.value = t('invoicing.create_validation')
       return
     }

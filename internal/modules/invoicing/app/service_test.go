@@ -256,6 +256,27 @@ func (r *orderingRepo) SaveInvoiceWithLines(ctx context.Context, inv domain.Invo
 	return nil
 }
 
+func TestCreateRejectsZeroUnitPrice(t *testing.T) {
+	repo := &virtualRepo{}
+	svc := NewService(repo)
+	tenant := kernel.NewTenantID(uuid.New())
+	_, err := svc.Create(context.Background(), ports.CreateInvoiceCommand{
+		TenantID: tenant,
+		ClientID: uuid.New(),
+		Type:     domain.InvoiceTypeStandard,
+		Currency: "EUR",
+		Lines: []ports.InvoiceLineInput{{
+			Description: "Line",
+			Quantity:    1,
+			UnitPrice:   0,
+			TaxRate:     20,
+		}},
+	})
+	if !errors.Is(err, domain.ErrInvalidInvoiceLine) {
+		t.Fatalf("expected ErrInvalidInvoiceLine, got %v", err)
+	}
+}
+
 func TestCreatePersistsInvoiceBeforeLines(t *testing.T) {
 	repo := &orderingRepo{}
 	svc := NewService(repo)

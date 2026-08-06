@@ -51,7 +51,8 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.
-- CRA définitifs → brouillons facture (validation définitive CRA ou Prestations → **Créer factures**, droit Facturation écriture).
+- CRA définitifs → brouillons facture (validation définitive CRA ou Prestations → **Créer factures**, droits Facturation écriture **et** CRA validation).
+- Heures facturées bornées à la mission (ou app `temps_passe` dominante) — pas d’agrégat multi-clients.
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`
 

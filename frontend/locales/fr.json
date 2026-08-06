@@ -494,6 +494,7 @@
       "zero_unit_price": "aucun tarif de vente (TJM mission / application / société)",
       "billing_mode_disabled": "mode de facturation « non » sur l'application",
       "billing_mode_forfait": "mode forfait — hors facturation temps passé",
+      "billing_mode_unresolved": "mode de facturation application illisible",
       "not_definitive": "CRA non définitif",
       "timesheet_not_found": "CRA introuvable",
       "unknown": "raison inconnue"
@@ -776,7 +777,7 @@
     "create_title": "Créer une facture",
     "create_submit": "Créer",
     "create_error": "Impossible de créer la facture.",
-    "create_validation": "Vérifiez le client et les lignes (description et quantité > 0).",
+    "create_validation": "Vérifiez le client et les lignes (description, quantité et PU HT > 0).",
     "client": "Client",
     "client_placeholder": "Sélectionner un client",
     "currency": "Devise",
@@ -1052,7 +1053,7 @@
       "title": "À quoi sert ce module ?",
       "items": [
         "Valider les CRA de prestation avant facturation ou export.",
-        "Créer des brouillons facture pour les CRA définitifs (droit Facturation écriture).",
+        "Créer des brouillons facture pour les CRA définitifs (droits Facturation écriture et CRA validation).",
         "Filtrer, trier et exporter le lot validé (XML)."
       ]
     },

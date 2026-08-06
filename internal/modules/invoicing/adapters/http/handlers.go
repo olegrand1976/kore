@@ -31,11 +31,27 @@ func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.Toke
 }
 
 func writeInvoicingErr(w http.ResponseWriter, err error) bool {
-	if errors.Is(err, domain.ErrInvoicingDisabled) {
+	switch {
+	case errors.Is(err, domain.ErrInvoicingDisabled):
 		httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
 		return true
+	case errors.Is(err, domain.ErrAlreadyInvoiced):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		return true
+	case errors.Is(err, domain.ErrInvoiceNotFound):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+		return true
+	case errors.Is(err, domain.ErrInvalidInvoiceState):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		return true
+	case errors.Is(err, domain.ErrZeroUnitPrice),
+		errors.Is(err, domain.ErrNoBillableContent),
+		errors.Is(err, domain.ErrInvalidInvoiceLine):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+		return true
+	default:
+		return false
 	}
-	return false
 }
 
 func listInvoices(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {

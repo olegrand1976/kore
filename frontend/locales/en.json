@@ -494,6 +494,7 @@
       "zero_unit_price": "no sell rate (mission / application / company TJM)",
       "billing_mode_disabled": "application billing mode is « none »",
       "billing_mode_forfait": "fixed-price mode — not time-and-materials",
+      "billing_mode_unresolved": "application billing mode could not be read",
       "not_definitive": "timesheet is not definitive",
       "timesheet_not_found": "timesheet not found",
       "unknown": "unknown reason"
@@ -776,7 +777,7 @@
     "create_title": "Create an invoice",
     "create_submit": "Create",
     "create_error": "Could not create the invoice.",
-    "create_validation": "Check the client and lines (description and quantity > 0).",
+    "create_validation": "Check the client and lines (description, quantity and unit price > 0).",
     "client": "Client",
     "client_placeholder": "Select a client",
     "currency": "Currency",
@@ -1052,7 +1053,7 @@
       "title": "What is this module for?",
       "items": [
         "Validate service timesheets before invoicing or export.",
-        "Create invoice drafts for definitive timesheets (Invoicing write permission).",
+        "Create invoice drafts for definitive timesheets (Invoicing write and CRA validate permissions).",
         "Filter, sort and export the validated batch (XML)."
       ]
     },

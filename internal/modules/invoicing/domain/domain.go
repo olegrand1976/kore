@@ -15,6 +15,7 @@ var (
 	ErrAlreadyInvoiced     = errors.New("timesheet already invoiced")
 	ErrZeroUnitPrice       = errors.New("unit price is zero")
 	ErrNoBillableContent   = errors.New("no billable content for invoice")
+	ErrInvalidInvoiceLine  = errors.New("invalid invoice line")
 )
 
 type InvoiceStatus string

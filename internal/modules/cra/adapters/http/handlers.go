@@ -392,6 +392,10 @@ func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Author
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
 		var req struct {
 			TimesheetIDs []string `json:"timesheetIds"`
 		}
