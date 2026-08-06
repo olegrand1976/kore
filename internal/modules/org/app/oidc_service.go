@@ -148,6 +148,7 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 		UserID:   user.ID,
 		TenantID: user.TenantID,
 		Profile:  authx.Profile(user.Profile),
+		Profiles: profilesFromUser(user),
 	})
 	if err != nil {
 		return ports.AuthResult{}, err
@@ -159,6 +160,17 @@ func (s *oidcService) HandleCallback(ctx context.Context, cmd ports.OIDCCallback
 		TenantID:     user.TenantID,
 		Profile:      user.Profile,
 	}, nil
+}
+
+func profilesFromUser(user domain.User) []authx.Profile {
+	out := make([]authx.Profile, 0, len(user.Profiles))
+	for _, p := range user.Profiles {
+		out = append(out, authx.Profile(p))
+	}
+	if len(out) == 0 && user.Profile != "" {
+		out = []authx.Profile{authx.Profile(user.Profile)}
+	}
+	return out
 }
 
 func (s *oidcService) resolveUser(ctx context.Context, tenant kernel.TenantID, idp domain.IdentityProvider, subject, email string) (domain.User, error) {
@@ -215,11 +227,13 @@ func (s *oidcService) resolveUser(ctx context.Context, tenant kernel.TenantID, i
 		Email:        email,
 		PasswordHash: hash,
 		Profile:      profile,
+		Profiles:     []domain.Profile{profile},
 		Active:       true,
 		Period: domain.ActivationPeriod{
 			Activation: s.clock().UTC().Truncate(24 * time.Hour),
 		},
 	}
+	user.SyncPrimaryMemberships()
 	if err := s.repo.SaveUser(ctx, user); err != nil {
 		return domain.User{}, err
 	}

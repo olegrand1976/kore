@@ -489,22 +489,36 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 }
 
 func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.users (
-			id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil,
-			date_activation, date_expiration, active,
-			totp_enabled, totp_enrollment_required
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-	`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), u.Prenom, u.Nom, nullString(u.Email), u.PasswordHash, string(u.Profile),
-		u.Period.Activation, u.Period.Expiration, u.Active, u.TotpEnabled, u.TotpEnrollmentRequired)
-	return err
+	hydrateEquipeIDsFromPrimary(&u)
+	u.SyncPrimaryMemberships()
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO org.users (
+				id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil,
+				date_activation, date_expiration, active,
+				totp_enabled, totp_enrollment_required
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		`, u.ID, u.TenantID.UUID(), u.EquipeID, string(u.Login), u.Prenom, u.Nom, nullString(u.Email), u.PasswordHash, string(u.Profile),
+			u.Period.Activation, u.Period.Expiration, u.Active, u.TotpEnabled, u.TotpEnrollmentRequired)
+		if err != nil {
+			return err
+		}
+		return replaceUserMemberships(ctx, tx, u)
+	})
 }
 
 func (r *Repository) FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error) {
-	return r.scanUser(r.pool.QueryRow(ctx, `
+	u, err := r.scanUser(r.pool.QueryRow(ctx, `
 		SELECT `+userSelectCols+`
 		FROM org.users WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), id))
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := r.loadUserMemberships(ctx, &u); err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
 }
 
 func (r *Repository) FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (ports.UserDetail, error) {
@@ -537,6 +551,15 @@ func (r *Repository) FindUserDetailByID(ctx context.Context, tenant kernel.Tenan
 		formatted := expiration.Format("2006-01-02")
 		detail.DateExpiration = &formatted
 	}
+	profiles, equipeIDs, err := r.fetchMemberships(ctx, id)
+	if err != nil {
+		return ports.UserDetail{}, err
+	}
+	detail.Profiles = profiles
+	if len(detail.Profiles) == 0 && profile != "" {
+		detail.Profiles = []string{profile}
+	}
+	detail.EquipeIDs = equipeIDs
 	return detail, nil
 }
 
@@ -589,18 +612,26 @@ func (r *Repository) SetLastSeenVersion(ctx context.Context, tenant kernel.Tenan
 }
 
 func (r *Repository) UpdateUser(ctx context.Context, u domain.User) error {
-	tag, err := r.pool.Exec(ctx, `
-		UPDATE org.users
-		SET profil = $3, password_hash = $4, active = $5, email = $6, equipe_id = $7
-		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
-	`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active, nullString(u.Email), u.EquipeID)
-	if err != nil {
-		return err
+	// Callers that only set EquipeID (legacy) still get a junction row; intentional
+	// detach clears EquipeIDs before SyncPrimaryMemberships in the app layer.
+	if len(u.EquipeIDs) == 0 && u.EquipeID != nil {
+		hydrateEquipeIDsFromPrimary(&u)
 	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
-	}
-	return nil
+	u.SyncPrimaryMemberships()
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			UPDATE org.users
+			SET profil = $3, password_hash = $4, active = $5, email = $6, equipe_id = $7
+			WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+		`, u.TenantID.UUID(), u.ID, string(u.Profile), u.PasswordHash, u.Active, nullString(u.Email), u.EquipeID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("user not found: %w", pgx.ErrNoRows)
+		}
+		return replaceUserMemberships(ctx, tx, u)
+	})
 }
 
 func (r *Repository) SoftDeleteUser(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error {
@@ -619,17 +650,31 @@ func (r *Repository) SoftDeleteUser(ctx context.Context, tenant kernel.TenantID,
 }
 
 func (r *Repository) FindUserByLogin(ctx context.Context, tenant kernel.TenantID, login string) (domain.User, error) {
-	return r.scanUser(r.pool.QueryRow(ctx, `
+	u, err := r.scanUser(r.pool.QueryRow(ctx, `
 		SELECT `+userSelectCols+`
 		FROM org.users WHERE tenant_id = $1 AND login = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), login))
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := r.loadUserMemberships(ctx, &u); err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
 }
 
 func (r *Repository) FindUserByLoginGlobal(ctx context.Context, login string) (domain.User, error) {
-	return r.scanUser(r.pool.QueryRow(ctx, `
+	u, err := r.scanUser(r.pool.QueryRow(ctx, `
 		SELECT `+userSelectCols+`
 		FROM org.users WHERE login = $1 AND deleted_at IS NULL LIMIT 1
 	`, login))
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := r.loadUserMemberships(ctx, &u); err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
 }
 
 func (r *Repository) ExistsLogin(ctx context.Context, tenant kernel.TenantID, login string) (bool, error) {
@@ -664,7 +709,13 @@ func (r *Repository) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]d
 		}
 		out = append(out, u)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := r.loadUsersMemberships(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (r *Repository) SaveClient(ctx context.Context, c domain.Client) error {
@@ -770,8 +821,15 @@ func (r *Repository) ResolveUserEmails(ctx context.Context, tenant kernel.Tenant
 
 func (r *Repository) ResolveEquipeUserEmails(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT login FROM org.users
-		WHERE tenant_id = $1 AND equipe_id = $2 AND active = TRUE
+		SELECT DISTINCT u.login FROM org.users u
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    u.equipe_id = $2
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      WHERE ue.user_id = u.id AND ue.equipe_id = $2
+		    )
+		  )
 	`, tenant.UUID(), equipeID)
 	if err != nil {
 		return nil, err
@@ -790,10 +848,20 @@ func (r *Repository) ResolveEquipeUserEmails(ctx context.Context, tenant kernel.
 
 func (r *Repository) ResolveApplicationUserEmails(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT u.login
+		SELECT DISTINCT u.login
 		FROM org.users u
-		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
-		WHERE u.tenant_id = $1 AND e.application_id = $2 AND u.active = TRUE
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND e.application_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
+		      WHERE ue.user_id = u.id AND e.application_id = $2
+		    )
+		  )
 	`, tenant.UUID(), applicationID)
 	if err != nil {
 		return nil, err
@@ -812,11 +880,22 @@ func (r *Repository) ResolveApplicationUserEmails(ctx context.Context, tenant ke
 
 func (r *Repository) ResolveServiceUserEmails(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT u.login
+		SELECT DISTINCT u.login
 		FROM org.users u
-		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
-		JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		WHERE u.tenant_id = $1 AND a.service_id = $2 AND u.active = TRUE
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND a.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
+		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		      WHERE ue.user_id = u.id AND a.service_id = $2
+		    )
+		  )
 	`, tenant.UUID(), serviceID)
 	if err != nil {
 		return nil, err
@@ -855,8 +934,15 @@ func (r *Repository) ResolveTenantUserEmails(ctx context.Context, tenant kernel.
 
 func (r *Repository) ResolveEquipeUserIDs(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id FROM org.users
-		WHERE tenant_id = $1 AND equipe_id = $2 AND active = TRUE
+		SELECT DISTINCT u.id FROM org.users u
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    u.equipe_id = $2
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      WHERE ue.user_id = u.id AND ue.equipe_id = $2
+		    )
+		  )
 	`, tenant.UUID(), equipeID)
 	if err != nil {
 		return nil, err
@@ -867,10 +953,20 @@ func (r *Repository) ResolveEquipeUserIDs(ctx context.Context, tenant kernel.Ten
 
 func (r *Repository) ResolveApplicationUserIDs(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT u.id
+		SELECT DISTINCT u.id
 		FROM org.users u
-		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
-		WHERE u.tenant_id = $1 AND e.application_id = $2 AND u.active = TRUE
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND e.application_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
+		      WHERE ue.user_id = u.id AND e.application_id = $2
+		    )
+		  )
 	`, tenant.UUID(), applicationID)
 	if err != nil {
 		return nil, err
@@ -881,11 +977,22 @@ func (r *Repository) ResolveApplicationUserIDs(ctx context.Context, tenant kerne
 
 func (r *Repository) ResolveServiceUserIDs(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT u.id
+		SELECT DISTINCT u.id
 		FROM org.users u
-		JOIN org.equipes e ON e.id = u.equipe_id AND e.tenant_id = u.tenant_id
-		JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		WHERE u.tenant_id = $1 AND a.service_id = $2 AND u.active = TRUE
+		WHERE u.tenant_id = $1 AND u.active = TRUE AND u.deleted_at IS NULL
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND a.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
+		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
+		      WHERE ue.user_id = u.id AND a.service_id = $2
+		    )
+		  )
 	`, tenant.UUID(), serviceID)
 	if err != nil {
 		return nil, err
@@ -921,6 +1028,21 @@ func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.
 		LEFT JOIN org.sites st ON st.id = sv.site_id
 		WHERE u.tenant_id = $1 AND u.id = $2
 	`, tenant.UUID(), userID).Scan(&societeID)
+	if err == nil && societeID != uuid.Nil {
+		return societeID, nil
+	}
+	// Fallback: any team membership via junction table.
+	err = r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.user_equipes ue
+		JOIN org.equipes e ON e.id = ue.equipe_id
+		JOIN org.applications a ON a.id = e.application_id
+		JOIN org.services sv ON sv.id = a.service_id
+		JOIN org.sites st ON st.id = sv.site_id
+		WHERE ue.user_id = $1 AND e.tenant_id = $2
+		ORDER BY ue.equipe_id
+		LIMIT 1
+	`, userID, tenant.UUID()).Scan(&societeID)
 	if err == nil && societeID != uuid.Nil {
 		return societeID, nil
 	}
@@ -979,6 +1101,183 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	}
 	u.TotpEnabledAt = totpEnabledAt
 	return u, nil
+}
+
+func hydrateEquipeIDsFromPrimary(u *domain.User) {
+	if len(u.EquipeIDs) == 0 && u.EquipeID != nil {
+		u.EquipeIDs = []uuid.UUID{*u.EquipeID}
+	}
+	if len(u.Profiles) == 0 && u.Profile != "" {
+		u.Profiles = []domain.Profile{u.Profile}
+	}
+}
+
+func replaceUserMemberships(ctx context.Context, tx pgx.Tx, u domain.User) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM org.user_profiles WHERE user_id = $1`, u.ID); err != nil {
+		return err
+	}
+	for _, p := range u.Profiles {
+		if p == "" {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.user_profiles (user_id, profil) VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, u.ID, string(p)); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM org.user_equipes WHERE user_id = $1`, u.ID); err != nil {
+		return err
+	}
+	for _, eid := range u.EquipeIDs {
+		if eid == uuid.Nil {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.user_equipes (user_id, equipe_id) VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, u.ID, eid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) fetchMemberships(ctx context.Context, userID uuid.UUID) ([]string, []uuid.UUID, error) {
+	prows, err := r.pool.Query(ctx, `
+		SELECT profil FROM org.user_profiles WHERE user_id = $1 ORDER BY profil
+	`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer prows.Close()
+	var profiles []string
+	for prows.Next() {
+		var p string
+		if err := prows.Scan(&p); err != nil {
+			return nil, nil, err
+		}
+		profiles = append(profiles, p)
+	}
+	if err := prows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	erows, err := r.pool.Query(ctx, `
+		SELECT equipe_id FROM org.user_equipes WHERE user_id = $1 ORDER BY equipe_id
+	`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer erows.Close()
+	var equipeIDs []uuid.UUID
+	for erows.Next() {
+		var id uuid.UUID
+		if err := erows.Scan(&id); err != nil {
+			return nil, nil, err
+		}
+		equipeIDs = append(equipeIDs, id)
+	}
+	return profiles, equipeIDs, erows.Err()
+}
+
+func (r *Repository) loadUserMemberships(ctx context.Context, u *domain.User) error {
+	profiles, equipeIDs, err := r.fetchMemberships(ctx, u.ID)
+	if err != nil {
+		return err
+	}
+	u.Profiles = make([]domain.Profile, 0, len(profiles))
+	for _, p := range profiles {
+		u.Profiles = append(u.Profiles, domain.Profile(p))
+	}
+	if len(u.Profiles) == 0 && u.Profile != "" {
+		u.Profiles = []domain.Profile{u.Profile}
+	}
+	u.EquipeIDs = orderEquipeIDsPrimaryFirst(u.EquipeID, equipeIDs)
+	return nil
+}
+
+func (r *Repository) loadUsersMemberships(ctx context.Context, users []domain.User) error {
+	if len(users) == 0 {
+		return nil
+	}
+	ids := make([]uuid.UUID, len(users))
+	index := make(map[uuid.UUID]int, len(users))
+	for i := range users {
+		ids[i] = users[i].ID
+		index[users[i].ID] = i
+		users[i].Profiles = nil
+		users[i].EquipeIDs = nil
+	}
+
+	prows, err := r.pool.Query(ctx, `
+		SELECT user_id, profil FROM org.user_profiles
+		WHERE user_id = ANY($1) ORDER BY user_id, profil
+	`, ids)
+	if err != nil {
+		return err
+	}
+	defer prows.Close()
+	for prows.Next() {
+		var uid uuid.UUID
+		var p string
+		if err := prows.Scan(&uid, &p); err != nil {
+			return err
+		}
+		if i, ok := index[uid]; ok {
+			users[i].Profiles = append(users[i].Profiles, domain.Profile(p))
+		}
+	}
+	if err := prows.Err(); err != nil {
+		return err
+	}
+
+	erows, err := r.pool.Query(ctx, `
+		SELECT user_id, equipe_id FROM org.user_equipes
+		WHERE user_id = ANY($1) ORDER BY user_id, equipe_id
+	`, ids)
+	if err != nil {
+		return err
+	}
+	defer erows.Close()
+	for erows.Next() {
+		var uid, eid uuid.UUID
+		if err := erows.Scan(&uid, &eid); err != nil {
+			return err
+		}
+		if i, ok := index[uid]; ok {
+			users[i].EquipeIDs = append(users[i].EquipeIDs, eid)
+		}
+	}
+	if err := erows.Err(); err != nil {
+		return err
+	}
+
+	for i := range users {
+		if len(users[i].Profiles) == 0 && users[i].Profile != "" {
+			users[i].Profiles = []domain.Profile{users[i].Profile}
+		}
+		users[i].EquipeIDs = orderEquipeIDsPrimaryFirst(users[i].EquipeID, users[i].EquipeIDs)
+	}
+	return nil
+}
+
+func orderEquipeIDsPrimaryFirst(primary *uuid.UUID, ids []uuid.UUID) []uuid.UUID {
+	if primary == nil {
+		return ids
+	}
+	if len(ids) == 0 {
+		return []uuid.UUID{*primary}
+	}
+	out := make([]uuid.UUID, 0, len(ids))
+	out = append(out, *primary)
+	for _, id := range ids {
+		if id != *primary {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, deleted_at,
@@ -1057,10 +1356,17 @@ func (r *Repository) FindUserIdentityBySubject(ctx context.Context, tenant kerne
 }
 
 func (r *Repository) FindUserByEmail(ctx context.Context, tenant kernel.TenantID, email string) (domain.User, error) {
-	return r.scanUser(r.pool.QueryRow(ctx, `
+	u, err := r.scanUser(r.pool.QueryRow(ctx, `
 		SELECT `+userSelectCols+`
 		FROM org.users WHERE tenant_id = $1 AND lower(email) = lower($2) AND deleted_at IS NULL
 	`, tenant.UUID(), email))
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := r.loadUserMemberships(ctx, &u); err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
 }
 
 func (r *Repository) FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error) {

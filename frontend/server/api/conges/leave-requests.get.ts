@@ -5,7 +5,11 @@ export default defineEventHandler(async (event) => {
   const query = { ...getQuery(event) }
   const session = parseSessionFromEvent(event)
 
-  if (session?.userId && !query.userId && !rbacCan(session.profile, 'conges', 'V')) {
+  if (session?.userId && !query.userId && !rbacCan(
+    (session.profiles && session.profiles.length > 0) ? session.profiles : session.profile,
+    'conges',
+    'V'
+  )) {
     query.userId = session.userId
   }
 

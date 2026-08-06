@@ -18,6 +18,9 @@ var (
 	ErrServiceWithoutResponsible = errors.New("service without responsible")
 	ErrEquipeWithoutApplication  = errors.New("equipe without application")
 	ErrSeatLimitReached          = errors.New("seat limit reached")
+	ErrProfilesRequired          = errors.New("at least one profile is required")
+	ErrInvalidProfile            = errors.New("invalid profile")
+	ErrEquipeNotFound            = errors.New("equipe not found")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrApplicationNotFound       = errors.New("application not found")
 	ErrCannotModifySelf          = errors.New("cannot modify own account")
@@ -78,6 +81,32 @@ type Profile string
 
 const ProfileAdmin Profile = "Administrateur"
 const ProfileCollaborateur Profile = "Collaborateur"
+const ProfileChefEquipe Profile = "Chef d'équipe"
+const ProfileResponsableService Profile = "Responsable de service"
+
+// KnownProfiles is the closed set of RBAC profiles assignable to a user.
+var KnownProfiles = []Profile{
+	ProfileAdmin,
+	ProfileCollaborateur,
+	ProfileChefEquipe,
+	ProfileResponsableService,
+}
+
+func ValidateProfiles(profiles []Profile) error {
+	if len(profiles) == 0 {
+		return ErrProfilesRequired
+	}
+	known := make(map[Profile]struct{}, len(KnownProfiles))
+	for _, p := range KnownProfiles {
+		known[p] = struct{}{}
+	}
+	for _, p := range profiles {
+		if _, ok := known[p]; !ok {
+			return ErrInvalidProfile
+		}
+	}
+	return nil
+}
 
 type ActivationPeriod struct {
 	Activation time.Time
@@ -98,12 +127,14 @@ type User struct {
 	ID                     uuid.UUID
 	TenantID               kernel.TenantID
 	EquipeID               *uuid.UUID
+	EquipeIDs              []uuid.UUID
 	Login                  Login
 	Prenom                 string
 	Nom                    string
 	Email                  string
 	PasswordHash           string
 	Profile                Profile
+	Profiles               []Profile
 	Active                 bool
 	Period                 ActivationPeriod
 	DeletedAt              *time.Time
@@ -111,6 +142,63 @@ type User struct {
 	TotpEnrollmentRequired bool
 	TotpSecretEncrypted    string
 	TotpEnabledAt          *time.Time
+}
+
+// SyncPrimaryMemberships keeps denormalized profil / equipe_id in sync with the
+// multi-membership slices (JWT primary claim + legacy joins).
+// For teams: keeps the current EquipeID when it remains a member; otherwise
+// picks EquipeIDs[0]. Never reorders membership just because of UUID sort order.
+func (u *User) SyncPrimaryMemberships() {
+	if len(u.Profiles) == 0 && u.Profile != "" {
+		u.Profiles = []Profile{u.Profile}
+	}
+	if len(u.Profiles) > 0 {
+		u.Profile = PrimaryProfile(u.Profiles)
+	} else if u.Profile == "" {
+		u.Profile = ProfileCollaborateur
+		u.Profiles = []Profile{ProfileCollaborateur}
+	}
+	switch {
+	case len(u.EquipeIDs) > 0:
+		if u.EquipeID != nil {
+			for _, id := range u.EquipeIDs {
+				if id == *u.EquipeID {
+					return
+				}
+			}
+		}
+		id := u.EquipeIDs[0]
+		u.EquipeID = &id
+	case u.EquipeIDs != nil:
+		// Non-nil empty slice = explicit detach.
+		u.EquipeID = nil
+	case u.EquipeID != nil:
+		// Nil EquipeIDs + primary set = hydrate from legacy column.
+		u.EquipeIDs = []uuid.UUID{*u.EquipeID}
+	}
+}
+
+// PrimaryProfile prefers Administrateur, then manager roles, else first entry.
+func PrimaryProfile(profiles []Profile) Profile {
+	if len(profiles) == 0 {
+		return ProfileCollaborateur
+	}
+	priority := []Profile{
+		ProfileAdmin,
+		ProfileResponsableService,
+		ProfileChefEquipe,
+		ProfileCollaborateur,
+	}
+	set := make(map[Profile]struct{}, len(profiles))
+	for _, p := range profiles {
+		set[p] = struct{}{}
+	}
+	for _, p := range priority {
+		if _, ok := set[p]; ok {
+			return p
+		}
+	}
+	return profiles[0]
 }
 
 type IdentityProvider struct {

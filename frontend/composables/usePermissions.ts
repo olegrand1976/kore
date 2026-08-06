@@ -3,10 +3,15 @@ import { rbacCan, type RbacAction, type RbacModule } from '~/utils/rbac'
 export function usePermissions() {
   const { user } = useAuth()
 
-  const profile = computed(() => user.value?.profile)
+  const profiles = computed(() => {
+    const multi = user.value?.profiles
+    if (Array.isArray(multi) && multi.length > 0) return multi
+    const single = user.value?.profile
+    return single ? [single] : []
+  })
 
   const can = (module: RbacModule, action: RbacAction) =>
-    rbacCan(profile.value, module, action)
+    rbacCan(profiles.value, module, action)
 
   const canValidateConges = computed(() => can('conges', 'V'))
   const canValidateTma = computed(() => can('tma', 'V'))

@@ -3,6 +3,7 @@ export type AuthProfile = 'Administrateur' | 'Collaborateur' | 'Utilisateur' | s
 type SessionUser = {
   ok: boolean
   profile?: AuthProfile
+  profiles?: AuthProfile[]
   userId?: string
   tenantId?: string
   isPlatformAdmin?: boolean
@@ -22,13 +23,22 @@ export function useAuth() {
     return user.value
   }
 
-  const isAdmin = computed(() => user.value?.profile === 'Administrateur')
+  const effectiveProfiles = computed(() => {
+    const multi = user.value?.profiles
+    if (Array.isArray(multi) && multi.length > 0) return multi
+    const single = user.value?.profile
+    return single ? [single] : []
+  })
+
+  const isAdmin = computed(() => effectiveProfiles.value.includes('Administrateur'))
   const isPlatformAdmin = computed(() => user.value?.isPlatformAdmin === true)
 
-  const isManager = computed(() => {
-    const profile = user.value?.profile ?? ''
-    return profile === 'Administrateur' || profile.includes('Chef') || profile.includes('Responsable')
-  })
+  const isManager = computed(() =>
+    effectiveProfiles.value.some(
+      (profile) =>
+        profile === 'Administrateur' || profile.includes('Chef') || profile.includes('Responsable')
+    )
+  )
 
   return { user, fetchSession, isAdmin, isManager, isPlatformAdmin }
 }

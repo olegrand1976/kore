@@ -27,6 +27,9 @@ export default defineEventHandler((event) => {
     return {
       ok: true,
       profile: payload.profile as string | undefined,
+      profiles: Array.isArray(payload.profiles)
+        ? (payload.profiles as unknown[]).filter((p): p is string => typeof p === 'string')
+        : undefined,
       userId: payload.sub as string | undefined,
       tenantId: payload.tenant_id as string | undefined,
       isPlatformAdmin: roles.includes('platform_admin')

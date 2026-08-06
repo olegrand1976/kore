@@ -45,8 +45,13 @@
           :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('users.empty')"
           row-key="id"
         >
-        <template #cell-profil="{ value }">
-          <AppBadge variant="default">{{ value }}</AppBadge>
+        <template #cell-profil="{ row }">
+          <div class="users-badges">
+            <AppBadge v-for="p in row.profils" :key="p" variant="default">{{ p }}</AppBadge>
+          </div>
+        </template>
+        <template #cell-equipeLabel="{ row }">
+          <span>{{ row.equipeLabel }}</span>
         </template>
         <template #cell-active="{ value }">
           <AppBadge :variant="value ? 'success' : 'default'">
@@ -133,6 +138,15 @@
             :error="fieldErrors.password"
             required
           />
+          <AppInput
+            v-if="!editingId"
+            id="user-password-confirm"
+            v-model="form.passwordConfirm"
+            type="password"
+            :label="$t('users.password_confirm')"
+            :error="fieldErrors.passwordConfirm"
+            required
+          />
           <p v-if="!editingId" class="users-hint">{{ $t('users.password_hint') }}</p>
           <template v-else>
             <AppInput
@@ -142,26 +156,43 @@
               :label="$t('users.password_optional')"
               :error="fieldErrors.password"
             />
+            <AppInput
+              v-if="form.password"
+              id="user-password-confirm-edit"
+              v-model="form.passwordConfirm"
+              type="password"
+              :label="$t('users.password_confirm')"
+              :error="fieldErrors.passwordConfirm"
+            />
             <p v-if="form.password" class="users-hint">{{ $t('users.password_hint') }}</p>
           </template>
-          <div class="users-form__field">
-            <label for="user-profile">{{ $t('users.profile') }}</label>
-            <select id="user-profile" v-model="form.profil" required>
-              <option v-for="p in USER_PROFILES" :key="p" :value="p">{{ p }}</option>
-            </select>
-          </div>
-          <div class="users-form__field">
-            <label for="user-equipe">{{ $t('users.equipe') }}</label>
-            <select id="user-equipe" v-model="form.equipeId">
-              <option value="">{{ $t('users.equipe_none') }}</option>
-              <option v-for="e in equipeOptions" :key="e.value" :value="e.value">
-                {{ e.label }}
-              </option>
-            </select>
+          <fieldset class="users-form__field users-checkgroup">
+            <legend>{{ $t('users.profiles') }}</legend>
+            <label v-for="p in USER_PROFILES" :key="p" class="users-check">
+              <input
+                v-model="form.profils"
+                type="checkbox"
+                :value="p"
+                :disabled="editingSelf"
+              />
+              {{ p }}
+            </label>
+            <p v-if="fieldErrors.profils" class="users-field-error" role="alert">{{ fieldErrors.profils }}</p>
             <p class="users-hint">
-              {{ equipeOptions.length ? $t('users.equipe_hint') : $t('users.equipe_empty_hint') }}
+              {{ editingSelf ? $t('users.profiles_self_hint') : $t('users.profiles_hint') }}
             </p>
-          </div>
+          </fieldset>
+          <fieldset class="users-form__field users-checkgroup">
+            <legend>{{ $t('users.equipes') }}</legend>
+            <p v-if="!equipeOptions.length" class="users-hint">{{ $t('users.equipe_empty_hint') }}</p>
+            <template v-else>
+              <label v-for="e in equipeOptions" :key="e.value" class="users-check">
+                <input v-model="form.equipeIds" type="checkbox" :value="e.value" />
+                {{ e.label }}
+              </label>
+              <p class="users-hint">{{ $t('users.equipes_hint') }}</p>
+            </template>
+          </fieldset>
           <label v-if="editingId" class="users-toggle">
             <input v-model="form.active" type="checkbox" />
             {{ $t('users.active') }}
@@ -190,15 +221,17 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 const { t } = useI18n()
 const { extractFetchError } = useApiError()
 const { user, fetchSession } = useAuth()
-const { list, create, update, deactivate, remove, pickUserId, pickUserLogin, pickUserProfile, pickUserActive, pickUserEquipeId } = useUsers()
+const { list, create, update, deactivate, remove, pickUserId, pickUserLogin, pickUserProfiles, pickUserActive, pickUserEquipeIds } = useUsers()
 const { listEquipes, listApplications, buildEquipeOptions } = useOrganisation()
 
 type UserRow = {
   id: string
   login: string
   profil: string
+  profils: string[]
   active: boolean
   equipeId: string
+  equipeIds: string[]
   equipeLabel: string
 }
 
@@ -211,7 +244,7 @@ const editingId = ref('')
 const formError = ref('')
 const flash = ref('')
 const flashError = ref(false)
-const fieldErrors = reactive({ login: '', password: '' })
+const fieldErrors = reactive({ login: '', password: '', passwordConfirm: '', profils: '' })
 
 const LOGIN_PATTERN = /^[A-Z]{3}_[a-z0-9_]+$/
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
@@ -219,9 +252,10 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 const form = reactive({
   login: '',
   password: '',
-  profil: USER_PROFILES[1],
+  passwordConfirm: '',
+  profils: [USER_PROFILES[1]] as string[],
   active: true,
-  equipeId: ''
+  equipeIds: [] as string[]
 })
 
 // L'équipe porte le rattachement du collaborateur à son application de travail.
@@ -229,6 +263,11 @@ const equipeOptions = ref<EquipeOption[]>([])
 
 const equipeLabelById = (id: string) =>
   equipeOptions.value.find((e) => e.value === id)?.label ?? ''
+
+const formatEquipeLabels = (ids: string[]) => {
+  if (!ids.length) return t('users.equipe_none')
+  return ids.map((id) => equipeLabelById(id) || t('users.equipe_none')).join(', ')
+}
 
 const loadEquipes = async () => {
   try {
@@ -243,6 +282,8 @@ const loadEquipes = async () => {
 const clearFieldErrors = () => {
   fieldErrors.login = ''
   fieldErrors.password = ''
+  fieldErrors.passwordConfirm = ''
+  fieldErrors.profils = ''
 }
 
 const validatePassword = (password: string, required: boolean): string => {
@@ -267,14 +308,25 @@ const validateForm = (): boolean => {
       fieldErrors.login = t('users.error_login_format')
     }
     fieldErrors.password = validatePassword(form.password, true)
+    if (!fieldErrors.password && form.password !== form.passwordConfirm) {
+      fieldErrors.passwordConfirm = t('users.error_password_mismatch')
+    }
   } else if (form.password) {
     fieldErrors.password = validatePassword(form.password, false)
+    if (!fieldErrors.password && form.password !== form.passwordConfirm) {
+      fieldErrors.passwordConfirm = t('users.error_password_mismatch')
+    }
   }
 
-  return !fieldErrors.login && !fieldErrors.password
+  if (!form.profils.length) {
+    fieldErrors.profils = t('users.error_profiles_required')
+  }
+
+  return !fieldErrors.login && !fieldErrors.password && !fieldErrors.passwordConfirm && !fieldErrors.profils
 }
 
 const currentUserId = computed(() => user.value?.userId ?? '')
+const editingSelf = computed(() => !!editingId.value && editingId.value === currentUserId.value)
 
 const columns = computed(() => [
   { key: 'login', label: t('users.login') },
@@ -297,13 +349,13 @@ const listFilters = computed(() => ({
     type: 'select' as const,
     label: t('users.profile'),
     options: USER_PROFILES.map((p) => ({ value: p, label: p })),
-    match: (row: UserRow, value: string) => row.profil === value
+    match: (row: UserRow, value: string) => row.profils.includes(value)
   },
   equipe: {
     type: 'select' as const,
     label: t('users.equipe'),
     options: equipeOptions.value,
-    match: (row: UserRow, value: string) => row.equipeId === value
+    match: (row: UserRow, value: string) => row.equipeIds.includes(value)
   },
   active: {
     type: 'select' as const,
@@ -318,7 +370,7 @@ const listFilters = computed(() => ({
 
 const sortKeys = computed(() => [
   { key: 'login', label: t('users.login'), type: 'string' as const, accessor: (row: UserRow) => row.login },
-  { key: 'profil', label: t('users.profile'), type: 'string' as const, accessor: (row: UserRow) => row.profil }
+  { key: 'profil', label: t('users.profile'), type: 'string' as const, accessor: (row: UserRow) => row.profils.join(', ') }
 ])
 
 const {
@@ -342,14 +394,17 @@ const displayRows = computed(() => sortedItems.value)
 
 const mapUsers = (items: Awaited<ReturnType<typeof list>>) =>
   items.map((item) => {
-    const equipeId = pickUserEquipeId(item)
+    const equipeIds = pickUserEquipeIds(item)
+    const profils = pickUserProfiles(item)
     return {
       id: pickUserId(item),
       login: pickUserLogin(item),
-      profil: pickUserProfile(item),
+      profil: profils[0] ?? '',
+      profils,
       active: pickUserActive(item),
-      equipeId,
-      equipeLabel: equipeId ? equipeLabelById(equipeId) || '—' : '—'
+      equipeId: equipeIds[0] ?? '',
+      equipeIds,
+      equipeLabel: formatEquipeLabels(equipeIds)
     }
   })
 
@@ -382,9 +437,10 @@ const openCreate = () => {
   editingId.value = ''
   form.login = ''
   form.password = ''
-  form.profil = USER_PROFILES[1]
+  form.passwordConfirm = ''
+  form.profils = [USER_PROFILES[1]]
   form.active = true
-  form.equipeId = ''
+  form.equipeIds = []
   formError.value = ''
   clearFieldErrors()
   showForm.value = true
@@ -394,9 +450,10 @@ const openEdit = (row: UserRow) => {
   editingId.value = row.id
   form.login = row.login
   form.password = ''
-  form.profil = row.profil
+  form.passwordConfirm = ''
+  form.profils = [...row.profils]
   form.active = row.active
-  form.equipeId = row.equipeId
+  form.equipeIds = [...row.equipeIds]
   formError.value = ''
   clearFieldErrors()
   showForm.value = true
@@ -415,11 +472,17 @@ const save = async () => {
   formError.value = ''
   try {
     if (editingId.value) {
-      // equipeId toujours envoyé en édition : la chaîne vide détache le collaborateur.
-      const body: { profil: string; active: boolean; password?: string; equipeId: string } = {
-        profil: form.profil,
+      const body: {
+        profils?: string[]
+        active: boolean
+        password?: string
+        equipeIds: string[]
+      } = {
         active: form.active,
-        equipeId: form.equipeId
+        equipeIds: [...form.equipeIds]
+      }
+      if (!editingSelf.value) {
+        body.profils = [...form.profils]
       }
       if (form.password) body.password = form.password
       await update(editingId.value, body)
@@ -429,8 +492,8 @@ const save = async () => {
       await create({
         login: form.login.trim(),
         password: form.password,
-        profil: form.profil,
-        ...(form.equipeId ? { equipeId: form.equipeId } : {})
+        profils: [...form.profils],
+        equipeIds: [...form.equipeIds]
       })
       flash.value = t('users.created')
       flashError.value = false
@@ -475,6 +538,9 @@ function mapUserError(err: unknown) {
   if (message.includes('login already exists')) return t('users.error_login_exists')
   if (message.includes('invalid login format')) return t('users.error_login_format')
   if (message.includes('weak password')) return t('users.error_password_rules')
+  if (message.includes('at least one profile')) return t('users.error_profiles_required')
+  if (message.includes('invalid profile')) return t('users.error_profiles_required')
+  if (message.includes('equipe not found')) return t('users.error_equipe_not_found')
   if (message.includes('seat limit reached')) return t('users.error_seat_limit')
   if (message.includes('cannot modify own account')) return t('users.error_self')
   return message
@@ -579,6 +645,40 @@ function mapUserError(err: unknown) {
   gap: var(--kore-space-sm);
   font-size: var(--kore-text-small);
   color: var(--kore-text);
+}
+
+.users-checkgroup {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.users-checkgroup legend {
+  margin: 0 0 var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  font-weight: 500;
+}
+
+.users-check {
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+  padding: var(--kore-space-xs) 0;
+}
+
+.users-field-error {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-error);
+}
+
+.users-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
 }
 
 .users-hint {

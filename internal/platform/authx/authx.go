@@ -36,9 +36,31 @@ const (
 type Identity struct {
 	UserID   uuid.UUID
 	TenantID kernel.TenantID
-	Profile  Profile
+	Profile  Profile   // primary (display / backward compat)
+	Profiles []Profile // all assigned profiles (RBAC union)
 	Roles    []string
 	JTI      string
+}
+
+// EffectiveProfiles returns Profiles when set, otherwise the single Profile.
+func (i Identity) EffectiveProfiles() []Profile {
+	if len(i.Profiles) > 0 {
+		return i.Profiles
+	}
+	if i.Profile != "" {
+		return []Profile{i.Profile}
+	}
+	return nil
+}
+
+// HasProfile reports whether the identity carries the given profile.
+func (i Identity) HasProfile(p Profile) bool {
+	for _, profile := range i.EffectiveProfiles() {
+		if profile == p {
+			return true
+		}
+	}
+	return false
 }
 
 type contextKey struct{}
@@ -82,10 +104,20 @@ func (t *TokenIssuer) Issue(identity Identity) (TokenPair, error) {
 	refreshJTI := uuid.NewString()
 	now := time.Now()
 
+	profiles := identity.EffectiveProfiles()
+	profileStrings := make([]string, 0, len(profiles))
+	for _, p := range profiles {
+		profileStrings = append(profileStrings, string(p))
+	}
+	primary := identity.Profile
+	if primary == "" && len(profiles) > 0 {
+		primary = profiles[0]
+	}
 	accessClaims := jwt.MapClaims{
 		"sub":       identity.UserID.String(),
 		"tenant_id": identity.TenantID.String(),
-		"profile":   string(identity.Profile),
+		"profile":   string(primary),
+		"profiles":  profileStrings,
 		"roles":     identity.Roles,
 		"jti":       accessJTI,
 		"typ":       "access",
@@ -151,6 +183,18 @@ func (t *TokenIssuer) parseToken(token, expectedType string) (Identity, error) {
 		return Identity{}, ErrUnauthorized
 	}
 	profile := Profile(fmt.Sprint(claims["profile"]))
+	var profiles []Profile
+	if raw, ok := claims["profiles"].([]any); ok {
+		for _, p := range raw {
+			s := fmt.Sprint(p)
+			if s != "" && s != "<nil>" {
+				profiles = append(profiles, Profile(s))
+			}
+		}
+	}
+	if len(profiles) == 0 && profile != "" && string(profile) != "<nil>" {
+		profiles = []Profile{profile}
+	}
 	var roles []string
 	if raw, ok := claims["roles"].([]any); ok {
 		for _, r := range raw {
@@ -162,6 +206,7 @@ func (t *TokenIssuer) parseToken(token, expectedType string) (Identity, error) {
 		UserID:   userID,
 		TenantID: tenantID,
 		Profile:  profile,
+		Profiles: profiles,
 		Roles:    roles,
 		JTI:      jti,
 	}, nil
@@ -218,13 +263,18 @@ func (a *RBACAuthorizer) Can(ctx context.Context, module Module, action Action) 
 	if !ok {
 		return false
 	}
-	modPerms, ok := a.permissions[string(identity.Profile)]
-	if !ok {
-		return false
+	for _, profile := range identity.EffectiveProfiles() {
+		modPerms, ok := a.permissions[string(profile)]
+		if !ok {
+			continue
+		}
+		actions, ok := modPerms[module]
+		if !ok {
+			continue
+		}
+		if actions[action] {
+			return true
+		}
 	}
-	actions, ok := modPerms[module]
-	if !ok {
-		return false
-	}
-	return actions[action]
+	return false
 }

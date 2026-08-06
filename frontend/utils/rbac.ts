@@ -48,7 +48,11 @@ const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
   }
 }
 
-export function rbacCan(profile: string | undefined, module: RbacModule, action: RbacAction): boolean {
-  if (!profile) return false
-  return PROFILE_PERMISSIONS[profile]?.[module]?.[action] ?? false
+export function rbacCan(
+  profile: string | string[] | undefined,
+  module: RbacModule,
+  action: RbacAction
+): boolean {
+  const profiles = Array.isArray(profile) ? profile : profile ? [profile] : []
+  return profiles.some((p) => PROFILE_PERMISSIONS[p]?.[module]?.[action] ?? false)
 }

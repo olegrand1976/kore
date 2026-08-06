@@ -69,23 +69,28 @@ type CreateEquipeCommand struct {
 }
 
 type CreateUserCommand struct {
-	TenantID kernel.TenantID
-	Login    string
-	Password string
-	Profile  domain.Profile
-	EquipeID *uuid.UUID
+	TenantID  kernel.TenantID
+	Login     string
+	Password  string
+	Profile   domain.Profile   // legacy single; used when Profiles empty
+	Profiles  []domain.Profile // preferred multi
+	EquipeID  *uuid.UUID       // legacy single; used when EquipeIDs empty
+	EquipeIDs []uuid.UUID      // preferred multi
 }
 
 type UpdateUserCommand struct {
 	TenantID    kernel.TenantID
 	UserID      uuid.UUID
 	ActorUserID uuid.UUID
-	Profile     *domain.Profile
+	Profile     *domain.Profile   // legacy single
+	Profiles    *[]domain.Profile // nil = unchanged; empty = invalid (need ≥1)
 	Password    string
 	Active      *bool
 	// EquipeID distingue trois cas : nil = ne pas toucher au rattachement,
 	// pointeur vers nil = détacher, pointeur vers une valeur = rattacher.
 	EquipeID **uuid.UUID
+	// EquipeIDs nil = unchanged; non-nil (even empty) = replace memberships.
+	EquipeIDs *[]uuid.UUID
 }
 
 type DeleteUserCommand struct {
@@ -254,31 +259,35 @@ type OrganizationService interface {
 }
 
 type UserSummary struct {
-	ID       uuid.UUID  `json:"id"`
-	Login    string     `json:"login"`
-	Prenom   string     `json:"prenom"`
-	Nom      string     `json:"nom"`
-	Profile  string     `json:"profil"`
-	Active   bool       `json:"active"`
-	EquipeID *uuid.UUID `json:"equipeId,omitempty"`
+	ID        uuid.UUID   `json:"id"`
+	Login     string      `json:"login"`
+	Prenom    string      `json:"prenom"`
+	Nom       string      `json:"nom"`
+	Profile   string      `json:"profil"`
+	Profiles  []string    `json:"profils"`
+	Active    bool        `json:"active"`
+	EquipeID  *uuid.UUID  `json:"equipeId,omitempty"`
+	EquipeIDs []uuid.UUID `json:"equipeIds,omitempty"`
 }
 
 type UserDetail struct {
-	ID             uuid.UUID  `json:"id"`
-	Login          string     `json:"login"`
-	Prenom         string     `json:"prenom"`
-	Nom            string     `json:"nom"`
-	Email          string     `json:"email,omitempty"`
-	Profile        string     `json:"profil"`
-	Active         bool       `json:"active"`
-	Langue         string     `json:"langue"`
-	TypeCompte     string     `json:"typeCompte"`
-	CraRequis      bool       `json:"craRequis"`
-	SalarieETT     bool       `json:"salarieETT"`
-	EquipeID       *uuid.UUID `json:"equipeId,omitempty"`
-	EquipeLibelle  string     `json:"equipeLibelle,omitempty"`
-	DateActivation string     `json:"dateActivation"`
-	DateExpiration *string    `json:"dateExpiration,omitempty"`
+	ID             uuid.UUID   `json:"id"`
+	Login          string      `json:"login"`
+	Prenom         string      `json:"prenom"`
+	Nom            string      `json:"nom"`
+	Email          string      `json:"email,omitempty"`
+	Profile        string      `json:"profil"`
+	Profiles       []string    `json:"profils"`
+	Active         bool        `json:"active"`
+	Langue         string      `json:"langue"`
+	TypeCompte     string      `json:"typeCompte"`
+	CraRequis      bool        `json:"craRequis"`
+	SalarieETT     bool        `json:"salarieETT"`
+	EquipeID       *uuid.UUID  `json:"equipeId,omitempty"`
+	EquipeIDs      []uuid.UUID `json:"equipeIds,omitempty"`
+	EquipeLibelle  string      `json:"equipeLibelle,omitempty"`
+	DateActivation string      `json:"dateActivation"`
+	DateExpiration *string     `json:"dateExpiration,omitempty"`
 }
 
 type TotpPolicy struct {

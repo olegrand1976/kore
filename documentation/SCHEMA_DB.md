@@ -18,6 +18,9 @@ erDiagram
     org_services ||--o{ org_applications : "service_id"
     org_applications ||--o{ org_equipes : "application_id"
     org_equipes ||--o{ org_users : "equipe_id"
+    org_users ||--o{ org_user_profiles : "user_id"
+    org_users ||--o{ org_user_equipes : "user_id"
+    org_equipes ||--o{ org_user_equipes : "equipe_id"
     org_tenants ||--o{ org_clients : "tenant_id"
 
     org_societes ||--o{ conges_leave_type_configs : "societe_id"
@@ -220,6 +223,30 @@ Index :
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`
+
+### `org.user_profiles`
+
+Memberships N–N profils RBAC (union des permissions à la connexion).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `user_id` | UUID | PK (composite) → `org.users(id)` ON DELETE CASCADE |
+| `profil` | TEXT | PK (composite) NOT NULL |
+
+**Index** : `idx_org_user_profiles_profil (profil)`
+
+### `org.user_equipes`
+
+Memberships N–N équipes.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `user_id` | UUID | PK (composite) → `org.users(id)` ON DELETE CASCADE |
+| `equipe_id` | UUID | PK (composite) → `org.equipes(id)` ON DELETE CASCADE |
+
+**Index** : `idx_org_user_equipes_equipe (equipe_id)`
+
+> Les colonnes `org.users.profil` et `org.users.equipe_id` restent dénormalisées (profil primaire / première équipe) pour le claim JWT `profile` et les jointures legacy.
 
 ### `org.user_totp_backup_codes`
 
@@ -1208,7 +1235,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 
 | Schéma | Tables | Nb |
 | --- | --- | --- |
-| `org` | tenants, societes, sites, services, applications, equipes, users, clients, authx_permissions, platform_settings | 10 |
+| `org` | tenants, access_tokens, societes, sites, services, applications, equipes, users, user_profiles, user_equipes, user_totp_backup_codes, identity_providers, user_identities, clients, tenant_request_settings, request_attachments, authx_permissions, platform_settings | 18 |
 | `workflow` | definitions, states, transitions, instances, transition_logs | 5 |
 | `cra` | timesheets, week_entries, time_lines | 3 |
 | `notifications` | rules, messages, device_tokens | 3 |
@@ -1226,7 +1253,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **63** |
+| **Total** | | **71** |
 
 ---
 

@@ -48,15 +48,9 @@ test.describe('org admin', () => {
     await expect(collabRow).toBeVisible({ timeout: 20_000 })
     await collabRow.getByRole('button', { name: /modifier|edit/i }).click()
 
-    const equipeSelect = page.locator('#user-equipe')
-    await expect(equipeSelect).toBeVisible()
-    // Le libellé de l'option est « Équipe — Application » : on cible par valeur.
-    const equipeValue = await page
-      .locator('#user-equipe option', { hasText: teamName })
-      .first()
-      .getAttribute('value')
-    expect(equipeValue, 'created team missing from the select').toBeTruthy()
-    await equipeSelect.selectOption(equipeValue!)
+    const equipeCheckbox = page.locator('label.users-check', { hasText: teamName }).locator('input[type="checkbox"]')
+    await expect(equipeCheckbox).toBeVisible()
+    await equipeCheckbox.check()
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
 
     // La colonne Équipe de la liste reflète le rattachement.

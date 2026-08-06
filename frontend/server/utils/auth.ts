@@ -80,6 +80,7 @@ export function apiBase(): string {
 
 export type SessionPayload = {
   profile?: string
+  profiles?: string[]
   userId?: string
   tenantId?: string
   roles?: string[]
@@ -96,6 +97,9 @@ export function parseSessionFromToken(token: string | undefined | null): Session
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
     return {
       profile: payload.profile as string | undefined,
+      profiles: Array.isArray(payload.profiles)
+        ? (payload.profiles as unknown[]).filter((p): p is string => typeof p === 'string')
+        : undefined,
       userId: payload.sub as string | undefined,
       tenantId: payload.tenant_id as string | undefined,
       roles: Array.isArray(payload.roles) ? (payload.roles as string[]) : undefined

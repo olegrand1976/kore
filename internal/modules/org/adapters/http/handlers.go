@@ -524,10 +524,12 @@ func createUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		var req struct {
-			Login    string         `json:"login"`
-			Password string         `json:"password"`
-			Profile  domain.Profile `json:"profil"`
-			EquipeID *uuid.UUID     `json:"equipeId"`
+			Login     string           `json:"login"`
+			Password  string           `json:"password"`
+			Profile   domain.Profile   `json:"profil"`
+			Profiles  []domain.Profile `json:"profils"`
+			EquipeID  *uuid.UUID       `json:"equipeId"`
+			EquipeIDs []uuid.UUID      `json:"equipeIds"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -535,17 +537,21 @@ func createUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 		}
 		identity, _ := authx.FromContext(r.Context())
 		u, err := users.CreateUser(r.Context(), ports.CreateUserCommand{
-			TenantID: identity.TenantID,
-			Login:    req.Login,
-			Password: req.Password,
-			Profile:  req.Profile,
-			EquipeID: req.EquipeID,
+			TenantID:  identity.TenantID,
+			Login:     req.Login,
+			Password:  req.Password,
+			Profile:   req.Profile,
+			Profiles:  req.Profiles,
+			EquipeID:  req.EquipeID,
+			EquipeIDs: req.EquipeIDs,
 		})
 		if err != nil {
 			switch {
 			case errors.Is(err, domain.ErrLoginAlreadyExists):
 				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
-			case errors.Is(err, domain.ErrInvalidLogin), errors.Is(err, domain.ErrWeakPassword):
+			case errors.Is(err, domain.ErrInvalidLogin), errors.Is(err, domain.ErrWeakPassword),
+				errors.Is(err, domain.ErrProfilesRequired), errors.Is(err, domain.ErrInvalidProfile),
+				errors.Is(err, domain.ErrEquipeNotFound):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 			case errors.Is(err, domain.ErrSeatLimitReached):
 				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
@@ -820,18 +826,21 @@ func updateUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			return
 		}
 		var req struct {
-			Profile  *domain.Profile `json:"profil"`
-			Password string          `json:"password"`
-			Active   *bool           `json:"active"`
-			EquipeID *string         `json:"equipeId"`
+			Profile   *domain.Profile   `json:"profil"`
+			Profiles  *[]domain.Profile `json:"profils"`
+			Password  string            `json:"password"`
+			Active    *bool             `json:"active"`
+			EquipeID  *string           `json:"equipeId"`
+			EquipeIDs *[]uuid.UUID      `json:"equipeIds"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
 		// equipeId absent = rattachement inchangé ; chaîne vide = détachement.
+		// Prefer equipeIds when present.
 		var equipeID **uuid.UUID
-		if req.EquipeID != nil {
+		if req.EquipeIDs == nil && req.EquipeID != nil {
 			var parsed *uuid.UUID
 			if *req.EquipeID != "" {
 				id, err := uuid.Parse(*req.EquipeID)
@@ -849,9 +858,11 @@ func updateUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 			UserID:      userID,
 			ActorUserID: identity.UserID,
 			Profile:     req.Profile,
+			Profiles:    req.Profiles,
 			Password:    req.Password,
 			Active:      req.Active,
 			EquipeID:    equipeID,
+			EquipeIDs:   req.EquipeIDs,
 		})
 		if err != nil {
 			writeUserMutationError(w, err)
@@ -1000,7 +1011,8 @@ func writeUserMutationError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	case errors.Is(err, domain.ErrCannotModifySelf):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
-	case errors.Is(err, domain.ErrWeakPassword):
+	case errors.Is(err, domain.ErrWeakPassword), errors.Is(err, domain.ErrProfilesRequired),
+		errors.Is(err, domain.ErrInvalidProfile), errors.Is(err, domain.ErrEquipeNotFound):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrSeatLimitReached):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())

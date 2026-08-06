@@ -154,7 +154,7 @@ func TransitionAllowed(t Transition, actor authx.Identity) bool {
 		return true
 	}
 	for _, role := range t.AllowedRoles {
-		if string(actor.Profile) == role {
+		if actor.HasProfile(authx.Profile(role)) {
 			return true
 		}
 		for _, r := range actor.Roles {

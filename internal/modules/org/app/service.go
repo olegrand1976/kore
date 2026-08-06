@@ -417,22 +417,33 @@ func (s *userService) CreateUser(ctx context.Context, cmd ports.CreateUserComman
 	if err != nil {
 		return domain.User{}, err
 	}
-	profile := cmd.Profile
-	if profile == "" {
-		profile = domain.ProfileCollaborateur
+	profiles := uniqueProfiles(cmd.Profiles)
+	if len(profiles) == 0 && cmd.Profile != "" {
+		profiles = []domain.Profile{cmd.Profile}
+	}
+	if err := domain.ValidateProfiles(profiles); err != nil {
+		return domain.User{}, err
+	}
+	equipeIDs := uniqueUUIDs(cmd.EquipeIDs)
+	if len(equipeIDs) == 0 && cmd.EquipeID != nil {
+		equipeIDs = []uuid.UUID{*cmd.EquipeID}
+	}
+	if err := s.assertEquipesInTenant(ctx, cmd.TenantID, equipeIDs); err != nil {
+		return domain.User{}, err
 	}
 	user := domain.User{
 		ID:           uuid.New(),
 		TenantID:     cmd.TenantID,
-		EquipeID:     cmd.EquipeID,
 		Login:        login,
 		PasswordHash: hash,
-		Profile:      profile,
+		Profiles:     profiles,
+		EquipeIDs:    equipeIDs,
 		Active:       true,
 		Period: domain.ActivationPeriod{
 			Activation: s.clock().UTC().Truncate(24 * time.Hour),
 		},
 	}
+	user.SyncPrimaryMemberships()
 	if err := s.applyTotpPolicyOnCreate(ctx, &user); err != nil {
 		return domain.User{}, err
 	}
@@ -455,10 +466,18 @@ func (s *userService) RefreshSession(ctx context.Context, refreshToken string) (
 }
 
 func (s *userService) buildIdentity(user domain.User) authx.Identity {
+	profiles := make([]authx.Profile, 0, len(user.Profiles))
+	for _, p := range user.Profiles {
+		profiles = append(profiles, authx.Profile(p))
+	}
+	if len(profiles) == 0 && user.Profile != "" {
+		profiles = []authx.Profile{authx.Profile(user.Profile)}
+	}
 	identity := authx.Identity{
 		UserID:   user.ID,
 		TenantID: user.TenantID,
 		Profile:  authx.Profile(user.Profile),
+		Profiles: profiles,
 	}
 	if _, ok := s.platformAdminLogins[strings.ToUpper(string(user.Login))]; ok {
 		identity.Roles = []string{authx.RolePlatformAdmin}
@@ -491,8 +510,21 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 	if err != nil {
 		return ports.UserSummary{}, domain.ErrUserNotFound
 	}
-	if cmd.Profile != nil {
-		user.Profile = *cmd.Profile
+	if cmd.Profiles != nil || cmd.Profile != nil {
+		if cmd.UserID == cmd.ActorUserID {
+			return ports.UserSummary{}, domain.ErrCannotModifySelf
+		}
+		var profiles []domain.Profile
+		if cmd.Profiles != nil {
+			profiles = uniqueProfiles(*cmd.Profiles)
+		} else {
+			profiles = []domain.Profile{*cmd.Profile}
+		}
+		if err := domain.ValidateProfiles(profiles); err != nil {
+			return ports.UserSummary{}, err
+		}
+		user.Profiles = profiles
+		user.SyncPrimaryMemberships()
 	}
 	if cmd.Password != "" {
 		if err := domain.ValidatePassword(cmd.Password); err != nil {
@@ -523,8 +555,25 @@ func (s *userService) UpdateUser(ctx context.Context, cmd ports.UpdateUserComman
 		}
 		user.Active = *cmd.Active
 	}
-	if cmd.EquipeID != nil {
-		user.EquipeID = *cmd.EquipeID
+	if cmd.EquipeIDs != nil {
+		user.EquipeIDs = uniqueUUIDs(*cmd.EquipeIDs)
+		if user.EquipeIDs == nil {
+			user.EquipeIDs = []uuid.UUID{}
+		}
+		if err := s.assertEquipesInTenant(ctx, cmd.TenantID, user.EquipeIDs); err != nil {
+			return ports.UserSummary{}, err
+		}
+		user.SyncPrimaryMemberships()
+	} else if cmd.EquipeID != nil {
+		if *cmd.EquipeID == nil {
+			user.EquipeIDs = []uuid.UUID{}
+		} else {
+			user.EquipeIDs = []uuid.UUID{**cmd.EquipeID}
+			if err := s.assertEquipesInTenant(ctx, cmd.TenantID, user.EquipeIDs); err != nil {
+				return ports.UserSummary{}, err
+			}
+		}
+		user.SyncPrimaryMemberships()
 	}
 	if err := s.repo.UpdateUser(ctx, user); err != nil {
 		return ports.UserSummary{}, domain.ErrUserNotFound
@@ -576,15 +625,76 @@ func (s *userService) MarkReleaseNotesSeen(ctx context.Context, tenant kernel.Te
 }
 
 func userToSummary(u domain.User) ports.UserSummary {
-	return ports.UserSummary{
-		ID:       u.ID,
-		Login:    string(u.Login),
-		Prenom:   u.Prenom,
-		Nom:      u.Nom,
-		Profile:  string(u.Profile),
-		Active:   u.Active,
-		EquipeID: u.EquipeID,
+	profiles := make([]string, 0, len(u.Profiles))
+	for _, p := range u.Profiles {
+		profiles = append(profiles, string(p))
 	}
+	if len(profiles) == 0 && u.Profile != "" {
+		profiles = []string{string(u.Profile)}
+	}
+	return ports.UserSummary{
+		ID:        u.ID,
+		Login:     string(u.Login),
+		Prenom:    u.Prenom,
+		Nom:       u.Nom,
+		Profile:   string(u.Profile),
+		Profiles:  profiles,
+		Active:    u.Active,
+		EquipeID:  u.EquipeID,
+		EquipeIDs: u.EquipeIDs,
+	}
+}
+
+func uniqueProfiles(in []domain.Profile) []domain.Profile {
+	seen := make(map[domain.Profile]struct{}, len(in))
+	out := make([]domain.Profile, 0, len(in))
+	for _, p := range in {
+		if p == "" {
+			continue
+		}
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
+	}
+	return out
+}
+
+func uniqueUUIDs(in []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(in))
+	out := make([]uuid.UUID, 0, len(in))
+	for _, id := range in {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+func (s *userService) assertEquipesInTenant(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	equipes, err := s.repo.ListEquipes(ctx, tenant)
+	if err != nil {
+		return err
+	}
+	known := make(map[uuid.UUID]struct{}, len(equipes))
+	for _, e := range equipes {
+		known[e.ID] = struct{}{}
+	}
+	for _, id := range ids {
+		if _, ok := known[id]; !ok {
+			return domain.ErrEquipeNotFound
+		}
+	}
+	return nil
 }
 
 type clientService struct {

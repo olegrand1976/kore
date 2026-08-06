@@ -30,7 +30,7 @@ const {
   orgId,
   orgLabel
 } = useOrganisation()
-const { list: listUsers, pickUserId, pickUserLogin } = useUsers()
+const { list: listUsers, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
 const { extractFetchError } = useApiError()
 
 const societes = ref<OrgSociete[]>([])
@@ -99,7 +99,7 @@ const equipesOf = (applicationId: string) =>
   equipes.value.filter((e) => (e.applicationId ?? e.ApplicationID) === applicationId)
 
 const memberCount = (equipeId: string) =>
-  users.value.filter((u) => u.equipeId === equipeId).length
+  users.value.filter((u) => pickUserEquipeIds(u).includes(equipeId)).length
 
 // Un service n'a pas toujours de libellé (colonne ajoutée en 0018) : on retombe
 // sur son type pour que le nœud reste identifiable.

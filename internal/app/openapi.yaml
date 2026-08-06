@@ -191,6 +191,24 @@ paths:
     post:
       summary: Créer un utilisateur
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login: { type: string }
+                password: { type: string }
+                profil: { type: string }
+                profils:
+                  type: array
+                  items: { type: string }
+                equipeId: { type: string, format: uuid }
+                equipeIds:
+                  type: array
+                  items: { type: string, format: uuid }
       responses:
         "201":
           description: Créé
@@ -215,6 +233,11 @@ paths:
               properties:
                 profil:
                   type: string
+                  description: Profil unique (legacy). Ignoré si profils est fourni.
+                profils:
+                  type: array
+                  items: { type: string }
+                  description: Profils RBAC assignés (union des permissions).
                 password:
                   type: string
                 active:
@@ -222,8 +245,13 @@ paths:
                 equipeId:
                   type: string
                   description: |
-                    Rattachement à une équipe. Champ absent = inchangé,
+                    Rattachement à une équipe (legacy). Champ absent = inchangé,
                     chaîne vide = détachement, UUID = rattachement.
+                    Ignoré si equipeIds est fourni.
+                equipeIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                  description: Équipes assignées (remplace l'ensemble si fourni).
       responses:
         "200":
           description: Mis à jour

@@ -24,6 +24,7 @@ type structureRepo struct {
 	applications     map[uuid.UUID]domain.Application
 	updatedUser      *domain.User
 	sites            []domain.SiteSummary
+	equipes          []domain.Equipe
 	saveEquipeErr    error
 }
 
@@ -32,7 +33,12 @@ func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
 		return r.saveEquipeErr
 	}
 	r.savedEquipe = &e
+	r.equipes = append(r.equipes, e)
 	return nil
+}
+
+func (r *structureRepo) ListEquipes(context.Context, kernel.TenantID) ([]domain.Equipe, error) {
+	return r.equipes, nil
 }
 
 func (r *structureRepo) SaveService(_ context.Context, s domain.Service) error {
@@ -209,10 +215,13 @@ func equipeTestUser(tenant kernel.TenantID, equipeID *uuid.UUID) domain.User {
 func TestUpdateUser_attachesEquipe(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	user := equipeTestUser(tenant, nil)
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	equipeID := uuid.New()
+	repo := &structureRepo{
+		refreshUserRepo: refreshUserRepo{user: user},
+		equipes:         []domain.Equipe{{ID: equipeID, TenantID: tenant}},
+	}
 	svc := newUserServiceForEquipe(t, repo)
 
-	equipeID := uuid.New()
 	target := &equipeID
 	summary, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
 		TenantID: tenant,
@@ -266,10 +275,12 @@ func TestUpdateUser_keepsEquipeWhenFieldAbsent(t *testing.T) {
 	svc := newUserServiceForEquipe(t, repo)
 
 	profile := domain.ProfileAdmin
+	actor := uuid.New()
 	_, err := svc.UpdateUser(context.Background(), ports.UpdateUserCommand{
-		TenantID: tenant,
-		UserID:   user.ID,
-		Profile:  &profile,
+		TenantID:    tenant,
+		UserID:      user.ID,
+		ActorUserID: actor,
+		Profile:     &profile,
 	})
 	if err != nil {
 		t.Fatalf("UpdateUser: %v", err)

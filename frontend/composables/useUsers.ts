@@ -5,10 +5,14 @@ export type OrgUserSummary = {
   Login?: string
   profil?: string
   Profil?: string
+  profils?: string[]
+  Profiles?: string[]
   active?: boolean
   Active?: boolean
   equipeId?: string
   EquipeID?: string
+  equipeIds?: string[]
+  EquipeIDs?: string[]
 }
 
 export const USER_PROFILES = [
@@ -32,12 +36,30 @@ function pickUserProfile(item: OrgUserSummary) {
   return item.profil ?? item.Profil ?? ''
 }
 
+function pickUserProfiles(item: OrgUserSummary): string[] {
+  const multi = item.profils ?? item.Profiles
+  if (Array.isArray(multi) && multi.length > 0) {
+    return multi.map(String)
+  }
+  const single = pickUserProfile(item)
+  return single ? [single] : []
+}
+
 function pickUserActive(item: OrgUserSummary) {
   return item.active ?? item.Active ?? true
 }
 
 function pickUserEquipeId(item: OrgUserSummary) {
   return item.equipeId ?? item.EquipeID ?? ''
+}
+
+function pickUserEquipeIds(item: OrgUserSummary): string[] {
+  const multi = item.equipeIds ?? item.EquipeIDs
+  if (Array.isArray(multi) && multi.length > 0) {
+    return multi.map(String)
+  }
+  const single = pickUserEquipeId(item)
+  return single ? [single] : []
 }
 
 export function useUsers() {
@@ -51,16 +73,20 @@ export function useUsers() {
   const create = async (body: {
     login: string
     password: string
-    profil: string
-    equipeId?: string
+    profils: string[]
+    equipeIds?: string[]
   }) => {
     return apiFetch('/api/org/users', { method: 'POST', body })
   }
 
-  // equipeId absent = rattachement inchangé ; chaîne vide = détachement.
   const update = async (
     id: string,
-    body: { profil?: string; password?: string; active?: boolean; equipeId?: string }
+    body: {
+      profils?: string[]
+      password?: string
+      active?: boolean
+      equipeIds?: string[]
+    }
   ) => {
     return apiFetch(`/api/org/users/${id}`, { method: 'PUT', body })
   }
@@ -82,7 +108,9 @@ export function useUsers() {
     pickUserId,
     pickUserLogin,
     pickUserProfile,
+    pickUserProfiles,
     pickUserActive,
-    pickUserEquipeId
+    pickUserEquipeId,
+    pickUserEquipeIds
   }
 }
