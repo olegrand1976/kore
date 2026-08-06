@@ -73,3 +73,43 @@ func TestOrg_SocieteLogoContentRoundTrip(t *testing.T) {
 	_, _, err = repo.GetTenantLogo(ctx, other)
 	require.ErrorIs(t, err, domain.ErrLogoNotFound)
 }
+
+func TestOrg_SocieteAddressPartsRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	societeID := uuid.New()
+	require.NoError(t, repo.SaveTenant(ctx, domain.Tenant{ID: tenant.UUID(), Name: "AddrCo"}))
+	require.NoError(t, repo.SaveSociete(ctx, domain.Societe{
+		ID:            societeID,
+		TenantID:      tenant,
+		RaisonSociale: "AddrCo SAS",
+		Devise:        "EUR",
+		Pays:          "BE",
+		Adresse:       "Rue de la Résistance",
+		AdresseNumero: "92",
+		AdresseBoite:  "A",
+		CodePostal:    "4100",
+		Ville:         "Seraing",
+		Siret:         "BE1007132489",
+	}))
+
+	got, err := repo.GetSociete(ctx, tenant, societeID)
+	require.NoError(t, err)
+	require.Equal(t, "BE", got.Pays)
+	require.Equal(t, "Rue de la Résistance", got.Adresse)
+	require.Equal(t, "92", got.AdresseNumero)
+	require.Equal(t, "A", got.AdresseBoite)
+	require.Equal(t, "4100", got.CodePostal)
+	require.Equal(t, "Seraing", got.Ville)
+	require.Equal(t, "BE1007132489", got.Siret)
+
+	got.Ville = "Liège"
+	got.Pays = "BE"
+	require.NoError(t, repo.UpdateSociete(ctx, got))
+	updated, err := repo.GetSociete(ctx, tenant, societeID)
+	require.NoError(t, err)
+	require.Equal(t, "Liège", updated.Ville)
+}

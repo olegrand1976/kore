@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 06/08/2026 (logo_content BYTEA)
+> **Dernière mise à jour doc** : 06/08/2026 (adresse société structurée)
 
 ---
 
@@ -125,10 +125,14 @@ Index :
 | `logo_content_type` | TEXT | MIME (`image/png`, `image/jpeg`, …) — migration `0024` |
 | `devise` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `langue_defaut` | TEXT | NOT NULL, DEFAULT `'fr'` |
-| `adresse` | TEXT | NOT NULL, DEFAULT `''` |
-| `siret` | TEXT | NOT NULL, DEFAULT `''` |
+| `adresse` | TEXT | NOT NULL, DEFAULT `''` — rue / voie |
+| `adresse_numero` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
+| `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
+| `code_postal` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
+| `ville` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
+| `siret` | TEXT | NOT NULL, DEFAULT `''` — SIRET (FR) ou BCE (BE) selon `pays` |
 | `url_tenant` | TEXT | NOT NULL, DEFAULT `''` |
-| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` |
+| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE`) |
 | `week_start_day` | SMALLINT | NOT NULL, DEFAULT `1`, CHECK 0–6 (0=dimanche … 6=samedi) |
 | `day_capacity_minutes` | INT | NOT NULL, DEFAULT `480`, CHECK 1–1440 |
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |

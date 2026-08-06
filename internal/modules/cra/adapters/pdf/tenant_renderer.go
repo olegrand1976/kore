@@ -7,6 +7,7 @@ import (
 
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
+	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	orgports "github.com/kore/kore/internal/modules/org/ports"
 )
 
@@ -31,7 +32,11 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 		if s.RaisonSociale != "" {
 			brand.CompanyName = s.RaisonSociale
 		}
-		brand.CompanyAddr = trimJoin(s.Adresse, s.URLTenant)
+		if addr := orgdomain.FormatSocieteAddress(s); addr != "" {
+			brand.CompanyAddr = addr
+		} else {
+			brand.CompanyAddr = trimJoin(s.Adresse, s.URLTenant)
+		}
 		brand.CompanyLogo = s.Logo
 	}
 

@@ -268,14 +268,24 @@ func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd por
 	if cmd.Logo != "" {
 		societe.Logo = cmd.Logo
 	}
-	if cmd.Adresse != "" {
-		societe.Adresse = cmd.Adresse
-	}
-	if cmd.Siret != "" {
-		societe.Siret = cmd.Siret
-	}
-	if cmd.URLTenant != "" {
-		societe.URLTenant = cmd.URLTenant
+	// Address / registry fields are always applied (allow clearing).
+	societe.Adresse = cmd.Adresse
+	societe.AdresseNumero = cmd.AdresseNumero
+	societe.AdresseBoite = cmd.AdresseBoite
+	societe.CodePostal = cmd.CodePostal
+	societe.Ville = cmd.Ville
+	societe.Siret = cmd.Siret
+	switch strings.ToUpper(strings.TrimSpace(cmd.Pays)) {
+	case "BE":
+		societe.Pays = "BE"
+	case "FR":
+		societe.Pays = "FR"
+	case "":
+		if societe.Pays == "" {
+			societe.Pays = "FR"
+		}
+	default:
+		// Keep existing pays when unknown value is sent.
 	}
 	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
 		return domain.Societe{}, err

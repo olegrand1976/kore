@@ -64,11 +64,33 @@
 
     <div v-else class="split-layout">
       <AppCard padding="lg" class="org-form">
-        <form @submit.prevent="save">
+        <form class="org-form__fields" @submit.prevent="save">
           <AppInput id="raison" v-model="form.raisonSociale" :label="$t('org.company_name')" />
-          <AppInput id="adresse" v-model="form.adresse" :label="$t('org.address')" />
-          <AppInput id="siret" v-model="form.siret" :label="$t('org.siret')" />
-          <AppInput id="url" v-model="form.urlTenant" :label="$t('org.url')" />
+          <AppInput id="adresse" v-model="form.adresse" :label="$t('org.address_street')" />
+          <div class="org-form__row">
+            <AppInput id="adresse-numero" v-model="form.adresseNumero" :label="$t('org.address_number')" />
+            <AppInput id="adresse-boite" v-model="form.adresseBoite" :label="$t('org.address_box')" />
+          </div>
+          <div class="org-form__row">
+            <AppInput id="code-postal" v-model="form.codePostal" :label="$t('org.postal_code')" />
+            <AppInput id="ville" v-model="form.ville" :label="$t('org.city')" />
+          </div>
+          <div class="org-form__field">
+            <label for="pays" class="org-form__label">{{ $t('org.country') }}</label>
+            <select id="pays" v-model="form.pays" class="org-form__select">
+              <option value="FR">{{ $t('org.country_fr') }}</option>
+              <option value="BE">{{ $t('org.country_be') }}</option>
+            </select>
+          </div>
+          <div>
+            <AppInput
+              id="siret"
+              v-model="form.siret"
+              :label="registryLabel"
+              :placeholder="registryPlaceholder"
+            />
+            <p class="org-form__hint">{{ registryHint }}</p>
+          </div>
           <div class="org-form__logo">
             <label for="logo-upload">{{ $t('org.logo') }}</label>
             <p class="org-form__hint">{{ $t('org.logo_hint') }}</p>
@@ -104,6 +126,8 @@ const { extractFetchError } = useApiError()
 const { branding, fetchBranding } = useTenantBranding()
 const { settings, fetchSettings, saveSettings } = useRequestSettings()
 
+type CountryCode = 'FR' | 'BE'
+
 const route = useRoute()
 const tab = ref<'identite' | 'structure' | 'modules'>(
   route.query.tab === 'structure'
@@ -116,8 +140,12 @@ const tab = ref<'identite' | 'structure' | 'modules'>(
 const form = reactive({
   raisonSociale: '',
   adresse: '',
+  adresseNumero: '',
+  adresseBoite: '',
+  codePostal: '',
+  ville: '',
+  pays: 'FR' as CountryCode,
   siret: '',
-  urlTenant: '',
   logoFile: null as File | null
 })
 const previewUrl = ref<string | null>(null)
@@ -130,18 +158,83 @@ const savingModules = ref(false)
 const modulesMessage = ref('')
 const modulesError = ref(false)
 
+const normalizeCountry = (value: unknown): CountryCode => {
+  const code = typeof value === 'string' ? value.trim().toUpperCase() : ''
+  switch (code) {
+    case 'BE':
+      return 'BE'
+    case 'FR':
+      return 'FR'
+    default:
+      return 'FR'
+  }
+}
+
+const registryLabel = computed(() => {
+  switch (form.pays) {
+    case 'BE':
+      return t('org.bce')
+    case 'FR':
+      return t('org.siret')
+    default: {
+      const _exhaustive: never = form.pays
+      return _exhaustive
+    }
+  }
+})
+
+const registryPlaceholder = computed(() => {
+  switch (form.pays) {
+    case 'BE':
+      return '0123456789'
+    case 'FR':
+      return '12345678901234'
+    default: {
+      const _exhaustive: never = form.pays
+      return _exhaustive
+    }
+  }
+})
+
+const registryHint = computed(() => {
+  switch (form.pays) {
+    case 'BE':
+      return t('org.registry_hint_be')
+    case 'FR':
+      return t('org.registry_hint_fr')
+    default: {
+      const _exhaustive: never = form.pays
+      return _exhaustive
+    }
+  }
+})
+
 onMounted(async () => {
   await Promise.all([fetchBranding(), fetchSettings()])
   form.raisonSociale = branding.value.raisonSociale
   previewUrl.value = branding.value.logoUrl
   invoicingEnabled.value = settings.value?.invoicingEnabled ?? false
   try {
-    const res = await apiFetch<any>('/api/org/societes')
+    const res = await apiFetch<{
+      data?: Array<{
+        adresse?: string
+        adresseNumero?: string
+        adresseBoite?: string
+        codePostal?: string
+        ville?: string
+        pays?: string
+        siret?: string
+      }>
+    }>('/api/org/societes')
     const first = res?.data?.[0]
     if (first) {
       form.adresse = first.adresse ?? ''
+      form.adresseNumero = first.adresseNumero ?? ''
+      form.adresseBoite = first.adresseBoite ?? ''
+      form.codePostal = first.codePostal ?? ''
+      form.ville = first.ville ?? ''
+      form.pays = normalizeCountry(first.pays)
       form.siret = first.siret ?? ''
-      form.urlTenant = first.urlTenant ?? ''
     }
   } catch {
     // ignore
@@ -169,8 +262,12 @@ const save = async () => {
     const body = new FormData()
     body.append('raisonSociale', form.raisonSociale)
     body.append('adresse', form.adresse)
+    body.append('adresseNumero', form.adresseNumero)
+    body.append('adresseBoite', form.adresseBoite)
+    body.append('codePostal', form.codePostal)
+    body.append('ville', form.ville)
+    body.append('pays', form.pays)
     body.append('siret', form.siret)
-    body.append('urlTenant', form.urlTenant)
     if (form.logoFile) body.append('logo', form.logoFile)
     await apiFetch(`/api/org/societes/${branding.value.societeId}/branding`, { method: 'PUT', body })
     await fetchBranding()
@@ -241,12 +338,50 @@ const saveModules = async () => {
   .org-tab { white-space: nowrap; }
 }
 
-.org-form form { display: flex; flex-direction: column; gap: var(--kore-space-lg); }
+.org-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-lg);
+  max-width: var(--kore-form-wide-max);
+}
+
+.org-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--kore-space-md);
+}
+
+.org-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.org-form__label {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  font-weight: 500;
+}
+
+.org-form__select {
+  padding: 0.75rem 1rem;
+  font-family: var(--kore-font);
+  font-size: var(--kore-text-body);
+  color: var(--kore-text);
+  background: var(--kore-bg-elevated);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+}
 
 .org-form__hint {
-  margin: 0 0 var(--kore-space-sm);
+  margin: var(--kore-space-xs) 0 0;
   font-size: var(--kore-text-caption);
   color: var(--kore-text-muted);
+}
+
+@media (max-width: 768px) {
+  .org-form__row { grid-template-columns: 1fr; }
+  .org-form__fields :deep(.app-button) { width: 100%; }
 }
 
 .org-form__upload {

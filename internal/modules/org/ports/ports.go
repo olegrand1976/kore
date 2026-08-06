@@ -228,8 +228,12 @@ type UpdateSocieteBrandingCommand struct {
 	LogoContent     []byte
 	LogoContentType string
 	Adresse         string
+	AdresseNumero   string
+	AdresseBoite    string
+	CodePostal      string
+	Ville           string
+	Pays            string
 	Siret           string
-	URLTenant       string
 }
 
 type UpdateSocieteSettingsCommand struct {

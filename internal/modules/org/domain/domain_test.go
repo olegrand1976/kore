@@ -7,6 +7,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFormatSocieteAddress(t *testing.T) {
+	got := FormatSocieteAddress(Societe{
+		Adresse:       "Rue de la Résistance",
+		AdresseNumero: "92",
+		AdresseBoite:  "A",
+		CodePostal:    "4100",
+		Ville:         "Seraing",
+		Pays:          "BE",
+	})
+	require.Equal(t, "Rue de la Résistance 92 / A, 4100 Seraing, Belgique", got)
+
+	gotFR := FormatSocieteAddress(Societe{
+		Adresse:    "1 rue de la Paix",
+		CodePostal: "75002",
+		Ville:      "Paris",
+		Pays:       "FR",
+	})
+	require.Equal(t, "1 rue de la Paix, 75002 Paris, France", gotFR)
+}
+
 func TestLoginValid(t *testing.T) {
 	tests := []struct {
 		name  string

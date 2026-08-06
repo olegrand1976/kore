@@ -50,11 +50,12 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		INSERT INTO org.societes (
 			id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
 			day_capacity_minutes, cra_mail_auto, week_submit_policy, cra_gate_mode,
-			adresse, siret, url_tenant, cra_mail_recipients,
+			adresse, adresse_numero, adresse_boite, code_postal, ville,
+			siret, url_tenant, cra_mail_recipients,
 			totp_default_enabled, totp_user_configurable, task_types_enabled, seed_protected,
 			default_tjm_cents
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
 		ON CONFLICT (id) DO UPDATE SET
 			raison_sociale = EXCLUDED.raison_sociale,
 			devise = EXCLUDED.devise,
@@ -65,6 +66,10 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 			week_submit_policy = EXCLUDED.week_submit_policy,
 			cra_gate_mode = EXCLUDED.cra_gate_mode,
 			adresse = EXCLUDED.adresse,
+			adresse_numero = EXCLUDED.adresse_numero,
+			adresse_boite = EXCLUDED.adresse_boite,
+			code_postal = EXCLUDED.code_postal,
+			ville = EXCLUDED.ville,
 			siret = EXCLUDED.siret,
 			url_tenant = EXCLUDED.url_tenant,
 			cra_mail_recipients = EXCLUDED.cra_mail_recipients,
@@ -79,22 +84,29 @@ func (r *Repository) SaveSociete(ctx context.Context, s domain.Societe) error {
 		s.CraMailAuto,
 		normalizeWeekSubmitPolicy(s.WeekSubmitPolicy),
 		normalizeCraGateMode(s.CraGateMode),
-		s.Adresse, s.Siret, s.URLTenant, encodeMailRecipients(s.CraMailRecipients),
+		s.Adresse, s.AdresseNumero, s.AdresseBoite, s.CodePostal, s.Ville,
+		s.Siret, s.URLTenant, encodeMailRecipients(s.CraMailRecipients),
 		s.TotpDefaultEnabled, s.TotpUserConfigurable, encodeTaskTypes(s.TaskTypesEnabled),
 		s.SeedProtected, s.DefaultTJMCents)
 	return err
 }
 
 func (r *Repository) UpdateSociete(ctx context.Context, s domain.Societe) error {
+	pays := s.Pays
+	if pays == "" {
+		pays = "FR"
+	}
 	_, err := r.pool.Exec(ctx, `
 		UPDATE org.societes
-		SET raison_sociale = $3, logo = $4, adresse = $5, siret = $6, url_tenant = $7,
-			week_start_day = $8, day_capacity_minutes = $9, cra_mail_auto = $10, week_submit_policy = $11,
-			cra_gate_mode = $12, cra_mail_recipients = $13, totp_default_enabled = $14, totp_user_configurable = $15,
-			task_types_enabled = $16, seed_protected = $17, default_tjm_cents = $18
+		SET raison_sociale = $3, logo = $4, adresse = $5, adresse_numero = $6, adresse_boite = $7,
+			code_postal = $8, ville = $9, siret = $10, url_tenant = $11, pays = $12,
+			week_start_day = $13, day_capacity_minutes = $14, cra_mail_auto = $15, week_submit_policy = $16,
+			cra_gate_mode = $17, cra_mail_recipients = $18, totp_default_enabled = $19, totp_user_configurable = $20,
+			task_types_enabled = $21, seed_protected = $22, default_tjm_cents = $23
 		WHERE tenant_id = $1 AND id = $2
 	`, s.TenantID.UUID(), s.ID, s.RaisonSociale, nullString(s.Logo),
-		s.Adresse, s.Siret, s.URLTenant,
+		s.Adresse, s.AdresseNumero, s.AdresseBoite, s.CodePostal, s.Ville,
+		s.Siret, s.URLTenant, pays,
 		normalizeWeekStartDay(s.WeekStartDay),
 		normalizeDayCapacityMinutes(s.DayCapacityMinutes),
 		s.CraMailAuto,
@@ -181,7 +193,9 @@ func (r *Repository) GetSociete(ctx context.Context, tenant kernel.TenantID, id 
 		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(cra_gate_mode, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
-		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
+		       COALESCE(adresse, ''), COALESCE(adresse_numero, ''), COALESCE(adresse_boite, ''),
+		       COALESCE(code_postal, ''), COALESCE(ville, ''),
+		       COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
 		       COALESCE(task_types_enabled, '[]'),
 		       COALESCE(seed_protected, FALSE),
@@ -200,7 +214,9 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 		       COALESCE(week_submit_policy, 'warn'),
 		       COALESCE(cra_gate_mode, 'warn'),
 		       COALESCE(cra_mail_recipients, '[]'),
-		       COALESCE(adresse, ''), COALESCE(siret, ''), COALESCE(url_tenant, ''),
+		       COALESCE(adresse, ''), COALESCE(adresse_numero, ''), COALESCE(adresse_boite, ''),
+		       COALESCE(code_postal, ''), COALESCE(ville, ''),
+		       COALESCE(siret, ''), COALESCE(url_tenant, ''),
 		       COALESCE(totp_default_enabled, FALSE), COALESCE(totp_user_configurable, TRUE),
 		       COALESCE(task_types_enabled, '[]'),
 		       COALESCE(seed_protected, FALSE),
@@ -226,7 +242,7 @@ func (r *Repository) ListSocietes(ctx context.Context, tenant kernel.TenantID) (
 func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
-	var logo, adresse, siret, urlTenant, pays string
+	var logo, adresse, adresseNumero, adresseBoite, codePostal, ville, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
 	var craMailAuto, totpDefaultEnabled, totpUserConfigurable, seedProtected bool
 	var weekSubmitPolicy, craGateMode string
@@ -234,7 +250,8 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	var taskTypesRaw []byte
 	err := row.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
-		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
+		&adresse, &adresseNumero, &adresseBoite, &codePostal, &ville,
+		&siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
 		&seedProtected, &s.DefaultTJMCents)
 	if err != nil {
 		return domain.Societe{}, err
@@ -250,6 +267,10 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.CraGateMode = normalizeCraGateMode(craGateMode)
 	s.Adresse = adresse
+	s.AdresseNumero = adresseNumero
+	s.AdresseBoite = adresseBoite
+	s.CodePostal = codePostal
+	s.Ville = ville
 	s.Siret = siret
 	s.URLTenant = urlTenant
 	s.TotpDefaultEnabled = totpDefaultEnabled
@@ -261,7 +282,7 @@ func scanSociete(row pgx.Row) (domain.Societe, error) {
 func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var s domain.Societe
 	var tenantID uuid.UUID
-	var logo, adresse, siret, urlTenant, pays string
+	var logo, adresse, adresseNumero, adresseBoite, codePostal, ville, siret, urlTenant, pays string
 	var weekStartDay, dayCapacity int
 	var craMailAuto, totpDefaultEnabled, totpUserConfigurable, seedProtected bool
 	var weekSubmitPolicy, craGateMode string
@@ -269,7 +290,8 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	var taskTypesRaw []byte
 	if err := rows.Scan(&s.ID, &tenantID, &s.RaisonSociale, &logo, &s.Devise, &pays,
 		&weekStartDay, &dayCapacity, &craMailAuto, &weekSubmitPolicy, &craGateMode, &recipientsRaw,
-		&adresse, &siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
+		&adresse, &adresseNumero, &adresseBoite, &codePostal, &ville,
+		&siret, &urlTenant, &totpDefaultEnabled, &totpUserConfigurable, &taskTypesRaw,
 		&seedProtected, &s.DefaultTJMCents); err != nil {
 		return domain.Societe{}, err
 	}
@@ -284,6 +306,10 @@ func scanSocieteRow(rows pgx.Rows) (domain.Societe, error) {
 	s.WeekSubmitPolicy = normalizeWeekSubmitPolicy(weekSubmitPolicy)
 	s.CraGateMode = normalizeCraGateMode(craGateMode)
 	s.Adresse = adresse
+	s.AdresseNumero = adresseNumero
+	s.AdresseBoite = adresseBoite
+	s.CodePostal = codePostal
+	s.Ville = ville
 	s.Siret = siret
 	s.URLTenant = urlTenant
 	s.TotpDefaultEnabled = totpDefaultEnabled

@@ -761,8 +761,12 @@ func updateSocieteBranding(org ports.OrganizationService, authorizer authx.Autho
 			SocieteID:     societeID,
 			RaisonSociale: r.FormValue("raisonSociale"),
 			Adresse:       r.FormValue("adresse"),
+			AdresseNumero: r.FormValue("adresseNumero"),
+			AdresseBoite:  r.FormValue("adresseBoite"),
+			CodePostal:    r.FormValue("codePostal"),
+			Ville:         r.FormValue("ville"),
+			Pays:          r.FormValue("pays"),
 			Siret:         r.FormValue("siret"),
-			URLTenant:     r.FormValue("urlTenant"),
 		}
 		if file, header, err := r.FormFile("logo"); err == nil {
 			defer file.Close()

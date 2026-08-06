@@ -81,11 +81,20 @@ func TestUpdateSocieteBranding_PersistsLogoContent(t *testing.T) {
 		LogoContent:     png,
 		LogoContentType: "image/png",
 		Adresse:         "Rue de la Résistance",
+		AdresseNumero:   "92",
+		AdresseBoite:    "A",
+		CodePostal:      "4100",
+		Ville:           "Seraing",
+		Pays:            "BE",
 		Siret:           "BE1007132489",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "LL-IT", got.RaisonSociale)
 	require.Equal(t, "/api/v1/branding/logo/"+tenant.UUID().String(), got.Logo)
+	require.Equal(t, "BE", got.Pays)
+	require.Equal(t, "92", got.AdresseNumero)
+	require.Equal(t, "4100", got.CodePostal)
+	require.Equal(t, "Seraing", got.Ville)
 	require.NotNil(t, repo.updated)
 	require.Equal(t, png, repo.savedLogo)
 	require.Equal(t, "image/png", repo.savedType)

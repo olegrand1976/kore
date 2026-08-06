@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -268,10 +269,59 @@ type Societe struct {
 	TotpDefaultEnabled   bool            `json:"totpDefaultEnabled"`
 	TotpUserConfigurable bool            `json:"totpUserConfigurable"`
 	Adresse              string          `json:"adresse,omitempty"`
+	AdresseNumero        string          `json:"adresseNumero,omitempty"`
+	AdresseBoite         string          `json:"adresseBoite,omitempty"`
+	CodePostal           string          `json:"codePostal,omitempty"`
+	Ville                string          `json:"ville,omitempty"`
 	Siret                string          `json:"siret,omitempty"`
 	URLTenant            string          `json:"urlTenant,omitempty"`
 	SeedProtected        bool            `json:"seedProtected"`
 	DefaultTJMCents      int64           `json:"defaultTjmCents"`
+}
+
+// FormatSocieteAddress builds a single-line postal address for display/PDF.
+func FormatSocieteAddress(s Societe) string {
+	street := strings.TrimSpace(s.Adresse)
+	numero := strings.TrimSpace(s.AdresseNumero)
+	boite := strings.TrimSpace(s.AdresseBoite)
+	cp := strings.TrimSpace(s.CodePostal)
+	ville := strings.TrimSpace(s.Ville)
+	pays := strings.TrimSpace(s.Pays)
+	switch pays {
+	case "FR":
+		pays = "France"
+	case "BE":
+		pays = "Belgique"
+	}
+
+	line1 := street
+	if numero != "" {
+		if line1 != "" {
+			line1 += " " + numero
+		} else {
+			line1 = numero
+		}
+	}
+	if boite != "" {
+		if line1 != "" {
+			line1 += " / " + boite
+		} else {
+			line1 = boite
+		}
+	}
+
+	line2 := strings.TrimSpace(cp + " " + ville)
+	parts := make([]string, 0, 3)
+	if line1 != "" {
+		parts = append(parts, line1)
+	}
+	if line2 != "" {
+		parts = append(parts, line2)
+	}
+	if pays != "" {
+		parts = append(parts, pays)
+	}
+	return strings.Join(parts, ", ")
 }
 
 const DefaultWeekStartDay = 1 // Monday (0=Sunday … 6=Saturday)
