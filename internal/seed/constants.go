@@ -3,13 +3,15 @@ package seed
 import "github.com/google/uuid"
 
 const (
-	TenantName = "LL-IT Software and Computer"
+	TenantName = "Kore Demo"
 
 	AdminLogin    = "ADM_admin"
 	AdminEmail    = "lalouviere.it.sc@gmail.com"
 	AdminPassword = "Admin123!"
 
-	ProdAdminLogin = "ADM_olivier"
+	ProdAdminLogin  = "ADM_olivier"
+	LLITTenantName  = "LL-IT Software and Computer"
+	LLITSocieteName = "LL-IT Software and Computer"
 
 	GoogleIdPName   = "Google"
 	GoogleIssuer    = "https://accounts.google.com"
@@ -28,7 +30,7 @@ const (
 	CommercialLogin = "COM_commercial"
 	CommercialPass  = "Commercial123!"
 
-	DemoSocieteName  = "LL-IT Software and Computer"
+	DemoSocieteName  = "Kore Demo SAS"
 	DemoSiteLabel    = "Paris HQ"
 	DemoAppLabel     = "Portail Client ACME"
 	DemoApp2Label    = "Refonte ERP Globex"
@@ -52,4 +54,8 @@ var (
 	DemoApp2ID      = uuid.MustParse("00000000-0000-4000-8000-000000000015")
 	DemoEquipe2ID   = uuid.MustParse("00000000-0000-4000-8000-000000000016")
 	DemoGoogleIdPID = uuid.MustParse("00000000-0000-4000-8000-000000000020")
+
+	// Tenant / société production LL-IT (isolés du jeu démo).
+	LLITTenantID  = uuid.MustParse("00000000-0000-4000-8000-0000000000a1")
+	LLITSocieteID = uuid.MustParse("00000000-0000-4000-8000-0000000000a2")
 )

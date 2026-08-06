@@ -41,7 +41,7 @@ help:
 	@echo "  make migrate      Applique les migrations (service one-shot)"
 	@echo "  make seed         Seed demo complet (tenant, org, CRA, congés, TMA, budget…)"
 	@echo "  make seed-reset   Réinit demo (refusé si société seed_protected)"
-	@echo "  make bootstrap-llit Société LL-IT protégée + ADM_olivier"
+	@echo "  make bootstrap-llit Tenant LL-IT + société protégée + ADM_olivier"
 	@echo "  make ready        Vérifie /health et /ready"
 	@echo "  make smoke        Smoke test API complet"
 	@echo "  make test         Tests unitaires Go"
@@ -133,7 +133,7 @@ bootstrap-llit: env
 	$(COMPOSE) run --rm --build --no-deps \
 		-e KORE_PROD_ADMIN_PASSWORD \
 		api bootstrap-llit
-	@echo "→ bootstrap-llit appliqué (société seed_protected + ADM_olivier)"
+	@echo "→ bootstrap-llit appliqué (tenant LL-IT + société seed_protected + ADM_olivier)"
 
 ## Logs API
 logs:

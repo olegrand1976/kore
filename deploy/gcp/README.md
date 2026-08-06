@@ -42,9 +42,9 @@ make gcp-domain
 - **Main** : pas de déploiement GCP automatique pour l'instant
 - **Wiki** : job `sync-wiki` — publie `documentation/`, `technical/` et `db/migrations/README.md` sur [le wiki du projet](https://github.com/olegrand1976/kore/wiki) via `scripts/sync-github-wiki.sh`
 
-> **Production / société protégée** : dès qu'une société a `seed_protected = true` (via `make bootstrap-llit` / `make gcp-bootstrap-llit`), `seed-reset` et le job Cloud Run `kore-seed-reset` sont **refusés**. Ne jamais relancer `--seed-reset` sur un environnement LL-IT.
+> **Tenant LL-IT** : `bootstrap-llit` crée un **tenant dédié** (distinct du jeu démo `ADM_admin`), une société `seed_protected`, et `ADM_olivier` sur ce tenant. Le seed-reset du tenant démo reste possible ; il est refusé uniquement s'il cible un tenant avec société protégée.
 >
-> Compte admin prod : `ADM_olivier` — créé en local (`make bootstrap-llit`) et à chaque deploy staging (`--bootstrap-llit`). Mot de passe : env `KORE_PROD_ADMIN_PASSWORD` ou secret GCP `kore-prod-admin-password` ; sinon généré une fois (logs du job).
+> Compte admin LL-IT : `ADM_olivier` — `make bootstrap-llit` / deploy staging `--bootstrap-llit`. Mot de passe : `KORE_PROD_ADMIN_PASSWORD` ou secret GCP `kore-prod-admin-password` ; sinon généré une fois (logs du job).
 
 Secret GitHub requis pour le wiki (le `GITHUB_TOKEN` ne peut pas pousser vers le dépôt `.wiki`) :
 
