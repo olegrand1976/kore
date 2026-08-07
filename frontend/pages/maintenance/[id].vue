@@ -83,10 +83,12 @@
 </template>
 
 <script setup lang="ts">
+import { formatOrgClock } from '~/composables/useCountryTimezone'
+
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { user } = useAuth()
 const { can } = usePermissions()
 const { extractFetchError } = useApiError()
@@ -104,6 +106,7 @@ const {
 } = useMaintenance()
 const { list: listUsers, pickUserId, pickUserLogin } = useUsers()
 const { list: listApps, pickAppLabel, appById } = useApplications()
+const { orgPays } = useOrgPays()
 
 const id = computed(() => String(route.params.id))
 const pending = ref(true)
@@ -127,9 +130,7 @@ const priorityLabel = computed(() => {
 })
 const dueAtLabel = computed(() => {
   const raw = pickDueAt(workRequest.value ?? {})
-  if (!raw) return '—'
-  const d = new Date(raw)
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString()
+  return formatOrgClock(raw || null, orgPays.value, locale.value, 'datetime')
 })
 const applicationLabel = computed(() => {
   const appId = pickApplicationId(workRequest.value ?? {})

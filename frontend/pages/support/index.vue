@@ -43,16 +43,18 @@
 <script setup lang="ts">
 import type { ServiceRequestPayload } from '~/components/requests/ServiceRequestForm.vue'
 import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useRequestAttachments'
+import { formatOrgClock } from '~/composables/useCountryTimezone'
 
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { extractFetchError } = useApiError()
 const { list, create, pickId, pickSubject, pickState, pickPriority, pickDueAt, pickApplicationId } = useSupport()
 const { uploadAll } = useRequestAttachments()
 const { list: listApps, pickAppLabel, appById } = useApplications()
+const { orgPays } = useOrgPays()
 
 const pending = ref(true)
 const busy = ref(false)
@@ -86,11 +88,8 @@ const rows = computed(() =>
   })
 )
 
-const formatDueAt = (raw: string) => {
-  if (!raw) return '—'
-  const d = new Date(raw)
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString()
-}
+const formatDueAt = (raw: string) =>
+  formatOrgClock(raw || null, orgPays.value, locale.value, 'datetime')
 
 const priorityLabel = (priority: string) => t(`requests.priority_${priority}` as const, priority)
 

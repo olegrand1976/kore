@@ -926,12 +926,8 @@ func NewClientService(repo ports.OrganizationRepository, opts ...ClientServiceOp
 	return s
 }
 
-func normalizeOptionalClientPays(pays string) (string, error) {
-	trimmed := strings.TrimSpace(pays)
-	if trimmed == "" {
-		return "", nil
-	}
-	normalized, ok := domain.NormalizeSocietePays(trimmed)
+func normalizeClientPays(pays string) (string, error) {
+	normalized, ok := domain.NormalizeSocietePays(pays)
 	if !ok {
 		return "", domain.ErrInvalidPays
 	}
@@ -943,7 +939,7 @@ func applyClientBillingFields(client *domain.Client, raisonSociale, tva, pays, a
 	if name == "" {
 		return domain.ErrInvalidClientName
 	}
-	normalizedPays, err := normalizeOptionalClientPays(pays)
+	normalizedPays, err := normalizeClientPays(pays)
 	if err != nil {
 		return err
 	}

@@ -322,3 +322,21 @@ func TestCreatePersistsInvoiceBeforeLines(t *testing.T) {
 		t.Fatal("expected invoice id")
 	}
 }
+
+func TestGet_enrichesClientPays(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	clientID := uuid.New()
+	inv := domain.NewInvoice(tenant, clientID, domain.InvoiceTypeStandard, "EUR")
+	inv.Status = domain.InvoiceStatusPreparee
+	inv.TotalAmount = 1000
+	repo := &virtualRepo{invoices: []domain.Invoice{inv}}
+	svc := NewService(repo, WithClientContactReader(stubClientReader{pays: "MG"}))
+
+	got, err := svc.Get(context.Background(), tenant, inv.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.ClientPays != "MG" {
+		t.Fatalf("ClientPays = %q, want MG", got.ClientPays)
+	}
+}

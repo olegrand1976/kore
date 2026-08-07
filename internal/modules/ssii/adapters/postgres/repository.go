@@ -193,6 +193,15 @@ func (r *Repository) GetClientName(ctx context.Context, tenant kernel.TenantID, 
 	return name, err
 }
 
+func (r *Repository) GetClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error) {
+	var pays string
+	err := r.pool.QueryRow(ctx, `
+		SELECT pays FROM org.clients
+		WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
+	`, tenant.UUID(), clientID).Scan(&pays)
+	return pays, err
+}
+
 func (r *Repository) ListClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) ([]ports.ClientContactSnapshot, error) {
 	var raw []byte
 	err := r.pool.QueryRow(ctx, `

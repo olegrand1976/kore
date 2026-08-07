@@ -38,6 +38,9 @@ func (r *missionRepoStub) SaveMissionCollaborators(context.Context, kernel.Tenan
 func (r *missionRepoStub) GetClientName(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
 	return "", nil
 }
+func (r *missionRepoStub) GetClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	return "FR", nil
+}
 func (r *missionRepoStub) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ssiiports.ClientContactSnapshot, error) {
 	return nil, nil
 }

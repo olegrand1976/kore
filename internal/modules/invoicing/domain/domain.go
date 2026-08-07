@@ -58,6 +58,7 @@ type Invoice struct {
 	ID                     uuid.UUID       `json:"id"`
 	TenantID               kernel.TenantID `json:"tenantId"`
 	ClientID               uuid.UUID       `json:"clientId"`
+	ClientPays             string          `json:"clientPays,omitempty"` // enriched on read (org.clients.pays), not persisted
 	Type                   InvoiceType     `json:"type"`
 	Status                 InvoiceStatus   `json:"status"`
 	Currency               string          `json:"currency"`

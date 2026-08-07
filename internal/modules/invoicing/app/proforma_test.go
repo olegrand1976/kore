@@ -16,10 +16,18 @@ import (
 type stubClientReader struct {
 	email string
 	name  string
+	pays  string
 }
 
 func (s stubClientReader) PrimaryBillingContact(context.Context, kernel.TenantID, uuid.UUID) (string, string, error) {
 	return s.email, s.name, nil
+}
+
+func (s stubClientReader) ClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	if s.pays == "" {
+		return "FR", nil
+	}
+	return s.pays, nil
 }
 
 type captureMailer struct {

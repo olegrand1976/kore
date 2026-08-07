@@ -116,14 +116,14 @@ func TestCreateClient_rejectsInvalidPays(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrInvalidPays)
 }
 
-func TestCreateClient_emptyPaysAllowed(t *testing.T) {
+func TestCreateClient_emptyPaysDefaultsToFR(t *testing.T) {
 	svc := NewClientService(&clientRepoFake{})
 	got, err := svc.CreateClient(context.Background(), ports.CreateClientCommand{
 		TenantID:      kernel.NewTenantID(uuid.New()),
 		RaisonSociale: "Acme",
 	})
 	require.NoError(t, err)
-	require.Empty(t, got.Pays)
+	require.Equal(t, "FR", got.Pays)
 }
 
 func TestUpdateClient_billingRoundTrip(t *testing.T) {

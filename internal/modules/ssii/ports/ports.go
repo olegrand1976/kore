@@ -22,7 +22,6 @@ type CreateMissionCommand struct {
 	ClientContact    string
 	ClientContactIDs []uuid.UUID
 	CollaboratorIDs  []uuid.UUID
-	CountryCode      string
 }
 
 type UpdateMissionCommand struct {
@@ -124,6 +123,8 @@ type SSIIRepository interface {
 	ListMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionCollaborator, error)
 	SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error
 	GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
+	// GetClientPays returns the client's billing country code (org.clients.pays).
+	GetClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
 	ListClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) ([]ClientContactSnapshot, error)
 	PurgeClientContactsFromMissions(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, removedIDs []uuid.UUID) error
 }

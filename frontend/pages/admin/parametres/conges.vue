@@ -104,6 +104,7 @@
 <script setup lang="ts">
 import type { LeaveTypeConfig } from '~/composables/useLeave'
 import { pickLeaveTypeCode, pickLeaveTypeLabel, pickSortOrder, pickTracksBalance } from '~/composables/useLeave'
+import { countryI18nKey } from '~/composables/useCountryTimezone'
 
 definePageMeta({ layout: 'default', middleware: 'admin' })
 
@@ -138,25 +139,7 @@ const form = reactive({
 
 const selectedSociete = computed(() => societes.value.find((s) => s.id === selectedSocieteId.value))
 
-const countryLabel = (code: string): string => {
-  switch (code.trim().toUpperCase()) {
-    case 'FR':
-      return t('org.country_fr')
-    case 'BE':
-      return t('org.country_be')
-    case 'MD':
-    case 'MG':
-      return t('org.country_mg')
-    case 'MA':
-      return t('org.country_ma')
-    case 'TN':
-      return t('org.country_tn')
-    case 'CA':
-      return t('org.country_ca')
-    default:
-      return code
-  }
-}
+const countryLabel = (code: string): string => t(countryI18nKey(code))
 
 const columns = computed(() => [
   { key: 'code', label: t('settings.conges.col_code') },

@@ -1,6 +1,11 @@
 import type { Ref } from 'vue'
+import {
+  normalizeCountryCode,
+  type CountryCode
+} from '~/composables/useCountryTimezone'
 
-export type BillingCountryCode = 'FR' | 'BE' | 'MG' | 'MA' | 'TN' | 'CA' | ''
+export type BillingCountryCode = CountryCode
+export { normalizeCountryCode as normalizeBillingCountry }
 
 export type ClientBillingFields = {
   raisonSociale: string
@@ -18,36 +23,13 @@ export function emptyClientBillingFields(): ClientBillingFields {
   return {
     raisonSociale: '',
     tva: '',
-    pays: '',
+    pays: 'FR',
     adresse: '',
     adresseNumero: '',
     adresseBoite: '',
     codePostal: '',
     ville: '',
     siret: ''
-  }
-}
-
-export function normalizeBillingCountry(value: unknown): BillingCountryCode {
-  const code = typeof value === 'string' ? value.trim().toUpperCase() : ''
-  switch (code) {
-    case 'BE':
-      return 'BE'
-    case 'FR':
-      return 'FR'
-    case 'MG':
-    case 'MD':
-      return 'MG'
-    case 'MA':
-      return 'MA'
-    case 'TN':
-      return 'TN'
-    case 'CA':
-      return 'CA'
-    case '':
-      return ''
-    default:
-      return ''
   }
 }
 
@@ -89,8 +71,6 @@ export function useBillingCountryLabels(pays: Ref<BillingCountryCode> | (() => B
         return t('org.matricule_fiscal')
       case 'CA':
         return t('org.ne')
-      case '':
-        return t('clients.registry')
       default: {
         const _exhaustive: never = current.value
         return _exhaustive
@@ -104,8 +84,6 @@ export function useBillingCountryLabels(pays: Ref<BillingCountryCode> | (() => B
         return '0123456789'
       case 'FR':
         return '12345678901234'
-      case '':
-        return ''
       case 'MG':
         return '1234567890'
       case 'MA':
@@ -127,8 +105,6 @@ export function useBillingCountryLabels(pays: Ref<BillingCountryCode> | (() => B
         return t('org.registry_hint_be')
       case 'FR':
         return t('org.registry_hint_fr')
-      case '':
-        return t('clients.registry_hint')
       case 'MG':
         return t('org.registry_hint_mg')
       case 'MA':
@@ -148,7 +124,6 @@ export function useBillingCountryLabels(pays: Ref<BillingCountryCode> | (() => B
     switch (current.value) {
       case 'BE':
       case 'FR':
-      case '':
         return t('org.address_box')
       case 'CA':
         return t('org.address_box_ca')

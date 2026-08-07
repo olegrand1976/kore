@@ -7,6 +7,8 @@ export type OrgSociete = {
   ID?: string
   raisonSociale?: string
   RaisonSociale?: string
+  pays?: string
+  Pays?: string
 }
 
 export type OrgSite = {

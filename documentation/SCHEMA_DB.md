@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (backfill IDs contacts client + purge missions)
+> **Dernière mise à jour doc** : 07/08/2026 (pays client défaut FR)
 
 ---
 
@@ -344,7 +344,7 @@ Memberships N–N équipes.
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `raison_sociale` | TEXT | NOT NULL |
 | `tva` | TEXT | |
-| `pays` | TEXT | NOT NULL, DEFAULT `''` (FR/BE/MG/MA/TN/CA si renseigné) |
+| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE` / `MG` / `MA` / `TN` / `CA` — même whitelist que `org.societes`) |
 | `adresse` | TEXT | NOT NULL, DEFAULT `''` |
 | `adresse_numero` | TEXT | NOT NULL, DEFAULT `''` |
 | `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` |

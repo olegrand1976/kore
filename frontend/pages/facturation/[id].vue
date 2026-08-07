@@ -96,13 +96,16 @@
 </template>
 
 <script setup lang="ts">
+import { formatDualClock, formatOrgClock, normalizeCountryCode } from '~/composables/useCountryTimezone'
+
 definePageMeta({ layout: 'default' })
 
 const { apiFetch } = useApiFetch()
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { can } = usePermissions()
 const { isInvoicingEnabled, fetchSettings } = useRequestSettings()
+const { orgPays } = useOrgPays()
 
 await fetchSettings()
 const invoicingAllowed = isInvoicingEnabled.value && can('invoicing', 'L')
@@ -121,6 +124,8 @@ type InvoiceLine = {
 
 type InvoiceDetail = {
   id: string
+  clientId?: string
+  clientPays?: string
   status: string
   type: string
   currency: string
@@ -233,8 +238,13 @@ const statusLabel = (status: string) => t(`invoicing.status.${status}`, status)
 const formatAmount = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)
 
-const formatDate = (iso: string) =>
-  new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+const formatDate = (iso: string) => {
+  const pays = invoice.value?.clientPays
+  if (!pays) {
+    return formatOrgClock(iso, orgPays.value, locale.value, 'datetime')
+  }
+  return formatDualClock(iso, orgPays.value, normalizeCountryCode(pays), locale.value, 'datetime')
+}
 </script>
 
 <style scoped>

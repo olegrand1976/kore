@@ -1887,6 +1887,9 @@ paths:
         "200": { description: OK }
     post:
       summary: Créer mission
+      description: >
+        Le pays pour le préremplissage des jours fériés est dérivé de `org.clients.pays`
+        (plus de `countryCode` dans le body).
       security: [{ bearerAuth: [] }]
       responses:
         "201": { description: Créé }
@@ -2182,8 +2185,9 @@ components:
         tva: { type: string }
         pays:
           type: string
-          description: FR|BE|MG|MA|TN|CA ou vide
-          enum: ["", FR, BE, MG, MA, TN, CA]
+          description: FR|BE|MG|MA|TN|CA (vide → FR)
+          enum: [FR, BE, MG, MA, TN, CA]
+          default: FR
         adresse: { type: string }
         adresseNumero: { type: string }
         adresseBoite: { type: string }

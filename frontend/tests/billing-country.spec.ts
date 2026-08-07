@@ -9,8 +9,8 @@ describe('useBillingCountry', () => {
   it('normalizes supported country codes', () => {
     expect(normalizeBillingCountry('be')).toBe('BE')
     expect(normalizeBillingCountry('MD')).toBe('MG')
-    expect(normalizeBillingCountry('')).toBe('')
-    expect(normalizeBillingCountry('DE')).toBe('')
+    expect(normalizeBillingCountry('')).toBe('FR')
+    expect(normalizeBillingCountry('DE')).toBe('FR')
   })
 
   it('builds full-replace billing payload', () => {

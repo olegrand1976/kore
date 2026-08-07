@@ -37,8 +37,7 @@
     </div>
     <div class="client-billing__field">
       <label :for="`${idPrefix}-pays`" class="client-billing__label">{{ $t('org.country') }}</label>
-      <select :id="`${idPrefix}-pays`" v-model="model.pays" class="client-billing__select">
-        <option value="">{{ $t('clients.country_unset') }}</option>
+      <select :id="`${idPrefix}-pays`" v-model="model.pays" class="client-billing__select" required>
         <option value="FR">{{ $t('org.country_fr') }}</option>
         <option value="BE">{{ $t('org.country_be') }}</option>
         <option value="MG">{{ $t('org.country_mg') }}</option>

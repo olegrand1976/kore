@@ -63,6 +63,7 @@ import {
   emptyClientBillingFields,
   type ClientBillingFields
 } from '~/composables/useBillingCountry'
+import { countryI18nKey } from '~/composables/useCountryTimezone'
 
 definePageMeta({ layout: 'default' })
 
@@ -76,6 +77,7 @@ const canCreate = computed(() => can('org', 'E'))
 type ClientRow = {
   id: string
   name: string
+  pays: string
   tva: string
 }
 
@@ -85,6 +87,7 @@ const loadError = ref(false)
 
 const columns = computed(() => [
   { key: 'name', label: t('clients.col_name') },
+  { key: 'pays', label: t('org.country') },
   { key: 'tva', label: t('clients.col_tva') },
   { key: 'actions', label: t('prestations.col_actions'), nowrap: true }
 ])
@@ -97,6 +100,7 @@ const load = async () => {
     rows.value = items.map((c) => ({
       id: orgId(c),
       name: c.raisonSociale ?? c.RaisonSociale ?? '—',
+      pays: t(countryI18nKey(c.pays)),
       tva: c.tva || '—'
     }))
   } catch {

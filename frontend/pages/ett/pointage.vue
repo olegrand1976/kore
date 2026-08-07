@@ -32,10 +32,13 @@
 </template>
 
 <script setup lang="ts">
+import { formatOrgClock, formatOrgClockLong } from '~/composables/useCountryTimezone'
+
 definePageMeta({ layout: 'default' })
 
 const { apiFetch } = useApiFetch()
 const { t, locale } = useI18n()
+const { orgPays } = useOrgPays()
 
 type WorkRecord = {
   id: string
@@ -50,6 +53,17 @@ const clockingIn = ref(false)
 const clockingOut = ref(false)
 const message = ref('')
 const errorMsg = ref('')
+const now = ref(new Date())
+
+let nowTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  nowTimer = setInterval(() => {
+    now.value = new Date()
+  }, 30_000)
+})
+onBeforeUnmount(() => {
+  if (nowTimer) clearInterval(nowTimer)
+})
 
 const { data, pending, refresh } = await useAsyncData('ett-records', () =>
   apiFetch<{ data?: WorkRecord[] }>('/api/ett/records')
@@ -60,15 +74,7 @@ const records = computed(() => data.value?.data ?? [])
 const todayKey = new Date().toISOString().slice(0, 10)
 const todayRecord = computed(() => records.value.find((r) => r.workDate?.slice(0, 10) === todayKey))
 
-const nowLabel = computed(() =>
-  new Date().toLocaleString(locale.value === 'en' ? 'en-US' : 'fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-)
+const nowLabel = computed(() => formatOrgClockLong(now.value, orgPays.value, locale.value))
 
 const columns = computed(() => [
   { key: 'workDate', label: t('ett.col_date') },
@@ -78,13 +84,7 @@ const columns = computed(() => [
   { key: 'overtime', label: t('ett.col_overtime') }
 ])
 
-const formatTime = (raw?: string | null) => {
-  if (!raw) return '—'
-  return new Date(raw).toLocaleTimeString(locale.value === 'en' ? 'en-US' : 'fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+const formatTime = (raw?: string | null) => formatOrgClock(raw, orgPays.value, locale.value, 'time')
 
 const rows = computed(() =>
   records.value.map((record) => ({

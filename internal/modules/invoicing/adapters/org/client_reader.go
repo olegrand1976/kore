@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
+	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	orgports "github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
@@ -33,6 +34,21 @@ func (r *ClientContactReader) PrimaryBillingContact(ctx context.Context, tenant 
 		}
 	}
 	return "", client.RaisonSociale, nil
+}
+
+func (r *ClientContactReader) ClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error) {
+	if r == nil || r.clients == nil {
+		return "", nil
+	}
+	client, err := r.clients.GetClient(ctx, tenant, clientID)
+	if err != nil {
+		return "", err
+	}
+	pays, ok := orgdomain.NormalizeSocietePays(client.Pays)
+	if !ok {
+		return "FR", nil
+	}
+	return pays, nil
 }
 
 var _ ports.ClientContactReader = (*ClientContactReader)(nil)

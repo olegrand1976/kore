@@ -115,10 +115,7 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	if err := s.repo.SaveMissionCollaborators(ctx, cmd.TenantID, m.ID, cmd.CollaboratorIDs); err != nil {
 		return domain.Mission{}, err
 	}
-	country := cmd.CountryCode
-	if country == "" {
-		country = "FR"
-	}
+	country := s.resolveClientCountry(ctx, cmd.TenantID, cmd.ClientID)
 	if err := s.prefillMissionDays(ctx, m, cmd.CollaboratorIDs, country); err != nil {
 		return domain.Mission{}, err
 	}
@@ -299,6 +296,26 @@ func contactDisplayName(c ports.ClientContactSnapshot) string {
 		return email
 	}
 	return c.ID.String()
+}
+
+// resolveClientCountry returns the client's billing country for holiday prefill.
+// Falls back to FR when the client has no pays or the lookup fails.
+func (s *service) resolveClientCountry(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) string {
+	pays, err := s.repo.GetClientPays(ctx, tenant, clientID)
+	if err != nil {
+		return "FR"
+	}
+	code := strings.ToUpper(strings.TrimSpace(pays))
+	switch code {
+	case "BE", "FR", "MG", "MA", "TN", "CA":
+		return code
+	case "MD": // legacy non-ISO alias for Madagascar
+		return "MG"
+	case "":
+		return "FR"
+	default:
+		return "FR"
+	}
 }
 
 func (s *service) prefillMissionDays(ctx context.Context, m domain.Mission, collaborators []uuid.UUID, countryCode string) error {

@@ -119,6 +119,8 @@ type InvoicingService interface {
 
 type ClientContactReader interface {
 	PrimaryBillingContact(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (email string, clientName string, err error)
+	// ClientPays returns the normalised client country code (FR/BE/…); empty if unknown.
+	ClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
 }
 
 type MailSender interface {

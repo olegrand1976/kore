@@ -63,7 +63,6 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			ClientContact    string      `json:"clientContact"`
 			ClientContactIDs []uuid.UUID `json:"clientContactIds"`
 			CollaboratorIDs  []uuid.UUID `json:"collaboratorIds"`
-			CountryCode      string      `json:"countryCode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -83,7 +82,6 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			ClientContact:    req.ClientContact,
 			ClientContactIDs: req.ClientContactIDs,
 			CollaboratorIDs:  req.CollaboratorIDs,
-			CountryCode:      req.CountryCode,
 		})
 		if err != nil {
 			writeMissionError(w, err)

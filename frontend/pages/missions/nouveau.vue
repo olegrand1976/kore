@@ -75,11 +75,6 @@
             <AppIcon name="add" /> {{ $t('missions.contact_add_inline') }}
           </AppButton>
         </div>
-        <AppInput
-          v-model="form.countryCode"
-          :label="$t('missions.field_country')"
-          maxlength="2"
-        />
         <AppUserMultiSelect
           id="mission-collaborators"
           v-model="form.collaboratorIds"
@@ -173,7 +168,6 @@ const form = reactive({
   rateUnit: 'tjm' as 'tjm' | 'hourly',
   amountEuros: 0,
   clientContactIds: [] as string[],
-  countryCode: 'FR',
   collaboratorIds: [] as string[]
 })
 
@@ -343,7 +337,6 @@ async function submit() {
       tjmAmount: Math.round(Number(form.amountEuros) * 100),
       currency: 'EUR',
       clientContactIds: form.clientContactIds,
-      countryCode: form.countryCode || 'FR',
       technologies: [],
       collaboratorIds: form.collaboratorIds
     }

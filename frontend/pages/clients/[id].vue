@@ -252,6 +252,7 @@ import {
   useBillingCountryLabels,
   type ClientBillingFields
 } from '~/composables/useBillingCountry'
+import { countryI18nKey } from '~/composables/useCountryTimezone'
 
 definePageMeta({ layout: 'default' })
 
@@ -315,29 +316,7 @@ const client = computed(() => {
 
 const title = computed(() => client.value?.raisonSociale ?? '—')
 
-const countryLabel = computed(() => {
-  const code = normalizeBillingCountry(client.value?.pays)
-  switch (code) {
-    case 'FR':
-      return t('org.country_fr')
-    case 'BE':
-      return t('org.country_be')
-    case 'MG':
-      return t('org.country_mg')
-    case 'MA':
-      return t('org.country_ma')
-    case 'TN':
-      return t('org.country_tn')
-    case 'CA':
-      return t('org.country_ca')
-    case '':
-      return t('fiche.none')
-    default: {
-      const _exhaustive: never = code
-      return _exhaustive
-    }
-  }
-})
+const countryLabel = computed(() => t(countryI18nKey(client.value?.pays)))
 
 const formattedAddress = computed(() => {
   const c = client.value
@@ -345,8 +324,7 @@ const formattedAddress = computed(() => {
   const street = [c.adresse, c.adresseNumero].filter(Boolean).join(' ')
   const withBox = c.adresseBoite ? (street ? `${street} / ${c.adresseBoite}` : c.adresseBoite) : street
   const city = [c.codePostal, c.ville].filter(Boolean).join(' ')
-  const country = countryLabel.value === t('fiche.none') ? '' : countryLabel.value
-  const parts = [withBox, city, country].filter(Boolean)
+  const parts = [withBox, city, countryLabel.value].filter(Boolean)
   return parts.length ? parts.join(', ') : t('fiche.none')
 })
 

@@ -235,6 +235,58 @@ func TestGetDetail_noLegacyFallbackWhenIDsPresent(t *testing.T) {
 	}
 }
 
+type capturingCalendar struct {
+	lastCountry string
+}
+
+func (c *capturingCalendar) IsHolidayOrLeave(_ context.Context, _ kernel.TenantID, _ uuid.UUID, _ time.Time, countryCode string) (bool, error) {
+	c.lastCountry = countryCode
+	return false, nil
+}
+
+type paysRepo struct {
+	noopRepo
+	pays string
+}
+
+func (r *paysRepo) GetClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	return r.pays, nil
+}
+
+func TestCreate_usesClientPaysForPrefill(t *testing.T) {
+	cal := &capturingCalendar{}
+	repo := &paysRepo{pays: "be"}
+	svc := NewService(repo, &fakeFeeder{}, nil, cal)
+	end := time.Now().UTC().AddDate(0, 0, 14)
+	_, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:        kernel.NewTenantID(uuid.New()),
+		ClientID:        uuid.New(),
+		StartDate:       time.Now().UTC(),
+		EndDate:         &end,
+		RateUnit:        "tjm",
+		CollaboratorIDs: []uuid.UUID{uuid.New()},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if cal.lastCountry != "BE" {
+		t.Fatalf("country = %q, want BE from client.pays", cal.lastCountry)
+	}
+}
+
+func TestResolveClientCountry_defaultsAndAliases(t *testing.T) {
+	svc := &service{repo: &paysRepo{pays: "md"}}
+	got := svc.resolveClientCountry(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New())
+	if got != "MG" {
+		t.Fatalf("got %q, want MG", got)
+	}
+	svc.repo = &paysRepo{pays: "DE"}
+	got = svc.resolveClientCountry(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New())
+	if got != "FR" {
+		t.Fatalf("unsupported pays = %q, want FR", got)
+	}
+}
+
 type noopRepo struct{}
 
 func (noopRepo) SaveMission(context.Context, domain.Mission) error { return nil }
@@ -255,6 +307,9 @@ func (noopRepo) SaveMissionCollaborators(context.Context, kernel.TenantID, uuid.
 }
 func (noopRepo) GetClientName(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
 	return "", nil
+}
+func (noopRepo) GetClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	return "FR", nil
 }
 func (noopRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ports.ClientContactSnapshot, error) {
 	return nil, nil

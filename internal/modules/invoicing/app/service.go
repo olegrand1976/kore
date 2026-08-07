@@ -117,7 +117,19 @@ func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID)
 		return domain.Invoice{}, err
 	}
 	inv.Lines = lines
+	s.enrichClientPays(ctx, &inv)
 	return inv, nil
+}
+
+func (s *service) enrichClientPays(ctx context.Context, inv *domain.Invoice) {
+	if s.clientReader == nil || inv.ClientID == uuid.Nil {
+		return
+	}
+	pays, err := s.clientReader.ClientPays(ctx, inv.TenantID, inv.ClientID)
+	if err != nil || pays == "" {
+		return
+	}
+	inv.ClientPays = pays
 }
 
 func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (domain.Invoice, error) {
