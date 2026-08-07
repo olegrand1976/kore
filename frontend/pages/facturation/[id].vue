@@ -6,16 +6,16 @@
           {{ $t('invoicing.back') }}
         </AppButton>
         <AppButton
-          v-if="invoice?.status === 'preparee' || invoice?.status === 'proforma'"
+          v-if="canEmitProforma"
           variant="secondary"
           size="sm"
           :disabled="emittingProforma"
           @click="onEmitProforma"
         >
-          {{ invoice?.status === 'proforma' ? $t('invoicing.proforma_resend') : $t('invoicing.proforma_emit') }}
+          {{ invoice?.status === 'proforma' || invoice?.status === 'proforma_refusee' ? $t('invoicing.proforma_resend') : $t('invoicing.proforma_emit') }}
         </AppButton>
         <AppButton
-          v-if="invoice?.status === 'preparee'"
+          v-if="canWrite && invoice?.status === 'preparee'"
           variant="primary"
           size="sm"
           :disabled="transmitting"
@@ -28,6 +28,16 @@
 
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
     <p v-if="successMsg" class="flash flash--ok" role="status">{{ successMsg }}</p>
+    <p
+      v-if="invoice?.status === 'proforma_refusee'"
+      class="flash flash--error"
+      role="alert"
+    >
+      {{ $t('invoicing.proforma_rejected_banner') }}
+      <template v-if="invoice.proformaClientComment">
+        — {{ invoice.proformaClientComment }}
+      </template>
+    </p>
 
     <AppCard v-if="pending" padding="lg"><p class="muted">{{ $t('common.loading') }}</p></AppCard>
 
@@ -120,6 +130,7 @@ type InvoiceDetail = {
   proformaRecipientEmail?: string
   proformaSentAt?: string
   proformaValidatedAt?: string
+  proformaClientComment?: string
   invoiceSentAt?: string
   lines?: InvoiceLine[]
 }
@@ -153,6 +164,14 @@ const lineRows = computed(() =>
     taxRate: `${line.taxRate} %`
   }))
 )
+
+const canWrite = computed(() => can('invoicing', 'E'))
+const canEmitProforma = computed(() => {
+  const inv = invoice.value
+  if (!canWrite.value || !inv) return false
+  if (inv.status === 'proforma' || inv.status === 'proforma_refusee') return true
+  return inv.status === 'preparee' && !inv.proformaValidatedAt
+})
 
 const transmitting = ref(false)
 const emittingProforma = ref(false)
@@ -194,6 +213,7 @@ const statusVariant = (status: string) => {
     case 'encaissee':
       return 'success'
     case 'refusee':
+    case 'proforma_refusee':
     case 'annulee':
       return 'error'
     case 'transmise':

@@ -6,4 +6,6 @@ ALTER TABLE invoicing.invoices
     DROP COLUMN IF EXISTS proforma_sent_at,
     DROP COLUMN IF EXISTS proforma_expires_at,
     DROP COLUMN IF EXISTS proforma_validated_at,
+    DROP COLUMN IF EXISTS proforma_rejected_at,
+    DROP COLUMN IF EXISTS proforma_client_comment,
     DROP COLUMN IF EXISTS invoice_sent_at;

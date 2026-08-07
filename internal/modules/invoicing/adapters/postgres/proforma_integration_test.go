@@ -40,7 +40,8 @@ func TestInvoicing_ProformaTokenRoundTrip(t *testing.T) {
 	require.Equal(t, domain.InvoiceStatusProforma, got.Status)
 	require.Equal(t, "marie.dupont@acme.test", got.ProformaRecipientEmail)
 
-	require.NoError(t, got.ValidateProforma(now.Add(time.Minute)))
+	require.NoError(t, got.ValidateProforma(now.Add(time.Minute), ""))
+	require.NoError(t, repo.ApplyProformaDecision(ctx, hash, got))
 	got.MarkInvoiceSent(now.Add(2 * time.Minute))
 	require.NoError(t, repo.SaveInvoice(ctx, got))
 
@@ -53,4 +54,6 @@ func TestInvoicing_ProformaTokenRoundTrip(t *testing.T) {
 
 	_, err = repo.GetInvoiceByProformaTokenHash(ctx, hash)
 	require.ErrorIs(t, err, domain.ErrInvoiceNotFound)
+
+	require.ErrorIs(t, repo.ApplyProformaDecision(ctx, hash, got), domain.ErrProformaConflict)
 }

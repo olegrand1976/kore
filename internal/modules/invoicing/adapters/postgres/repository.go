@@ -29,8 +29,8 @@ func (r *Repository) SaveInvoice(ctx context.Context, inv domain.Invoice) error 
 			id, tenant_id, client_id, type, status, currency,
 			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
 			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
-			proforma_validated_at, invoice_sent_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			proforma_validated_at, proforma_rejected_at, proforma_client_comment, invoice_sent_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
 			total_amount = EXCLUDED.total_amount,
@@ -43,11 +43,14 @@ func (r *Repository) SaveInvoice(ctx context.Context, inv domain.Invoice) error 
 			proforma_sent_at = EXCLUDED.proforma_sent_at,
 			proforma_expires_at = EXCLUDED.proforma_expires_at,
 			proforma_validated_at = EXCLUDED.proforma_validated_at,
+			proforma_rejected_at = EXCLUDED.proforma_rejected_at,
+			proforma_client_comment = EXCLUDED.proforma_client_comment,
 			invoice_sent_at = EXCLUDED.invoice_sent_at
 	`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
 		inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
 		inv.SourceTimesheetID, nullIfEmpty(inv.ProformaTokenHash), nullIfEmpty(inv.ProformaRecipientEmail),
-		inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.InvoiceSentAt)
+		inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.ProformaRejectedAt,
+		nullIfEmpty(inv.ProformaClientComment), inv.InvoiceSentAt)
 	return mapInvoiceSaveError(err)
 }
 
@@ -69,7 +72,7 @@ func (r *Repository) GetInvoice(ctx context.Context, tenant kernel.TenantID, id 
 		SELECT id, tenant_id, client_id, type, status, currency,
 			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
 			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
-			proforma_validated_at, invoice_sent_at
+			proforma_validated_at, proforma_rejected_at, proforma_client_comment, invoice_sent_at
 		FROM invoicing.invoices WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
 }
@@ -79,9 +82,36 @@ func (r *Repository) GetInvoiceByProformaTokenHash(ctx context.Context, tokenHas
 		SELECT id, tenant_id, client_id, type, status, currency,
 			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
 			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
-			proforma_validated_at, invoice_sent_at
+			proforma_validated_at, proforma_rejected_at, proforma_client_comment, invoice_sent_at
 		FROM invoicing.invoices WHERE proforma_token_hash = $1
 	`, tokenHash))
+}
+
+// ApplyProformaDecision persists validate/reject atomically while the token hash still matches (CAS).
+func (r *Repository) ApplyProformaDecision(ctx context.Context, expectedTokenHash string, inv domain.Invoice) error {
+	if expectedTokenHash == "" {
+		return domain.ErrProformaConflict
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE invoicing.invoices SET
+			status = $1,
+			proforma_token_hash = NULL,
+			proforma_expires_at = NULL,
+			proforma_validated_at = $2,
+			proforma_rejected_at = $3,
+			proforma_client_comment = $4,
+			invoice_sent_at = $5
+		WHERE id = $6 AND tenant_id = $7 AND proforma_token_hash = $8
+	`, string(inv.Status), inv.ProformaValidatedAt, inv.ProformaRejectedAt,
+		nullIfEmpty(inv.ProformaClientComment), inv.InvoiceSentAt,
+		inv.ID, inv.TenantID.UUID(), expectedTokenHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrProformaConflict
+	}
+	return nil
 }
 
 func (r *Repository) ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error) {
@@ -89,7 +119,7 @@ func (r *Repository) ListInvoices(ctx context.Context, tenant kernel.TenantID) (
 		SELECT id, tenant_id, client_id, type, status, currency,
 			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
 			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
-			proforma_validated_at, invoice_sent_at
+			proforma_validated_at, proforma_rejected_at, proforma_client_comment, invoice_sent_at
 		FROM invoicing.invoices WHERE tenant_id = $1 ORDER BY created_at DESC
 	`, tenant.UUID())
 	if err != nil {
@@ -124,8 +154,8 @@ func (r *Repository) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoic
 				id, tenant_id, client_id, type, status, currency,
 				total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
 				proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
-				proforma_validated_at, invoice_sent_at
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+				proforma_validated_at, proforma_rejected_at, proforma_client_comment, invoice_sent_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 			ON CONFLICT (id) DO UPDATE SET
 				status = EXCLUDED.status,
 				total_amount = EXCLUDED.total_amount,
@@ -138,11 +168,14 @@ func (r *Repository) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoic
 				proforma_sent_at = EXCLUDED.proforma_sent_at,
 				proforma_expires_at = EXCLUDED.proforma_expires_at,
 				proforma_validated_at = EXCLUDED.proforma_validated_at,
+				proforma_rejected_at = EXCLUDED.proforma_rejected_at,
+				proforma_client_comment = EXCLUDED.proforma_client_comment,
 				invoice_sent_at = EXCLUDED.invoice_sent_at
 		`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
 			inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
 			inv.SourceTimesheetID, nullIfEmpty(inv.ProformaTokenHash), nullIfEmpty(inv.ProformaRecipientEmail),
-			inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.InvoiceSentAt)
+			inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.ProformaRejectedAt,
+			nullIfEmpty(inv.ProformaClientComment), inv.InvoiceSentAt)
 		if err != nil {
 			return mapInvoiceSaveError(err)
 		}
@@ -219,11 +252,11 @@ func (r *Repository) SumNonVirtualInvoicesInPeriod(ctx context.Context, tenant k
 		       COALESCE(NULLIF(MAX(currency), ''), 'EUR')
 		FROM invoicing.invoices
 		WHERE tenant_id = $1
-		  AND status NOT IN ($2, $3)
-		  AND created_at >= $4
-		  AND created_at < ($5::timestamptz + INTERVAL '1 day')
+		  AND status NOT IN ($2, $3, $4)
+		  AND created_at >= $5
+		  AND created_at < ($6::timestamptz + INTERVAL '1 day')
 	`, tenant.UUID(), string(domain.InvoiceStatusVirtuelle), string(domain.InvoiceStatusProforma),
-		period.Start, period.End).Scan(&total, &count, &currency)
+		string(domain.InvoiceStatusProformaRefusee), period.Start, period.End).Scan(&total, &count, &currency)
 	return total, count, currency, err
 }
 
@@ -231,10 +264,11 @@ func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	var inv domain.Invoice
 	var tenantID uuid.UUID
 	var invType, status string
-	var tokenHash, recipient *string
+	var tokenHash, recipient, comment *string
 	err := row.Scan(&inv.ID, &tenantID, &inv.ClientID, &invType, &status, &inv.Currency,
 		&inv.TotalAmount, &inv.TaxAmount, &inv.PDPReceiptID, &inv.TransmittedAt, &inv.CreatedAt, &inv.SourceTimesheetID,
-		&tokenHash, &recipient, &inv.ProformaSentAt, &inv.ProformaExpiresAt, &inv.ProformaValidatedAt, &inv.InvoiceSentAt)
+		&tokenHash, &recipient, &inv.ProformaSentAt, &inv.ProformaExpiresAt, &inv.ProformaValidatedAt,
+		&inv.ProformaRejectedAt, &comment, &inv.InvoiceSentAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Invoice{}, domain.ErrInvoiceNotFound
@@ -249,6 +283,9 @@ func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	}
 	if recipient != nil {
 		inv.ProformaRecipientEmail = *recipient
+	}
+	if comment != nil {
+		inv.ProformaClientComment = *comment
 	}
 	return inv, nil
 }

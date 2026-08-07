@@ -69,9 +69,8 @@ func (s *service) EmitProforma(ctx context.Context, cmd ports.EmitProformaComman
 		link,
 	)
 	if s.mailer != nil {
-		if err := s.mailer.Send(ctx, email, subject, body); err != nil {
-			return domain.Invoice{}, fmt.Errorf("send proforma email: %w", err)
-		}
+		// Best-effort: invoice is already in proforma state; caller can resend.
+		_ = s.mailer.Send(ctx, email, subject, body)
 	}
 	return inv, nil
 }
@@ -84,35 +83,52 @@ func (s *service) GetProformaByToken(ctx context.Context, token string) (ports.P
 	if err := inv.CanValidateProforma(s.now()); err != nil {
 		return ports.ProformaPreview{}, err
 	}
-	return s.toPreview(ctx, inv, false), nil
+	return s.toPreview(ctx, inv, false, false), nil
 }
 
-func (s *service) ValidateProformaByToken(ctx context.Context, token string) (ports.ProformaPreview, error) {
-	inv, err := s.loadByProformaToken(ctx, token)
+func (s *service) ValidateProformaByToken(ctx context.Context, cmd ports.ProformaDecisionCommand) (ports.ProformaPreview, error) {
+	inv, err := s.loadByProformaToken(ctx, cmd.Token)
 	if err != nil {
 		return ports.ProformaPreview{}, err
 	}
+	tokenHash := inv.ProformaTokenHash
 	now := s.now()
-	if err := inv.ValidateProforma(now); err != nil {
+	if err := inv.ValidateProforma(now, cmd.Comment); err != nil {
 		return ports.ProformaPreview{}, err
 	}
-	if err := s.repo.SaveInvoice(ctx, inv); err != nil {
+	if err := s.repo.ApplyProformaDecision(ctx, tokenHash, inv); err != nil {
 		return ports.ProformaPreview{}, err
 	}
 
+	emailSent := false
 	recipient := normalizeEmail(inv.ProformaRecipientEmail)
 	if recipient != "" && s.mailer != nil {
-		subject := "Kore — Facture"
-		body := formatInvoiceEmail(inv)
-		if err := s.mailer.Send(ctx, recipient, subject, body); err != nil {
-			return ports.ProformaPreview{}, fmt.Errorf("send invoice email: %w", err)
-		}
-		inv.MarkInvoiceSent(now)
-		if err := s.repo.SaveInvoice(ctx, inv); err != nil {
-			return ports.ProformaPreview{}, err
+		// Best-effort: validation already persisted and token cleared; do not fail the client.
+		if err := s.mailer.Send(ctx, recipient, "Kore — Facture", formatInvoiceEmail(inv)); err == nil {
+			inv.MarkInvoiceSent(now)
+			_ = s.repo.SaveInvoice(ctx, inv)
+			emailSent = true
 		}
 	}
-	return s.toPreview(ctx, inv, true), nil
+	preview := s.toPreview(ctx, inv, true, false)
+	preview.InvoiceEmailSent = emailSent
+	return preview, nil
+}
+
+func (s *service) RejectProformaByToken(ctx context.Context, cmd ports.ProformaDecisionCommand) (ports.ProformaPreview, error) {
+	inv, err := s.loadByProformaToken(ctx, cmd.Token)
+	if err != nil {
+		return ports.ProformaPreview{}, err
+	}
+	tokenHash := inv.ProformaTokenHash
+	now := s.now()
+	if err := inv.RejectProforma(now, cmd.Comment); err != nil {
+		return ports.ProformaPreview{}, err
+	}
+	if err := s.repo.ApplyProformaDecision(ctx, tokenHash, inv); err != nil {
+		return ports.ProformaPreview{}, err
+	}
+	return s.toPreview(ctx, inv, false, true), nil
 }
 
 func (s *service) loadByProformaToken(ctx context.Context, token string) (domain.Invoice, error) {
@@ -132,10 +148,19 @@ func (s *service) loadByProformaToken(ctx context.Context, token string) (domain
 	return inv, nil
 }
 
-func (s *service) toPreview(ctx context.Context, inv domain.Invoice, validated bool) ports.ProformaPreview {
+func (s *service) toPreview(ctx context.Context, inv domain.Invoice, validated, rejected bool) ports.ProformaPreview {
 	clientName := ""
 	if s.clientReader != nil {
 		_, clientName, _ = s.clientReader.PrimaryBillingContact(ctx, inv.TenantID, inv.ClientID)
+	}
+	lines := make([]ports.ProformaLinePreview, 0, len(inv.Lines))
+	for _, line := range inv.Lines {
+		lines = append(lines, ports.ProformaLinePreview{
+			Description: line.Description,
+			Quantity:    line.Quantity,
+			UnitPrice:   line.UnitPrice,
+			TaxRate:     line.TaxRate,
+		})
 	}
 	return ports.ProformaPreview{
 		InvoiceID:   inv.ID,
@@ -145,8 +170,10 @@ func (s *service) toPreview(ctx context.Context, inv domain.Invoice, validated b
 		TaxAmount:   inv.TaxAmount,
 		Status:      inv.Status,
 		ExpiresAt:   inv.ProformaExpiresAt,
-		Lines:       inv.Lines,
+		Lines:       lines,
 		Validated:   validated,
+		Rejected:    rejected,
+		Comment:     inv.ProformaClientComment,
 	}
 }
 

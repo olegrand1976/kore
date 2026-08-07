@@ -46,16 +46,31 @@ type EmitProformaCommand struct {
 	PublicBaseURL  string
 }
 
+type ProformaLinePreview struct {
+	Description string  `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	UnitPrice   int64   `json:"unitPrice"`
+	TaxRate     float64 `json:"taxRate"`
+}
+
 type ProformaPreview struct {
-	InvoiceID   uuid.UUID            `json:"invoiceId"`
-	ClientName  string               `json:"clientName"`
-	Currency    string               `json:"currency"`
-	TotalAmount int64                `json:"totalAmount"`
-	TaxAmount   int64                `json:"taxAmount"`
-	Status      domain.InvoiceStatus `json:"status"`
-	ExpiresAt   *time.Time           `json:"expiresAt,omitempty"`
-	Lines       []domain.InvoiceLine `json:"lines"`
-	Validated   bool                 `json:"validated"`
+	InvoiceID        uuid.UUID             `json:"invoiceId"`
+	ClientName       string                `json:"clientName"`
+	Currency         string                `json:"currency"`
+	TotalAmount      int64                 `json:"totalAmount"`
+	TaxAmount        int64                 `json:"taxAmount"`
+	Status           domain.InvoiceStatus  `json:"status"`
+	ExpiresAt        *time.Time            `json:"expiresAt,omitempty"`
+	Lines            []ProformaLinePreview `json:"lines"`
+	Validated        bool                  `json:"validated"`
+	Rejected         bool                  `json:"rejected"`
+	Comment          string                `json:"comment,omitempty"`
+	InvoiceEmailSent bool                  `json:"invoiceEmailSent"`
+}
+
+type ProformaDecisionCommand struct {
+	Token   string
+	Comment string
 }
 
 type ComputeVirtualCommand struct {
@@ -96,7 +111,8 @@ type InvoicingService interface {
 	CreateCreditNote(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) (domain.Invoice, error)
 	EmitProforma(ctx context.Context, cmd EmitProformaCommand) (domain.Invoice, error)
 	GetProformaByToken(ctx context.Context, token string) (ProformaPreview, error)
-	ValidateProformaByToken(ctx context.Context, token string) (ProformaPreview, error)
+	ValidateProformaByToken(ctx context.Context, cmd ProformaDecisionCommand) (ProformaPreview, error)
+	RejectProformaByToken(ctx context.Context, cmd ProformaDecisionCommand) (ProformaPreview, error)
 }
 
 type ClientContactReader interface {
@@ -111,6 +127,7 @@ type InvoicingRepository interface {
 	SaveInvoice(ctx context.Context, inv domain.Invoice) error
 	GetInvoice(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
 	GetInvoiceByProformaTokenHash(ctx context.Context, tokenHash string) (domain.Invoice, error)
+	ApplyProformaDecision(ctx context.Context, expectedTokenHash string, inv domain.Invoice) error
 	ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error)
 	SaveInvoiceLine(ctx context.Context, line domain.InvoiceLine) error
 	SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error

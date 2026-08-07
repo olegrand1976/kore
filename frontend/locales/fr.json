@@ -851,12 +851,16 @@
       "acceptee": "Acceptée",
       "refusee": "Refusée",
       "encaissee": "Encaissée",
-      "annulee": "Annulée"
-    }
+      "annulee": "Annulée",
+      "proforma_refusee": "Proforma refusée"
+    },
+    "proforma_rejected_banner": "Le client a refusé cette proforma.",
+    "proforma_client_comment": "Commentaire client",
+    "proforma_rejected_at": "Refusée le"
   },
   "proforma": {
     "title": "Validation proforma",
-    "lead": "Consultez le détail puis validez pour transformer la proforma en facture.",
+    "lead": "Consultez le détail, ajoutez un commentaire si besoin, puis validez ou refusez.",
     "client": "Client",
     "amount_ht": "Montant HT",
     "amount_tax": "TVA",
@@ -866,7 +870,15 @@
     "validating": "Validation…",
     "validated": "Proforma validée. La facture vous a été envoyée par email.",
     "load_error": "Lien invalide ou expiré.",
-    "validate_error": "Impossible de valider cette proforma."
+    "validate_error": "Impossible de valider cette proforma.",
+    "comment_label": "Commentaire",
+    "comment_placeholder": "Précisez un motif en cas de refus…",
+    "comment_hint": "Optionnel pour valider, obligatoire pour refuser.",
+    "reject": "Refuser",
+    "rejecting": "Envoi du refus…",
+    "rejected": "Proforma refusée. Votre commentaire a été transmis.",
+    "reject_comment_required": "Un commentaire est obligatoire pour refuser.",
+    "reject_error": "Impossible de refuser cette proforma."
   },
   "integrations": {
     "title": "Intégrations",

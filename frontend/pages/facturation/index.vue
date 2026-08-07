@@ -394,9 +394,11 @@ const statusVariant = (status: string) => {
     case 'encaissee':
       return 'success'
     case 'refusee':
+    case 'proforma_refusee':
     case 'annulee':
       return 'error'
     case 'transmise':
+    case 'proforma':
       return 'blue'
     case 'preparee':
       return 'gold'

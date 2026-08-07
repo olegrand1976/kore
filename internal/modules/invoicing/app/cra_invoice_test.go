@@ -29,6 +29,10 @@ func (r *craInvoiceRepo) GetInvoiceByProformaTokenHash(context.Context, string) 
 	return domain.Invoice{}, domain.ErrInvoiceNotFound
 }
 
+func (r *craInvoiceRepo) ApplyProformaDecision(context.Context, string, domain.Invoice) error {
+	return domain.ErrProformaConflict
+}
+
 func (r *craInvoiceRepo) ListInvoices(context.Context, kernel.TenantID) ([]domain.Invoice, error) {
 	return nil, nil
 }

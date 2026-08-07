@@ -1552,10 +1552,35 @@ paths:
     post:
       summary: Valider une proforma (convertit en facture et envoie l'email client)
       parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment: { type: string, description: Commentaire client optionnel }
       responses:
         "200": { description: Validée }
         "404": { description: Token invalide }
         "410": { description: Token expiré }
+  /public/proforma/{token}/reject:
+    post:
+      summary: Refuser une proforma (commentaire obligatoire)
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment: { type: string }
+      responses:
+        "200": { description: Refusée }
+        "404": { description: Token invalide }
+        "410": { description: Token expiré }
+        "422": { description: Commentaire manquant }
   /invoices/{id}/credit-note:
     post:
       summary: Émettre avoir

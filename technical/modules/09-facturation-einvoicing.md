@@ -165,7 +165,7 @@ Couverture : domaine > 90 %, app > 80 %.
 
 ## 10quater. Proforma client (V1)
 
-- **Émission** : `POST /invoices/{id}/emit-proforma` (`invoicing:E` + toggle org) — statut `proforma`, email au contact facturation client (ou override), magic link TTL 14j (`proforma_token_hash`).
+- **Émission** : `POST /invoices/{id}/emit-proforma` (`invoicing:E` + toggle org) — statut `proforma`, email au contact facturation client (ou override), magic link TTL 14j (`proforma_token_hash`). Lien construit depuis `PUBLIC_BASE_URL` (config serveur), jamais depuis un header client.
 - **Validation publique** : `GET/POST /public/proforma/{token}` (sans JWT) → page `/public/proforma/[token]` ; à validation, statut `preparee` + email facture (`invoice_sent_at`). PDP reste manuel.
 - **Schéma** : migration invoicing `0003` (colonnes proforma + `invoice_sent_at`).
 - **UI** : bouton émettre/renvoyer sur `facturation/[id]` si statut `preparee` ou `proforma`.

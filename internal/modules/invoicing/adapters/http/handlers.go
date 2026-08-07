@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -14,14 +15,32 @@ import (
 	"github.com/kore/kore/internal/modules/invoicing/domain"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
 	"github.com/kore/kore/internal/platform/authx"
+	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/internal/platform/httpx"
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, invoicingEnabled kernel.InvoicingEnabledReader, pdpWebhookSecret string) {
+const (
+	proformaRateLimitWindow = time.Minute
+	proformaRateLimitMax    = 30
+)
+
+func RegisterRoutes(
+	r chi.Router,
+	svc ports.InvoicingService,
+	tokens *authx.TokenIssuer,
+	authorizer authx.Authorizer,
+	entitlements authx.EntitlementReader,
+	invoicingEnabled kernel.InvoicingEnabledReader,
+	pdpWebhookSecret string,
+	publicBaseURL string,
+	appCache cache.Cache,
+	keys cache.KeyBuilder,
+) {
 	r.Post("/webhooks/pdp", pdpWebhook(svc, pdpWebhookSecret))
-	r.Get("/public/proforma/{token}", getProformaPublic(svc))
-	r.Post("/public/proforma/{token}/validate", validateProformaPublic(svc))
+	r.With(proformaRateLimit(appCache, keys, "get")).Get("/public/proforma/{token}", getProformaPublic(svc))
+	r.With(proformaRateLimit(appCache, keys, "validate")).Post("/public/proforma/{token}/validate", validateProformaPublic(svc))
+	r.With(proformaRateLimit(appCache, keys, "reject")).Post("/public/proforma/{token}/reject", rejectProformaPublic(svc))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/invoices", listInvoices(svc, authorizer, invoicingEnabled))
@@ -29,7 +48,7 @@ func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.Toke
 		pr.Get("/invoices/{id}", getInvoice(svc, authorizer, invoicingEnabled))
 		pr.Post("/invoices/compute-virtual", computeVirtual(svc, authorizer, invoicingEnabled))
 		pr.Post("/invoices/{id}/transmit", transmitInvoice(svc, authorizer, invoicingEnabled))
-		pr.Post("/invoices/{id}/emit-proforma", emitProforma(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices/{id}/emit-proforma", emitProforma(svc, authorizer, invoicingEnabled, publicBaseURL))
 		pr.Post("/invoices/{id}/credit-note", createCreditNote(svc, authorizer, invoicingEnabled))
 	})
 }
@@ -46,7 +65,9 @@ func writeInvoicingErr(w http.ResponseWriter, err error) bool {
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 		return true
 	case errors.Is(err, domain.ErrInvalidInvoiceState),
-		errors.Is(err, domain.ErrProformaAlreadyValidated):
+		errors.Is(err, domain.ErrProformaAlreadyValidated),
+		errors.Is(err, domain.ErrProformaAlreadyRejected),
+		errors.Is(err, domain.ErrProformaConflict):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
 		return true
 	case errors.Is(err, domain.ErrProformaTokenInvalid):
@@ -58,7 +79,9 @@ func writeInvoicingErr(w http.ResponseWriter, err error) bool {
 	case errors.Is(err, domain.ErrZeroUnitPrice),
 		errors.Is(err, domain.ErrNoBillableContent),
 		errors.Is(err, domain.ErrInvalidInvoiceLine),
-		errors.Is(err, domain.ErrNoClientEmail):
+		errors.Is(err, domain.ErrNoClientEmail),
+		errors.Is(err, domain.ErrProformaCommentRequired),
+		errors.Is(err, domain.ErrProformaCommentTooLong):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 		return true
 	default:
@@ -235,7 +258,7 @@ func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer, in
 	}
 }
 
-func emitProforma(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
+func emitProforma(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader, publicBaseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
 			return
@@ -260,7 +283,7 @@ func emitProforma(svc ports.InvoicingService, authorizer authx.Authorizer, invoi
 			TenantID:       identity.TenantID,
 			InvoiceID:      id,
 			RecipientEmail: req.RecipientEmail,
-			PublicBaseURL:  publicBaseURL(r),
+			PublicBaseURL:  publicBaseURL,
 		})
 		if err != nil {
 			if writeInvoicingErr(w, err) {
@@ -291,7 +314,16 @@ func getProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
 func validateProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := chi.URLParam(r, "token")
-		preview, err := svc.ValidateProformaByToken(r.Context(), token)
+		var req struct {
+			Comment string `json:"comment"`
+		}
+		if r.Body != nil && r.ContentLength != 0 {
+			_ = json.NewDecoder(r.Body).Decode(&req)
+		}
+		preview, err := svc.ValidateProformaByToken(r.Context(), ports.ProformaDecisionCommand{
+			Token:   token,
+			Comment: req.Comment,
+		})
 		if err != nil {
 			if writeInvoicingErr(w, err) {
 				return
@@ -303,21 +335,67 @@ func validateProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
 	}
 }
 
-func publicBaseURL(r *http.Request) string {
-	if v := strings.TrimSpace(r.Header.Get("x-public-base-url")); v != "" {
-		if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-			return strings.TrimRight(v, "/")
+func rejectProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := chi.URLParam(r, "token")
+		var req struct {
+			Comment string `json:"comment"`
 		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		preview, err := svc.RejectProformaByToken(r.Context(), ports.ProformaDecisionCommand{
+			Token:   token,
+			Comment: req.Comment,
+		})
+		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, preview)
 	}
-	proto := r.Header.Get("x-forwarded-proto")
-	if proto == "" {
-		proto = "http"
+}
+
+func proformaRateLimit(appCache cache.Cache, keys cache.KeyBuilder, scope string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if appCache == nil || keys == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			ip := clientIP(r)
+			key := keys.PublicKey("invoicing", "ratelimit", "proforma", scope, ip)
+			var count int
+			found, err := appCache.Get(r.Context(), key, &count)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if found && count >= proformaRateLimitMax {
+				httpx.WriteError(w, http.StatusTooManyRequests, httpx.ErrCodeTooManyRequests, "too many requests")
+				return
+			}
+			count++
+			_ = appCache.Set(r.Context(), key, count, proformaRateLimitWindow)
+			next.ServeHTTP(w, r)
+		})
 	}
-	host := r.Host
-	if host == "" {
-		host = "localhost"
+}
+
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
 	}
-	return proto + "://" + host
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {

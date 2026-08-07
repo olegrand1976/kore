@@ -851,12 +851,16 @@
       "acceptee": "Accepted",
       "refusee": "Rejected",
       "encaissee": "Paid",
-      "annulee": "Cancelled"
-    }
+      "annulee": "Cancelled",
+      "proforma_refusee": "Proforma rejected"
+    },
+    "proforma_rejected_banner": "The client rejected this proforma.",
+    "proforma_client_comment": "Client comment",
+    "proforma_rejected_at": "Rejected on"
   },
   "proforma": {
     "title": "Proforma validation",
-    "lead": "Review the details then validate to convert the proforma into an invoice.",
+    "lead": "Review the details, add a comment if needed, then approve or reject.",
     "client": "Client",
     "amount_ht": "Amount excl. tax",
     "amount_tax": "VAT",
@@ -866,7 +870,15 @@
     "validating": "Validating…",
     "validated": "Proforma validated. The invoice has been emailed to you.",
     "load_error": "Invalid or expired link.",
-    "validate_error": "Could not validate this proforma."
+    "validate_error": "Could not validate this proforma.",
+    "comment_label": "Comment",
+    "comment_placeholder": "Provide a reason if rejecting…",
+    "comment_hint": "Optional to approve, required to reject.",
+    "reject": "Reject",
+    "rejecting": "Sending rejection…",
+    "rejected": "Proforma rejected. Your comment was sent.",
+    "reject_comment_required": "A comment is required to reject.",
+    "reject_error": "Could not reject this proforma."
   },
   "integrations": {
     "title": "Integrations",
@@ -1506,7 +1518,6 @@
     "preview_title": "Preview",
     "preview_hint": "Sidebar rendering",
     "choose_file": "Choose a file",
-    "tabs_label": "Organisation sections",
     "tabs_label": "Organisation sections",
     "tab_identite": "Identity",
     "tab_modules": "Modules",

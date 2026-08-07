@@ -5,7 +5,10 @@
       <p class="proforma-page__lead">{{ $t('proforma.lead') }}</p>
 
       <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
-      <p v-else-if="validated" class="flash flash--ok" role="status">{{ $t('proforma.validated') }}</p>
+      <p v-else-if="validated" class="flash flash--ok" role="status">
+        {{ emailWarning ? $t('proforma.validated_no_email') : $t('proforma.validated') }}
+      </p>
+      <p v-else-if="rejected" class="flash flash--error" role="status">{{ $t('proforma.rejected') }}</p>
 
       <PublicCard v-if="pending" padding="lg">
         <p class="muted">{{ $t('common.loading') }}</p>
@@ -42,15 +45,35 @@
           </li>
         </ul>
 
-        <PublicButton
-          v-if="!validated"
-          variant="primary"
-          class="proforma-card__cta"
-          :disabled="validating"
-          @click="onValidate"
-        >
-          {{ validating ? $t('proforma.validating') : $t('proforma.validate') }}
-        </PublicButton>
+        <div v-if="!validated && !rejected" class="proforma-form">
+          <label class="proforma-form__label" for="proforma-comment">{{ $t('proforma.comment_label') }}</label>
+          <textarea
+            id="proforma-comment"
+            v-model="comment"
+            class="proforma-form__textarea"
+            rows="3"
+            :placeholder="$t('proforma.comment_placeholder')"
+          />
+          <p class="proforma-form__hint">{{ $t('proforma.comment_hint') }}</p>
+          <div class="proforma-form__actions">
+            <PublicButton
+              variant="primary"
+              class="proforma-card__cta"
+              :disabled="busy"
+              @click="onValidate"
+            >
+              {{ busy === 'validate' ? $t('proforma.validating') : $t('proforma.validate') }}
+            </PublicButton>
+            <PublicButton
+              variant="danger"
+              class="proforma-card__cta"
+              :disabled="busy"
+              @click="onReject"
+            >
+              {{ busy === 'reject' ? $t('proforma.rejecting') : $t('proforma.reject') }}
+            </PublicButton>
+          </div>
+        </div>
       </PublicCard>
     </PublicSection>
   </div>
@@ -80,12 +103,17 @@ type ProformaPreview = {
   expiresAt?: string
   lines?: ProformaLine[]
   validated?: boolean
+  rejected?: boolean
+  comment?: string
+  invoiceEmailSent?: boolean
 }
 
 const pending = ref(true)
-const validating = ref(false)
+const busy = ref<'validate' | 'reject' | ''>('')
 const validated = ref(false)
+const rejected = ref(false)
 const errorMsg = ref('')
+const comment = ref('')
 const preview = ref<ProformaPreview | null>(null)
 
 const unwrap = <T>(raw: { data?: T } | T | null | undefined): T | null => {
@@ -115,19 +143,42 @@ const load = async () => {
 await load()
 
 const onValidate = async () => {
-  validating.value = true
+  busy.value = 'validate'
   errorMsg.value = ''
   try {
     const raw = await $fetch<{ data?: ProformaPreview } | ProformaPreview>(
       `/api/public/proforma/${encodeURIComponent(token.value)}/validate`,
-      { method: 'POST' }
+      { method: 'POST', body: { comment: comment.value } }
     )
     preview.value = unwrap(raw)
     validated.value = true
+    rejected.value = false
   } catch {
     errorMsg.value = t('proforma.validate_error')
   } finally {
-    validating.value = false
+    busy.value = ''
+  }
+}
+
+const onReject = async () => {
+  if (!comment.value.trim()) {
+    errorMsg.value = t('proforma.reject_comment_required')
+    return
+  }
+  busy.value = 'reject'
+  errorMsg.value = ''
+  try {
+    const raw = await $fetch<{ data?: ProformaPreview } | ProformaPreview>(
+      `/api/public/proforma/${encodeURIComponent(token.value)}/reject`,
+      { method: 'POST', body: { comment: comment.value } }
+    )
+    preview.value = unwrap(raw)
+    rejected.value = true
+    validated.value = false
+  } catch {
+    errorMsg.value = t('proforma.reject_error')
+  } finally {
+    busy.value = ''
   }
 }
 
@@ -197,6 +248,41 @@ const formatDate = (iso: string) =>
 .lines__qty {
   color: var(--kore-text-muted);
   font-size: var(--kore-text-small);
+}
+
+.proforma-form {
+  display: grid;
+  gap: var(--kore-space-sm);
+}
+
+.proforma-form__label {
+  font-weight: 600;
+  color: var(--kore-text);
+}
+
+.proforma-form__textarea {
+  width: 100%;
+  max-width: var(--kore-form-wide-max);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg);
+  color: var(--kore-text);
+  font-family: var(--kore-font);
+  resize: vertical;
+}
+
+.proforma-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
+
+.proforma-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  margin-top: var(--kore-space-sm);
 }
 
 .proforma-card__cta {

@@ -49,6 +49,7 @@ type Config struct {
 	FCMCredentialsPath     string
 	OIDCGoogleClientSecret string
 	OIDCAzureClientSecret  string
+	PublicBaseURL          string // absolute frontend origin for magic links (proforma, etc.)
 }
 
 func Load() (Config, error) {
@@ -93,6 +94,7 @@ func Load() (Config, error) {
 		FCMCredentialsPath:     envOr("FCM_CREDENTIALS_PATH", envOr("GOOGLE_APPLICATION_CREDENTIALS", "")),
 		OIDCGoogleClientSecret: envOr("OIDC_GOOGLE_CLIENT_SECRET", ""),
 		OIDCAzureClientSecret:  envOr("OIDC_AZURE_CLIENT_SECRET", ""),
+		PublicBaseURL:          envOr("PUBLIC_BASE_URL", "http://localhost:3001"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

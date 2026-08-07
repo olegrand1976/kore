@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,23 +21,31 @@ var (
 	ErrProformaTokenInvalid     = errors.New("proforma token invalid")
 	ErrProformaTokenExpired     = errors.New("proforma token expired")
 	ErrProformaAlreadyValidated = errors.New("proforma already validated")
+	ErrProformaAlreadyRejected  = errors.New("proforma already rejected")
+	ErrProformaCommentRequired  = errors.New("proforma rejection comment required")
+	ErrProformaCommentTooLong   = errors.New("proforma comment too long")
+	ErrProformaConflict         = errors.New("proforma decision conflict")
 )
 
 type InvoiceStatus string
 
 const (
-	InvoiceStatusVirtuelle InvoiceStatus = "virtuelle"
-	InvoiceStatusPreparee  InvoiceStatus = "preparee"
-	InvoiceStatusProforma  InvoiceStatus = "proforma"
-	InvoiceStatusTransmise InvoiceStatus = "transmise"
-	InvoiceStatusAcceptee  InvoiceStatus = "acceptee"
-	InvoiceStatusRefusee   InvoiceStatus = "refusee"
-	InvoiceStatusEncaissee InvoiceStatus = "encaissee"
-	InvoiceStatusAnnulee   InvoiceStatus = "annulee"
+	InvoiceStatusVirtuelle       InvoiceStatus = "virtuelle"
+	InvoiceStatusPreparee        InvoiceStatus = "preparee"
+	InvoiceStatusProforma        InvoiceStatus = "proforma"
+	InvoiceStatusProformaRefusee InvoiceStatus = "proforma_refusee"
+	InvoiceStatusTransmise       InvoiceStatus = "transmise"
+	InvoiceStatusAcceptee        InvoiceStatus = "acceptee"
+	InvoiceStatusRefusee         InvoiceStatus = "refusee"
+	InvoiceStatusEncaissee       InvoiceStatus = "encaissee"
+	InvoiceStatusAnnulee         InvoiceStatus = "annulee"
 )
 
 // ProformaTokenTTL is the validity window of a client validation magic link.
 const ProformaTokenTTL = 14 * 24 * time.Hour
+
+// ProformaCommentMaxLen caps client comment size.
+const ProformaCommentMaxLen = 2000
 
 type InvoiceType string
 
@@ -63,6 +72,8 @@ type Invoice struct {
 	ProformaSentAt         *time.Time      `json:"proformaSentAt,omitempty"`
 	ProformaExpiresAt      *time.Time      `json:"proformaExpiresAt,omitempty"`
 	ProformaValidatedAt    *time.Time      `json:"proformaValidatedAt,omitempty"`
+	ProformaRejectedAt     *time.Time      `json:"proformaRejectedAt,omitempty"`
+	ProformaClientComment  string          `json:"proformaClientComment,omitempty"`
 	InvoiceSentAt          *time.Time      `json:"invoiceSentAt,omitempty"`
 	Lines                  []InvoiceLine   `json:"lines,omitempty"`
 }
@@ -119,7 +130,11 @@ func (i *Invoice) Transmit() error {
 }
 
 func (i *Invoice) CanEmitProforma() bool {
-	return i.Status == InvoiceStatusPreparee || i.Status == InvoiceStatusProforma
+	if i.Status == InvoiceStatusProforma || i.Status == InvoiceStatusProformaRefusee {
+		return true
+	}
+	// After client validation, status is preparee with validatedAt set — do not re-emit.
+	return i.Status == InvoiceStatusPreparee && i.ProformaValidatedAt == nil
 }
 
 // EmitProforma marks the invoice as a client-facing proforma awaiting validation.
@@ -137,14 +152,19 @@ func (i *Invoice) EmitProforma(tokenHash, recipientEmail string, now time.Time) 
 	i.ProformaSentAt = &now
 	i.ProformaExpiresAt = &expires
 	i.ProformaValidatedAt = nil
+	i.ProformaRejectedAt = nil
+	i.ProformaClientComment = ""
 	i.InvoiceSentAt = nil
 	return nil
 }
 
-func (i *Invoice) CanValidateProforma(now time.Time) error {
+func (i *Invoice) CanRespondProforma(now time.Time) error {
 	if i.Status != InvoiceStatusProforma {
 		if i.ProformaValidatedAt != nil {
 			return ErrProformaAlreadyValidated
+		}
+		if i.ProformaRejectedAt != nil || i.Status == InvoiceStatusProformaRefusee {
+			return ErrProformaAlreadyRejected
 		}
 		return ErrInvalidInvoiceState
 	}
@@ -154,16 +174,44 @@ func (i *Invoice) CanValidateProforma(now time.Time) error {
 	return nil
 }
 
-// ValidateProforma converts a validated proforma into a prepared invoice ready for PDP / client send.
-func (i *Invoice) ValidateProforma(now time.Time) error {
-	if err := i.CanValidateProforma(now); err != nil {
+// ValidateProforma converts a validated proforma into a prepared invoice (email send is handled by app).
+func (i *Invoice) ValidateProforma(now time.Time, comment string) error {
+	if err := i.CanRespondProforma(now); err != nil {
 		return err
+	}
+	comment = strings.TrimSpace(comment)
+	if len(comment) > ProformaCommentMaxLen {
+		return ErrProformaCommentTooLong
 	}
 	ts := now.UTC()
 	i.Status = InvoiceStatusPreparee
 	i.ProformaTokenHash = ""
 	i.ProformaExpiresAt = nil
 	i.ProformaValidatedAt = &ts
+	i.ProformaRejectedAt = nil
+	i.ProformaClientComment = comment
+	return nil
+}
+
+// RejectProforma records a client rejection; comment is mandatory.
+func (i *Invoice) RejectProforma(now time.Time, comment string) error {
+	if err := i.CanRespondProforma(now); err != nil {
+		return err
+	}
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		return ErrProformaCommentRequired
+	}
+	if len(comment) > ProformaCommentMaxLen {
+		return ErrProformaCommentTooLong
+	}
+	ts := now.UTC()
+	i.Status = InvoiceStatusProformaRefusee
+	i.ProformaTokenHash = ""
+	i.ProformaExpiresAt = nil
+	i.ProformaRejectedAt = &ts
+	i.ProformaValidatedAt = nil
+	i.ProformaClientComment = comment
 	return nil
 }
 
@@ -171,4 +219,8 @@ func (i *Invoice) ValidateProforma(now time.Time) error {
 func (i *Invoice) MarkInvoiceSent(now time.Time) {
 	ts := now.UTC()
 	i.InvoiceSentAt = &ts
+}
+
+func (i *Invoice) CanValidateProforma(now time.Time) error {
+	return i.CanRespondProforma(now)
 }

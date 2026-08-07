@@ -34,7 +34,7 @@ describe('BFF invoicing routes', () => {
     const src = readRoute('invoices/[id]/emit-proforma.post.ts')
     expect(src).toContain('apiAuthHeaders(event)')
     expect(src).toContain('emit-proforma')
-    expect(src).toContain('x-public-base-url')
+    expect(src).not.toContain('x-public-base-url')
     expect(src).toMatch(/method:\s*['"]POST['"]/)
   })
 
@@ -45,5 +45,12 @@ describe('BFF invoicing routes', () => {
     expect(getSrc).not.toContain('apiAuthHeaders')
     expect(postSrc).toContain('/validate')
     expect(postSrc).toMatch(/method:\s*['"]POST['"]/)
+  })
+
+  it('proxies public proforma reject without auth headers', () => {
+    const src = readRoute('public/proforma/[token]/reject.post.ts')
+    expect(src).toContain('/reject')
+    expect(src).not.toContain('apiAuthHeaders')
+    expect(src).toMatch(/method:\s*['"]POST['"]/)
   })
 })

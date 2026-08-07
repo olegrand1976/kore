@@ -54,7 +54,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - CRA définitifs → brouillons facture :
   - **Facturation → Depuis un CRA** (wizard preview prérempli, droits Facturation écriture **et** CRA validation) ;
   - validation définitive CRA ou Prestations → **Créer factures** (mêmes droits).
-- Proforma : émission email client avec lien de validation publique ; à validation, conversion en facture préparée + envoi auto de la facture (PDP reste manuel).
+- Proforma : émission email client avec lien public ; le client peut **valider** (commentaire optionnel → facture email) ou **refuser** (commentaire obligatoire, visible sur le détail facture).
 - Heures facturées bornées à la mission (ou app `temps_passe` dominante) — pas d’agrégat multi-clients.
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`

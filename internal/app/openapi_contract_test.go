@@ -46,7 +46,7 @@ func buildAPIRouter() chi.Router {
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
 		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
-		invoicinghttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopInvoicingEnabledReader(), "")
+		invoicinghttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopInvoicingEnabledReader(), "", "http://localhost:3001", nil, nil)
 		adminhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		reportinghttp.RegisterRoutes(r, nil, nil, nil, nil)
 		ssiihttp.RegisterRoutes(r, nil, nil, nil, nil)

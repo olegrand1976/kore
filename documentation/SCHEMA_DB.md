@@ -1018,7 +1018,7 @@ Facturation métier e-invoicing (PDP/PA).
 | `tenant_id` | UUID | NOT NULL |
 | `client_id` | UUID | NOT NULL |
 | `type` | TEXT | NOT NULL |
-| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` — valeurs : `virtuelle`, `preparee`, `proforma`, `transmise`, `acceptee`, `refusee`, `encaissee`, `annulee` |
+| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` — valeurs : `virtuelle`, `preparee`, `proforma`, `proforma_refusee`, `transmise`, `acceptee`, `refusee`, `encaissee`, `annulee` |
 | `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `total_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `tax_amount` | BIGINT | NOT NULL, DEFAULT 0 |
@@ -1030,6 +1030,8 @@ Facturation métier e-invoicing (PDP/PA).
 | `proforma_sent_at` | TIMESTAMPTZ | nullable |
 | `proforma_expires_at` | TIMESTAMPTZ | nullable — TTL 14 jours |
 | `proforma_validated_at` | TIMESTAMPTZ | nullable |
+| `proforma_rejected_at` | TIMESTAMPTZ | nullable — refus client |
+| `proforma_client_comment` | TEXT | nullable — commentaire client (obligatoire si refus) |
 | `invoice_sent_at` | TIMESTAMPTZ | nullable — email facture après validation client |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
