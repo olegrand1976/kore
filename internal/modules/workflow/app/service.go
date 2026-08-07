@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -99,6 +100,7 @@ func (s *Service) Start(ctx context.Context, cmd ports.StartInstanceCommand) (do
 		DefinitionCode: cmd.DefinitionCode,
 		EntityID:       cmd.EntityID,
 		CurrentState:   initial,
+		RequesterID:    cmd.RequesterID,
 	}
 	if err := s.repo.SaveInstance(ctx, inst); err != nil {
 		return domain.WorkflowInstance{}, err
@@ -110,6 +112,7 @@ func (s *Service) Start(ctx context.Context, cmd ports.StartInstanceCommand) (do
 			DefinitionCode: cmd.DefinitionCode,
 			EntityID:       cmd.EntityID,
 			ToState:        initial,
+			RequesterID:    cmd.RequesterID,
 		})
 	}
 	return inst, nil
@@ -177,6 +180,7 @@ func (s *Service) Fire(ctx context.Context, cmd ports.FireTransitionCommand) (do
 		ToState:        transition.To,
 		Action:         cmd.Action,
 		ActorID:        cmd.Actor.UserID,
+		RequesterID:    inst.RequesterID,
 	}
 	s.runEffects(ctx, transition.OnFireEffects, effectCtx)
 	if state, ok := def.FindState(transition.To); ok {
@@ -189,7 +193,13 @@ func (s *Service) runEffects(ctx context.Context, effects []domain.SideEffect, e
 	if len(effects) == 0 {
 		return
 	}
-	_ = s.effects.Execute(ctx, effects, effectCtx)
+	if err := s.effects.Execute(ctx, effects, effectCtx); err != nil {
+		slog.Default().WarnContext(ctx, "workflow side effects failed",
+			"definitionCode", effectCtx.DefinitionCode,
+			"instanceId", effectCtx.InstanceID,
+			"action", effectCtx.Action,
+			"err", err)
+	}
 }
 
 func (s *Service) AvailableActions(ctx context.Context, tenant kernel.TenantID, instanceID domain.InstanceID, actor authx.Identity) ([]domain.ActionCode, error) {

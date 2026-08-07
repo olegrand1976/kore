@@ -134,16 +134,17 @@ func (s *Service) publishFromPreview(
 	}
 
 	cmd := ports.ValidationInvoiceCommand{
-		TenantID:       ts.TenantID,
-		TimesheetID:    ts.ID,
-		Month:          ts.Month,
-		BillableHours:  preview.BillableHours,
-		MissionLabel:   preview.MissionLabel,
-		UserLabel:      preview.UserLabel,
-		Currency:       preview.Currency,
-		UnitPriceCents: preview.UnitPriceCents,
-		TaxRate:        preview.TaxRate,
-		Description:    preview.Description,
+		TenantID:        ts.TenantID,
+		TimesheetID:     ts.ID,
+		TimesheetUserID: ts.UserID,
+		Month:           ts.Month,
+		BillableHours:   preview.BillableHours,
+		MissionLabel:    preview.MissionLabel,
+		UserLabel:       preview.UserLabel,
+		Currency:        preview.Currency,
+		UnitPriceCents:  preview.UnitPriceCents,
+		TaxRate:         preview.TaxRate,
+		Description:     preview.Description,
 	}
 	if preview.ClientID != nil {
 		cmd.ClientID = *preview.ClientID

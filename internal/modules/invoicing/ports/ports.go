@@ -26,22 +26,24 @@ type InvoiceLineInput struct {
 }
 
 type CreateFromCRACommand struct {
-	TenantID       kernel.TenantID
-	TimesheetID    uuid.UUID
-	ClientID       uuid.UUID
-	Month          string
-	BillableHours  float64
-	MissionLabel   string
-	UserLabel      string
-	Currency       string
-	UnitPriceCents int64
-	TaxRate        float64
-	Description    string // optional full line description override
+	TenantID        kernel.TenantID
+	TimesheetID     uuid.UUID
+	TimesheetUserID uuid.UUID
+	ClientID        uuid.UUID
+	Month           string
+	BillableHours   float64
+	MissionLabel    string
+	UserLabel       string
+	Currency        string
+	UnitPriceCents  int64
+	TaxRate         float64
+	Description     string // optional full line description override
 }
 
 type EmitProformaCommand struct {
 	TenantID       kernel.TenantID
 	InvoiceID      uuid.UUID
+	ActorID        uuid.UUID
 	RecipientEmail string // optional override; defaults to primary client contact
 	PublicBaseURL  string
 }

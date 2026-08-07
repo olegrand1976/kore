@@ -55,7 +55,14 @@
     "settings": "Settings",
     "platform": "Platform",
     "profile": "My profile",
-    "help": "Help"
+    "help": "Help",
+    "section_time": "Time",
+    "section_requests": "Requests",
+    "section_ops": "Operations",
+    "section_account": "Account",
+    "section_organisation": "Organization",
+    "section_automation": "Automation",
+    "section_system": "System"
   },
   "help": {
     "title": "Help",
@@ -112,7 +119,7 @@
         "admin": {
           "summary": "Full tenant setup and access to all subscribed modules.",
           "bullets": [
-            "Admin area: organisation (identity, modules, structure), applications, users, SSO, workflows, settings, subscription.",
+            "Admin area grouped as: Organization (structure, applications, users, SSO), Automation (workflows, notifications, integrations), System (settings, subscription).",
             "Organisation → Modules: enable / disable client invoicing (outside SaaS subscription).",
             "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
@@ -1236,6 +1243,8 @@
     "preset_leave_desc": "Leave request validation (Leave module).",
     "preset_tma": "TMA — application incident",
     "preset_tma_desc": "TMA demand lifecycle (Evolutions & incidents module).",
+    "preset_cra_proforma": "Invoicing — timesheet / proforma / invoice",
+    "preset_cra_proforma_desc": "After timesheet validation: proforma emission, client validation and invoice send.",
     "entity_type": "Entity type",
     "states_title": "Workflow states",
     "transitions_title": "Transitions (actions)",
@@ -1281,9 +1290,12 @@
       "restored": "Recommended template restored.",
       "summary_leave": "Each leave request starts as pending. A manager approves or rejects from the Leave validation screen.",
       "summary_tma": "Each incident follows open → assign → resolve, with an optional chef utilisateur validation step.",
+      "summary_cra_proforma": "After final timesheet validation, a prepared invoice is created. The team emits a proforma; the client approves or rejects, then the invoice is sent.",
       "screens": {
         "conges_validation": "Leave → Validation",
-        "tma_detail": "TMA → Incident detail"
+        "tma_detail": "TMA → Incident detail",
+        "invoicing_detail": "Invoicing → Invoice detail",
+        "proforma_public": "Public client proforma link"
       },
       "states": {
         "en_attente": "Starting state: the request was just submitted.",
@@ -1293,7 +1305,11 @@
         "ouverte": "Default starting state or after creation validation.",
         "affectee": "A responsible person was assigned to the incident.",
         "resolue": "Final state: the incident is resolved.",
-        "rework": "The incident was reopened for correction."
+        "rework": "The incident was reopened for correction.",
+        "preparee": "Starting state: timesheet validated, invoice created as prepared.",
+        "proforma": "Proforma sent to the client, awaiting decision.",
+        "facture_envoyee": "Final state: the client approved the proforma (invoice email send remains best-effort).",
+        "proforma_refusee": "The client rejected the proforma; re-emission is possible."
       },
       "actions": {
         "approve": "Approve",
@@ -1301,7 +1317,10 @@
         "validate_creation": "Validate creation",
         "assign": "Assign",
         "resolve": "Resolve",
-        "reopen": "Reopen"
+        "reopen": "Reopen",
+        "emit_proforma": "Emit proforma",
+        "validate_client": "Client approval",
+        "reject_client": "Client rejection"
       },
       "hints": {
         "leave_approve": "Matches the « Approve » button on the Leave validation page.",
@@ -1310,7 +1329,12 @@
         "tma_assign": "Matches the « Assign » button on the incident detail.",
         "tma_resolve": "Matches the « Resolve » button on the incident detail.",
         "tma_reopen": "Matches the « Reopen » button on the incident detail.",
-        "tma_assign_rework": "Reassignment after reopen — same « Assign » button on the incident detail."
+        "tma_assign_rework": "Reassignment after reopen — same « Assign » button on the incident detail.",
+        "emit_proforma": "Matches the « Emit proforma » button on the invoice detail.",
+        "emit_proforma_resend": "Resend of the proforma link while a proforma is already open — keep profiles empty.",
+        "emit_proforma_retry": "Re-emission after client rejection — same « Emit proforma » button. Keep profiles empty.",
+        "validate_client": "Matches approval on the public proforma link. Do not restrict profiles (public actor).",
+        "reject_client": "Matches rejection on the public proforma link. Do not restrict profiles (public actor)."
       }
     },
     "howto": {
@@ -1321,7 +1345,8 @@
       "step_effects": "Optional: configure emails when entering a state or when firing an action (custom recipients).",
       "step_save": "Save then test from the related business module.",
       "leave_example": "Leave example: Pending → approve → Approved, or reject → Rejected.",
-      "tma_example": "TMA example: Awaiting creation → validate_creation → Open → assign → Assigned → resolve → Resolved, with reopen → Rework."
+      "tma_example": "TMA example: Awaiting creation → validate_creation → Open → assign → Assigned → resolve → Resolved, with reopen → Rework.",
+      "cra_proforma_example": "Invoicing example: Prepared → emit_proforma → Proforma → validate_client → Invoice sent (or reject_client → reject then re-emit)."
     },
     "validation": {
       "code_required": "Workflow code is required.",
@@ -1350,6 +1375,7 @@
       "scope_service": "Service",
       "scope_application": "Application",
       "scope_all": "Everyone",
+      "scope_requester": "Request issuer",
       "pick_users": "Select users",
       "pick_equipe": "Team",
       "pick_service": "Service",
@@ -1357,7 +1383,7 @@
       "select_option": "Choose…",
       "subject": "Subject",
       "body": "Message body",
-      "template_vars": "Variables: {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}"
+      "template_vars": "Variables: {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}, {'{'}{'{'}requesterId{'}'}{'}'}"
     }
   },
   "notifications": {
@@ -1506,15 +1532,30 @@
     "address_street": "Street address",
     "address_number": "Number",
     "address_box": "Box",
+    "address_box_be": "Box",
+    "address_box_ca": "Apt / Suite",
+    "address_box_other": "Additional address",
     "postal_code": "Postal code",
     "city": "City",
     "country": "Country",
     "country_fr": "France",
     "country_be": "Belgium",
+    "country_md": "Madagascar",
+    "country_ma": "Morocco",
+    "country_tn": "Tunisia",
+    "country_ca": "Canada",
     "siret": "SIRET",
     "bce": "BCE number",
+    "nif_stat": "NIF / STAT",
+    "ice": "ICE",
+    "matricule_fiscal": "Tax ID",
+    "ne": "BN (business number)",
     "registry_hint_fr": "14 digits (indicative format)",
     "registry_hint_be": "Belgian company number (indicative format)",
+    "registry_hint_md": "NIF / STAT number (indicative format)",
+    "registry_hint_ma": "Common Company Identifier — 15 digits (indicative format)",
+    "registry_hint_tn": "Tax registration number (indicative format)",
+    "registry_hint_ca": "Business Number (BN) — 9 digits (indicative format)",
     "url": "Tenant URL",
     "preview_title": "Preview",
     "preview_hint": "Sidebar rendering",

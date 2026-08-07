@@ -20,6 +20,7 @@ const (
 	RecipientScopeService     RecipientScope = "service"
 	RecipientScopeApplication RecipientScope = "application"
 	RecipientScopeAll         RecipientScope = "all"
+	RecipientScopeRequester   RecipientScope = "requester"
 )
 
 type EffectRecipients struct {
@@ -39,7 +40,7 @@ type SideEffect struct {
 
 func (r EffectRecipients) Validate() error {
 	switch r.Scope {
-	case RecipientScopeAll:
+	case RecipientScopeAll, RecipientScopeRequester:
 		return nil
 	case RecipientScopeUser:
 		if len(r.UserIDs) == 0 {

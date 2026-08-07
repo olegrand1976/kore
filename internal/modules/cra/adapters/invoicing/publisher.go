@@ -31,17 +31,18 @@ func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd crap
 		taxRate = 20
 	}
 	inv, err := p.invoicing.CreateFromCRAValidation(ctx, invoicingports.CreateFromCRACommand{
-		TenantID:       cmd.TenantID,
-		TimesheetID:    cmd.TimesheetID,
-		ClientID:       cmd.ClientID,
-		Month:          string(cmd.Month),
-		BillableHours:  cmd.BillableHours,
-		MissionLabel:   cmd.MissionLabel,
-		UserLabel:      cmd.UserLabel,
-		Currency:       currency,
-		UnitPriceCents: cmd.UnitPriceCents,
-		TaxRate:        taxRate,
-		Description:    cmd.Description,
+		TenantID:        cmd.TenantID,
+		TimesheetID:     cmd.TimesheetID,
+		TimesheetUserID: cmd.TimesheetUserID,
+		ClientID:        cmd.ClientID,
+		Month:           string(cmd.Month),
+		BillableHours:   cmd.BillableHours,
+		MissionLabel:    cmd.MissionLabel,
+		UserLabel:       cmd.UserLabel,
+		Currency:        currency,
+		UnitPriceCents:  cmd.UnitPriceCents,
+		TaxRate:         taxRate,
+		Description:     cmd.Description,
 	})
 	if err != nil {
 		return uuid.Nil, err

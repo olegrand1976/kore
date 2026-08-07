@@ -20,6 +20,7 @@ type service struct {
 	enabledReader kernel.InvoicingEnabledReader
 	clientReader  ports.ClientContactReader
 	mailer        ports.MailSender
+	workflow      ports.WorkflowService
 	clock         func() time.Time
 }
 
@@ -52,6 +53,12 @@ func WithClientContactReader(reader ports.ClientContactReader) Option {
 func WithMailSender(mailer ports.MailSender) Option {
 	return func(s *service) {
 		s.mailer = mailer
+	}
+}
+
+func WithWorkflow(wf ports.WorkflowService) Option {
+	return func(s *service) {
+		s.workflow = wf
 	}
 }
 
@@ -117,8 +124,19 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 	if err := s.requireEnabled(ctx, cmd.TenantID); err != nil {
 		return domain.Invoice{}, err
 	}
+	inv, lines, err := s.buildPrepareeInvoice(cmd)
+	if err != nil {
+		return domain.Invoice{}, err
+	}
+	if err := s.repo.SaveInvoiceWithLines(ctx, inv, lines); err != nil {
+		return domain.Invoice{}, err
+	}
+	return inv, nil
+}
+
+func (s *service) buildPrepareeInvoice(cmd ports.CreateInvoiceCommand) (domain.Invoice, []domain.InvoiceLine, error) {
 	if len(cmd.Lines) == 0 {
-		return domain.Invoice{}, domain.ErrInvalidInvoiceLine
+		return domain.Invoice{}, nil, domain.ErrInvalidInvoiceLine
 	}
 	inv := domain.NewInvoice(cmd.TenantID, cmd.ClientID, cmd.Type, cmd.Currency)
 	inv.SourceTimesheetID = cmd.SourceTimesheetID
@@ -127,11 +145,11 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 	for _, lineIn := range cmd.Lines {
 		lineTotal, err := domain.LineNetCents(lineIn.UnitPrice, lineIn.Quantity)
 		if err != nil {
-			return domain.Invoice{}, err
+			return domain.Invoice{}, nil, err
 		}
 		lineTax, err := domain.LineTaxCents(lineTotal, lineIn.TaxRate)
 		if err != nil {
-			return domain.Invoice{}, err
+			return domain.Invoice{}, nil, err
 		}
 		line := domain.InvoiceLine{
 			ID:          uuid.New(),
@@ -150,10 +168,7 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateInvoiceCommand) (d
 	inv.TaxAmount = tax
 	inv.Status = domain.InvoiceStatusPreparee
 	inv.Lines = lines
-	if err := s.repo.SaveInvoiceWithLines(ctx, inv, lines); err != nil {
-		return domain.Invoice{}, err
-	}
-	return inv, nil
+	return inv, lines, nil
 }
 
 func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCommand) (domain.Invoice, error) {

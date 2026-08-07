@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (wizard CRA→facture + proforma client)
+> **Dernière mise à jour doc** : 07/08/2026 (multi-pays org MD/MA/TN/CA + catalogues congés)
 
 ---
 
@@ -130,9 +130,9 @@ Index :
 | `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `code_postal` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `ville` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
-| `siret` | TEXT | NOT NULL, DEFAULT `''` — SIRET (FR) ou BCE (BE) selon `pays` |
+| `siret` | TEXT | NOT NULL, DEFAULT `''` — n° d’immatriculation selon `pays` : SIRET (FR), BCE (BE), NIF/STAT (MD), ICE (MA), matricule fiscal (TN), NE (CA) |
 | `url_tenant` | TEXT | NOT NULL, DEFAULT `''` |
-| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE`) |
+| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE` / `MD` / `MA` / `TN` / `CA`) |
 | `week_start_day` | SMALLINT | NOT NULL, DEFAULT `1`, CHECK 0–6 (0=dimanche … 6=samedi) |
 | `day_capacity_minutes` | INT | NOT NULL, DEFAULT `480`, CHECK 1–1440 |
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
@@ -429,6 +429,7 @@ Moteur de workflow générique.
 | `definition_code` | TEXT | NOT NULL |
 | `entity_id` | TEXT | NOT NULL |
 | `current_state` | TEXT | NOT NULL |
+| `requester_id` | UUID | NULL — émetteur de la demande (scope email `requester`) ; pas de FK cross-schéma (UUID applicatif) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
@@ -603,7 +604,7 @@ Demandes et soldes de congés.
 
 ### `conges.leave_type_configs`
 
-Paramétrage des types de congés par société.
+Paramétrage des types de congés par société. Les catalogues par défaut au bootstrap / reset suivent `org.societes.pays` : FR (`conges_payes`, `rtt`, `maladie`), BE (`conges_annuels`, `recuperation`, `maladie`), MA/TN/MD (`conges_payes`, `maladie`, `conge_exceptionnel`), CA (`conges_annuels`, `maladie`, `personnel`). L’admin peut ensuite personnaliser librement (CRUD).
 
 | Colonne | Type | Contraintes |
 | --- | --- | --- |

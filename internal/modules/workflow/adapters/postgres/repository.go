@@ -162,13 +162,18 @@ func (r *Repository) GetDefinition(ctx context.Context, tenant kernel.TenantID, 
 }
 
 func (r *Repository) SaveInstance(ctx context.Context, inst domain.WorkflowInstance) error {
+	var requester any
+	if inst.RequesterID != uuid.Nil {
+		requester = inst.RequesterID
+	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO workflow.instances (id, tenant_id, definition_code, entity_id, current_state, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO workflow.instances (id, tenant_id, definition_code, entity_id, current_state, requester_id, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 		ON CONFLICT (id) DO UPDATE SET
 			current_state = EXCLUDED.current_state,
+			requester_id = COALESCE(EXCLUDED.requester_id, workflow.instances.requester_id),
 			updated_at = NOW()
-	`, inst.ID, inst.TenantID.UUID(), inst.DefinitionCode, inst.EntityID, string(inst.CurrentState))
+	`, inst.ID, inst.TenantID.UUID(), inst.DefinitionCode, inst.EntityID, string(inst.CurrentState), requester)
 	return err
 }
 
@@ -176,10 +181,11 @@ func (r *Repository) GetInstance(ctx context.Context, tenant kernel.TenantID, id
 	var inst domain.WorkflowInstance
 	var tenantID uuid.UUID
 	var state string
+	var requesterID *uuid.UUID
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, definition_code, entity_id, current_state
+		SELECT id, tenant_id, definition_code, entity_id, current_state, requester_id
 		FROM workflow.instances WHERE tenant_id = $1 AND id = $2
-	`, tenant.UUID(), id).Scan(&inst.ID, &tenantID, &inst.DefinitionCode, &inst.EntityID, &state)
+	`, tenant.UUID(), id).Scan(&inst.ID, &tenantID, &inst.DefinitionCode, &inst.EntityID, &state, &requesterID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.WorkflowInstance{}, domain.ErrInstanceNotFound
@@ -188,6 +194,9 @@ func (r *Repository) GetInstance(ctx context.Context, tenant kernel.TenantID, id
 	}
 	inst.TenantID = kernel.NewTenantID(tenantID)
 	inst.CurrentState = domain.StateCode(state)
+	if requesterID != nil {
+		inst.RequesterID = *requesterID
+	}
 	return inst, nil
 }
 

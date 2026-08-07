@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/invoicing/domain"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
 )
@@ -72,6 +73,7 @@ func (s *service) EmitProforma(ctx context.Context, cmd ports.EmitProformaComman
 		// Best-effort: invoice is already in proforma state; caller can resend.
 		_ = s.mailer.Send(ctx, email, subject, body)
 	}
+	s.fireCRAProformaTransition(ctx, inv, cmd.ActorID, "emit_proforma", uuid.Nil)
 	return inv, nil
 }
 
@@ -112,6 +114,8 @@ func (s *service) ValidateProformaByToken(ctx context.Context, cmd ports.Proform
 	}
 	preview := s.toPreview(ctx, inv, true, false)
 	preview.InvoiceEmailSent = emailSent
+	// Transition tracks client validation (email send remains best-effort).
+	s.fireCRAProformaTransition(ctx, inv, uuid.Nil, "validate_client", uuid.Nil)
 	return preview, nil
 }
 
@@ -128,6 +132,7 @@ func (s *service) RejectProformaByToken(ctx context.Context, cmd ports.ProformaD
 	if err := s.repo.ApplyProformaDecision(ctx, tokenHash, inv); err != nil {
 		return ports.ProformaPreview{}, err
 	}
+	s.fireCRAProformaTransition(ctx, inv, uuid.Nil, "reject_client", uuid.Nil)
 	return s.toPreview(ctx, inv, false, true), nil
 }
 

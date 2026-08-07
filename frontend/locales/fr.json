@@ -55,7 +55,14 @@
     "settings": "Paramètres",
     "platform": "Plateforme",
     "profile": "Mon profil",
-    "help": "Aide"
+    "help": "Aide",
+    "section_time": "Temps",
+    "section_requests": "Demandes",
+    "section_ops": "Pilotage",
+    "section_account": "Compte",
+    "section_organisation": "Organisation",
+    "section_automation": "Automatisation",
+    "section_system": "Système"
   },
   "help": {
     "title": "Aide",
@@ -112,7 +119,7 @@
         "admin": {
           "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
           "bullets": [
-            "Accès à l'administration : organisation (identité, modules, structure), applications, utilisateurs, SSO, workflows, paramètres, abonnement.",
+            "Accès à l'administration regroupée : Organisation (structure, applications, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
             "Organisation → Modules : activer / désactiver la facturation client (hors abonnement SaaS).",
             "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
@@ -1236,6 +1243,8 @@
     "preset_leave_desc": "Validation des demandes de congés (module Congés).",
     "preset_tma": "TMA — incident applicatif",
     "preset_tma_desc": "Cycle de vie des demandes TMA (module Évolutions & incidents).",
+    "preset_cra_proforma": "Facturation — CRA / proforma / facture",
+    "preset_cra_proforma_desc": "Après validation CRA : émission proforma, validation client et envoi de facture.",
     "entity_type": "Type d'entité",
     "states_title": "États du workflow",
     "transitions_title": "Transitions (actions)",
@@ -1281,9 +1290,12 @@
       "restored": "Modèle recommandé restauré.",
       "summary_leave": "Chaque demande de congé démarre en attente. Un manager valide ou refuse depuis l'écran Validation congés.",
       "summary_tma": "Chaque incident suit un cycle ouverture → affectation → résolution, avec une étape optionnelle de validation chef utilisateur.",
+      "summary_cra_proforma": "Après validation définitive du CRA, une facture préparée est créée. L'équipe émet une proforma ; le client valide ou refuse, puis la facture est envoyée.",
       "screens": {
         "conges_validation": "Congés → Validation",
-        "tma_detail": "TMA → Fiche incident"
+        "tma_detail": "TMA → Fiche incident",
+        "invoicing_detail": "Facturation → Fiche facture",
+        "proforma_public": "Lien public proforma client"
       },
       "states": {
         "en_attente": "État de départ : la demande vient d'être déposée.",
@@ -1293,7 +1305,11 @@
         "ouverte": "État de départ standard ou après validation de création.",
         "affectee": "Un responsable a été affecté à l'incident.",
         "resolue": "État final : l'incident est résolu.",
-        "rework": "L'incident a été réouvert pour correction."
+        "rework": "L'incident a été réouvert pour correction.",
+        "preparee": "État de départ : CRA validé, facture créée en statut préparée.",
+        "proforma": "Proforma envoyée au client, en attente de décision.",
+        "facture_envoyee": "État final : le client a validé la proforma (l'envoi email de la facture reste best-effort).",
+        "proforma_refusee": "Le client a refusé la proforma ; une réémission est possible."
       },
       "actions": {
         "approve": "Valider",
@@ -1301,7 +1317,10 @@
         "validate_creation": "Valider la création",
         "assign": "Affecter",
         "resolve": "Résoudre",
-        "reopen": "Réouvrir"
+        "reopen": "Réouvrir",
+        "emit_proforma": "Émettre la proforma",
+        "validate_client": "Validation client",
+        "reject_client": "Refus client"
       },
       "hints": {
         "leave_approve": "Correspond au bouton « Valider » sur la page Validation congés.",
@@ -1310,7 +1329,12 @@
         "tma_assign": "Correspond au bouton « Affecter » sur la fiche incident.",
         "tma_resolve": "Correspond au bouton « Résoudre » sur la fiche incident.",
         "tma_reopen": "Correspond au bouton « Réouvrir » sur la fiche incident.",
-        "tma_assign_rework": "Réaffectation après réouverture — même bouton « Affecter » sur la fiche incident."
+        "tma_assign_rework": "Réaffectation après réouverture — même bouton « Affecter » sur la fiche incident.",
+        "emit_proforma": "Correspond au bouton « Émettre une proforma » sur la fiche facture.",
+        "emit_proforma_resend": "Renvoi du lien proforma alors qu'une proforma est déjà en cours — laissez les profils vides.",
+        "emit_proforma_retry": "Réémission après un refus client — même bouton « Émettre une proforma ». Laissez les profils vides.",
+        "validate_client": "Correspond à la validation sur le lien public proforma. Ne pas restreindre les profils (acteur public).",
+        "reject_client": "Correspond au refus sur le lien public proforma. Ne pas restreindre les profils (acteur public)."
       }
     },
     "howto": {
@@ -1321,7 +1345,8 @@
       "step_effects": "Optionnel : configurez des emails à l'entrée d'un état ou lors d'une action (destinataires personnalisables).",
       "step_save": "Enregistrez puis testez depuis le module métier concerné.",
       "leave_example": "Exemple congés : En attente → approve → Validé, ou reject → Refusé.",
-      "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework."
+      "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework.",
+      "cra_proforma_example": "Exemple facturation : Facture préparée → emit_proforma → Proforma → validate_client → Facture envoyée (ou reject_client → refus puis réémission)."
     },
     "validation": {
       "code_required": "Le code workflow est requis.",
@@ -1350,6 +1375,7 @@
       "scope_service": "Service",
       "scope_application": "Application",
       "scope_all": "Tout le monde",
+      "scope_requester": "Émetteur de la demande",
       "pick_users": "Sélectionner des utilisateurs",
       "pick_equipe": "Équipe",
       "pick_service": "Service",
@@ -1357,7 +1383,7 @@
       "select_option": "Choisir…",
       "subject": "Sujet",
       "body": "Corps du message",
-      "template_vars": "Variables : {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}"
+      "template_vars": "Variables : {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}, {'{'}{'{'}requesterId{'}'}{'}'}"
     }
   },
   "notifications": {
@@ -1567,15 +1593,30 @@
     "address_street": "Adresse (rue)",
     "address_number": "Numéro",
     "address_box": "Boîte",
+    "address_box_be": "Boîte",
+    "address_box_ca": "App. / Suite",
+    "address_box_other": "Complément",
     "postal_code": "Code postal",
     "city": "Ville",
     "country": "Pays",
     "country_fr": "France",
     "country_be": "Belgique",
+    "country_md": "Madagascar",
+    "country_ma": "Maroc",
+    "country_tn": "Tunisie",
+    "country_ca": "Canada",
     "siret": "SIRET",
     "bce": "N° BCE",
+    "nif_stat": "NIF / STAT",
+    "ice": "ICE",
+    "matricule_fiscal": "Matricule fiscal",
+    "ne": "NE (n° d’entreprise)",
     "registry_hint_fr": "14 chiffres (format indicatif)",
     "registry_hint_be": "Numéro d’entreprise BCE (format indicatif)",
+    "registry_hint_md": "NIF / numéro STAT (format indicatif)",
+    "registry_hint_ma": "Identifiant Commun de l’Entreprise — 15 chiffres (format indicatif)",
+    "registry_hint_tn": "Matricule fiscal (format indicatif)",
+    "registry_hint_ca": "Numéro d’entreprise (NE) — 9 chiffres (format indicatif)",
     "url": "URL tenant",
     "preview_title": "Aperçu",
     "preview_hint": "Rendu dans la barre latérale",

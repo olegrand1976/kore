@@ -1,4 +1,4 @@
-export type WorkflowRecipientScope = 'user' | 'equipe' | 'service' | 'application' | 'all'
+export type WorkflowRecipientScope = 'user' | 'equipe' | 'service' | 'application' | 'all' | 'requester'
 
 export type WorkflowSideEffectRecipients = {
   scope: WorkflowRecipientScope
@@ -39,13 +39,15 @@ export type WorkflowDefinition = {
   transitions: WorkflowTransition[]
 }
 
-export const WORKFLOW_RECIPIENT_SCOPES = ['user', 'equipe', 'service', 'application', 'all'] as const
+export const WORKFLOW_RECIPIENT_SCOPES = ['user', 'equipe', 'service', 'application', 'all', 'requester'] as const
 
 export type WorkflowRecipientScopeOption = (typeof WORKFLOW_RECIPIENT_SCOPES)[number]
 
 export const MAX_SIDE_EFFECTS_PER_HOOK = 10
 
-export const WORKFLOW_PRESET_CODES: WorkflowPresetCode[] = ['leave.request', 'tma.incident']
+export const WORKFLOW_PRESET_CODES = ['leave.request', 'tma.incident', 'invoicing.cra_proforma'] as const
+
+export type WorkflowPresetCode = (typeof WORKFLOW_PRESET_CODES)[number]
 
 export const WORKFLOW_ROLE_OPTIONS = ['Collaborateur', 'Administrateur', 'Utilisateur'] as const
 
@@ -223,6 +225,91 @@ export const WORKFLOW_PRESET_META: Record<WorkflowPresetCode, WorkflowPresetMeta
         defaultRoles: []
       }
     ]
+  },
+  'invoicing.cra_proforma': {
+    code: 'invoicing.cra_proforma',
+    entityType: 'invoice',
+    labelKey: 'workflows.preset_cra_proforma',
+    descKey: 'workflows.preset_cra_proforma_desc',
+    howtoKey: 'workflows.howto.cra_proforma_example',
+    summaryKey: 'workflows.assistant.summary_cra_proforma',
+    states: [
+      {
+        code: 'preparee',
+        defaultLabel: 'Facture préparée',
+        hintKey: 'workflows.assistant.states.preparee',
+        isInitial: true,
+        isFinal: false
+      },
+      {
+        code: 'proforma',
+        defaultLabel: 'Proforma émise',
+        hintKey: 'workflows.assistant.states.proforma',
+        isInitial: false,
+        isFinal: false
+      },
+      {
+        code: 'facture_envoyee',
+        defaultLabel: 'Validée client',
+        hintKey: 'workflows.assistant.states.facture_envoyee',
+        isInitial: false,
+        isFinal: true
+      },
+      {
+        code: 'proforma_refusee',
+        defaultLabel: 'Proforma refusée',
+        hintKey: 'workflows.assistant.states.proforma_refusee',
+        isInitial: false,
+        isFinal: false
+      }
+    ],
+    transitions: [
+      {
+        from: 'preparee',
+        to: 'proforma',
+        action: 'emit_proforma',
+        labelKey: 'workflows.assistant.actions.emit_proforma',
+        hintKey: 'workflows.assistant.hints.emit_proforma',
+        screenKey: 'workflows.assistant.screens.invoicing_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'proforma',
+        to: 'proforma',
+        action: 'emit_proforma',
+        labelKey: 'workflows.assistant.actions.emit_proforma',
+        hintKey: 'workflows.assistant.hints.emit_proforma_resend',
+        screenKey: 'workflows.assistant.screens.invoicing_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'proforma_refusee',
+        to: 'proforma',
+        action: 'emit_proforma',
+        labelKey: 'workflows.assistant.actions.emit_proforma',
+        hintKey: 'workflows.assistant.hints.emit_proforma_retry',
+        screenKey: 'workflows.assistant.screens.invoicing_detail',
+        defaultRoles: []
+      },
+      {
+        from: 'proforma',
+        to: 'facture_envoyee',
+        action: 'validate_client',
+        labelKey: 'workflows.assistant.actions.validate_client',
+        hintKey: 'workflows.assistant.hints.validate_client',
+        screenKey: 'workflows.assistant.screens.proforma_public',
+        defaultRoles: []
+      },
+      {
+        from: 'proforma',
+        to: 'proforma_refusee',
+        action: 'reject_client',
+        labelKey: 'workflows.assistant.actions.reject_client',
+        hintKey: 'workflows.assistant.hints.reject_client',
+        screenKey: 'workflows.assistant.screens.proforma_public',
+        defaultRoles: []
+      }
+    ]
   }
 }
 
@@ -232,7 +319,8 @@ export const WORKFLOW_PRESETS: Record<
   { code: WorkflowPresetCode; entityType: string; labelKey: string; descKey: string; howtoKey: string }
 > = {
   'leave.request': WORKFLOW_PRESET_META['leave.request'],
-  'tma.incident': WORKFLOW_PRESET_META['tma.incident']
+  'tma.incident': WORKFLOW_PRESET_META['tma.incident'],
+  'invoicing.cra_proforma': WORKFLOW_PRESET_META['invoicing.cra_proforma']
 }
 
 type RawWorkflowSideEffect = {
@@ -319,6 +407,7 @@ function normalizeRecipientScope(raw: string | undefined): WorkflowRecipientScop
     case 'service':
     case 'application':
     case 'all':
+    case 'requester':
       return raw
     default:
       return 'user'
@@ -375,6 +464,7 @@ function validateSideEffects(effects: WorkflowSideEffect[] | undefined): Workflo
     }
     switch (effect.recipients.scope) {
       case 'all':
+      case 'requester':
         break
       case 'user':
         if (!(effect.recipients.userIds?.length ?? 0)) errors.push('side_effect_recipients_required')

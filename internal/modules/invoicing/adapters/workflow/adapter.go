@@ -2,8 +2,9 @@ package workflow
 
 import (
 	"context"
+	"errors"
 
-	"github.com/kore/kore/internal/modules/conges/ports"
+	"github.com/kore/kore/internal/modules/invoicing/ports"
 	"github.com/kore/kore/internal/modules/workflow/domain"
 	wfports "github.com/kore/kore/internal/modules/workflow/ports"
 	"github.com/kore/kore/internal/platform/authx"
@@ -18,13 +19,18 @@ func NewAdapter(svc wfports.WorkflowService) ports.WorkflowService {
 }
 
 func (a *Adapter) Start(ctx context.Context, cmd ports.StartWorkflowCommand) (ports.WorkflowInstance, error) {
-	inst, err := a.svc.Start(ctx, wfports.StartInstanceCommand{
+	start := wfports.StartInstanceCommand{
 		TenantID:       cmd.TenantID,
 		DefinitionCode: cmd.DefinitionCode,
 		EntityID:       cmd.EntityID,
 		InstanceID:     cmd.InstanceID,
 		RequesterID:    cmd.RequesterID,
-	})
+	}
+	if cmd.InitialState != nil {
+		st := domain.StateCode(*cmd.InitialState)
+		start.InitialState = &st
+	}
+	inst, err := a.svc.Start(ctx, start)
 	if err != nil {
 		return ports.WorkflowInstance{}, err
 	}
@@ -41,6 +47,9 @@ func (a *Adapter) Fire(ctx context.Context, cmd ports.FireTransitionCommand) (po
 		},
 	})
 	if err != nil {
+		if errors.Is(err, domain.ErrInstanceNotFound) {
+			return ports.WorkflowInstance{}, ports.ErrWorkflowInstanceNotFound
+		}
 		return ports.WorkflowInstance{}, err
 	}
 	return ports.WorkflowInstance{ID: inst.ID, CurrentState: string(inst.CurrentState)}, nil

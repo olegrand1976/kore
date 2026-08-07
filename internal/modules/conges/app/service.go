@@ -73,6 +73,7 @@ func (s *service) Request(ctx context.Context, cmd ports.RequestLeaveCommand) (d
 			DefinitionCode: "leave.request",
 			EntityID:       req.ID.String(),
 			InstanceID:     &leaveID,
+			RequesterID:    cmd.UserID,
 		})
 		if err != nil {
 			return domain.LeaveRequest{}, err

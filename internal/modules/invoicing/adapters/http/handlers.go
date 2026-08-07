@@ -282,6 +282,7 @@ func emitProforma(svc ports.InvoicingService, authorizer authx.Authorizer, invoi
 		inv, err := svc.EmitProforma(r.Context(), ports.EmitProformaCommand{
 			TenantID:       identity.TenantID,
 			InvoiceID:      id,
+			ActorID:        identity.UserID,
 			RecipientEmail: req.RecipientEmail,
 			PublicBaseURL:  publicBaseURL,
 		})

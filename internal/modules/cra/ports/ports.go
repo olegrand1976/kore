@@ -93,17 +93,18 @@ type ProposedLine struct {
 }
 
 type ValidationInvoiceCommand struct {
-	TenantID       kernel.TenantID
-	TimesheetID    TimesheetID
-	ClientID       uuid.UUID
-	Month          domain.Month
-	BillableHours  float64
-	MissionLabel   string
-	UserLabel      string
-	Currency       string
-	UnitPriceCents int64
-	TaxRate        float64
-	Description    string // optional override; empty → auto description
+	TenantID        kernel.TenantID
+	TimesheetID     TimesheetID
+	TimesheetUserID uuid.UUID
+	ClientID        uuid.UUID
+	Month           domain.Month
+	BillableHours   float64
+	MissionLabel    string
+	UserLabel       string
+	Currency        string
+	UnitPriceCents  int64
+	TaxRate         float64
+	Description     string // optional override; empty → auto description
 }
 
 // InvoiceDraftPreview is a dry-run CRA→invoice payload (no persistence).

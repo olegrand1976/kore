@@ -115,3 +115,41 @@ func TestService_StartRunsInitialStateEnterEffects(t *testing.T) {
 	assert.Equal(t, 1, effects.calls[0].count)
 	assert.Equal(t, domain.StateCode("draft"), effects.calls[0].ctx.ToState)
 }
+
+func TestService_StartPersistsRequesterID(t *testing.T) {
+	repo := newMemRepo()
+	effects := &captureEffects{}
+	tenant := kernel.NewTenantID(uuid.New())
+	requesterID := uuid.New()
+	def := domain.WorkflowDefinition{
+		ID:         uuid.New(),
+		TenantID:   tenant,
+		Code:       "demo",
+		EntityType: "entity",
+		States: []domain.State{
+			{
+				Code: "draft", Label: "Brouillon", IsInitial: true,
+				OnEnterEffects: []domain.SideEffect{
+					{Type: domain.SideEffectTypeEmail, Recipients: domain.EffectRecipients{Scope: domain.RecipientScopeRequester}, Subject: "Start"},
+				},
+			},
+			{Code: "done", Label: "Terminé", IsFinal: true},
+		},
+	}
+	require.NoError(t, repo.SaveDefinition(context.Background(), def))
+
+	svc := app.NewService(repo, cache.NewInMemoryCache(), cache.NewKeyBuilder("test"), nil, effects)
+	inst, err := svc.Start(context.Background(), ports.StartInstanceCommand{
+		TenantID:       tenant,
+		DefinitionCode: "demo",
+		EntityID:       "entity-1",
+		RequesterID:    requesterID,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, requesterID, inst.RequesterID)
+	got, err := repo.GetInstance(context.Background(), tenant, inst.ID)
+	require.NoError(t, err)
+	assert.Equal(t, requesterID, got.RequesterID)
+	require.Len(t, effects.calls, 1)
+	assert.Equal(t, requesterID, effects.calls[0].ctx.RequesterID)
+}
