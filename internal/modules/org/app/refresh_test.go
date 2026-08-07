@@ -52,7 +52,9 @@ func (r refreshUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.S
 func (r refreshUserRepo) ListApplications(context.Context, kernel.TenantID, ports.ApplicationListFilter) ([]domain.Application, error) {
 	return nil, nil
 }
-func (r refreshUserRepo) UpdateApplication(context.Context, domain.Application, bool) error { return nil }
+func (r refreshUserRepo) UpdateApplication(context.Context, domain.Application, bool) error {
+	return nil
+}
 func (r refreshUserRepo) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return nil, nil
 }
