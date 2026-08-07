@@ -108,7 +108,7 @@ func (r *totpUserRepo) CountActiveUsers(context.Context, kernel.TenantID) (int, 
 func (r *totpUserRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.User, error) {
 	return nil, nil
 }
-func (r *totpUserRepo) SaveClient(context.Context, domain.Client) error { return nil }
+func (r *totpUserRepo) SaveClient(context.Context, domain.Client) error   { return nil }
 func (r *totpUserRepo) UpdateClient(context.Context, domain.Client) error { return nil }
 func (r *totpUserRepo) GetClient(context.Context, kernel.TenantID, uuid.UUID) (domain.Client, error) {
 	return domain.Client{}, domain.ErrClientNotFound

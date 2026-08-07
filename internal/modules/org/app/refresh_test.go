@@ -105,7 +105,7 @@ func (r refreshUserRepo) CountActiveUsers(context.Context, kernel.TenantID) (int
 func (r refreshUserRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.User, error) {
 	return nil, nil
 }
-func (r refreshUserRepo) SaveClient(context.Context, domain.Client) error { return nil }
+func (r refreshUserRepo) SaveClient(context.Context, domain.Client) error   { return nil }
 func (r refreshUserRepo) UpdateClient(context.Context, domain.Client) error { return nil }
 func (r refreshUserRepo) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil

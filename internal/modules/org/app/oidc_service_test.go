@@ -117,7 +117,7 @@ func (s *oidcRepoStub) CountActiveUsers(context.Context, kernel.TenantID) (int, 
 func (s *oidcRepoStub) ListUsers(context.Context, kernel.TenantID) ([]domain.User, error) {
 	return nil, nil
 }
-func (s *oidcRepoStub) SaveClient(context.Context, domain.Client) error { return nil }
+func (s *oidcRepoStub) SaveClient(context.Context, domain.Client) error   { return nil }
 func (s *oidcRepoStub) UpdateClient(context.Context, domain.Client) error { return nil }
 func (s *oidcRepoStub) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
