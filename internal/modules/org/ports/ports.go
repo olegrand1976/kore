@@ -480,24 +480,24 @@ type PlatformService interface {
 
 // ProvisionTenantCommand creates a new SaaS tenant with one société and an admin user.
 type ProvisionTenantCommand struct {
-	TenantName     string
-	RaisonSociale  string
-	Pays           string
-	AdminLogin     string
-	AdminEmail     string
-	AdminPassword  string
-	Seats          int      // 0 = default
-	Modules        []string // empty = default trial modules
+	TenantName    string
+	RaisonSociale string
+	Pays          string
+	AdminLogin    string
+	AdminEmail    string
+	AdminPassword string
+	Seats         int      // 0 = default
+	Modules       []string // empty = default trial modules
 }
 
 type ProvisionTenantResult struct {
-	TenantID     kernel.TenantID `json:"tenantId"`
-	SocieteID    uuid.UUID       `json:"societeId"`
-	AdminUserID  uuid.UUID       `json:"adminUserId"`
-	AdminLogin   string          `json:"adminLogin"`
-	TenantName   string          `json:"tenantName"`
-	RaisonSociale string         `json:"raisonSociale"`
-	Pays         string          `json:"pays"`
+	TenantID      kernel.TenantID `json:"tenantId"`
+	SocieteID     uuid.UUID       `json:"societeId"`
+	AdminUserID   uuid.UUID       `json:"adminUserId"`
+	AdminLogin    string          `json:"adminLogin"`
+	TenantName    string          `json:"tenantName"`
+	RaisonSociale string          `json:"raisonSociale"`
+	Pays          string          `json:"pays"`
 }
 
 // TrialProvisioner bootstraps a billing trial for a new tenant (outbound port).

@@ -15,13 +15,12 @@ import (
 )
 
 type provisionOrgRepo struct {
-	tenants   []domain.Tenant
-	societes  []domain.Societe
-	users     []domain.User
-	byLogin   map[string]domain.User
+	tenants    []domain.Tenant
+	societes   []domain.Societe
+	users      []domain.User
+	byLogin    map[string]domain.User
 	rolledBack []kernel.TenantID
-	failCore  error
-	failTrial bool
+	failCore   error
 }
 
 func (r *provisionOrgRepo) FindUserByLoginGlobal(_ context.Context, login string) (domain.User, error) {
