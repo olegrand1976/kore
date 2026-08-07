@@ -2,8 +2,8 @@
   <div>
     <AppPageHeader :title="title" :subtitle="$t('fiche.client_title')">
       <template #actions>
-        <AppButton variant="ghost" size="sm" @click="navigateTo('/cra')">
-          <AppIcon name="arrow_back" /> {{ $t('fiche.back_cra') }}
+        <AppButton variant="ghost" size="sm" to="/clients">
+          <AppIcon name="arrow_back" /> {{ $t('clients.back_list') }}
         </AppButton>
       </template>
     </AppPageHeader>

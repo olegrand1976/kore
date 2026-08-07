@@ -389,3 +389,61 @@ func TestListSites_returnsSites(t *testing.T) {
 		t.Fatalf("data = %+v", payload.Data)
 	}
 }
+
+// anyModuleAuthorizer grants ActionRead on any of the listed modules.
+type anyModuleAuthorizer struct {
+	modules []authx.Module
+}
+
+func (a anyModuleAuthorizer) Can(_ context.Context, module authx.Module, action authx.Action) bool {
+	if action != authx.ActionRead {
+		return false
+	}
+	for _, m := range a.modules {
+		if m == module {
+			return true
+		}
+	}
+	return false
+}
+
+type stubClientService struct {
+	ports.ClientService
+	listed bool
+	items  []domain.Client
+}
+
+func (s *stubClientService) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
+	s.listed = true
+	return s.items, nil
+}
+
+func TestListClients_forbiddenWithoutOrgCraOrSsiiRead(t *testing.T) {
+	svc := &stubClientService{items: []domain.Client{{RaisonSociale: "Acme"}}}
+	handler := listClients(svc, stubAuthorizer{module: "budget", action: authx.ActionRead, allow: true})
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodGet, "/clients", nil))
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	if svc.listed {
+		t.Fatal("expected ListClients not called when read is forbidden")
+	}
+}
+
+func TestListClients_allowedWithCraRead(t *testing.T) {
+	svc := &stubClientService{items: []domain.Client{{ID: uuid.New(), RaisonSociale: "Acme"}}}
+	handler := listClients(svc, anyModuleAuthorizer{modules: []authx.Module{"cra"}})
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodGet, "/clients", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !svc.listed {
+		t.Fatal("expected ListClients to be called")
+	}
+}

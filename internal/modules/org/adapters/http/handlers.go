@@ -78,7 +78,7 @@ func RegisterRoutes(
 		pr.Put("/users/{id}", updateUser(users, authorizer))
 		pr.Patch("/users/{id}/deactivate", deactivateUser(users, authorizer))
 		pr.Delete("/users/{id}", deleteUser(users, authorizer))
-		pr.Get("/clients", listClients(clients))
+		pr.Get("/clients", listClients(clients, authorizer))
 		pr.Get("/clients/{id}", getClient(clients, authorizer))
 		pr.Post("/clients", createClient(clients, authorizer))
 
@@ -677,8 +677,18 @@ func createUser(users ports.UserService, authorizer authx.Authorizer) http.Handl
 	}
 }
 
-func listClients(clients ports.ClientService) http.HandlerFunc {
+func canReadClients(ctx context.Context, authorizer authx.Authorizer) bool {
+	return authorizer.Can(ctx, "org", authx.ActionRead) ||
+		authorizer.Can(ctx, "cra", authx.ActionRead) ||
+		authorizer.Can(ctx, "ssii", authx.ActionRead)
+}
+
+func listClients(clients ports.ClientService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !canReadClients(r.Context(), authorizer) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
 		identity, _ := authx.FromContext(r.Context())
 		items, err := clients.ListClients(r.Context(), identity.TenantID)
 		if err != nil {
@@ -691,9 +701,7 @@ func listClients(clients ports.ClientService) http.HandlerFunc {
 
 func getClient(clients ports.ClientService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "org", authx.ActionRead) &&
-			!authorizer.Can(r.Context(), "cra", authx.ActionRead) &&
-			!authorizer.Can(r.Context(), "ssii", authx.ActionRead) {
+		if !canReadClients(r.Context(), authorizer) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}

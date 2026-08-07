@@ -5,7 +5,7 @@
         <AppButton v-if="guideRef?.dismissed" variant="ghost" size="sm" type="button" @click="guideRef?.showAgain()">
           {{ $t('guides.show') }}
         </AppButton>
-        <AppButton variant="primary" size="sm" to="/missions/nouveau">
+        <AppButton v-if="canCreate" variant="primary" size="sm" to="/missions/nouveau">
           {{ $t('missions.new') }}
         </AppButton>
       </template>
@@ -41,10 +41,13 @@
 definePageMeta({ layout: 'default' })
 
 const { apiFetch } = useApiFetch()
+const { can } = usePermissions()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 
 const { t } = useI18n()
 const { formatDate, formatMoney, missionStatusLabel } = useFicheFormat()
+
+const canCreate = computed(() => can('ssii', 'E'))
 
 type MissionRow = {
   id: string

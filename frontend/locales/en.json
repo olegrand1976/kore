@@ -40,6 +40,8 @@
     "conges_validation": "Leave approval",
     "budget": "Budget",
     "invoicing": "Invoicing",
+    "clients": "Clients",
+    "missions": "Missions",
     "tma": "Evolutions & incidents",
     "support": "User support",
     "maintenance": "Operations & work",
@@ -48,6 +50,7 @@
     "billing": "Subscription",
     "notifications": "Notifications",
     "organisation": "Organization",
+    "org_structure": "Structure",
     "applications": "Applications",
     "users": "Users",
     "identity_providers": "SSO sign-in",
@@ -56,6 +59,8 @@
     "platform": "Platform",
     "profile": "My profile",
     "help": "Help",
+    "aria_app": "App navigation",
+    "aria_menu": "Menu",
     "section_time": "Time",
     "section_requests": "Requests",
     "section_ops": "Operations",
@@ -119,15 +124,17 @@
         "admin": {
           "summary": "Full tenant setup and access to all subscribed modules.",
           "bullets": [
-            "Admin area grouped as: Organization (structure, applications, users, SSO), Automation (workflows, notifications, integrations), System (settings, subscription).",
-            "Organisation → Modules: enable / disable client invoicing (outside SaaS subscription).",
+            "Admin area grouped as: Organization (Structure, applications, users, SSO), Automation (workflows, notifications, integrations), System (settings, subscription).",
+            "Operations: Clients (list / create) and SSII Missions (list / create / staffing).",
+            "Organization → Modules: enable / disable client invoicing (outside SaaS subscription).",
             "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
             "Invoicing: available when the organisation module is enabled (R/W/V).",
             "Definitive timesheets → invoice drafts (Invoicing → From a timesheet, CRA validation or Deliverables → Create invoices).",
             "Invoicing: send a proforma by email (client validation link) then transmit to PDP.",
             "Support and maintenance: full rights when channels are enabled.",
-            "Self-edit: can add other profiles, but cannot remove own Administrator or deactivate own account."
+            "Self-edit: can add other profiles, but cannot remove own Administrator or deactivate own account.",
+            "If the login is listed in PLATFORM_ADMIN_LOGINS: platform console (/platform) to create organisations and monitor tenants."
           ],
           "seed": "ADM_admin / Admin123!"
         },
@@ -137,6 +144,7 @@
             "Timesheets and TMA: read and write (no validation).",
             "Leave: submit and track own requests.",
             "Budget: read only.",
+            "Operations: Clients and Missions visible read-only (via timesheet rights).",
             "No access to administration menus."
           ],
           "seed": "COL_collab / Collab123!"
@@ -147,6 +155,7 @@
             "Timesheets and TMA: read, write and validate.",
             "Leave: read (no validation).",
             "Budget: read and write; reporting read.",
+            "Operations: Clients and Missions visible read-only.",
             "Invoicing: R/W/V when the organisation module is enabled (CRA / Deliverables drafts, client proforma).",
             "Organization: read."
           ],
@@ -157,6 +166,7 @@
           "bullets": [
             "Timesheets, TMA, leave and budget: read, write and validate.",
             "Reporting and organization: read.",
+            "Operations: Clients and Missions visible read-only.",
             "Invoicing: R/W/V when the organisation module is enabled (CRA / Deliverables drafts, client proforma).",
             "No access to admin settings (Administrator only)."
           ],
@@ -263,6 +273,9 @@
     "send_link": "Send me a link",
     "discovery_sent": "If this email is known, a link has been sent.",
     "discovery_dev_hint": "Locally, emails are captured by",
+    "no_account": "No organization yet?",
+    "signup_link": "Create an account",
+    "signup_success": "Organization created. Sign in with your admin login.",
     "2fa": {
       "title": "2FA verification",
       "subtitle": "Enter the code from your authenticator app",
@@ -716,6 +729,22 @@
     "client_name": "Legal name",
     "client_tva": "VAT number",
     "client_create_error": "Client creation failed."
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Client companies and related missions",
+    "new": "New client",
+    "back_list": "Back to clients",
+    "empty": "No clients",
+    "empty_desc": "No clients have been registered yet.",
+    "empty_desc_create": "Create a client to attach SSII missions.",
+    "load_error": "Could not load clients",
+    "create_error": "Could not create the client",
+    "open": "Open",
+    "col_name": "Legal name",
+    "col_tva": "VAT",
+    "field_name": "Legal name",
+    "field_tva": "VAT number"
   },
   "conges": {
     "title": "Leave",
@@ -1532,7 +1561,6 @@
     "address_street": "Street address",
     "address_number": "Number",
     "address_box": "Box",
-    "address_box_be": "Box",
     "address_box_ca": "Apt / Suite",
     "address_box_other": "Additional address",
     "postal_code": "Postal code",
@@ -1540,7 +1568,7 @@
     "country": "Country",
     "country_fr": "France",
     "country_be": "Belgium",
-    "country_md": "Madagascar",
+    "country_mg": "Madagascar",
     "country_ma": "Morocco",
     "country_tn": "Tunisia",
     "country_ca": "Canada",
@@ -1552,7 +1580,7 @@
     "ne": "BN (business number)",
     "registry_hint_fr": "14 digits (indicative format)",
     "registry_hint_be": "Belgian company number (indicative format)",
-    "registry_hint_md": "NIF / STAT number (indicative format)",
+    "registry_hint_mg": "NIF / STAT number (indicative format)",
     "registry_hint_ma": "Common Company Identifier — 15 digits (indicative format)",
     "registry_hint_tn": "Tax registration number (indicative format)",
     "registry_hint_ca": "Business Number (BN) — 9 digits (indicative format)",
@@ -1798,7 +1826,7 @@
       "deleted": "Leave type removed or deactivated",
       "delete_confirm": "Delete leave type {code}?",
       "reset_title": "Reload country defaults",
-      "reset_desc": "Default labels for country {country} will overwrite existing entries (same codes). Custom types you added manually are kept if they are not in the country catalogue.",
+      "reset_desc": "Default leave types for {country} will be reloaded. Types from another country’s catalogue are deactivated (or deleted if unused). Custom types you added manually are kept.",
       "reset_confirm": "Confirm reload",
       "reset_done": "Catalogue reloaded from country template"
     },
@@ -1948,7 +1976,31 @@
       "model_hint": "e.g. gemini-3.6-flash — applied immediately on next AI requests",
       "save_success": "AI model updated",
       "save_error": "Unable to save model"
+    },
+    "provision": {
+      "title": "New organisation",
+      "subtitle": "Creates a tenant, company and admin account (14-day trial).",
+      "tenant_name": "Tenant name",
+      "raison_sociale": "Company name",
+      "admin_login": "Admin login",
+      "admin_email": "Admin email",
+      "admin_password": "Admin password",
+      "seats": "Seats (trial)",
+      "submit": "Create organisation",
+      "success": "Organisation \"{tenant}\" created. Admin login: {login}"
     }
+  },
+  "signup": {
+    "title": "Create your organisation",
+    "subtitle": "14-day free trial — no credit card.",
+    "raison_sociale": "Company name",
+    "admin_login": "Admin login",
+    "admin_email": "Work email",
+    "admin_password": "Password",
+    "trial_hint": "Core business modules are included during the trial.",
+    "submit": "Create my account",
+    "have_account": "Already have an account?",
+    "login_link": "Sign in"
   },
   "applications": {
     "title": "Applications",

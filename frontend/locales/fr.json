@@ -40,6 +40,8 @@
     "conges_validation": "Validation congés",
     "budget": "Budget",
     "invoicing": "Facturation",
+    "clients": "Clients",
+    "missions": "Missions",
     "tma": "Évolutions & incidents",
     "support": "Service utilisateur",
     "maintenance": "Exploitation & travaux",
@@ -48,6 +50,7 @@
     "billing": "Abonnement",
     "notifications": "Notifications",
     "organisation": "Organisation",
+    "org_structure": "Structure",
     "applications": "Applications",
     "users": "Utilisateurs",
     "identity_providers": "Connexion SSO",
@@ -56,6 +59,8 @@
     "platform": "Plateforme",
     "profile": "Mon profil",
     "help": "Aide",
+    "aria_app": "Navigation applicative",
+    "aria_menu": "Menu",
     "section_time": "Temps",
     "section_requests": "Demandes",
     "section_ops": "Pilotage",
@@ -119,7 +124,8 @@
         "admin": {
           "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
           "bullets": [
-            "Accès à l'administration regroupée : Organisation (structure, applications, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
+            "Accès à l'administration regroupée : Organisation (Structure, applications, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
+            "Pilotage : Clients (liste / création) et Missions SSII (liste / création / staffing).",
             "Organisation → Modules : activer / désactiver la facturation client (hors abonnement SaaS).",
             "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
@@ -127,7 +133,8 @@
             "CRA définitifs → brouillons facture (Facturation → Depuis un CRA, validation CRA ou Prestations → Créer factures).",
             "Facturation : émettre une proforma par email (lien de validation client) puis transmettre PDP.",
             "Support et maintenance : droits complets lorsque les canaux sont activés.",
-            "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte."
+            "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte.",
+            "Si le login est dans PLATFORM_ADMIN_LOGINS : accès console plateforme (/platform) pour créer des organisations et suivre les tenants."
           ],
           "seed": "ADM_admin / Admin123!"
         },
@@ -137,6 +144,7 @@
             "CRA et TMA : lecture et écriture (pas de validation).",
             "Congés : dépôt et suivi de ses demandes.",
             "Budget : consultation seule.",
+            "Pilotage : Clients et Missions visibles en lecture (via droits CRA).",
             "Pas d'accès aux menus d'administration."
           ],
           "seed": "COL_collab / Collab123!"
@@ -147,6 +155,7 @@
             "CRA et TMA : lecture, écriture et validation.",
             "Congés : lecture (pas de validation).",
             "Budget : lecture et écriture ; reporting en lecture.",
+            "Pilotage : Clients et Missions visibles en lecture.",
             "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations, proforma client).",
             "Organisation : lecture."
           ],
@@ -157,6 +166,7 @@
           "bullets": [
             "CRA, TMA, congés et budget : lecture, écriture et validation.",
             "Reporting et organisation en lecture.",
+            "Pilotage : Clients et Missions visibles en lecture.",
             "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations, proforma client).",
             "Pas d'accès aux paramètres d'administration (réservés à Administrateur)."
           ],
@@ -263,6 +273,9 @@
     "send_link": "M’envoyer un lien",
     "discovery_sent": "Si cet email est connu, un lien a été envoyé.",
     "discovery_dev_hint": "En local, les emails sont capturés par",
+    "no_account": "Pas encore d’organisation ?",
+    "signup_link": "Créer un compte",
+    "signup_success": "Organisation créée. Connectez-vous avec votre login administrateur.",
     "2fa": {
       "title": "Vérification 2FA",
       "subtitle": "Saisissez le code de votre application d'authentification",
@@ -716,6 +729,22 @@
     "client_name": "Raison sociale",
     "client_tva": "Numéro de TVA",
     "client_create_error": "La création du client a échoué."
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Entreprises clientes et missions associées",
+    "new": "Nouveau client",
+    "back_list": "Retour aux clients",
+    "empty": "Aucun client",
+    "empty_desc": "Aucun client n'est encore enregistré.",
+    "empty_desc_create": "Créez un client pour rattacher des missions SSII.",
+    "load_error": "Impossible de charger les clients",
+    "create_error": "Impossible de créer le client",
+    "open": "Ouvrir",
+    "col_name": "Raison sociale",
+    "col_tva": "TVA",
+    "field_name": "Raison sociale",
+    "field_tva": "Numéro de TVA"
   },
   "conges": {
     "title": "Congés",
@@ -1593,7 +1622,6 @@
     "address_street": "Adresse (rue)",
     "address_number": "Numéro",
     "address_box": "Boîte",
-    "address_box_be": "Boîte",
     "address_box_ca": "App. / Suite",
     "address_box_other": "Complément",
     "postal_code": "Code postal",
@@ -1601,7 +1629,7 @@
     "country": "Pays",
     "country_fr": "France",
     "country_be": "Belgique",
-    "country_md": "Madagascar",
+    "country_mg": "Madagascar",
     "country_ma": "Maroc",
     "country_tn": "Tunisie",
     "country_ca": "Canada",
@@ -1613,7 +1641,7 @@
     "ne": "NE (n° d’entreprise)",
     "registry_hint_fr": "14 chiffres (format indicatif)",
     "registry_hint_be": "Numéro d’entreprise BCE (format indicatif)",
-    "registry_hint_md": "NIF / numéro STAT (format indicatif)",
+    "registry_hint_mg": "NIF / numéro STAT (format indicatif)",
     "registry_hint_ma": "Identifiant Commun de l’Entreprise — 15 chiffres (format indicatif)",
     "registry_hint_tn": "Matricule fiscal (format indicatif)",
     "registry_hint_ca": "Numéro d’entreprise (NE) — 9 chiffres (format indicatif)",
@@ -1859,7 +1887,7 @@
       "deleted": "Type supprimé ou désactivé",
       "delete_confirm": "Supprimer le type {code} ?",
       "reset_title": "Recharger les défauts pays",
-      "reset_desc": "Les libellés par défaut du pays {country} remplaceront les entrées existantes (codes identiques). Les types personnalisés ajoutés manuellement sont conservés s'ils n'existent pas dans le catalogue pays.",
+      "reset_desc": "Les types par défaut du pays {country} seront rechargés. Les types du catalogue d’un autre pays sont désactivés (ou supprimés s’ils n’ont jamais été utilisés). Les types personnalisés ajoutés manuellement sont conservés.",
       "reset_confirm": "Confirmer le rechargement",
       "reset_done": "Catalogue rechargé depuis le template pays"
     },
@@ -2009,6 +2037,30 @@
       "model_hint": "Ex. gemini-3.6-flash — pris en compte immédiatement sur les prochaines requêtes IA",
       "save_success": "Modèle IA mis à jour",
       "save_error": "Impossible d'enregistrer le modèle"
+    },
+    "provision": {
+      "title": "Nouvelle organisation",
+      "subtitle": "Crée un tenant, une société et un compte administrateur (essai 14 jours).",
+      "tenant_name": "Nom du tenant",
+      "raison_sociale": "Raison sociale",
+      "admin_login": "Login administrateur",
+      "admin_email": "Email administrateur",
+      "admin_password": "Mot de passe administrateur",
+      "seats": "Sièges (essai)",
+      "submit": "Créer l'organisation",
+      "success": "Organisation « {tenant} » créée. Login admin : {login}"
     }
+  },
+  "signup": {
+    "title": "Créer votre organisation",
+    "subtitle": "Essai gratuit 14 jours — sans carte bancaire.",
+    "raison_sociale": "Raison sociale",
+    "admin_login": "Login administrateur",
+    "admin_email": "Email professionnel",
+    "admin_password": "Mot de passe",
+    "trial_hint": "Les modules métiers principaux sont inclus pendant l'essai.",
+    "submit": "Créer mon compte",
+    "have_account": "Déjà un compte ?",
+    "login_link": "Se connecter"
   }
 }
