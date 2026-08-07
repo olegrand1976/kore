@@ -9,19 +9,16 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-// SendMonthlyReminders returns users with cra_requis and an incomplete timesheet for the month.
+// SendMonthlyReminders returns cra_requis users with an incomplete (or missing) timesheet for the month.
 func (s *Service) SendMonthlyReminders(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]uuid.UUID, error) {
-	summaries, err := s.repo.ListSummariesByTenantMonth(ctx, tenant, month)
+	candidates, err := s.repo.ListReminderCandidatesByMonth(ctx, tenant, month)
 	if err != nil {
 		return nil, err
 	}
 	var pending []uuid.UUID
-	for _, summary := range summaries {
-		if summary.Status == domain.StatusDefinitif {
-			continue
-		}
-		if summary.WeeksSubmitted < summary.WeeksTotal || summary.TotalMinutes <= 0 {
-			pending = append(pending, summary.UserID)
+	for _, c := range candidates {
+		if c.IsIncomplete() {
+			pending = append(pending, c.UserID)
 		}
 	}
 	return pending, nil

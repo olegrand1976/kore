@@ -56,6 +56,10 @@ func (r *validationRepo) ListSummariesByTenantMonth(context.Context, kernel.Tena
 	return nil, nil
 }
 
+func (r *validationRepo) ListReminderCandidatesByMonth(context.Context, kernel.TenantID, domain.Month) ([]domain.ReminderCandidate, error) {
+	return nil, nil
+}
+
 func (r *validationRepo) ListDailyActivityInPeriod(context.Context, kernel.TenantID, kernel.Period) ([]ports.DailyActivityRow, error) {
 	return nil, nil
 }

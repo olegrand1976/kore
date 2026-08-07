@@ -107,6 +107,7 @@ export function pickTmaStatus(d: TmaDemand) {
 }
 
 export function countTmaOpen(items: TmaDemand[]) {
+  // Mirror of tma/domain.OpenStatuses (exclude en_attente_creation + resolue).
   const open = new Set(['ouverte', 'affectee', 'en_cours', 'rework'])
   return items.filter((d) => open.has(pickTmaStatus(d))).length
 }

@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (applications partagées sites/services/équipes)
+> **Dernière mise à jour doc** : 07/08/2026 (index upsert `reporting.dashboard_snapshots`)
 
 ---
 
@@ -1185,6 +1185,8 @@ Vues et définitions de rapports (lecture seule).
 | `period_end` | DATE | NOT NULL |
 | `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
 | `computed_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index / contraintes** : `UNIQUE (tenant_id, dashboard_code, period_start, period_end)` — `uq_reporting_dashboard_snapshots_period` (migration `0003`, dédup préalable des doublons legacy) ; `idx_reporting_dashboard_snapshots_tenant_code (tenant_id, dashboard_code, computed_at DESC)`
 
 ---
 

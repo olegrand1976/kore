@@ -17,6 +17,7 @@ func RegisterRoutes(r chi.Router, svc ports.ReportingService, tokens *authx.Toke
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/gantt", getGantt(svc, authorizer))
 		pr.Get("/planning", getPlanning(svc, authorizer))
+		pr.Get("/dashboards/home", getHomeDashboard(svc, authorizer, entitlements))
 		pr.Get("/dashboards/{code}", getDashboard(svc, authorizer))
 		pr.Post("/reports/run", runReport(svc, authorizer))
 		pr.Get("/billing-stats", getBillingStats(svc, authorizer))
@@ -79,6 +80,42 @@ func getDashboard(svc ports.ReportingService, authorizer authx.Authorizer) http.
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, dash)
+	}
+}
+
+func getHomeDashboard(svc ports.ReportingService, authorizer authx.Authorizer, entitlements authx.EntitlementReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := authx.FromContext(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "unauthorized")
+			return
+		}
+		moduleOn := func(code authx.Module) bool {
+			if entitlements == nil {
+				return true
+			}
+			enabled, err := entitlements.IsModuleEnabled(r.Context(), identity.TenantID, code)
+			return err == nil && enabled
+		}
+		canRead := func(code authx.Module) bool {
+			return moduleOn(code) && authorizer.Can(r.Context(), code, authx.ActionRead)
+		}
+		q := ports.HomeDashboardQuery{
+			TenantID:         identity.TenantID,
+			UserID:           identity.UserID,
+			IncludeCRA:       moduleOn("cra"),
+			IncludeLeave:     canRead("conges"),
+			IncludeTMA:       canRead("tma"),
+			IncludeBudget:    canRead("budget"),
+			IncludeBilling:   moduleOn("cra") && (authorizer.Can(r.Context(), "reporting", authx.ActionRead) || authorizer.Can(r.Context(), "cra", authx.ActionValidate)),
+			CanValidateLeave: authorizer.Can(r.Context(), "conges", authx.ActionValidate),
+		}
+		home, err := svc.GetHomeDashboard(r.Context(), q)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, home)
 	}
 }
 

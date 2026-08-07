@@ -338,6 +338,51 @@ func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kern
 	`, tenant.UUID(), string(month))
 }
 
+func (r *Repository) ListReminderCandidatesByMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.ReminderCandidate, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			u.id,
+			t.id IS NOT NULL AS has_timesheet,
+			COALESCE(t.status, ''),
+			COALESCE(SUM(tl.duration), 0) AS total_minutes,
+			COUNT(DISTINCT we.id) FILTER (WHERE we.submitted_at IS NOT NULL) AS weeks_submitted,
+			COUNT(DISTINCT we.id) AS weeks_total
+		FROM org.users u
+		LEFT JOIN cra.timesheets t
+			ON t.user_id = u.id AND t.tenant_id = u.tenant_id AND t.month = $2
+		LEFT JOIN cra.week_entries we ON we.timesheet_id = t.id
+		LEFT JOIN cra.time_lines tl ON tl.week_entry_id = we.id
+		WHERE u.tenant_id = $1
+		  AND u.cra_requis = TRUE
+		  AND u.active = TRUE
+		  AND u.deleted_at IS NULL
+		GROUP BY u.id, t.id, t.status
+		ORDER BY u.nom ASC, u.prenom ASC
+	`, tenant.UUID(), string(month))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.ReminderCandidate
+	for rows.Next() {
+		var c domain.ReminderCandidate
+		var status string
+		if err := rows.Scan(
+			&c.UserID,
+			&c.HasTimesheet,
+			&status,
+			&c.TotalMinutes,
+			&c.WeeksSubmitted,
+			&c.WeeksTotal,
+		); err != nil {
+			return nil, err
+		}
+		c.Status = domain.TimesheetStatus(status)
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) queryTimesheetSummaries(ctx context.Context, suffix string, args ...any) ([]domain.TimesheetSummary, error) {
 	rows, err := r.pool.Query(ctx, r.timesheetSummarySelect()+suffix, args...)
 	if err != nil {

@@ -1,23 +1,6 @@
-import {
-  budgetConsumptionSeries,
-  budgetMetrics,
-  consumptionPct,
-  craCurrentMonthStatus,
-  craMonthSeries,
-  craPrefillRatioForMonth,
-  isCraMonthIncomplete,
-  countLeaveByStatus,
-  countTmaOpen,
-  leaveStatusSeries,
-  tmaStatusSeries,
-  type CraTimesheet
-} from '~/composables/useKpiMetrics'
-import { currentMonthKey } from '~/composables/useCraStatus'
-import type { BudgetItem } from '~/composables/useBudget'
-import type { OrgApplication } from '~/composables/useApplications'
-import type { LeaveRequest } from '~/composables/useLeave'
-import type { TmaDemand } from '~/composables/useTma'
+import type { ChartBarItem, CraMonthItem } from '~/composables/useKpiMetrics'
 import type { ModuleCode } from '~/composables/useEntitlements'
+import { currentMonthKey } from '~/composables/useCraStatus'
 
 export type DashboardStats = {
   craCurrentStatus: string | null
@@ -37,10 +20,10 @@ export type DashboardStats = {
 }
 
 export type DashboardCharts = {
-  tmaStatus: ReturnType<typeof tmaStatusSeries>
-  budgetConsumption: ReturnType<typeof budgetConsumptionSeries>
-  craMonths: ReturnType<typeof craMonthSeries>
-  leaveStatus: ReturnType<typeof leaveStatusSeries>
+  tmaStatus: ChartBarItem[]
+  budgetConsumption: ChartBarItem[]
+  craMonths: CraMonthItem[]
+  leaveStatus: ChartBarItem[]
 }
 
 export type DashboardStatErrors = {
@@ -55,6 +38,50 @@ export type DashboardLoadResult = {
   stats: DashboardStats
   charts: DashboardCharts
   errors: DashboardStatErrors
+}
+
+type HomeStatusCount = { key?: string; Key?: string; value?: number; Value?: number }
+type HomeBudgetBar = { key?: string; Key?: string; label?: string; Label?: string; value?: number; Value?: number }
+type HomeCraMonth = { key?: string; Key?: string; status?: string | null; Status?: string | null }
+
+type HomeDashboardPayload = {
+  data?: {
+    cra?: {
+      required?: boolean
+      alert?: boolean
+      currentStatus?: string | null
+      prefillRatio?: number | null
+      prefillLow?: boolean
+      months?: HomeCraMonth[]
+    }
+    leave?: {
+      pending?: number
+      pendingValidations?: number
+      statusCounts?: HomeStatusCount[]
+    }
+    tma?: {
+      open?: number
+      total?: number
+      statusCounts?: HomeStatusCount[]
+    }
+    budget?: {
+      overrun?: number
+      consumptionPct?: number
+      bars?: HomeBudgetBar[]
+    }
+    billing?: {
+      amountCents?: number
+      invoiceCount?: number
+      billableHours?: number
+    }
+    errors?: {
+      cra?: boolean
+      conges?: boolean
+      tma?: boolean
+      budget?: boolean
+      billing?: boolean
+    }
+  }
 }
 
 const emptyStats = (): DashboardStats => ({
@@ -81,126 +108,128 @@ const emptyCharts = (): DashboardCharts => ({
   leaveStatus: []
 })
 
+const openTma = new Set(['ouverte', 'affectee', 'en_cours', 'rework'])
+
+function statusToneTma(status: string): ChartBarItem['tone'] {
+  if (status === 'resolue') return 'success'
+  if (openTma.has(status)) return 'blue'
+  if (status === 'en_attente_creation') return 'warn'
+  return 'muted'
+}
+
+function statusToneLeave(status: string): ChartBarItem['tone'] {
+  if (status === 'valide') return 'success'
+  if (status === 'en_attente') return 'warn'
+  if (status === 'refuse') return 'muted'
+  return 'blue'
+}
+
+function budgetTone(pct: number): ChartBarItem['tone'] {
+  if (pct > 100) return 'warn'
+  if (pct >= 80) return 'gold'
+  return 'success'
+}
+
 export function useDashboardStats() {
   const { apiFetch } = useApiFetch()
   const { hasModule } = useEntitlements()
-  const { canValidateConges, can } = usePermissions()
+  const { canValidateConges } = usePermissions()
   const { statusLabel: craStatusLabel } = useCraStatus()
-  const { list: listLeaves } = useLeave()
-  const { list: listTma } = useTma()
-  const { list: listBudgets, pickId: pickBudgetId } = useBudget()
-  const { list: listApplications, appById, pickAppLabel } = useApplications()
-  const { budgetTypeLabel, pickApplicationId } = useBudgetDisplay()
   const { locale, t } = useI18n()
 
   const tmaStatusLabel = (status: string) => t(`dashboard.charts.status.tma.${status}`, status)
   const leaveStatusLabel = (status: string) => t(`dashboard.charts.status.leave.${status}`, status)
-  const budgetLabel = (b: BudgetItem, apps: Map<string, OrgApplication>) => {
-    const appId = pickApplicationId(b)
-    const appLabel = pickAppLabel(apps.get(appId))
-    if (appLabel) return appLabel
-    const type = budgetTypeLabel(b.type ?? b.Type ?? 'budget')
-    const id = pickBudgetId(b)
-    return id ? `${type} · ${id.slice(0, 8)}` : type
-  }
 
   const load = async (): Promise<DashboardLoadResult> => {
     const stats = emptyStats()
     const charts = emptyCharts()
     const errors: DashboardStatErrors = {}
-    const tasks: Promise<void>[] = []
-    const { fetchBillingStats } = useReporting()
 
-    if (hasModule('cra') && (can('reporting', 'L') || can('cra', 'V'))) {
-      tasks.push(
-        fetchBillingStats({ window: '60' })
-          .then((billing) => {
-            stats.billingAmountCents = billing.totalAmount
-            stats.billingInvoiceCount = billing.invoiceCount
-            stats.billableHoursMonth = billing.billableHours
-          })
-          .catch(() => {
-            errors.billing = true
-          })
-      )
-    }
+    try {
+      const res = await apiFetch<HomeDashboardPayload>('/api/dashboards/home')
+      const home = res?.data
+      if (!home) return { stats, charts, errors }
 
-    if (hasModule('cra')) {
-      tasks.push(
-        (async () => {
-          let required = false
-          try {
-            const profile = await apiFetch<{ data?: { craRequis?: boolean } }>('/api/org/users/me/profile')
-            required = profile?.data?.craRequis ?? false
-            stats.craRequired = required
-          } catch {
-            errors.cra = true
-            return
+      if (home.errors?.cra) errors.cra = true
+      if (home.errors?.conges) errors.conges = true
+      if (home.errors?.tma) errors.tma = true
+      if (home.errors?.budget) errors.budget = true
+      if (home.errors?.billing) errors.billing = true
+
+      if (home.cra) {
+        stats.craRequired = !!home.cra.required
+        stats.craAlert = !!home.cra.alert
+        stats.craCurrentStatus = home.cra.currentStatus ?? null
+        stats.craPrefillRatio = home.cra.prefillRatio ?? null
+        stats.craPrefillLow = !!home.cra.prefillLow
+        const loc = locale.value === 'en' ? 'en-US' : 'fr-FR'
+        charts.craMonths = (home.cra.months ?? []).map((m) => {
+          const key = m.key ?? m.Key ?? ''
+          const [y, mo] = key.split('-').map(Number)
+          const d = new Date(y || 2026, (mo || 1) - 1, 1)
+          return {
+            key,
+            label: d.toLocaleDateString(loc, { month: 'short' }),
+            status: m.status ?? m.Status ?? null
+          } satisfies CraMonthItem
+        })
+      }
+
+      if (home.leave) {
+        stats.leavePending = home.leave.pending ?? 0
+        stats.pendingValidations = home.leave.pendingValidations ?? 0
+        charts.leaveStatus = (home.leave.statusCounts ?? []).map((c) => {
+          const key = c.key ?? c.Key ?? 'unknown'
+          return {
+            key,
+            label: leaveStatusLabel(key),
+            value: c.value ?? c.Value ?? 0,
+            tone: statusToneLeave(key)
           }
-          try {
-            const res = await apiFetch<{ data?: CraTimesheet[] }>('/api/cra/timesheets/recent')
-            const items = res?.data ?? []
-            stats.craCurrentStatus = craCurrentMonthStatus(items)
-            charts.craMonths = craMonthSeries(items, locale.value)
-            stats.craPrefillRatio = craPrefillRatioForMonth(items)
-            stats.craPrefillLow = stats.craPrefillRatio != null && stats.craPrefillRatio < 70
-            if (required) {
-              stats.craAlert = isCraMonthIncomplete(items)
-            }
-          } catch {
-            errors.cra = true
+        })
+      }
+
+      if (home.tma) {
+        stats.tmaOpen = home.tma.open ?? 0
+        stats.tmaTotal = home.tma.total ?? 0
+        charts.tmaStatus = (home.tma.statusCounts ?? []).map((c) => {
+          const key = c.key ?? c.Key ?? 'unknown'
+          return {
+            key,
+            label: tmaStatusLabel(key),
+            value: c.value ?? c.Value ?? 0,
+            tone: statusToneTma(key)
           }
-        })()
-      )
+        })
+      }
+
+      if (home.budget) {
+        stats.budgetOverrun = home.budget.overrun ?? 0
+        stats.budgetConsumptionPct = home.budget.consumptionPct ?? 0
+        charts.budgetConsumption = (home.budget.bars ?? []).map((b) => {
+          const value = b.value ?? b.Value ?? 0
+          return {
+            key: b.key ?? b.Key ?? '',
+            label: b.label ?? b.Label ?? '',
+            value,
+            tone: budgetTone(value)
+          }
+        })
+      }
+
+      if (home.billing) {
+        stats.billingAmountCents = home.billing.amountCents ?? 0
+        stats.billingInvoiceCount = home.billing.invoiceCount ?? 0
+        stats.billableHoursMonth = home.billing.billableHours ?? 0
+      }
+    } catch {
+      errors.cra = true
+      errors.conges = true
+      errors.tma = true
+      errors.budget = true
+      errors.billing = true
     }
 
-    if (hasModule('conges')) {
-      tasks.push(
-        listLeaves()
-          .then((items) => {
-            stats.leavePending = countLeaveByStatus(items, 'en_attente')
-            if (canValidateConges.value) {
-              stats.pendingValidations = stats.leavePending
-            }
-            charts.leaveStatus = leaveStatusSeries(items as LeaveRequest[], leaveStatusLabel)
-          })
-          .catch(() => {
-            errors.conges = true
-          })
-      )
-    }
-
-    if (hasModule('tma')) {
-      tasks.push(
-        listTma()
-          .then((items) => {
-            stats.tmaTotal = items.length
-            stats.tmaOpen = countTmaOpen(items)
-            charts.tmaStatus = tmaStatusSeries(items as TmaDemand[], tmaStatusLabel)
-          })
-          .catch(() => {
-            errors.tma = true
-          })
-      )
-    }
-
-    if (hasModule('budget')) {
-      tasks.push(
-        Promise.all([listBudgets(), listApplications()])
-          .then(([items, applications]) => {
-            const apps = appById(applications)
-            const m = budgetMetrics(items)
-            stats.budgetOverrun = m.overrun
-            stats.budgetConsumptionPct = consumptionPct(m.consumedDays, m.plannedDays, false)
-            charts.budgetConsumption = budgetConsumptionSeries(items as BudgetItem[], (b) => budgetLabel(b, apps))
-          })
-          .catch(() => {
-            errors.budget = true
-          })
-      )
-    }
-
-    await Promise.all(tasks)
     return { stats, charts, errors }
   }
 

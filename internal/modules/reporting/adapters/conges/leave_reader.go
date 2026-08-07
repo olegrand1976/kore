@@ -3,6 +3,7 @@ package conges
 import (
 	"context"
 
+	"github.com/google/uuid"
 	congesdomain "github.com/kore/kore/internal/modules/conges/domain"
 	congesports "github.com/kore/kore/internal/modules/conges/ports"
 	reportports "github.com/kore/kore/internal/modules/reporting/ports"
@@ -13,7 +14,7 @@ type LeaveReader struct {
 	leaves congesports.LeaveService
 }
 
-func NewLeaveReader(leaves congesports.LeaveService) reportports.LeavePlanningReader {
+func NewLeaveReader(leaves congesports.LeaveService) *LeaveReader {
 	return &LeaveReader{leaves: leaves}
 }
 
@@ -46,4 +47,22 @@ func (r *LeaveReader) ListApprovedDays(ctx context.Context, tenant kernel.Tenant
 	return out, nil
 }
 
-var _ reportports.LeavePlanningReader = (*LeaveReader)(nil)
+func (r *LeaveReader) ListStatuses(ctx context.Context, tenant kernel.TenantID, userID *uuid.UUID) ([]string, error) {
+	if r.leaves == nil {
+		return nil, nil
+	}
+	items, err := r.leaves.List(ctx, tenant, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, string(item.Status))
+	}
+	return out, nil
+}
+
+var (
+	_ reportports.LeavePlanningReader = (*LeaveReader)(nil)
+	_ reportports.HomeLeaveReader     = (*LeaveReader)(nil)
+)

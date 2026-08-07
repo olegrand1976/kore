@@ -31,6 +31,30 @@ const (
 	DemandStatusRework           DemandStatus = "rework"
 )
 
+// OpenStatuses is the portefeuille « ouvert » (hors gate amont et hors résolu).
+// Miroir front: countTmaOpen / tmaStatusSeries.
+var OpenStatuses = []DemandStatus{
+	DemandStatusOpen,
+	DemandStatusAssigned,
+	DemandStatusInProgress,
+	DemandStatusRework,
+}
+
+// IsOpen reports whether the demand counts as an open portefeuille item.
+func (d Demand) IsOpen() bool {
+	return IsOpenStatus(d.Status)
+}
+
+// IsOpenStatus reports whether status is in the open portefeuille set.
+func IsOpenStatus(status DemandStatus) bool {
+	for _, s := range OpenStatuses {
+		if status == s {
+			return true
+		}
+	}
+	return false
+}
+
 type Demand struct {
 	ID                 uuid.UUID
 	TenantID           kernel.TenantID

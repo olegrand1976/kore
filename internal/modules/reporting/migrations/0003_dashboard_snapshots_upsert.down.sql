@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_reporting_dashboard_snapshots_tenant_code;
+DROP INDEX IF EXISTS uq_reporting_dashboard_snapshots_period;

@@ -127,6 +127,30 @@ type TimesheetSummary struct {
 	UpdatedAt      time.Time       `json:"updatedAt"`
 }
 
+// ReminderCandidate is a cra_requis user for a given month, with optional timesheet stats.
+type ReminderCandidate struct {
+	UserID         uuid.UUID
+	HasTimesheet   bool
+	Status         TimesheetStatus
+	TotalMinutes   int
+	WeeksSubmitted int
+	WeeksTotal     int
+}
+
+// IsIncomplete mirrors frontend isCraMonthIncomplete / reminder rules.
+func (c ReminderCandidate) IsIncomplete() bool {
+	if !c.HasTimesheet {
+		return true
+	}
+	if c.Status == StatusDefinitif {
+		return false
+	}
+	if c.WeeksTotal > 0 && c.WeeksSubmitted < c.WeeksTotal {
+		return true
+	}
+	return c.TotalMinutes <= 0
+}
+
 func (ts Timesheet) IsFinal() bool {
 	return ts.Status == StatusDefinitif
 }

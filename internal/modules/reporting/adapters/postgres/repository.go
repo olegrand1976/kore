@@ -67,6 +67,52 @@ func (r *Repository) GetDashboardSnapshot(ctx context.Context, tenant kernel.Ten
 	return dash, nil
 }
 
+func (r *Repository) UpsertDashboardSnapshot(ctx context.Context, tenant kernel.TenantID, dash domain.Dashboard) error {
+	payload, err := json.Marshal(dash.Payload)
+	if err != nil {
+		return err
+	}
+	if payload == nil {
+		payload = []byte("{}")
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO reporting.dashboard_snapshots (
+			id, tenant_id, dashboard_code, period_start, period_end, payload, computed_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (tenant_id, dashboard_code, period_start, period_end)
+		DO UPDATE SET
+			payload = EXCLUDED.payload,
+			computed_at = EXCLUDED.computed_at
+	`, uuid.New(), tenant.UUID(), dash.Code, dash.Period.Start, dash.Period.End, payload, dash.ComputedAt)
+	return err
+}
+
+func (r *Repository) ListTenantIDsForSnapshotRefresh(ctx context.Context) ([]kernel.TenantID, error) {
+	// Tenants with an active-ish subscription and CRA entitlement (cra dashboard payload).
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT e.tenant_id
+		FROM billing.module_entitlements e
+		INNER JOIN billing.subscriptions s ON s.tenant_id = e.tenant_id
+		WHERE e.module_code = 'cra'
+		  AND e.enabled = TRUE
+		  AND s.status IN ('trial', 'active', 'past_due')
+		ORDER BY e.tenant_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []kernel.TenantID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, kernel.NewTenantID(id))
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) scanReportDefinition(row pgx.Row) (domain.ReportDefinition, error) {
 	var def domain.ReportDefinition
 	var tenantID uuid.UUID

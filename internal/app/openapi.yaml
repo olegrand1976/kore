@@ -1775,6 +1775,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlanningView'
+  /dashboards/home:
+    get:
+      summary: Dashboard home agrégé (KPI + séries)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
   /dashboards/{code}:
     get:
       summary: Dashboard applicatif

@@ -71,13 +71,16 @@ import (
 	publicnotif "github.com/kore/kore/internal/modules/publicsite/adapters/notifications"
 	publicpostgres "github.com/kore/kore/internal/modules/publicsite/adapters/postgres"
 	publicapp "github.com/kore/kore/internal/modules/publicsite/app"
+	reportingbudget "github.com/kore/kore/internal/modules/reporting/adapters/budget"
 	reportingconges "github.com/kore/kore/internal/modules/reporting/adapters/conges"
 	reportingcra "github.com/kore/kore/internal/modules/reporting/adapters/cra"
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
 	reportinginvoicing "github.com/kore/kore/internal/modules/reporting/adapters/invoicing"
+	reportingorg "github.com/kore/kore/internal/modules/reporting/adapters/org"
 	reportingpostgres "github.com/kore/kore/internal/modules/reporting/adapters/postgres"
 	reportingtma "github.com/kore/kore/internal/modules/reporting/adapters/tma"
 	reportingapp "github.com/kore/kore/internal/modules/reporting/app"
+	reportingports "github.com/kore/kore/internal/modules/reporting/ports"
 	ssiicalendar "github.com/kore/kore/internal/modules/ssii/adapters/calendar"
 	ssiicra "github.com/kore/kore/internal/modules/ssii/adapters/cra"
 	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
@@ -265,13 +268,21 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	integrationsService := integrationsapp.NewService(integrationsRepo, integrationOpts...)
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
 	adminService := adminapp.NewService(adminRepo)
+	reportingLeaveReader := reportingconges.NewLeaveReader(congesService)
 	reportingService := reportingapp.NewService(
 		reportingRepo,
 		reportingcra.NewBillableReader(craService),
 		reportingcra.NewPlanningReader(craService),
 		reportinginvoicing.NewBillingReader(invoicingRepo),
-		reportingconges.NewLeaveReader(congesService),
+		reportingLeaveReader,
 		reportingtma.NewDemandReader(tmaService),
+		reportingapp.WithHomeReaders(
+			reportingorg.NewHomeUserReader(userService),
+			reportingcra.NewHomeReader(craService),
+			reportingLeaveReader,
+			reportingbudget.NewHomeReader(budgetService, orgService),
+		),
+		reportingapp.WithCache(appCache, keyBuilder),
 	)
 	ssiiService := ssiiapp.NewService(
 		ssiiRepo,
@@ -393,7 +404,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		migrator:   migrator,
 		seed:       seedRunner,
 	}
-	app.startBackgroundWorkers(notifService, craService, orgRepo, appCache, keyBuilder, log)
+	app.startBackgroundWorkers(notifService, craService, orgRepo, reportingService, reportingRepo, appCache, keyBuilder, log)
 	return app, nil
 }
 
@@ -401,6 +412,8 @@ func (a *Application) startBackgroundWorkers(
 	notifService *notifapp.Service,
 	craService *craapp.Service,
 	orgRepo *orgpostgres.Repository,
+	reportingService reportingports.ReportingService,
+	reportingRepo *reportingpostgres.Repository,
 	appCache cache.Cache,
 	keyBuilder cache.KeyBuilder,
 	log *logging.Logger,
@@ -412,6 +425,11 @@ func (a *Application) startBackgroundWorkers(
 		ctx,
 		craapp.NewReminderWorker(craService, orgRepo, notifService, appCache, keyBuilder, log),
 		craapp.ReminderWorkerInterval,
+	)
+	reportingapp.StartSnapshotWorker(
+		ctx,
+		reportingapp.NewSnapshotWorker(reportingService, reportingRepo, appCache, keyBuilder, log),
+		reportingapp.SnapshotWorkerInterval,
 	)
 }
 

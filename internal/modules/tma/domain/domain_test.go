@@ -35,6 +35,26 @@ func TestDemand_ReopenReactivatesConsumption(t *testing.T) {
 	assert.True(t, d.ConsumptionActive)
 }
 
+func TestDemand_IsOpen(t *testing.T) {
+	cases := []struct {
+		status domain.DemandStatus
+		want   bool
+	}{
+		{domain.DemandStatusAwaitingCreation, false},
+		{domain.DemandStatusOpen, true},
+		{domain.DemandStatusAssigned, true},
+		{domain.DemandStatusInProgress, true},
+		{domain.DemandStatusRework, true},
+		{domain.DemandStatusResolved, false},
+	}
+	for _, tc := range cases {
+		d := testDemand(false)
+		d.Status = tc.status
+		assert.Equal(t, tc.want, d.IsOpen(), "status=%s", tc.status)
+		assert.Equal(t, tc.want, domain.IsOpenStatus(tc.status), "status=%s", tc.status)
+	}
+}
+
 func TestDemand_AssignRequiresVisible(t *testing.T) {
 	d := testDemand(true)
 	err := d.Assign(uuid.New())

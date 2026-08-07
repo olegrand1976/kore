@@ -7,23 +7,88 @@ import (
 
 	"github.com/kore/kore/internal/modules/reporting/domain"
 	"github.com/kore/kore/internal/modules/reporting/ports"
+	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/pkg/kernel"
 )
 
+const dashboardCacheTTL = 5 * time.Minute
+
 type service struct {
-	repo        ports.ReportingRepository
-	craBillable ports.CRABillableReader
-	craPlanning ports.CRAPlanningReader
-	leavePlan   ports.LeavePlanningReader
-	invoicing   ports.InvoicingBillingReader
-	tmaDemands  ports.TMADemandReader
+	repo          ports.ReportingRepository
+	craBillable   ports.CRABillableReader
+	craPlanning   ports.CRAPlanningReader
+	leavePlan     ports.LeavePlanningReader
+	invoicing     ports.InvoicingBillingReader
+	tmaDemands    ports.TMADemandReader
+	homeUser      ports.HomeUserReader
+	homeCRAReader ports.HomeCRAReader
+	homeLeave     ports.HomeLeaveReader
+	homeBudget    ports.HomeBudgetReader
+	cache         cache.Cache
+	keys          cache.KeyBuilder
 }
 
-func NewService(repo ports.ReportingRepository, craBillable ports.CRABillableReader, craPlanning ports.CRAPlanningReader, invoicing ports.InvoicingBillingReader, leavePlan ports.LeavePlanningReader, tmaDemands ports.TMADemandReader) ports.ReportingService {
-	return &service{repo: repo, craBillable: craBillable, craPlanning: craPlanning, invoicing: invoicing, leavePlan: leavePlan, tmaDemands: tmaDemands}
+func NewService(
+	repo ports.ReportingRepository,
+	craBillable ports.CRABillableReader,
+	craPlanning ports.CRAPlanningReader,
+	invoicing ports.InvoicingBillingReader,
+	leavePlan ports.LeavePlanningReader,
+	tmaDemands ports.TMADemandReader,
+	opts ...ServiceOption,
+) ports.ReportingService {
+	s := &service{
+		repo:        repo,
+		craBillable: craBillable,
+		craPlanning: craPlanning,
+		invoicing:   invoicing,
+		leavePlan:   leavePlan,
+		tmaDemands:  tmaDemands,
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+type ServiceOption func(*service)
+
+func WithHomeReaders(user ports.HomeUserReader, cra ports.HomeCRAReader, leave ports.HomeLeaveReader, budget ports.HomeBudgetReader) ServiceOption {
+	return func(s *service) {
+		s.homeUser = user
+		s.homeCRAReader = cra
+		s.homeLeave = leave
+		s.homeBudget = budget
+	}
+}
+
+func WithCache(c cache.Cache, keys cache.KeyBuilder) ServiceOption {
+	return func(s *service) {
+		s.cache = c
+		s.keys = keys
+	}
 }
 
 func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code string) (domain.Dashboard, error) {
+	if s.cache != nil && s.keys != nil {
+		key := s.keys.Key(tenant, "reporting", code, "latest")
+		var cached domain.Dashboard
+		found, err := s.cache.Get(ctx, key, &cached)
+		if err == nil && found {
+			return cached, nil
+		}
+	}
+	dash, err := s.loadDashboard(ctx, tenant, code)
+	if err != nil {
+		return domain.Dashboard{}, err
+	}
+	if s.cache != nil && s.keys != nil {
+		_ = s.cache.Set(ctx, s.keys.Key(tenant, "reporting", code, "latest"), dash, dashboardCacheTTL)
+	}
+	return dash, nil
+}
+
+func (s *service) loadDashboard(ctx context.Context, tenant kernel.TenantID, code string) (domain.Dashboard, error) {
 	dash, err := s.repo.GetDashboardSnapshot(ctx, tenant, code)
 	if err == nil {
 		return dash, nil
@@ -34,6 +99,10 @@ func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code
 	if code != "cra" {
 		return domain.Dashboard{}, err
 	}
+	return s.synthesizeCRADashboard(ctx, tenant)
+}
+
+func (s *service) synthesizeCRADashboard(ctx context.Context, tenant kernel.TenantID) (domain.Dashboard, error) {
 	stats, err := s.GetBillingStats(ctx, ports.BillingStatsQuery{
 		TenantID: tenant,
 		Period:   defaultDashboardPeriod(),
@@ -42,13 +111,9 @@ func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code
 		return domain.Dashboard{}, err
 	}
 	now := time.Now().UTC()
-	period, _ := kernel.NewPeriod(
-		time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC),
-		time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC),
-	)
 	return domain.Dashboard{
-		Code:       code,
-		Period:     period,
+		Code:       "cra",
+		Period:     defaultDashboardPeriod(),
 		ComputedAt: now,
 		Payload: map[string]any{
 			"billableHours": stats.BillableHours,
@@ -57,6 +122,28 @@ func (s *service) GetDashboard(ctx context.Context, tenant kernel.TenantID, code
 			"currency":      stats.Currency,
 		},
 	}, nil
+}
+
+func (s *service) RefreshDashboardSnapshot(ctx context.Context, tenant kernel.TenantID, code string) error {
+	var dash domain.Dashboard
+	var err error
+	switch code {
+	case "cra":
+		dash, err = s.synthesizeCRADashboard(ctx, tenant)
+	default:
+		dash, err = s.repo.GetDashboardSnapshot(ctx, tenant, code)
+	}
+	if err != nil {
+		return err
+	}
+	dash.ComputedAt = time.Now().UTC()
+	if err := s.repo.UpsertDashboardSnapshot(ctx, tenant, dash); err != nil {
+		return err
+	}
+	if s.cache != nil && s.keys != nil {
+		_ = s.cache.Delete(ctx, s.keys.Key(tenant, "reporting", code, "latest"))
+	}
+	return nil
 }
 
 func defaultDashboardPeriod() kernel.Period {

@@ -161,3 +161,24 @@ func TestReject_FinalTimesheetFails(t *testing.T) {
 		t.Fatalf("expected ErrCRAAlreadyValidated, got %v", err)
 	}
 }
+
+func TestReminderCandidate_IsIncomplete(t *testing.T) {
+	cases := []struct {
+		name string
+		c    ReminderCandidate
+		want bool
+	}{
+		{"missing timesheet", ReminderCandidate{HasTimesheet: false}, true},
+		{"definitif", ReminderCandidate{HasTimesheet: true, Status: StatusDefinitif}, false},
+		{"weeks incomplete", ReminderCandidate{HasTimesheet: true, Status: StatusBrouillon, WeeksSubmitted: 1, WeeksTotal: 4, TotalMinutes: 480}, true},
+		{"zero minutes", ReminderCandidate{HasTimesheet: true, Status: StatusBrouillon, WeeksSubmitted: 4, WeeksTotal: 4, TotalMinutes: 0}, true},
+		{"ok draft with hours", ReminderCandidate{HasTimesheet: true, Status: StatusBrouillon, WeeksSubmitted: 4, WeeksTotal: 4, TotalMinutes: 480}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.c.IsIncomplete(); got != tc.want {
+				t.Fatalf("IsIncomplete()=%v want %v", got, tc.want)
+			}
+		})
+	}
+}

@@ -60,6 +60,10 @@ func (f *fakeCRARepo) ListSummariesByTenantMonth(_ context.Context, _ kernel.Ten
 	}}, nil
 }
 
+func (f *fakeCRARepo) ListReminderCandidatesByMonth(context.Context, kernel.TenantID, domain.Month) ([]domain.ReminderCandidate, error) {
+	return nil, nil
+}
+
 func (f *fakeCRARepo) ListDailyActivityInPeriod(context.Context, kernel.TenantID, kernel.Period) ([]ports.DailyActivityRow, error) {
 	return nil, nil
 }

@@ -257,6 +257,7 @@ type CRARepository interface {
 	ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
+	ListReminderCandidatesByMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.ReminderCandidate, error)
 	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
