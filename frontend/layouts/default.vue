@@ -2,8 +2,15 @@
   <div class="layout-app">
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <TenantLogo :logo-url="branding.logoUrl" :alt="branding.raisonSociale" size="md" />
-        <p v-if="branding.raisonSociale" class="sidebar__company">{{ branding.raisonSociale }}</p>
+        <TenantLogo
+          :logo-url="branding.logoUrl"
+          :alt="branding.raisonSociale || 'Kore'"
+          size="lg"
+          @error="tenantLogoFailed = true"
+        />
+        <p v-if="showCompanyCaption" class="sidebar__company">
+          {{ branding.raisonSociale }}
+        </p>
       </div>
       <nav class="sidebar__nav" :aria-label="t('nav.aria_app')">
         <template v-for="(section, sectionIndex) in navSections" :key="section.id">
@@ -96,7 +103,17 @@
     <AppBottomNav :items="bottomNavItems" />
 
     <MobileDrawer v-model:open="drawerOpen">
-      <p class="drawer-title">{{ branding.raisonSociale || 'Kore' }}</p>
+      <div class="drawer-brand">
+        <TenantLogo
+          :logo-url="branding.logoUrl"
+          :alt="branding.raisonSociale || 'Kore'"
+          size="md"
+          @error="tenantLogoFailed = true"
+        />
+        <p v-if="showCompanyCaption" class="drawer-title">
+          {{ branding.raisonSociale }}
+        </p>
+      </div>
       <template v-for="(section, sectionIndex) in navSections" :key="section.id">
         <div v-if="section.showDivider" class="drawer-divider" aria-hidden="true" />
         <div
@@ -145,6 +162,16 @@ const { locale, setLocale, t } = useI18n()
 const { theme, toggleTheme } = useTheme()
 const route = useRoute()
 const { branding, fetchBranding } = useTenantBranding()
+const tenantLogoFailed = ref(false)
+watch(
+  () => branding.value.logoUrl,
+  () => {
+    tenantLogoFailed.value = false
+  }
+)
+const showCompanyCaption = computed(
+  () => !!branding.value.raisonSociale && (!branding.value.logoUrl || tenantLogoFailed.value)
+)
 const { fetchSession, isAdmin, isPlatformAdmin } = useAuth()
 const { can } = usePermissions()
 const { fetchEntitlements, hasModule, isPastDue } = useEntitlements()
@@ -377,15 +404,19 @@ const logout = async () => {
 }
 
 .sidebar__brand {
-  padding-bottom: var(--kore-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+  padding: var(--kore-space-xs) 0 var(--kore-space-md);
   border-bottom: 1px solid var(--kore-border);
 }
 
 .sidebar__company {
-  margin: var(--kore-space-sm) 0 0;
+  margin: 0;
   font-size: var(--kore-text-caption);
   font-weight: 500;
   color: var(--kore-text-muted);
+  line-height: 1.3;
 }
 
 .sidebar__nav {
@@ -548,8 +579,15 @@ const logout = async () => {
   color: var(--kore-text);
 }
 
+.drawer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+  margin-bottom: var(--kore-space-lg);
+}
+
 .drawer-title {
-  margin: 0 0 var(--kore-space-lg);
+  margin: 0;
   font-size: var(--kore-text-small);
   font-weight: 600;
   color: var(--kore-text-muted);

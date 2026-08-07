@@ -113,8 +113,15 @@
         <h3>{{ $t('org.preview_title') }}</h3>
         <p class="org-preview__hint">{{ $t('org.preview_hint') }}</p>
         <div class="org-preview__frame">
-          <TenantLogo :logo-url="previewUrl" :alt="form.raisonSociale || 'Société'" size="lg" />
-          <p class="org-preview__name">{{ form.raisonSociale || '—' }}</p>
+          <TenantLogo
+            :logo-url="previewUrl"
+            :alt="form.raisonSociale || 'Société'"
+            size="lg"
+            @error="previewLogoFailed = true"
+          />
+          <p v-if="showPreviewCaption" class="org-preview__name">
+            {{ form.raisonSociale || '—' }}
+          </p>
         </div>
       </AppCard>
     </div>
@@ -153,6 +160,13 @@ const form = reactive({
   logoFile: null as File | null
 })
 const previewUrl = ref<string | null>(null)
+const previewLogoFailed = ref(false)
+watch(previewUrl, () => {
+  previewLogoFailed.value = false
+})
+const showPreviewCaption = computed(
+  () => !previewUrl.value || previewLogoFailed.value
+)
 const saving = ref(false)
 const message = ref('')
 const isError = ref(false)
