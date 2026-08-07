@@ -135,3 +135,7 @@ type invoicePublisherStub struct{}
 func (invoicePublisherStub) PublishCRAValidationDraft(context.Context, ports.ValidationInvoiceCommand) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
+
+func (invoicePublisherStub) TimesheetAlreadyInvoiced(context.Context, kernel.TenantID, uuid.UUID) (bool, error) {
+	return false, nil
+}

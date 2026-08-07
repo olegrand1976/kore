@@ -96,12 +96,30 @@ echo "$CREATE_INV" | jq -e '.data.created == 0' >/dev/null
 echo "$CREATE_INV" | jq -e '.data.outcomes[0].reason == "timesheet_not_found" or .data.outcomes[0].Reason == "timesheet_not_found"' >/dev/null
 echo "$CREATE_INV" | jq -e '.data.outcomes[0].timesheetId != null or .data.outcomes[0].TimesheetID != null' >/dev/null
 
+# preview-invoices : dry-run ; CRA inconnu → blockers timesheet_not_found
+PREVIEW_INV=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/prestations/preview-invoices" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"timesheetIds":["00000000-0000-0000-0000-000000000001"]}')
+echo "$PREVIEW_INV" | jq -e '.data.previews | length == 1' >/dev/null
+echo "$PREVIEW_INV" | jq -e '.data.previews[0].ok == false' >/dev/null
+echo "$PREVIEW_INV" | jq -e '
+  (.data.previews[0].blockers // []) | map(.) | index("timesheet_not_found") != null
+' >/dev/null
+
 # Manager (Responsable) : même endpoint create-invoices (RBAC invoicing E)
 CREATE_INV_MGR=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/prestations/create-invoices" \
   -H "Authorization: Bearer $MGR_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"timesheetIds":["00000000-0000-0000-0000-000000000001"]}')
 echo "$CREATE_INV_MGR" | jq -e '.data.created == 0' >/dev/null
+
+# Manager : preview-invoices (RBAC invoicing L + cra V)
+PREVIEW_INV_MGR=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/prestations/preview-invoices" \
+  -H "Authorization: Bearer $MGR_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"timesheetIds":["00000000-0000-0000-0000-000000000001"]}')
+echo "$PREVIEW_INV_MGR" | jq -e '.data.previews[0].ok == false' >/dev/null
 
 # Toggle off → 403 sur liste factures, puis restore (préserver channelsEnabled)
 RS=$(curl -sf "http://localhost:${API_PORT}/api/v1/request-settings" -H "Authorization: Bearer $TOKEN")
@@ -119,5 +137,9 @@ curl -sf -X PUT "http://localhost:${API_PORT}/api/v1/admin/request-settings" \
   -H 'Content-Type: application/json' \
   -d "{\"channelsEnabled\":$RS_CHANNELS,\"guidesEnabled\":$RS_GUIDES,\"invoicingEnabled\":true}" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/invoices" -H "Authorization: Bearer $TOKEN" >/dev/null
+
+# Proforma public : token invalide → 404
+PROFORMA_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${API_PORT}/api/v1/public/proforma/invalid-token")
+test "$PROFORMA_CODE" = "404"
 
 echo "Smoke test OK"

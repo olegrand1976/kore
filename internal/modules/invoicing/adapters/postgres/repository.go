@@ -27,18 +27,27 @@ func (r *Repository) SaveInvoice(ctx context.Context, inv domain.Invoice) error 
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO invoicing.invoices (
 			id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
+			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
+			proforma_validated_at, invoice_sent_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
 			total_amount = EXCLUDED.total_amount,
 			tax_amount = EXCLUDED.tax_amount,
 			pdp_receipt_id = EXCLUDED.pdp_receipt_id,
 			transmitted_at = EXCLUDED.transmitted_at,
-			source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id)
+			source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id),
+			proforma_token_hash = EXCLUDED.proforma_token_hash,
+			proforma_recipient_email = EXCLUDED.proforma_recipient_email,
+			proforma_sent_at = EXCLUDED.proforma_sent_at,
+			proforma_expires_at = EXCLUDED.proforma_expires_at,
+			proforma_validated_at = EXCLUDED.proforma_validated_at,
+			invoice_sent_at = EXCLUDED.invoice_sent_at
 	`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
 		inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
-		inv.SourceTimesheetID)
+		inv.SourceTimesheetID, nullIfEmpty(inv.ProformaTokenHash), nullIfEmpty(inv.ProformaRecipientEmail),
+		inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.InvoiceSentAt)
 	return mapInvoiceSaveError(err)
 }
 
@@ -58,15 +67,29 @@ func mapInvoiceSaveError(err error) error {
 func (r *Repository) GetInvoice(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error) {
 	return r.scanInvoice(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
+			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
+			proforma_validated_at, invoice_sent_at
 		FROM invoicing.invoices WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
+}
+
+func (r *Repository) GetInvoiceByProformaTokenHash(ctx context.Context, tokenHash string) (domain.Invoice, error) {
+	return r.scanInvoice(r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, client_id, type, status, currency,
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
+			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
+			proforma_validated_at, invoice_sent_at
+		FROM invoicing.invoices WHERE proforma_token_hash = $1
+	`, tokenHash))
 }
 
 func (r *Repository) ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, client_id, type, status, currency,
-			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
+			total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
+			proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
+			proforma_validated_at, invoice_sent_at
 		FROM invoicing.invoices WHERE tenant_id = $1 ORDER BY created_at DESC
 	`, tenant.UUID())
 	if err != nil {
@@ -99,18 +122,27 @@ func (r *Repository) SaveInvoiceWithLines(ctx context.Context, inv domain.Invoic
 		_, err := tx.Exec(ctx, `
 			INSERT INTO invoicing.invoices (
 				id, tenant_id, client_id, type, status, currency,
-				total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+				total_amount, tax_amount, pdp_receipt_id, transmitted_at, created_at, source_timesheet_id,
+				proforma_token_hash, proforma_recipient_email, proforma_sent_at, proforma_expires_at,
+				proforma_validated_at, invoice_sent_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 			ON CONFLICT (id) DO UPDATE SET
 				status = EXCLUDED.status,
 				total_amount = EXCLUDED.total_amount,
 				tax_amount = EXCLUDED.tax_amount,
 				pdp_receipt_id = EXCLUDED.pdp_receipt_id,
 				transmitted_at = EXCLUDED.transmitted_at,
-				source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id)
+				source_timesheet_id = COALESCE(EXCLUDED.source_timesheet_id, invoicing.invoices.source_timesheet_id),
+				proforma_token_hash = EXCLUDED.proforma_token_hash,
+				proforma_recipient_email = EXCLUDED.proforma_recipient_email,
+				proforma_sent_at = EXCLUDED.proforma_sent_at,
+				proforma_expires_at = EXCLUDED.proforma_expires_at,
+				proforma_validated_at = EXCLUDED.proforma_validated_at,
+				invoice_sent_at = EXCLUDED.invoice_sent_at
 		`, inv.ID, inv.TenantID.UUID(), inv.ClientID, string(inv.Type), string(inv.Status),
 			inv.Currency, inv.TotalAmount, inv.TaxAmount, inv.PDPReceiptID, inv.TransmittedAt, inv.CreatedAt,
-			inv.SourceTimesheetID)
+			inv.SourceTimesheetID, nullIfEmpty(inv.ProformaTokenHash), nullIfEmpty(inv.ProformaRecipientEmail),
+			inv.ProformaSentAt, inv.ProformaExpiresAt, inv.ProformaValidatedAt, inv.InvoiceSentAt)
 		if err != nil {
 			return mapInvoiceSaveError(err)
 		}
@@ -187,10 +219,11 @@ func (r *Repository) SumNonVirtualInvoicesInPeriod(ctx context.Context, tenant k
 		       COALESCE(NULLIF(MAX(currency), ''), 'EUR')
 		FROM invoicing.invoices
 		WHERE tenant_id = $1
-		  AND status <> $2
-		  AND created_at >= $3
-		  AND created_at < ($4::timestamptz + INTERVAL '1 day')
-	`, tenant.UUID(), string(domain.InvoiceStatusVirtuelle), period.Start, period.End).Scan(&total, &count, &currency)
+		  AND status NOT IN ($2, $3)
+		  AND created_at >= $4
+		  AND created_at < ($5::timestamptz + INTERVAL '1 day')
+	`, tenant.UUID(), string(domain.InvoiceStatusVirtuelle), string(domain.InvoiceStatusProforma),
+		period.Start, period.End).Scan(&total, &count, &currency)
 	return total, count, currency, err
 }
 
@@ -198,8 +231,10 @@ func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	var inv domain.Invoice
 	var tenantID uuid.UUID
 	var invType, status string
+	var tokenHash, recipient *string
 	err := row.Scan(&inv.ID, &tenantID, &inv.ClientID, &invType, &status, &inv.Currency,
-		&inv.TotalAmount, &inv.TaxAmount, &inv.PDPReceiptID, &inv.TransmittedAt, &inv.CreatedAt, &inv.SourceTimesheetID)
+		&inv.TotalAmount, &inv.TaxAmount, &inv.PDPReceiptID, &inv.TransmittedAt, &inv.CreatedAt, &inv.SourceTimesheetID,
+		&tokenHash, &recipient, &inv.ProformaSentAt, &inv.ProformaExpiresAt, &inv.ProformaValidatedAt, &inv.InvoiceSentAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Invoice{}, domain.ErrInvoiceNotFound
@@ -209,7 +244,20 @@ func (r *Repository) scanInvoice(row pgx.Row) (domain.Invoice, error) {
 	inv.TenantID = kernel.NewTenantID(tenantID)
 	inv.Type = domain.InvoiceType(invType)
 	inv.Status = domain.InvoiceStatus(status)
+	if tokenHash != nil {
+		inv.ProformaTokenHash = *tokenHash
+	}
+	if recipient != nil {
+		inv.ProformaRecipientEmail = *recipient
+	}
 	return inv, nil
+}
+
+func nullIfEmpty(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
 }
 
 var _ ports.InvoicingRepository = (*Repository)(nil)

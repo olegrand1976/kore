@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 06/08/2026 (adresse société structurée)
+> **Dernière mise à jour doc** : 07/08/2026 (wizard CRA→facture + proforma client)
 
 ---
 
@@ -1018,13 +1018,19 @@ Facturation métier e-invoicing (PDP/PA).
 | `tenant_id` | UUID | NOT NULL |
 | `client_id` | UUID | NOT NULL |
 | `type` | TEXT | NOT NULL |
-| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` |
+| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` — valeurs : `virtuelle`, `preparee`, `proforma`, `transmise`, `acceptee`, `refusee`, `encaissee`, `annulee` |
 | `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `total_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `tax_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `pdp_receipt_id` | TEXT | |
 | `transmitted_at` | TIMESTAMPTZ | |
 | `source_timesheet_id` | UUID | nullable — CRA source (migration `0002`) ; unique partiel `(tenant_id, source_timesheet_id)` |
+| `proforma_token_hash` | TEXT | nullable — hash SHA-256 du magic link (migration `0003`) ; index unique partiel `idx_invoicing_invoices_proforma_token` si non vide |
+| `proforma_recipient_email` | TEXT | nullable — destinataire de la proforma |
+| `proforma_sent_at` | TIMESTAMPTZ | nullable |
+| `proforma_expires_at` | TIMESTAMPTZ | nullable — TTL 14 jours |
+| `proforma_validated_at` | TIMESTAMPTZ | nullable |
+| `invoice_sent_at` | TIMESTAMPTZ | nullable — email facture après validation client |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `invoicing.invoice_lines`

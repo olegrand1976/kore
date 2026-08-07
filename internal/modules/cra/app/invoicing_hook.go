@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -13,7 +14,113 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
+const defaultInvoiceTaxRate = 20.0
+
+// hardInvoiceBlockers cannot be cleared via create-invoices overrides (fail-closed billing rules).
+var hardInvoiceBlockers = map[string]struct{}{
+	"already_exists":              {},
+	"already_exists_check_failed": {},
+	"invoicing_not_configured":    {},
+	"invoicing_disabled":          {},
+	"billing_mode_disabled":       {},
+	"billing_mode_forfait":        {},
+	"billing_mode_unresolved":     {},
+	"billable_hours_error":        {},
+	"not_definitive":              {},
+	"timesheet_not_found":         {},
+}
+
+func firstHardInvoiceBlocker(blockers []string) string {
+	for _, b := range blockers {
+		if _, ok := hardInvoiceBlockers[b]; ok {
+			return b
+		}
+	}
+	return ""
+}
+
+// buildInvoiceDraftPreview resolves CRA→invoice fields without persisting.
+func (s *Service) buildInvoiceDraftPreview(ctx context.Context, ts domain.Timesheet) ports.InvoiceDraftPreview {
+	preview := ports.InvoiceDraftPreview{TimesheetID: ts.ID}
+	addBlocker := func(reason string) {
+		preview.OK = false
+		preview.Blockers = append(preview.Blockers, reason)
+	}
+
+	if s.invoices == nil {
+		addBlocker("invoicing_not_configured")
+		return preview
+	}
+
+	if exists, err := s.invoices.TimesheetAlreadyInvoiced(ctx, ts.TenantID, ts.ID); err != nil {
+		if errors.Is(err, invoicingdomain.ErrInvoicingDisabled) {
+			addBlocker("invoicing_disabled")
+		} else {
+			addBlocker("already_exists_check_failed")
+		}
+		return preview
+	} else if exists {
+		addBlocker("already_exists")
+		return preview
+	}
+
+	clientID := s.resolveClientID(ctx, ts)
+	if clientID == nil || *clientID == uuid.Nil {
+		addBlocker("client_unresolved")
+	} else {
+		preview.ClientID = clientID
+	}
+
+	billableMinutes, skipReason, err := s.invoiceableBillableMinutes(ctx, ts)
+	if err != nil {
+		addBlocker("billable_hours_error")
+	} else if skipReason != "" {
+		addBlocker(skipReason)
+	} else if billableMinutes <= 0 {
+		addBlocker("no_billable_hours")
+	} else {
+		preview.BillableHours = float64(billableMinutes) / 60
+	}
+
+	unitPrice, currency := s.resolveSellUnitPriceCents(ctx, ts)
+	preview.UnitPriceCents = unitPrice
+	preview.Currency = currency
+	if unitPrice <= 0 {
+		addBlocker("zero_unit_price")
+	}
+
+	userLabel := userLabelForTimesheet(ctx, s, ts)
+	missionLabel := ts.CommercialInfo.Mission
+	preview.UserLabel = userLabel
+	preview.MissionLabel = missionLabel
+	preview.TaxRate = defaultInvoiceTaxRate
+	preview.Description = defaultCRAInvoiceDescription(ts.ID, ts.Month, missionLabel, userLabel)
+
+	preview.OK = len(preview.Blockers) == 0
+	return preview
+}
+
+func defaultCRAInvoiceDescription(timesheetID uuid.UUID, month domain.Month, missionLabel, userLabel string) string {
+	mission := missionLabel
+	if mission == "" {
+		mission = "Prestation"
+	}
+	if userLabel != "" {
+		mission = fmt.Sprintf("%s — %s", mission, userLabel)
+	}
+	return fmt.Sprintf("CRA/%s/%s %s", timesheetID, month, mission)
+}
+
 func (s *Service) tryPublishValidationInvoice(ctx context.Context, ts domain.Timesheet) ports.InvoiceDraftOutcome {
+	return s.publishFromPreview(ctx, ts, s.buildInvoiceDraftPreview(ctx, ts), nil)
+}
+
+func (s *Service) publishFromPreview(
+	ctx context.Context,
+	ts domain.Timesheet,
+	preview ports.InvoiceDraftPreview,
+	item *ports.CreateInvoiceFromTimesheetItem,
+) ports.InvoiceDraftOutcome {
 	tsID := ts.ID
 	withTS := func(o ports.InvoiceDraftOutcome) ports.InvoiceDraftOutcome {
 		o.TimesheetID = &tsID
@@ -25,46 +132,87 @@ func (s *Service) tryPublishValidationInvoice(ctx context.Context, ts domain.Tim
 			Reason: "invoicing_not_configured",
 		})
 	}
-	clientID := s.resolveClientID(ctx, ts)
-	if clientID == nil || *clientID == uuid.Nil {
-		return withTS(ports.InvoiceDraftOutcome{
-			Status: ports.InvoiceDraftSkipped,
-			Reason: "client_unresolved",
-		})
-	}
-	billableMinutes, skipReason, err := s.invoiceableBillableMinutes(ctx, ts)
-	if err != nil {
-		return withTS(ports.InvoiceDraftOutcome{
-			Status: ports.InvoiceDraftSkipped,
-			Reason: "billable_hours_error",
-		})
-	}
-	if skipReason != "" {
-		return withTS(ports.InvoiceDraftOutcome{
-			Status: ports.InvoiceDraftSkipped,
-			Reason: skipReason,
-		})
-	}
-	if billableMinutes <= 0 {
-		return withTS(ports.InvoiceDraftOutcome{
-			Status: ports.InvoiceDraftSkipped,
-			Reason: "no_billable_hours",
-		})
-	}
-	userLabel := userLabelForTimesheet(ctx, s, ts)
-	unitPrice, currency := s.resolveSellUnitPriceCents(ctx, ts)
-	invoiceID, err := s.invoices.PublishCRAValidationDraft(ctx, ports.ValidationInvoiceCommand{
+
+	cmd := ports.ValidationInvoiceCommand{
 		TenantID:       ts.TenantID,
 		TimesheetID:    ts.ID,
-		ClientID:       *clientID,
 		Month:          ts.Month,
-		BillableHours:  float64(billableMinutes) / 60,
-		MissionLabel:   ts.CommercialInfo.Mission,
-		UserLabel:      userLabel,
-		Currency:       currency,
-		UnitPriceCents: unitPrice,
-		TaxRate:        20,
-	})
+		BillableHours:  preview.BillableHours,
+		MissionLabel:   preview.MissionLabel,
+		UserLabel:      preview.UserLabel,
+		Currency:       preview.Currency,
+		UnitPriceCents: preview.UnitPriceCents,
+		TaxRate:        preview.TaxRate,
+		Description:    preview.Description,
+	}
+	if preview.ClientID != nil {
+		cmd.ClientID = *preview.ClientID
+	}
+
+	if item != nil {
+		if item.ClientID != nil {
+			cmd.ClientID = *item.ClientID
+		}
+		if item.BillableHours != nil {
+			cmd.BillableHours = *item.BillableHours
+		}
+		if item.UnitPriceCents != nil {
+			cmd.UnitPriceCents = *item.UnitPriceCents
+		}
+		if item.TaxRate != nil {
+			cmd.TaxRate = *item.TaxRate
+		}
+		if item.Currency != nil && *item.Currency != "" {
+			cmd.Currency = *item.Currency
+		}
+		if item.Description != nil {
+			cmd.Description = *item.Description
+		}
+		if item.MissionLabel != nil {
+			cmd.MissionLabel = *item.MissionLabel
+		}
+	}
+
+	// Hard blockers always win (billing mode, already invoiced, …) — overrides cannot clear them.
+	if hard := firstHardInvoiceBlocker(preview.Blockers); hard != "" {
+		status := ports.InvoiceDraftSkipped
+		if hard == "invoicing_not_configured" {
+			status = ports.InvoiceDraftUnavailable
+		}
+		return withTS(ports.InvoiceDraftOutcome{Status: status, Reason: hard})
+	}
+
+	// Auto path: require a clean preview. Override path: validate essentials after merge.
+	if item == nil {
+		if !preview.OK {
+			reason := "preview_blocked"
+			if len(preview.Blockers) > 0 {
+				reason = preview.Blockers[0]
+			}
+			return withTS(ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: reason})
+		}
+	} else {
+		if cmd.ClientID == uuid.Nil {
+			return withTS(ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "client_unresolved"})
+		}
+		if cmd.BillableHours <= 0 {
+			return withTS(ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "no_billable_hours"})
+		}
+		if cmd.UnitPriceCents <= 0 {
+			return withTS(ports.InvoiceDraftOutcome{Status: ports.InvoiceDraftSkipped, Reason: "zero_unit_price"})
+		}
+		if cmd.TaxRate <= 0 {
+			cmd.TaxRate = defaultInvoiceTaxRate
+		}
+		if cmd.Currency == "" {
+			cmd.Currency = "EUR"
+		}
+		if cmd.Description == "" {
+			cmd.Description = defaultCRAInvoiceDescription(ts.ID, ts.Month, cmd.MissionLabel, cmd.UserLabel)
+		}
+	}
+
+	invoiceID, err := s.invoices.PublishCRAValidationDraft(ctx, cmd)
 	if err != nil {
 		return withTS(mapPublishError(err))
 	}
@@ -98,10 +246,18 @@ func mapPublishError(err error) ports.InvoiceDraftOutcome {
 }
 
 func (s *Service) CreateInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]ports.InvoiceDraftOutcome, error) {
-	out := make([]ports.InvoiceDraftOutcome, 0, len(ids))
+	items := make([]ports.CreateInvoiceFromTimesheetItem, 0, len(ids))
 	for _, id := range ids {
-		idCopy := id
-		ts, err := s.repo.GetByID(ctx, tenant, id)
+		items = append(items, ports.CreateInvoiceFromTimesheetItem{TimesheetID: id})
+	}
+	return s.CreateInvoicesFromTimesheetItems(ctx, tenant, items)
+}
+
+func (s *Service) CreateInvoicesFromTimesheetItems(ctx context.Context, tenant kernel.TenantID, items []ports.CreateInvoiceFromTimesheetItem) ([]ports.InvoiceDraftOutcome, error) {
+	out := make([]ports.InvoiceDraftOutcome, 0, len(items))
+	for _, item := range items {
+		idCopy := item.TimesheetID
+		ts, err := s.repo.GetByID(ctx, tenant, item.TimesheetID)
 		if err != nil {
 			out = append(out, ports.InvoiceDraftOutcome{
 				Status:      ports.InvoiceDraftSkipped,
@@ -118,7 +274,45 @@ func (s *Service) CreateInvoicesFromTimesheets(ctx context.Context, tenant kerne
 			})
 			continue
 		}
-		out = append(out, s.tryPublishValidationInvoice(ctx, ts))
+		hasOverride := item.ClientID != nil ||
+			item.BillableHours != nil ||
+			item.UnitPriceCents != nil ||
+			item.TaxRate != nil ||
+			item.Currency != nil ||
+			item.Description != nil ||
+			item.MissionLabel != nil
+		preview := s.buildInvoiceDraftPreview(ctx, ts)
+		if hasOverride {
+			itemCopy := item
+			out = append(out, s.publishFromPreview(ctx, ts, preview, &itemCopy))
+		} else {
+			out = append(out, s.publishFromPreview(ctx, ts, preview, nil))
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) PreviewInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]ports.InvoiceDraftPreview, error) {
+	out := make([]ports.InvoiceDraftPreview, 0, len(ids))
+	for _, id := range ids {
+		ts, err := s.repo.GetByID(ctx, tenant, id)
+		if err != nil {
+			out = append(out, ports.InvoiceDraftPreview{
+				TimesheetID: id,
+				OK:          false,
+				Blockers:    []string{"timesheet_not_found"},
+			})
+			continue
+		}
+		if ts.Status != domain.StatusDefinitif {
+			out = append(out, ports.InvoiceDraftPreview{
+				TimesheetID: id,
+				OK:          false,
+				Blockers:    []string{"not_definitive"},
+			})
+			continue
+		}
+		out = append(out, s.buildInvoiceDraftPreview(ctx, ts))
 	}
 	return out, nil
 }

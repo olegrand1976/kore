@@ -824,6 +824,41 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                timesheetIds:
+                  type: array
+                  maxItems: 100
+                  items: { type: string, format: uuid }
+                  description: Identifiants CRA (path auto, sans overrides)
+                items:
+                  type: array
+                  maxItems: 100
+                  description: CRA avec overrides optionnels (client, heures, PU, TVA, description)
+                  items:
+                    type: object
+                    required: [timesheetId]
+                    properties:
+                      timesheetId: { type: string, format: uuid }
+                      clientId: { type: string, format: uuid }
+                      billableHours: { type: number }
+                      unitPriceCents: { type: integer }
+                      taxRate: { type: number }
+                      currency: { type: string }
+                      description: { type: string }
+                      missionLabel: { type: string }
+      responses:
+        "200":
+          description: Outcomes de création (created / skipped + raisons)
+  /prestations/preview-invoices:
+    post:
+      summary: Preview dry-run CRA→facture (sans persistance)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
               required: [timesheetIds]
               properties:
                 timesheetIds:
@@ -832,7 +867,7 @@ paths:
                   items: { type: string, format: uuid }
       responses:
         "200":
-          description: Outcomes de création (created / skipped + raisons)
+          description: Previews par CRA (ok / blockers + champs préremplis)
   /leave-requests:
     get:
       summary: Liste congés
@@ -1490,6 +1525,37 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: OK }
+  /invoices/{id}/emit-proforma:
+    post:
+      summary: Émettre une proforma par email (lien de validation client)
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipientEmail: { type: string, format: email }
+      responses:
+        "200": { description: Proforma émise }
+        "422": { description: Email client manquant ou état invalide }
+  /public/proforma/{token}:
+    get:
+      summary: Aperçu public d'une proforma (magic link)
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Token invalide }
+        "410": { description: Token expiré }
+  /public/proforma/{token}/validate:
+    post:
+      summary: Valider une proforma (convertit en facture et envoie l'email client)
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Validée }
+        "404": { description: Token invalide }
+        "410": { description: Token expiré }
   /invoices/{id}/credit-note:
     post:
       summary: Émettre avoir

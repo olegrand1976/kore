@@ -13,7 +13,7 @@
           variant="secondary"
           size="sm"
           :disabled="creatingInvoices || !definitiveIds.length"
-          @click="createInvoices"
+          @click="openCreateInvoicesConfirm"
         >
           {{ $t('prestations.create_invoices') }}
         </AppButton>
@@ -43,6 +43,16 @@
     />
 
     <p v-if="actionMsg" class="flash" :class="{ 'flash--error': actionError }" role="status">{{ actionMsg }}</p>
+    <div v-if="createdInvoiceIds.length" class="created-invoices" role="status">
+      <span>{{ $t('prestations.create_invoices_created_links') }}</span>
+      <ul>
+        <li v-for="id in createdInvoiceIds" :key="id">
+          <NuxtLink :to="`/facturation/${id}`">
+            {{ $t('prestations.create_invoices_open') }} · {{ id.slice(0, 8) }}
+          </NuxtLink>
+        </li>
+      </ul>
+    </div>
 
     <AppCard v-if="pending" padding="lg">
       <CraSkeleton />
@@ -189,6 +199,32 @@
         </div>
       </form>
     </AppModal>
+
+    <AppModal
+      v-model:open="createInvoicesOpen"
+      width="sm"
+      :title-id="createInvoicesTitleId"
+      :aria-label="$t('prestations.create_invoices_confirm_title')"
+    >
+      <div class="create-invoices-confirm">
+        <h2 :id="createInvoicesTitleId">{{ $t('prestations.create_invoices_confirm_title') }}</h2>
+        <p>{{ $t('prestations.create_invoices_confirm', { n: definitiveIds.length }) }}</p>
+        <div class="create-invoices-confirm__actions">
+          <AppButton variant="ghost" size="sm" type="button" :disabled="creatingInvoices" @click="createInvoicesOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton
+            variant="primary"
+            size="sm"
+            type="button"
+            :disabled="creatingInvoices"
+            @click="createInvoices"
+          >
+            {{ $t('prestations.create_invoices_confirm_submit') }}
+          </AppButton>
+        </div>
+      </div>
+    </AppModal>
   </div>
 </template>
 
@@ -255,6 +291,9 @@ type CreateInvoicesResponse = {
 const month = ref(new Date().toISOString().slice(0, 7))
 const validating = ref(false)
 const creatingInvoices = ref(false)
+const createInvoicesOpen = ref(false)
+const createInvoicesTitleId = 'prestations-create-invoices-title'
+const createdInvoiceIds = ref<string[]>([])
 const rowActionId = ref('')
 const actionMsg = ref('')
 const actionError = ref(false)
@@ -469,16 +508,22 @@ const validateAll = async () => {
   }
 }
 
+const openCreateInvoicesConfirm = () => {
+  if (!definitiveIds.value.length) {
+    setActionMsg(t('prestations.create_invoices_empty'), true)
+    return
+  }
+  createInvoicesOpen.value = true
+}
+
 const createInvoices = async () => {
   if (!definitiveIds.value.length) {
     setActionMsg(t('prestations.create_invoices_empty'), true)
     return
   }
-  if (!window.confirm(t('prestations.create_invoices_confirm', { n: definitiveIds.value.length }))) {
-    return
-  }
   creatingInvoices.value = true
   setActionMsg('')
+  createdInvoiceIds.value = []
   try {
     const res = await apiFetch<CreateInvoicesResponse>('/api/prestations/create-invoices', {
       method: 'POST',
@@ -488,6 +533,9 @@ const createInvoices = async () => {
     const outcomes = res?.data?.outcomes ?? []
     const skippedOutcomes = outcomes.filter((o) => o.status !== 'created')
     const skipped = skippedOutcomes.length
+    createdInvoiceIds.value = outcomes
+      .filter((o) => o.status === 'created' && o.invoiceId)
+      .map((o) => o.invoiceId as string)
     let msg = t('prestations.create_invoices_result', { created, skipped })
     if (skippedOutcomes.length) {
       const details = skippedOutcomes
@@ -502,6 +550,7 @@ const createInvoices = async () => {
       msg = `${msg} ${t('prestations.create_invoices_skips', { details })}`
     }
     setActionMsg(msg, created === 0)
+    createInvoicesOpen.value = false
   } catch {
     setActionMsg(t('prestations.action_error'), true)
   } finally {
@@ -630,6 +679,39 @@ const confirmReject = async () => {
 
 .flash--error {
   color: var(--kore-error);
+}
+
+.created-invoices {
+  margin: 0 0 var(--kore-space-md);
+  font-size: var(--kore-text-small);
+}
+
+.created-invoices ul {
+  margin: var(--kore-space-xs) 0 0;
+  padding-left: 1.25rem;
+}
+
+.create-invoices-confirm {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.create-invoices-confirm h2 {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+}
+
+.create-invoices-confirm p {
+  margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+}
+
+.create-invoices-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
 }
 
 .prestations-kanban-card {

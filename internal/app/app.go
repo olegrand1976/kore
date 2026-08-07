@@ -48,6 +48,8 @@ import (
 	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	integrationsdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
+	invoicingnotif "github.com/kore/kore/internal/modules/invoicing/adapters/notifications"
+	invoicingorg "github.com/kore/kore/internal/modules/invoicing/adapters/org"
 	invoicingpostgres "github.com/kore/kore/internal/modules/invoicing/adapters/postgres"
 	invoicingapp "github.com/kore/kore/internal/modules/invoicing/app"
 	invoicingdomain "github.com/kore/kore/internal/modules/invoicing/domain"
@@ -211,6 +213,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		invoicingapp.WithPDPGateway(invoicingapp.NewPDPGateway(cfg)),
 		invoicingapp.WithMissionReader(ssiicra.NewMissionReader(ssiiRepo, craService)),
 		invoicingapp.WithEnabledReader(requestSettingsService),
+		invoicingapp.WithClientContactReader(invoicingorg.NewClientContactReader(clientService)),
+		invoicingapp.WithMailSender(invoicingnotif.NewMailSender(notifService)),
 	)
 	craService.WithInvoicePublisher(crainvoicing.NewDraftPublisher(invoicingService))
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)

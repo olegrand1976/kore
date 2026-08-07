@@ -21,6 +21,39 @@ test.describe('facturation', () => {
     await expectListOrEmpty(page, /aucune facture|no invoice/i)
   })
 
+  test('empty / create opens Depuis CRA wizard with preview step', async ({ page }) => {
+    await page.goto('/facturation')
+    await expect(page.getByRole('heading', { name: /facturation|invoicing/i })).toBeVisible({
+      timeout: 20_000
+    })
+
+    const emptyCta = page.getByRole('button', { name: /depuis un cra|from a timesheet/i })
+    if (await emptyCta.isVisible().catch(() => false)) {
+      await emptyCta.click()
+    } else {
+      await page.getByRole('button', { name: /nouvelle facture|new invoice/i }).click()
+    }
+
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 })
+    await expect(
+      page.getByRole('heading', { name: /facture depuis cra|invoice from timesheet/i })
+    ).toBeVisible()
+    await expect(page.getByText(/étape 1|step 1/i)).toBeVisible()
+
+    // Month picker is present; selecting a CRA (if any) leads to preview fields.
+    await expect(page.locator('input[type="month"]')).toBeVisible()
+    const firstCheck = page.locator('.wizard__check input[type="checkbox"]').first()
+    if (await firstCheck.isVisible().catch(() => false)) {
+      await firstCheck.check()
+      await page.getByRole('button', { name: /continuer|continue/i }).click()
+      await expect(page.getByText(/étape 2|step 2/i)).toBeVisible({ timeout: 15_000 })
+      // Preview shows either editable fields or blockers — both prove dry-run ran.
+      await expect(
+        page.locator('.wizard__draft').or(page.getByText(/bloqué|blocked|client|heures|hours/i))
+      ).toBeVisible({ timeout: 10_000 })
+    }
+  })
+
   test('prestations shows Créer factures when invoicing is enabled', async ({ page }) => {
     await page.goto('/prestations')
     await expect(

@@ -1,7 +1,7 @@
 # Guide d'accès utilisateurs (RBAC)
 
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-06  
+> **Dernière mise à jour doc** : 2026-08-07  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -51,7 +51,10 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.
-- CRA définitifs → brouillons facture (validation définitive CRA ou Prestations → **Créer factures**, droits Facturation écriture **et** CRA validation).
+- CRA définitifs → brouillons facture :
+  - **Facturation → Depuis un CRA** (wizard preview prérempli, droits Facturation écriture **et** CRA validation) ;
+  - validation définitive CRA ou Prestations → **Créer factures** (mêmes droits).
+- Proforma : émission email client avec lien de validation publique ; à validation, conversion en facture préparée + envoi auto de la facture (PDP reste manuel).
 - Heures facturées bornées à la mission (ou app `temps_passe` dominante) — pas d’agrégat multi-clients.
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`
@@ -65,13 +68,13 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 ### Chef d'équipe
 
 - Validation CRA et TMA ; congés en lecture ; budget L/E ; reporting L.
-- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
+- Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Compte seed : `CHE_chefdev` / `Chef123!`
 
 ### Responsable de service
 
 - Validation CRA, TMA, congés et budget ; reporting / org en lecture.
-- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
+- Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Pas d'accès aux paramètres admin (réservé Administrateur).
 - Compte seed : `MGR_manager` / `Manager123!`
 

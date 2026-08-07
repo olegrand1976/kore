@@ -18,6 +18,9 @@ type service struct {
 	pdp           ports.PDPGateway
 	missionReader ssiiports.MissionReader
 	enabledReader kernel.InvoicingEnabledReader
+	clientReader  ports.ClientContactReader
+	mailer        ports.MailSender
+	clock         func() time.Time
 }
 
 type Option func(*service)
@@ -40,12 +43,37 @@ func WithEnabledReader(reader kernel.InvoicingEnabledReader) Option {
 	}
 }
 
+func WithClientContactReader(reader ports.ClientContactReader) Option {
+	return func(s *service) {
+		s.clientReader = reader
+	}
+}
+
+func WithMailSender(mailer ports.MailSender) Option {
+	return func(s *service) {
+		s.mailer = mailer
+	}
+}
+
+func WithClock(clock func() time.Time) Option {
+	return func(s *service) {
+		s.clock = clock
+	}
+}
+
 func NewService(repo ports.InvoicingRepository, opts ...Option) ports.InvoicingService {
-	s := &service{repo: repo}
+	s := &service{repo: repo, clock: time.Now}
 	for _, opt := range opts {
 		opt(s)
 	}
 	return s
+}
+
+func (s *service) now() time.Time {
+	if s.clock == nil {
+		return time.Now().UTC()
+	}
+	return s.clock().UTC()
 }
 
 func (s *service) requireEnabled(ctx context.Context, tenant kernel.TenantID) error {

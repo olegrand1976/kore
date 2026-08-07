@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/invoicing/domain"
 	"github.com/kore/kore/internal/modules/invoicing/ports"
+	"github.com/kore/kore/pkg/kernel"
 )
 
 const defaultCRATaxRate = 20.0
@@ -36,7 +37,10 @@ func (s *service) CreateFromCRAValidation(ctx context.Context, cmd ports.CreateF
 	if user != "" {
 		mission = fmt.Sprintf("%s — %s", mission, user)
 	}
-	desc := fmt.Sprintf("CRA/%s/%s %s", cmd.TimesheetID, cmd.Month, mission)
+	desc := cmd.Description
+	if desc == "" {
+		desc = fmt.Sprintf("CRA/%s/%s %s", cmd.TimesheetID, cmd.Month, mission)
+	}
 	taxRate := cmd.TaxRate
 	if taxRate <= 0 {
 		taxRate = defaultCRATaxRate
@@ -55,4 +59,9 @@ func (s *service) CreateFromCRAValidation(ctx context.Context, cmd ports.CreateF
 			TaxRate:     taxRate,
 		}},
 	})
+}
+
+func (s *service) HasInvoiceForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error) {
+	// Existence check must not depend on the org toggle — used by CRA preview dry-run.
+	return s.repo.InvoiceExistsForTimesheet(ctx, tenant, timesheetID)
 }

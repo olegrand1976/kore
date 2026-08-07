@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/invoicing/domain"
@@ -35,6 +36,26 @@ type CreateFromCRACommand struct {
 	Currency       string
 	UnitPriceCents int64
 	TaxRate        float64
+	Description    string // optional full line description override
+}
+
+type EmitProformaCommand struct {
+	TenantID       kernel.TenantID
+	InvoiceID      uuid.UUID
+	RecipientEmail string // optional override; defaults to primary client contact
+	PublicBaseURL  string
+}
+
+type ProformaPreview struct {
+	InvoiceID   uuid.UUID            `json:"invoiceId"`
+	ClientName  string               `json:"clientName"`
+	Currency    string               `json:"currency"`
+	TotalAmount int64                `json:"totalAmount"`
+	TaxAmount   int64                `json:"taxAmount"`
+	Status      domain.InvoiceStatus `json:"status"`
+	ExpiresAt   *time.Time           `json:"expiresAt,omitempty"`
+	Lines       []domain.InvoiceLine `json:"lines"`
+	Validated   bool                 `json:"validated"`
 }
 
 type ComputeVirtualCommand struct {
@@ -68,15 +89,28 @@ type InvoicingService interface {
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
 	Create(ctx context.Context, cmd CreateInvoiceCommand) (domain.Invoice, error)
 	CreateFromCRAValidation(ctx context.Context, cmd CreateFromCRACommand) (domain.Invoice, error)
+	HasInvoiceForTimesheet(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error)
 	ComputeVirtual(ctx context.Context, cmd ComputeVirtualCommand) (domain.Invoice, error)
 	Transmit(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
 	SyncPDPStatus(ctx context.Context, evt PDPStatusEvent) error
 	CreateCreditNote(ctx context.Context, tenant kernel.TenantID, invoiceID uuid.UUID) (domain.Invoice, error)
+	EmitProforma(ctx context.Context, cmd EmitProformaCommand) (domain.Invoice, error)
+	GetProformaByToken(ctx context.Context, token string) (ProformaPreview, error)
+	ValidateProformaByToken(ctx context.Context, token string) (ProformaPreview, error)
+}
+
+type ClientContactReader interface {
+	PrimaryBillingContact(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (email string, clientName string, err error)
+}
+
+type MailSender interface {
+	Send(ctx context.Context, to, subject, body string) error
 }
 
 type InvoicingRepository interface {
 	SaveInvoice(ctx context.Context, inv domain.Invoice) error
 	GetInvoice(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Invoice, error)
+	GetInvoiceByProformaTokenHash(ctx context.Context, tokenHash string) (domain.Invoice, error)
 	ListInvoices(ctx context.Context, tenant kernel.TenantID) ([]domain.Invoice, error)
 	SaveInvoiceLine(ctx context.Context, line domain.InvoiceLine) error
 	SaveInvoiceWithLines(ctx context.Context, inv domain.Invoice, lines []domain.InvoiceLine) error

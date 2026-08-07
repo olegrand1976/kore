@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,8 @@ import (
 
 func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, invoicingEnabled kernel.InvoicingEnabledReader, pdpWebhookSecret string) {
 	r.Post("/webhooks/pdp", pdpWebhook(svc, pdpWebhookSecret))
+	r.Get("/public/proforma/{token}", getProformaPublic(svc))
+	r.Post("/public/proforma/{token}/validate", validateProformaPublic(svc))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/invoices", listInvoices(svc, authorizer, invoicingEnabled))
@@ -26,6 +29,7 @@ func RegisterRoutes(r chi.Router, svc ports.InvoicingService, tokens *authx.Toke
 		pr.Get("/invoices/{id}", getInvoice(svc, authorizer, invoicingEnabled))
 		pr.Post("/invoices/compute-virtual", computeVirtual(svc, authorizer, invoicingEnabled))
 		pr.Post("/invoices/{id}/transmit", transmitInvoice(svc, authorizer, invoicingEnabled))
+		pr.Post("/invoices/{id}/emit-proforma", emitProforma(svc, authorizer, invoicingEnabled))
 		pr.Post("/invoices/{id}/credit-note", createCreditNote(svc, authorizer, invoicingEnabled))
 	})
 }
@@ -41,12 +45,20 @@ func writeInvoicingErr(w http.ResponseWriter, err error) bool {
 	case errors.Is(err, domain.ErrInvoiceNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 		return true
-	case errors.Is(err, domain.ErrInvalidInvoiceState):
+	case errors.Is(err, domain.ErrInvalidInvoiceState),
+		errors.Is(err, domain.ErrProformaAlreadyValidated):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		return true
+	case errors.Is(err, domain.ErrProformaTokenInvalid):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+		return true
+	case errors.Is(err, domain.ErrProformaTokenExpired):
+		httpx.WriteError(w, http.StatusGone, httpx.ErrCodeConflict, err.Error())
 		return true
 	case errors.Is(err, domain.ErrZeroUnitPrice),
 		errors.Is(err, domain.ErrNoBillableContent),
-		errors.Is(err, domain.ErrInvalidInvoiceLine):
+		errors.Is(err, domain.ErrInvalidInvoiceLine),
+		errors.Is(err, domain.ErrNoClientEmail):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 		return true
 	default:
@@ -221,6 +233,91 @@ func transmitInvoice(svc ports.InvoicingService, authorizer authx.Authorizer, in
 		}
 		httpx.WriteData(w, http.StatusOK, inv)
 	}
+}
+
+func emitProforma(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
+		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			RecipientEmail string `json:"recipientEmail"`
+		}
+		if r.Body != nil && r.ContentLength != 0 {
+			_ = json.NewDecoder(r.Body).Decode(&req)
+		}
+		identity, _ := authx.FromContext(r.Context())
+		inv, err := svc.EmitProforma(r.Context(), ports.EmitProformaCommand{
+			TenantID:       identity.TenantID,
+			InvoiceID:      id,
+			RecipientEmail: req.RecipientEmail,
+			PublicBaseURL:  publicBaseURL(r),
+		})
+		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, inv)
+	}
+}
+
+func getProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := chi.URLParam(r, "token")
+		preview, err := svc.GetProformaByToken(r.Context(), token)
+		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, preview)
+	}
+}
+
+func validateProformaPublic(svc ports.InvoicingService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := chi.URLParam(r, "token")
+		preview, err := svc.ValidateProformaByToken(r.Context(), token)
+		if err != nil {
+			if writeInvoicingErr(w, err) {
+				return
+			}
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, preview)
+	}
+}
+
+func publicBaseURL(r *http.Request) string {
+	if v := strings.TrimSpace(r.Header.Get("x-public-base-url")); v != "" {
+		if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+			return strings.TrimRight(v, "/")
+		}
+	}
+	proto := r.Header.Get("x-forwarded-proto")
+	if proto == "" {
+		proto = "http"
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return proto + "://" + host
 }
 
 func createCreditNote(svc ports.InvoicingService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
