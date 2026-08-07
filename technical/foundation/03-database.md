@@ -58,8 +58,9 @@ flowchart LR
 ## 7. Rôles PostgreSQL
 
 - `kore_app` : rôle applicatif principal (CRUD sur les schémas, sauf restrictions ETT).
-- `kore_migrator` : rôle des migrations (DDL).
+- `kore_migrator` / `kore_migrate` : rôle des migrations (DDL).
 - Séparation des privilèges pour renforcer l'inaltérabilité et l'auditabilité.
+- **Grants** : `internal/platform/db/grants_kore_app.sql`, réappliqués à chaque `kore-api migrate` (no-op si `kore_app` absent en local). Manuel Cloud SQL : `./infra/gcp/apply-db-grants.sh`.
 
 ## 8. Hébergement : Cloud SQL for PostgreSQL (prod)
 

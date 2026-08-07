@@ -77,7 +77,8 @@ Kore est enregistré dans :
 
 - `infra/database-backup-registry.yaml` (backups quotidiens PostgreSQL)
 - `infra/shared-redis/redis-apps.conf` (DB 13)
-- `infra/shared-postgres/setup-db-protection.sh` (grants `kore_app` / `kore_migrate`)
+- `infra/shared-postgres/setup-db-protection.sh` (grants historiques `kore_app` / `kore_migrate`)
+- **Grants Kore (source de vérité)** : `internal/platform/db/grants_kore_app.sql`, appliqués automatiquement par `kore-api migrate` ; manuel : `./infra/gcp/apply-db-grants.sh`
 
 Après modification du registre infra :
 

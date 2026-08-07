@@ -171,8 +171,11 @@ for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key k
   fi
 done
 
-if [[ -d "${INFRA_ROOT}/shared-postgres" ]]; then
+if [[ -f "${SCRIPT_DIR}/apply-db-grants.sh" ]]; then
   echo "→ Privilèges PostgreSQL kore_app (idempotent)"
+  bash "${SCRIPT_DIR}/apply-db-grants.sh" 2>&1 | tail -8 || true
+elif [[ -d "${INFRA_ROOT}/shared-postgres" ]]; then
+  echo "→ Privilèges PostgreSQL kore_app via infra partagée (fallback)"
   bash "${INFRA_ROOT}/shared-postgres/setup-db-protection.sh" 2>&1 | tail -5 || true
 fi
 

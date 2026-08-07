@@ -39,6 +39,10 @@ func (r *MigrationRunner) Up(ctx context.Context) error {
 			return fmt.Errorf("module %s: %w", mod.Module, err)
 		}
 	}
+	// Keep kore_app privileges in sync after every migrate (Cloud SQL + new schemas).
+	if err := ApplyKoreAppGrants(ctx, r.pool); err != nil {
+		return fmt.Errorf("kore_app grants: %w", err)
+	}
 	return nil
 }
 
