@@ -32,6 +32,15 @@ func TestSideEffectValidateRequiresSubjectOrBody(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrInvalidDefinition)
 }
 
+func TestSideEffectValidateRequesterScope(t *testing.T) {
+	effect := domain.SideEffect{
+		Type:       domain.SideEffectTypeEmail,
+		Recipients: domain.EffectRecipients{Scope: domain.RecipientScopeRequester},
+		Subject:    "Hi",
+	}
+	require.NoError(t, effect.Validate())
+}
+
 func TestSideEffectValidateUserScopeRequiresIDs(t *testing.T) {
 	effect := domain.SideEffect{
 		Type:       domain.SideEffectTypeEmail,

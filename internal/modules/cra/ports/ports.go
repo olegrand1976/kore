@@ -93,20 +93,50 @@ type ProposedLine struct {
 }
 
 type ValidationInvoiceCommand struct {
-	TenantID       kernel.TenantID
-	TimesheetID    TimesheetID
-	ClientID       uuid.UUID
-	Month          domain.Month
-	BillableHours  float64
-	MissionLabel   string
-	UserLabel      string
-	Currency       string
-	UnitPriceCents int64
-	TaxRate        float64
+	TenantID        kernel.TenantID
+	TimesheetID     TimesheetID
+	TimesheetUserID uuid.UUID
+	ClientID        uuid.UUID
+	Month           domain.Month
+	BillableHours   float64
+	MissionLabel    string
+	UserLabel       string
+	Currency        string
+	UnitPriceCents  int64
+	TaxRate         float64
+	Description     string // optional override; empty → auto description
+}
+
+// InvoiceDraftPreview is a dry-run CRA→invoice payload (no persistence).
+type InvoiceDraftPreview struct {
+	TimesheetID    TimesheetID `json:"timesheetId"`
+	OK             bool        `json:"ok"`
+	Blockers       []string    `json:"blockers,omitempty"`
+	ClientID       *uuid.UUID  `json:"clientId,omitempty"`
+	BillableHours  float64     `json:"billableHours,omitempty"`
+	UnitPriceCents int64       `json:"unitPriceCents,omitempty"`
+	Currency       string      `json:"currency,omitempty"`
+	TaxRate        float64     `json:"taxRate,omitempty"`
+	Description    string      `json:"description,omitempty"`
+	MissionLabel   string      `json:"missionLabel,omitempty"`
+	UserLabel      string      `json:"userLabel,omitempty"`
+}
+
+// CreateInvoiceFromTimesheetItem creates or overrides a CRA-linked invoice draft.
+type CreateInvoiceFromTimesheetItem struct {
+	TimesheetID    TimesheetID `json:"timesheetId"`
+	ClientID       *uuid.UUID  `json:"clientId,omitempty"`
+	BillableHours  *float64    `json:"billableHours,omitempty"`
+	UnitPriceCents *int64      `json:"unitPriceCents,omitempty"`
+	TaxRate        *float64    `json:"taxRate,omitempty"`
+	Currency       *string     `json:"currency,omitempty"`
+	Description    *string     `json:"description,omitempty"`
+	MissionLabel   *string     `json:"missionLabel,omitempty"`
 }
 
 type InvoiceDraftPublisher interface {
 	PublishCRAValidationDraft(ctx context.Context, cmd ValidationInvoiceCommand) (uuid.UUID, error)
+	TimesheetAlreadyInvoiced(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error)
 }
 
 type MissionRate struct {
@@ -151,6 +181,8 @@ type CRAService interface {
 	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) (ValidateFinalResult, error)
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
 	CreateInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]InvoiceDraftOutcome, error)
+	CreateInvoicesFromTimesheetItems(ctx context.Context, tenant kernel.TenantID, items []CreateInvoiceFromTimesheetItem) ([]InvoiceDraftOutcome, error)
+	PreviewInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]InvoiceDraftPreview, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)

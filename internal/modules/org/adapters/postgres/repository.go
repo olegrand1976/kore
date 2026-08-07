@@ -32,6 +32,76 @@ func (r *Repository) SaveTenant(ctx context.Context, tenant domain.Tenant) error
 	return err
 }
 
+func (r *Repository) ProvisionCore(ctx context.Context, tenant domain.Tenant, societe domain.Societe, admin domain.User) error {
+	hydrateEquipeIDsFromPrimary(&admin)
+	admin.SyncPrimaryMemberships()
+	pays := societe.Pays
+	if pays == "" {
+		pays = "FR"
+	}
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.tenants (id, name) VALUES ($1, $2)
+		`, tenant.ID, tenant.Name); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.societes (
+				id, tenant_id, raison_sociale, logo, devise, pays, week_start_day,
+				day_capacity_minutes, cra_mail_auto, week_submit_policy, cra_gate_mode,
+				adresse, adresse_numero, adresse_boite, code_postal, ville,
+				siret, url_tenant, cra_mail_recipients,
+				totp_default_enabled, totp_user_configurable, task_types_enabled, seed_protected,
+				default_tjm_cents
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+		`, societe.ID, societe.TenantID.UUID(), societe.RaisonSociale, nullString(societe.Logo), societe.Devise, pays,
+			normalizeWeekStartDay(societe.WeekStartDay),
+			normalizeDayCapacityMinutes(societe.DayCapacityMinutes),
+			societe.CraMailAuto,
+			normalizeWeekSubmitPolicy(societe.WeekSubmitPolicy),
+			normalizeCraGateMode(societe.CraGateMode),
+			societe.Adresse, societe.AdresseNumero, societe.AdresseBoite, societe.CodePostal, societe.Ville,
+			societe.Siret, societe.URLTenant, encodeMailRecipients(societe.CraMailRecipients),
+			societe.TotpDefaultEnabled, societe.TotpUserConfigurable, encodeTaskTypes(societe.TaskTypesEnabled),
+			societe.SeedProtected, societe.DefaultTJMCents); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.users (
+				id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil,
+				date_activation, date_expiration, active,
+				totp_enabled, totp_enrollment_required
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		`, admin.ID, admin.TenantID.UUID(), admin.EquipeID, string(admin.Login), admin.Prenom, admin.Nom, nullString(admin.Email), admin.PasswordHash, string(admin.Profile),
+			admin.Period.Activation, admin.Period.Expiration, admin.Active, admin.TotpEnabled, admin.TotpEnrollmentRequired); err != nil {
+			return err
+		}
+		return replaceUserMemberships(ctx, tx, admin)
+	})
+}
+
+func (r *Repository) RollbackProvision(ctx context.Context, tenantID kernel.TenantID) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM org.user_profiles WHERE user_id IN (SELECT id FROM org.users WHERE tenant_id = $1)`, tenantID.UUID()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM org.user_equipes WHERE user_id IN (SELECT id FROM org.users WHERE tenant_id = $1)`, tenantID.UUID()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM org.users WHERE tenant_id = $1`, tenantID.UUID()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM org.societes WHERE tenant_id = $1`, tenantID.UUID()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM org.tenants WHERE id = $1`, tenantID.UUID()); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (r *Repository) GetTenant(ctx context.Context, id kernel.TenantID) (domain.Tenant, error) {
 	var tenant domain.Tenant
 	err := r.pool.QueryRow(ctx, `SELECT id, name FROM org.tenants WHERE id = $1`, id.UUID()).Scan(&tenant.ID, &tenant.Name)

@@ -23,6 +23,7 @@ func (a *Adapter) Start(ctx context.Context, cmd ports.StartWorkflowCommand) (po
 		DefinitionCode: cmd.DefinitionCode,
 		EntityID:       cmd.EntityID,
 		InstanceID:     cmd.InstanceID,
+		RequesterID:    cmd.RequesterID,
 	})
 	if err != nil {
 		return ports.WorkflowInstance{}, err

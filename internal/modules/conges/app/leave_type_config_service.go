@@ -113,7 +113,50 @@ func (s *leaveTypeConfigService) ResetDefaults(ctx context.Context, cmd ports.Re
 	if err := s.repo.UpsertDefaults(ctx, cmd.TenantID, cmd.SocieteID, templates); err != nil {
 		return nil, err
 	}
+	if err := s.retireObsoleteStandardTypes(ctx, cmd.TenantID, cmd.SocieteID, societe.Pays); err != nil {
+		return nil, err
+	}
 	return s.repo.ListBySociete(ctx, cmd.TenantID, cmd.SocieteID, false)
+}
+
+// retireObsoleteStandardTypes deactivates or deletes leave types that belong to
+// another country's default catalogue but are not in the current country's set.
+// Manually added custom codes are preserved.
+func (s *leaveTypeConfigService) retireObsoleteStandardTypes(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID, pays string) error {
+	wanted, err := domain.DefaultLeaveTypeCodeSet(pays)
+	if err != nil {
+		return err
+	}
+	standard := domain.StandardLeaveTypeCodes()
+	existing, err := s.repo.ListBySociete(ctx, tenant, societeID, false)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	for _, cfg := range existing {
+		if _, keep := wanted[cfg.Code]; keep {
+			continue
+		}
+		if _, isStandard := standard[cfg.Code]; !isStandard {
+			continue
+		}
+		used, err := s.repo.IsCodeUsed(ctx, tenant, societeID, cfg.Code)
+		if err != nil {
+			return err
+		}
+		if used {
+			cfg.Active = false
+			cfg.UpdatedAt = now
+			if err := s.repo.Save(ctx, cfg); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := s.repo.Delete(ctx, tenant, cfg.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *leaveTypeConfigService) BootstrapDefaults(ctx context.Context, tenant kernel.TenantID, societeID uuid.UUID) error {

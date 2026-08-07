@@ -38,6 +38,25 @@ func (r *virtualRepo) GetInvoice(_ context.Context, tenant kernel.TenantID, id u
 	return domain.Invoice{}, domain.ErrInvoiceNotFound
 }
 
+func (r *virtualRepo) GetInvoiceByProformaTokenHash(_ context.Context, tokenHash string) (domain.Invoice, error) {
+	for _, inv := range r.invoices {
+		if inv.ProformaTokenHash == tokenHash {
+			return inv, nil
+		}
+	}
+	return domain.Invoice{}, domain.ErrInvoiceNotFound
+}
+
+func (r *virtualRepo) ApplyProformaDecision(ctx context.Context, expectedTokenHash string, inv domain.Invoice) error {
+	for i, existing := range r.invoices {
+		if existing.ID == inv.ID && existing.ProformaTokenHash == expectedTokenHash {
+			r.invoices[i] = inv
+			return nil
+		}
+	}
+	return domain.ErrProformaConflict
+}
+
 func (r *virtualRepo) ListInvoices(context.Context, kernel.TenantID) ([]domain.Invoice, error) {
 	return r.invoices, nil
 }

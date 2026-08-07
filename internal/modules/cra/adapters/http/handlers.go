@@ -37,6 +37,7 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Get("/prestations/billable-summary", billableSummary(svc, authorizer))
 		pr.Post("/prestations/validate-all", validateAllPrestations(svc, authorizer))
 		pr.Post("/prestations/create-invoices", createInvoicesFromPrestations(svc, authorizer, invoicingEnabled))
+		pr.Post("/prestations/preview-invoices", previewInvoicesFromPrestations(svc, authorizer, invoicingEnabled))
 		pr.Post("/timesheets/{id}/prefill-holidays", prefillHolidays(svc, authorizer))
 		pr.Post("/timesheets/{id}/prefill-ett", prefillETT(svc, authorizer))
 	})
@@ -383,12 +384,14 @@ func validateAllPrestations(svc ports.CRAService, authorizer authx.Authorizer) h
 	}
 }
 
-func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
+const maxInvoiceBatch = 100
+
+func previewInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
 			return
 		}
-		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
+		if !authorizer.Can(r.Context(), "invoicing", authx.ActionRead) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
@@ -407,22 +410,105 @@ func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Author
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds required")
 			return
 		}
-		const maxCreateInvoiceBatch = 100
-		if len(req.TimesheetIDs) > maxCreateInvoiceBatch {
+		if len(req.TimesheetIDs) > maxInvoiceBatch {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds max 100")
 			return
 		}
-		ids := make([]uuid.UUID, 0, len(req.TimesheetIDs))
-		for _, raw := range req.TimesheetIDs {
-			id, err := uuid.Parse(raw)
-			if err != nil {
-				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheetId")
-				return
-			}
-			ids = append(ids, id)
+		ids, err := parseTimesheetIDList(req.TimesheetIDs)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		outcomes, err := svc.CreateInvoicesFromTimesheets(r.Context(), identity.TenantID, ids)
+		previews, err := svc.PreviewInvoicesFromTimesheets(r.Context(), identity.TenantID, ids)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]any{"previews": previews})
+	}
+}
+
+func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Authorizer, invoicingEnabled kernel.InvoicingEnabledReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireInvoicingEnabled(w, r, invoicingEnabled) {
+			return
+		}
+		if !authorizer.Can(r.Context(), "invoicing", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			TimesheetIDs []string `json:"timesheetIds"`
+			Items        []struct {
+				TimesheetID    string   `json:"timesheetId"`
+				ClientID       *string  `json:"clientId"`
+				BillableHours  *float64 `json:"billableHours"`
+				UnitPriceCents *int64   `json:"unitPriceCents"`
+				TaxRate        *float64 `json:"taxRate"`
+				Currency       *string  `json:"currency"`
+				Description    *string  `json:"description"`
+				MissionLabel   *string  `json:"missionLabel"`
+			} `json:"items"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+
+		var outcomes []ports.InvoiceDraftOutcome
+		var err error
+		switch {
+		case len(req.Items) > 0:
+			if len(req.Items) > maxInvoiceBatch {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "items max 100")
+				return
+			}
+			items := make([]ports.CreateInvoiceFromTimesheetItem, 0, len(req.Items))
+			for _, raw := range req.Items {
+				id, parseErr := uuid.Parse(raw.TimesheetID)
+				if parseErr != nil {
+					httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheetId")
+					return
+				}
+				item := ports.CreateInvoiceFromTimesheetItem{TimesheetID: id}
+				if raw.ClientID != nil {
+					cid, parseErr := uuid.Parse(*raw.ClientID)
+					if parseErr != nil {
+						httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid clientId")
+						return
+					}
+					item.ClientID = &cid
+				}
+				item.BillableHours = raw.BillableHours
+				item.UnitPriceCents = raw.UnitPriceCents
+				item.TaxRate = raw.TaxRate
+				item.Currency = raw.Currency
+				item.Description = raw.Description
+				item.MissionLabel = raw.MissionLabel
+				items = append(items, item)
+			}
+			outcomes, err = svc.CreateInvoicesFromTimesheetItems(r.Context(), identity.TenantID, items)
+		case len(req.TimesheetIDs) > 0:
+			if len(req.TimesheetIDs) > maxInvoiceBatch {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds max 100")
+				return
+			}
+			ids, parseErr := parseTimesheetIDList(req.TimesheetIDs)
+			if parseErr != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, parseErr.Error())
+				return
+			}
+			outcomes, err = svc.CreateInvoicesFromTimesheets(r.Context(), identity.TenantID, ids)
+		default:
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "timesheetIds or items required")
+			return
+		}
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
@@ -438,6 +524,18 @@ func createInvoicesFromPrestations(svc ports.CRAService, authorizer authx.Author
 			"outcomes": outcomes,
 		})
 	}
+}
+
+func parseTimesheetIDList(rawIDs []string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(rawIDs))
+	for _, raw := range rawIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timesheetId")
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 type prestationsXMLExport struct {

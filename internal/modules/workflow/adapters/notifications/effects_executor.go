@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	notifdomain "github.com/kore/kore/internal/modules/notifications/domain"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	"github.com/kore/kore/internal/modules/workflow/domain"
 	"github.com/kore/kore/internal/modules/workflow/ports"
-	"github.com/kore/kore/pkg/kernel"
 )
 
 type EffectsExecutor struct {
@@ -50,7 +50,7 @@ func (e *EffectsExecutor) executeOne(
 	if e.resolver == nil || e.notifier == nil {
 		return nil
 	}
-	recipients, err := e.resolveEmails(ctx, effectCtx.TenantID, effect.Recipients)
+	recipients, err := e.resolveEmails(ctx, effectCtx, effect.Recipients)
 	if err != nil {
 		return err
 	}
@@ -70,18 +70,23 @@ func (e *EffectsExecutor) executeOne(
 	})
 }
 
-func (e *EffectsExecutor) resolveEmails(ctx context.Context, tenant kernel.TenantID, recipients domain.EffectRecipients) ([]string, error) {
+func (e *EffectsExecutor) resolveEmails(ctx context.Context, effectCtx ports.SideEffectContext, recipients domain.EffectRecipients) ([]string, error) {
 	switch recipients.Scope {
 	case domain.RecipientScopeAll:
-		return e.resolver.ResolveTenantUserEmails(ctx, tenant)
+		return e.resolver.ResolveTenantUserEmails(ctx, effectCtx.TenantID)
 	case domain.RecipientScopeUser:
-		return e.resolver.ResolveUserEmails(ctx, tenant, recipients.UserIDs)
+		return e.resolver.ResolveUserEmails(ctx, effectCtx.TenantID, recipients.UserIDs)
 	case domain.RecipientScopeEquipe:
-		return e.resolver.ResolveEquipeUserEmails(ctx, tenant, *recipients.EquipeID)
+		return e.resolver.ResolveEquipeUserEmails(ctx, effectCtx.TenantID, *recipients.EquipeID)
 	case domain.RecipientScopeApplication:
-		return e.resolver.ResolveApplicationUserEmails(ctx, tenant, *recipients.ApplicationID)
+		return e.resolver.ResolveApplicationUserEmails(ctx, effectCtx.TenantID, *recipients.ApplicationID)
 	case domain.RecipientScopeService:
-		return e.resolver.ResolveServiceUserEmails(ctx, tenant, *recipients.ServiceID)
+		return e.resolver.ResolveServiceUserEmails(ctx, effectCtx.TenantID, *recipients.ServiceID)
+	case domain.RecipientScopeRequester:
+		if effectCtx.RequesterID == uuid.Nil {
+			return nil, nil
+		}
+		return e.resolver.ResolveUserEmails(ctx, effectCtx.TenantID, []uuid.UUID{effectCtx.RequesterID})
 	default:
 		return nil, fmt.Errorf("unknown recipient scope %q", recipients.Scope)
 	}
@@ -92,6 +97,10 @@ func sideEffectVars(effectCtx ports.SideEffectContext) map[string]string {
 	if action == "" {
 		action = "-"
 	}
+	requesterID := ""
+	if effectCtx.RequesterID != uuid.Nil {
+		requesterID = effectCtx.RequesterID.String()
+	}
 	return map[string]string{
 		"entityId":       effectCtx.EntityID,
 		"definitionCode": effectCtx.DefinitionCode,
@@ -100,5 +109,6 @@ func sideEffectVars(effectCtx ports.SideEffectContext) map[string]string {
 		"action":         action,
 		"actorId":        effectCtx.ActorID.String(),
 		"instanceId":     effectCtx.InstanceID.String(),
+		"requesterId":    requesterID,
 	}
 }

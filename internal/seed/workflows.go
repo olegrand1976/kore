@@ -11,6 +11,7 @@ func (r *Runner) ensureWorkflows(ctx context.Context, tenant kernel.TenantID) er
 	defs := []domain.WorkflowDefinition{
 		leaveRequestWorkflow(tenant),
 		tmaIncidentWorkflow(tenant),
+		craProformaWorkflow(tenant),
 	}
 	for _, def := range defs {
 		if err := r.deps.Workflow.DefineWorkflow(ctx, def); err != nil {
@@ -55,6 +56,27 @@ func tmaIncidentWorkflow(tenant kernel.TenantID) domain.WorkflowDefinition {
 			{From: "affectee", To: "resolue", Action: "resolve", AllowedRoles: []string{}},
 			{From: "resolue", To: "rework", Action: "reopen", AllowedRoles: []string{}},
 			{From: "rework", To: "affectee", Action: "assign", AllowedRoles: []string{}},
+		},
+	}
+}
+
+func craProformaWorkflow(tenant kernel.TenantID) domain.WorkflowDefinition {
+	return domain.WorkflowDefinition{
+		TenantID:   tenant,
+		Code:       "invoicing.cra_proforma",
+		EntityType: "invoice",
+		States: []domain.State{
+			{Code: "preparee", Label: "Facture préparée", IsInitial: true},
+			{Code: "proforma", Label: "Proforma émise"},
+			{Code: "facture_envoyee", Label: "Validée client", IsFinal: true},
+			{Code: "proforma_refusee", Label: "Proforma refusée"},
+		},
+		Transitions: []domain.Transition{
+			{From: "preparee", To: "proforma", Action: "emit_proforma", AllowedRoles: []string{}},
+			{From: "proforma", To: "proforma", Action: "emit_proforma", AllowedRoles: []string{}},
+			{From: "proforma_refusee", To: "proforma", Action: "emit_proforma", AllowedRoles: []string{}},
+			{From: "proforma", To: "facture_envoyee", Action: "validate_client", AllowedRoles: []string{}},
+			{From: "proforma", To: "proforma_refusee", Action: "reject_client", AllowedRoles: []string{}},
 		},
 	}
 }

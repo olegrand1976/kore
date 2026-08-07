@@ -1,7 +1,7 @@
 # Guide d'accès utilisateurs (RBAC)
 
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-06  
+> **Dernière mise à jour doc** : 2026-08-07 (platform provision + signup public)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -46,32 +46,41 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Administrateur
 
-- Menus admin : organisation (**identité / modules / structure**), **applications**, utilisateurs, SSO, workflows, paramètres, abonnement, notifications.
+- Menus admin regroupés : **Organisation** (Structure, applications, utilisateurs, SSO), **Automatisation** (workflows, notifications, intégrations), **Système** (paramètres, abonnement). La navigation métier est sectionnée (Temps, Demandes, **Pilotage** : Clients, Missions, Budget, Facturation).
+- Pilotage → **Clients** (`/clients`) : liste et création (org écriture) ; fiche client et missions liées.
+- Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.
-- CRA définitifs → brouillons facture (validation définitive CRA ou Prestations → **Créer factures**, droits Facturation écriture **et** CRA validation).
+- CRA définitifs → brouillons facture :
+  - **Facturation → Depuis un CRA** (wizard preview prérempli, droits Facturation écriture **et** CRA validation) ;
+  - validation définitive CRA ou Prestations → **Créer factures** (mêmes droits).
+- Proforma : émission email client avec lien public ; le client peut **valider** (commentaire optionnel → facture email) ou **refuser** (commentaire obligatoire, visible sur le détail facture).
 - Heures facturées bornées à la mission (ou app `temps_passe` dominante) — pas d’agrégat multi-clients.
 - Self-edit (`/admin/users`) : peut cumuler d'autres profils / équipes, **ne peut pas** retirer son propre profil Administrateur ni désactiver son compte ; le dernier Administrateur actif du tenant est protégé.
 - Comptes seed (visibles dans l'Aide **uniquement** pour les Administrateurs) : `ADM_admin` / `Admin123!`
+- **Administrateur plateforme** (`platform_admin`, allowlist `PLATFORM_ADMIN_LOGINS`, défaut `ADM_admin`) : accès à `/platform` pour la vue multi-tenants, les paramètres LLM, et la **création d'organisations** (`POST /platform/tenants`). Ce n'est pas un profil RBAC tenant — c'est un rôle JWT injecté au login.
+- **Onboarding public** : page `/signup` → `POST /api/v1/public/signup` crée un tenant + société + admin + trial 14 jours (sans Stripe).
 
 ### Collaborateur
 
 - CRA, TMA, congés (saisie) ; budget en lecture.
-- Pas de menus d'administration.
+- Menus Pilotage **Clients** / **Missions** visibles (lecture via droits CRA) ; pas de menus d'administration.
 - Compte seed : `COL_collab` / `Collab123!`
 
 ### Chef d'équipe
 
 - Validation CRA et TMA ; congés en lecture ; budget L/E ; reporting L.
-- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
+- Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
+- Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Compte seed : `CHE_chefdev` / `Chef123!`
 
 ### Responsable de service
 
 - Validation CRA, TMA, congés et budget ; reporting / org en lecture.
-- Facturation métier : L/E/V si le module org est activé (brouillons depuis CRA / Prestations, transmission).
+- Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
+- Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Pas d'accès aux paramètres admin (réservé Administrateur).
 - Compte seed : `MGR_manager` / `Manager123!`
 
@@ -92,5 +101,8 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 | --- | --- |
 | `/aide` | Hub d'aide (profils courants + topics) |
 | `/aide/acces` | Matrice L/E/V + fiches profils |
+| `/signup` | Onboarding public (création org + admin, trial) — hors auth |
+| `/platform` | Console super-admin plateforme (allowlist login) |
 
 Entrée nav : **Aide** (icône `help`), zone réglages, visible pour tout utilisateur authentifié.
+**Plateforme** : menu réservé aux logins `PLATFORM_ADMIN_LOGINS` (voir `.env.example`).

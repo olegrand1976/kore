@@ -143,6 +143,49 @@ func TestLeaveTypeConfigService_ResetDefaults_FR(t *testing.T) {
 	assert.Equal(t, "conges_payes", items[0].Code)
 }
 
+func TestLeaveTypeConfigService_ResetDefaults_RetiresOtherCountryStandards(t *testing.T) {
+	societeID := uuid.New()
+	rttID := uuid.New()
+	cpID := uuid.New()
+	customID := uuid.New()
+	repo := &mockLeaveTypeRepo{
+		byCode: map[string]domain.LeaveTypeConfig{},
+		items: []domain.LeaveTypeConfig{
+			{ID: cpID, Code: "conges_payes", Label: "Congés payés", Active: true, SocieteID: societeID},
+			{ID: rttID, Code: "rtt", Label: "RTT", Active: true, SocieteID: societeID},
+			{ID: customID, Code: "teletravail", Label: "Télétravail", Active: true, SocieteID: societeID},
+		},
+	}
+	for i := range repo.items {
+		repo.byCode[repo.items[i].Code] = repo.items[i]
+	}
+	svc := congesapp.NewLeaveTypeConfigService(repo, &mockOrgReader{
+		societeID: societeID,
+		societe:   orgdomain.Societe{ID: societeID, Pays: "BE"},
+	})
+	tenant := kernel.NewTenantID(uuid.New())
+
+	items, err := svc.ResetDefaults(context.Background(), ports.ResetLeaveTypeConfigsCommand{
+		TenantID:  tenant,
+		SocieteID: societeID,
+	})
+	require.NoError(t, err)
+
+	byCode := map[string]domain.LeaveTypeConfig{}
+	for _, item := range items {
+		byCode[item.Code] = item
+	}
+	require.Contains(t, byCode, "conges_annuels")
+	require.Contains(t, byCode, "recuperation")
+	require.Contains(t, byCode, "maladie")
+	require.Contains(t, byCode, "teletravail")
+	require.True(t, byCode["teletravail"].Active)
+	require.Contains(t, byCode, "conges_payes")
+	require.False(t, byCode["conges_payes"].Active) // used → deactivated
+	_, rttStillThere := byCode["rtt"]
+	require.False(t, rttStillThere) // unused standard → deleted
+}
+
 func TestLeaveTypeConfigService_DeleteInUseDeactivates(t *testing.T) {
 	societeID := uuid.New()
 	id := uuid.New()

@@ -6,10 +6,19 @@
           {{ $t('invoicing.back') }}
         </AppButton>
         <AppButton
-          v-if="invoice?.status === 'preparee'"
+          v-if="canEmitProforma"
+          variant="secondary"
+          size="sm"
+          :disabled="emittingProforma"
+          @click="onEmitProforma"
+        >
+          {{ invoice?.status === 'proforma' || invoice?.status === 'proforma_refusee' ? $t('invoicing.proforma_resend') : $t('invoicing.proforma_emit') }}
+        </AppButton>
+        <AppButton
+          v-if="canWrite && invoice?.status === 'preparee'"
           variant="primary"
           size="sm"
-          :loading="transmitting"
+          :disabled="transmitting"
           @click="onTransmit"
         >
           {{ $t('invoicing.transmit') }}
@@ -18,6 +27,17 @@
     </AppPageHeader>
 
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
+    <p v-if="successMsg" class="flash flash--ok" role="status">{{ successMsg }}</p>
+    <p
+      v-if="invoice?.status === 'proforma_refusee'"
+      class="flash flash--error"
+      role="alert"
+    >
+      {{ $t('invoicing.proforma_rejected_banner') }}
+      <template v-if="invoice.proformaClientComment">
+        — {{ invoice.proformaClientComment }}
+      </template>
+    </p>
 
     <AppCard v-if="pending" padding="lg"><p class="muted">{{ $t('common.loading') }}</p></AppCard>
 
@@ -43,6 +63,22 @@
           <div v-if="invoice.pdpReceiptId">
             <dt>{{ $t('invoicing.pdp_receipt') }}</dt>
             <dd class="mono">{{ invoice.pdpReceiptId }}</dd>
+          </div>
+          <div v-if="invoice.proformaRecipientEmail">
+            <dt>{{ $t('invoicing.proforma_recipient') }}</dt>
+            <dd>{{ invoice.proformaRecipientEmail }}</dd>
+          </div>
+          <div v-if="invoice.proformaSentAt">
+            <dt>{{ $t('invoicing.proforma_sent_at') }}</dt>
+            <dd>{{ formatDate(invoice.proformaSentAt) }}</dd>
+          </div>
+          <div v-if="invoice.proformaValidatedAt">
+            <dt>{{ $t('invoicing.proforma_validated_at') }}</dt>
+            <dd>{{ formatDate(invoice.proformaValidatedAt) }}</dd>
+          </div>
+          <div v-if="invoice.invoiceSentAt">
+            <dt>{{ $t('invoicing.invoice_sent_at') }}</dt>
+            <dd>{{ formatDate(invoice.invoiceSentAt) }}</dd>
           </div>
         </dl>
       </AppCard>
@@ -91,6 +127,11 @@ type InvoiceDetail = {
   totalAmount: number
   taxAmount: number
   pdpReceiptId?: string
+  proformaRecipientEmail?: string
+  proformaSentAt?: string
+  proformaValidatedAt?: string
+  proformaClientComment?: string
+  invoiceSentAt?: string
   lines?: InvoiceLine[]
 }
 
@@ -124,11 +165,22 @@ const lineRows = computed(() =>
   }))
 )
 
+const canWrite = computed(() => can('invoicing', 'E'))
+const canEmitProforma = computed(() => {
+  const inv = invoice.value
+  if (!canWrite.value || !inv) return false
+  if (inv.status === 'proforma' || inv.status === 'proforma_refusee') return true
+  return inv.status === 'preparee' && !inv.proformaValidatedAt
+})
+
 const transmitting = ref(false)
+const emittingProforma = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
 
 const onTransmit = async () => {
   errorMsg.value = ''
+  successMsg.value = ''
   transmitting.value = true
   try {
     await apiFetch(`/api/invoices/${id.value}/transmit`, { method: 'POST' })
@@ -140,18 +192,37 @@ const onTransmit = async () => {
   }
 }
 
+const onEmitProforma = async () => {
+  errorMsg.value = ''
+  successMsg.value = ''
+  emittingProforma.value = true
+  try {
+    await apiFetch(`/api/invoices/${id.value}/emit-proforma`, { method: 'POST', body: {} })
+    successMsg.value = t('invoicing.proforma_sent')
+    await refresh()
+  } catch {
+    errorMsg.value = t('invoicing.proforma_error')
+  } finally {
+    emittingProforma.value = false
+  }
+}
+
 const statusVariant = (status: string) => {
   switch (status) {
     case 'acceptee':
     case 'encaissee':
       return 'success'
     case 'refusee':
+    case 'proforma_refusee':
     case 'annulee':
       return 'error'
     case 'transmise':
+    case 'proforma':
       return 'blue'
     case 'preparee':
       return 'gold'
+    case 'virtuelle':
+      return 'neutral'
     default:
       return 'neutral'
   }
@@ -161,6 +232,9 @@ const statusLabel = (status: string) => t(`invoicing.status.${status}`, status)
 
 const formatAmount = (cents: number, currency: string) =>
   new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)
+
+const formatDate = (iso: string) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 </script>
 
 <style scoped>
@@ -198,5 +272,21 @@ const formatAmount = (cents: number, currency: string) =>
   font-family: var(--kore-font-mono, monospace);
   font-size: var(--kore-text-small);
   word-break: break-all;
+}
+
+.flash {
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border-radius: var(--kore-radius-md);
+}
+
+.flash--error {
+  background: color-mix(in srgb, var(--kore-error) 12%, transparent);
+  color: var(--kore-error);
+}
+
+.flash--ok {
+  background: color-mix(in srgb, var(--kore-success) 12%, transparent);
+  color: var(--kore-success);
 }
 </style>

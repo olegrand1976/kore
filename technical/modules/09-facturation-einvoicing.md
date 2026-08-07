@@ -152,16 +152,23 @@ Couverture : domaine > 90 %, app > 80 %.
 | --- | --- |
 | Pages | `facturation/`, `facturation/[id]`, activation org dans `admin/organisation` |
 | Composables | `useInvoicing()`, `useRequestSettings()` |
-| Routes BFF | `server/api/invoices/*`, `server/api/prestations/create-invoices` |
+| Routes BFF | `server/api/invoices/*`, `server/api/invoices/[id]/emit-proforma`, `server/api/public/proforma/*`, `server/api/prestations/create-invoices`, `server/api/prestations/preview-invoices` |
 | Permissions UI | Module `invoicing` L/E ; gate org `invoicing_enabled` (hors Stripe) |
 
 ## 10ter. Activation org + CRA → facture (V1)
 
 - **Toggle** : `org.tenant_request_settings.invoicing_enabled` (migration `0022`) — pas d'entitlement Stripe.
-- **Source CRA** : `invoicing.invoices.source_timesheet_id` (unique partiel) ; API `POST /prestations/create-invoices` + hook validation définitive.
+- **Source CRA** : `invoicing.invoices.source_timesheet_id` (unique partiel) ; API `POST /prestations/preview-invoices` (dry-run) + `POST /prestations/create-invoices` (`timesheetIds` ou `items[]` avec overrides) + hook validation définitive ; UI wizard « Depuis CRA » sur `/facturation`.
 - **Tarif vente** : mission TJM > `org.applications.default_tjm_cents` > `org.societes.default_tjm_cents`, converti en €/h via `day_capacity_minutes`.
 - **`mode_facturation`** : `non` / `forfait` → skip facturation temps passé ; `temps_passe` → heures × TH.
 - **UI** : Prestations « Créer factures » sur CRA `Définitif` ; lien facture après validation CRA.
+
+## 10quater. Proforma client (V1)
+
+- **Émission** : `POST /invoices/{id}/emit-proforma` (`invoicing:E` + toggle org) — statut `proforma`, email au contact facturation client (ou override), magic link TTL 14j (`proforma_token_hash`). Lien construit depuis `PUBLIC_BASE_URL` (config serveur), jamais depuis un header client.
+- **Validation publique** : `GET/POST /public/proforma/{token}` (sans JWT) → page `/public/proforma/[token]` ; à validation, statut `preparee` + email facture (`invoice_sent_at`). PDP reste manuel.
+- **Schéma** : migration invoicing `0003` (colonnes proforma + `invoice_sent_at`).
+- **UI** : bouton émettre/renvoyer sur `facturation/[id]` si statut `preparee` ou `proforma`.
 
 ## 10bis. Phase cible (roadmap)
 

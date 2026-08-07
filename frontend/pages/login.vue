@@ -62,6 +62,11 @@
       </div>
 
       <template v-if="step === 'credentials'">
+        <p v-if="signupFlash" class="login-card__info" role="status">{{ signupFlash }}</p>
+        <p class="login-card__signup">
+          {{ $t('login.no_account') }}
+          <NuxtLink to="/signup" class="login-card__link-inline">{{ $t('login.signup_link') }}</NuxtLink>
+        </p>
         <button type="button" class="login-card__link" @click="showDiscovery = !showDiscovery">
           {{ $t('login.find_org') }}
         </button>
@@ -102,6 +107,8 @@ const error = ref('')
 const showDiscovery = ref(false)
 const discoverEmail = ref('')
 const discoveryInfo = ref('')
+const signupFlash = ref('')
+const route = useRoute()
 
 type LoginStep = 'credentials' | 'totp' | 'enrollment'
 const step = ref<LoginStep>('credentials')
@@ -301,6 +308,12 @@ const requestDiscovery = async () => {
 }
 
 onMounted(async () => {
+  if (route.query.signup === '1') {
+    signupFlash.value = t('login.signup_success')
+    const prefill = typeof route.query.login === 'string' ? route.query.login : ''
+    if (prefill) login.value = prefill
+    password.value = ''
+  }
   const params = new URLSearchParams(window.location.search)
   const inviteToken = params.get('invite')
   const discoverToken = params.get('discover')
@@ -475,6 +488,13 @@ form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
 
 .login-card__info {
   margin: 0;
+  color: var(--kore-text-muted);
+  font-size: var(--kore-text-small);
+  text-align: center;
+}
+
+.login-card__signup {
+  margin: var(--kore-space-sm) 0 0;
   color: var(--kore-text-muted);
   font-size: var(--kore-text-small);
   text-align: center;

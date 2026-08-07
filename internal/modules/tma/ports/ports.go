@@ -74,6 +74,7 @@ type StartWorkflowCommand struct {
 	EntityID       string
 	InstanceID     *uuid.UUID
 	InitialState   *string
+	RequesterID    uuid.UUID
 }
 
 type FireTransitionCommand struct {

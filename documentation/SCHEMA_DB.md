@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 06/08/2026 (adresse société structurée)
+> **Dernière mise à jour doc** : 07/08/2026 (login unique global + provision atomique)
 
 ---
 
@@ -130,9 +130,9 @@ Index :
 | `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `code_postal` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `ville` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
-| `siret` | TEXT | NOT NULL, DEFAULT `''` — SIRET (FR) ou BCE (BE) selon `pays` |
+| `siret` | TEXT | NOT NULL, DEFAULT `''` — n° d’immatriculation selon `pays` : SIRET (FR), BCE (BE), NIF/STAT (MG), ICE (MA), matricule fiscal (TN), NE (CA) |
 | `url_tenant` | TEXT | NOT NULL, DEFAULT `''` |
-| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE`) |
+| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE` / `MG` / `MA` / `TN` / `CA`) |
 | `week_start_day` | SMALLINT | NOT NULL, DEFAULT `1`, CHECK 0–6 (0=dimanche … 6=samedi) |
 | `day_capacity_minutes` | INT | NOT NULL, DEFAULT `480`, CHECK 1–1440 |
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
@@ -230,7 +230,7 @@ Index :
 | `totp_enabled_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`
+**Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant` ; unicité globale active `UNIQUE (lower(login)) WHERE deleted_at IS NULL` — `idx_org_users_login_global` (migration `0026`)
 
 ### `org.user_profiles`
 
@@ -429,6 +429,7 @@ Moteur de workflow générique.
 | `definition_code` | TEXT | NOT NULL |
 | `entity_id` | TEXT | NOT NULL |
 | `current_state` | TEXT | NOT NULL |
+| `requester_id` | UUID | NULL — émetteur de la demande (scope email `requester`) ; pas de FK cross-schéma (UUID applicatif) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
@@ -603,7 +604,7 @@ Demandes et soldes de congés.
 
 ### `conges.leave_type_configs`
 
-Paramétrage des types de congés par société.
+Paramétrage des types de congés par société. Les catalogues par défaut au bootstrap / reset suivent `org.societes.pays` : FR (`conges_payes`, `rtt`, `maladie`), BE (`conges_annuels`, `recuperation`, `maladie`), MA/TN/MG (`conges_payes`, `maladie`, `conge_exceptionnel`), CA (`conges_annuels`, `maladie`, `personnel`). Au reset, les types issus d’un autre catalogue pays sont désactivés (ou supprimés s’ils n’ont jamais été utilisés) ; l’admin peut ensuite personnaliser librement (CRUD).
 
 | Colonne | Type | Contraintes |
 | --- | --- | --- |
@@ -1018,13 +1019,21 @@ Facturation métier e-invoicing (PDP/PA).
 | `tenant_id` | UUID | NOT NULL |
 | `client_id` | UUID | NOT NULL |
 | `type` | TEXT | NOT NULL |
-| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` |
+| `status` | TEXT | NOT NULL, DEFAULT `'virtuelle'` — valeurs : `virtuelle`, `preparee`, `proforma`, `proforma_refusee`, `transmise`, `acceptee`, `refusee`, `encaissee`, `annulee` |
 | `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `total_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `tax_amount` | BIGINT | NOT NULL, DEFAULT 0 |
 | `pdp_receipt_id` | TEXT | |
 | `transmitted_at` | TIMESTAMPTZ | |
 | `source_timesheet_id` | UUID | nullable — CRA source (migration `0002`) ; unique partiel `(tenant_id, source_timesheet_id)` |
+| `proforma_token_hash` | TEXT | nullable — hash SHA-256 du magic link (migration `0003`) ; index unique partiel `idx_invoicing_invoices_proforma_token` si non vide |
+| `proforma_recipient_email` | TEXT | nullable — destinataire de la proforma |
+| `proforma_sent_at` | TIMESTAMPTZ | nullable |
+| `proforma_expires_at` | TIMESTAMPTZ | nullable — TTL 14 jours |
+| `proforma_validated_at` | TIMESTAMPTZ | nullable |
+| `proforma_rejected_at` | TIMESTAMPTZ | nullable — refus client |
+| `proforma_client_comment` | TEXT | nullable — commentaire client (obligatoire si refus) |
+| `invoice_sent_at` | TIMESTAMPTZ | nullable — email facture après validation client |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `invoicing.invoice_lines`

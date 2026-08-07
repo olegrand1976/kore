@@ -7,6 +7,7 @@ import (
 	craports "github.com/kore/kore/internal/modules/cra/ports"
 	invoicingdomain "github.com/kore/kore/internal/modules/invoicing/domain"
 	invoicingports "github.com/kore/kore/internal/modules/invoicing/ports"
+	"github.com/kore/kore/pkg/kernel"
 )
 
 type DraftPublisher struct {
@@ -30,16 +31,18 @@ func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd crap
 		taxRate = 20
 	}
 	inv, err := p.invoicing.CreateFromCRAValidation(ctx, invoicingports.CreateFromCRACommand{
-		TenantID:       cmd.TenantID,
-		TimesheetID:    cmd.TimesheetID,
-		ClientID:       cmd.ClientID,
-		Month:          string(cmd.Month),
-		BillableHours:  cmd.BillableHours,
-		MissionLabel:   cmd.MissionLabel,
-		UserLabel:      cmd.UserLabel,
-		Currency:       currency,
-		UnitPriceCents: cmd.UnitPriceCents,
-		TaxRate:        taxRate,
+		TenantID:        cmd.TenantID,
+		TimesheetID:     cmd.TimesheetID,
+		TimesheetUserID: cmd.TimesheetUserID,
+		ClientID:        cmd.ClientID,
+		Month:           string(cmd.Month),
+		BillableHours:   cmd.BillableHours,
+		MissionLabel:    cmd.MissionLabel,
+		UserLabel:       cmd.UserLabel,
+		Currency:        currency,
+		UnitPriceCents:  cmd.UnitPriceCents,
+		TaxRate:         taxRate,
+		Description:     cmd.Description,
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -48,6 +51,13 @@ func (p *DraftPublisher) PublishCRAValidationDraft(ctx context.Context, cmd crap
 		return uuid.Nil, invoicingdomain.ErrNoBillableContent
 	}
 	return inv.ID, nil
+}
+
+func (p *DraftPublisher) TimesheetAlreadyInvoiced(ctx context.Context, tenant kernel.TenantID, timesheetID uuid.UUID) (bool, error) {
+	if p.invoicing == nil {
+		return false, nil
+	}
+	return p.invoicing.HasInvoiceForTimesheet(ctx, tenant, timesheetID)
 }
 
 var _ craports.InvoiceDraftPublisher = (*DraftPublisher)(nil)

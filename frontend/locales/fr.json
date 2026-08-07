@@ -40,6 +40,8 @@
     "conges_validation": "Validation congés",
     "budget": "Budget",
     "invoicing": "Facturation",
+    "clients": "Clients",
+    "missions": "Missions",
     "tma": "Évolutions & incidents",
     "support": "Service utilisateur",
     "maintenance": "Exploitation & travaux",
@@ -48,6 +50,7 @@
     "billing": "Abonnement",
     "notifications": "Notifications",
     "organisation": "Organisation",
+    "org_structure": "Structure",
     "applications": "Applications",
     "users": "Utilisateurs",
     "identity_providers": "Connexion SSO",
@@ -55,7 +58,16 @@
     "settings": "Paramètres",
     "platform": "Plateforme",
     "profile": "Mon profil",
-    "help": "Aide"
+    "help": "Aide",
+    "aria_app": "Navigation applicative",
+    "aria_menu": "Menu",
+    "section_time": "Temps",
+    "section_requests": "Demandes",
+    "section_ops": "Pilotage",
+    "section_account": "Compte",
+    "section_organisation": "Organisation",
+    "section_automation": "Automatisation",
+    "section_system": "Système"
   },
   "help": {
     "title": "Aide",
@@ -112,14 +124,17 @@
         "admin": {
           "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
           "bullets": [
-            "Accès à l'administration : organisation (identité, modules, structure), applications, utilisateurs, SSO, workflows, paramètres, abonnement.",
+            "Accès à l'administration regroupée : Organisation (Structure, applications, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
+            "Pilotage : Clients (liste / création) et Missions SSII (liste / création / staffing).",
             "Organisation → Modules : activer / désactiver la facturation client (hors abonnement SaaS).",
             "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
             "Facturation : accessible si le module est activé pour l'organisation (L/E/V).",
-            "CRA définitifs → brouillons facture (validation CRA ou Prestations → Créer factures).",
+            "CRA définitifs → brouillons facture (Facturation → Depuis un CRA, validation CRA ou Prestations → Créer factures).",
+            "Facturation : émettre une proforma par email (lien de validation client) puis transmettre PDP.",
             "Support et maintenance : droits complets lorsque les canaux sont activés.",
-            "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte."
+            "Self-edit : peut cumuler d'autres profils, sans retirer son propre Administrateur ni désactiver son compte.",
+            "Si le login est dans PLATFORM_ADMIN_LOGINS : accès console plateforme (/platform) pour créer des organisations et suivre les tenants."
           ],
           "seed": "ADM_admin / Admin123!"
         },
@@ -129,6 +144,7 @@
             "CRA et TMA : lecture et écriture (pas de validation).",
             "Congés : dépôt et suivi de ses demandes.",
             "Budget : consultation seule.",
+            "Pilotage : Clients et Missions visibles en lecture (via droits CRA).",
             "Pas d'accès aux menus d'administration."
           ],
           "seed": "COL_collab / Collab123!"
@@ -139,7 +155,8 @@
             "CRA et TMA : lecture, écriture et validation.",
             "Congés : lecture (pas de validation).",
             "Budget : lecture et écriture ; reporting en lecture.",
-            "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations).",
+            "Pilotage : Clients et Missions visibles en lecture.",
+            "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations, proforma client).",
             "Organisation : lecture."
           ],
           "seed": "CHE_chefdev / Chef123!"
@@ -149,7 +166,8 @@
           "bullets": [
             "CRA, TMA, congés et budget : lecture, écriture et validation.",
             "Reporting et organisation en lecture.",
-            "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations).",
+            "Pilotage : Clients et Missions visibles en lecture.",
+            "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations, proforma client).",
             "Pas d'accès aux paramètres d'administration (réservés à Administrateur)."
           ],
           "seed": "MGR_manager / Manager123!"
@@ -255,6 +273,9 @@
     "send_link": "M’envoyer un lien",
     "discovery_sent": "Si cet email est connu, un lien a été envoyé.",
     "discovery_dev_hint": "En local, les emails sont capturés par",
+    "no_account": "Pas encore d’organisation ?",
+    "signup_link": "Créer un compte",
+    "signup_success": "Organisation créée. Connectez-vous avec votre login administrateur.",
     "2fa": {
       "title": "Vérification 2FA",
       "subtitle": "Saisissez le code de votre application d'authentification",
@@ -636,10 +657,14 @@
     "invoice_unavailable": "CRA validé — facturation indisponible.",
     "create_invoices": "Créer factures",
     "create_invoices_confirm": "Créer des brouillons facture pour {n} CRA définitif(s) affiché(s) ?",
+    "create_invoices_confirm_title": "Créer les factures",
+    "create_invoices_confirm_submit": "Créer",
     "create_invoices_result": "{created} facture(s) créée(s), {skipped} ignorée(s).",
     "create_invoices_empty": "Aucun CRA définitif sélectionnable.",
     "create_invoices_skips": "Ignorés : {details}",
     "create_invoices_skip_item": "{id} ({reason})",
+    "create_invoices_open": "Ouvrir facture",
+    "create_invoices_created_links": "Factures créées :",
     "col_user": "Collaborateur",
     "col_hours": "Heures",
     "col_weeks": "Semaines",
@@ -705,6 +730,22 @@
     "client_tva": "Numéro de TVA",
     "client_create_error": "La création du client a échoué."
   },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Entreprises clientes et missions associées",
+    "new": "Nouveau client",
+    "back_list": "Retour aux clients",
+    "empty": "Aucun client",
+    "empty_desc": "Aucun client n'est encore enregistré.",
+    "empty_desc_create": "Créez un client pour rattacher des missions SSII.",
+    "load_error": "Impossible de charger les clients",
+    "create_error": "Impossible de créer le client",
+    "open": "Ouvrir",
+    "col_name": "Raison sociale",
+    "col_tva": "TVA",
+    "field_name": "Raison sociale",
+    "field_tva": "Numéro de TVA"
+  },
   "conges": {
     "title": "Congés",
     "new_request": "Nouvelle demande",
@@ -769,7 +810,9 @@
     "detail_title": "Facture {id}",
     "detail_subtitle": "Détail et statut PDP",
     "empty": "Aucune facture",
-    "empty_desc": "Les factures apparaissent ici après création ou validation CRA.",
+    "empty_desc": "Créez une facture depuis un CRA définitif ou en saisie manuelle.",
+    "empty_cta_cra": "Depuis un CRA",
+    "empty_cta_manual": "Saisie manuelle",
     "not_found": "Facture introuvable",
     "back": "Retour",
     "open": "Ouvrir",
@@ -778,12 +821,46 @@
     "create_submit": "Créer",
     "create_error": "Impossible de créer la facture.",
     "create_validation": "Vérifiez le client et les lignes (description, quantité et PU HT > 0).",
+    "mode_from_cra": "Depuis CRA",
+    "mode_manual": "Manuelle",
+    "mode_from_cra_hint": "Préremplir client, heures et tarif depuis un CRA définitif, puis ajuster avant création.",
+    "wizard_title": "Facture depuis CRA",
+    "wizard_start": "Choisir un CRA",
+    "wizard_step": "Étape {n} / {total}",
+    "wizard_month": "Mois",
+    "wizard_pick_hint": "Sélectionnez les CRA définitifs à facturer.",
+    "wizard_select_all": "Tout sélectionner",
+    "wizard_no_definitive": "Aucun CRA définitif pour ce mois.",
+    "wizard_pick_required": "Sélectionnez au moins un CRA.",
+    "wizard_load_error": "Impossible de charger les prestations.",
+    "wizard_preview_error": "Impossible de calculer l'aperçu.",
+    "wizard_next": "Continuer",
+    "wizard_blocked": "Bloqué",
+    "wizard_needs_edit": "À compléter",
+    "wizard_hours": "Heures facturables",
+    "wizard_line_net": "HT {amount}",
+    "wizard_line_tax": "TVA {amount}",
+    "wizard_no_ok": "Aucun CRA facturable dans la sélection.",
+    "wizard_edit_validation": "Vérifiez client, heures et PU HT pour chaque CRA valide.",
+    "wizard_confirm_hint": "Confirmer la création de {n} brouillon(s) facture ?",
+    "wizard_create": "Créer les factures",
+    "wizard_create_error": "Impossible de créer les factures.",
+    "wizard_create_none": "Aucune facture créée : {details}",
+    "wizard_created_flash": "{n} facture(s) créée(s).",
     "client": "Client",
     "client_placeholder": "Sélectionner un client",
     "currency": "Devise",
     "add_line": "Ajouter une ligne",
     "transmit": "Transmettre PDP",
     "transmit_error": "Échec de la transmission PDP.",
+    "proforma_emit": "Émettre proforma",
+    "proforma_resend": "Renvoyer proforma",
+    "proforma_sent": "Proforma envoyée au client par email.",
+    "proforma_error": "Impossible d'émettre la proforma (email client requis).",
+    "proforma_recipient": "Destinataire proforma",
+    "proforma_sent_at": "Proforma envoyée le",
+    "proforma_validated_at": "Proforma validée le",
+    "invoice_sent_at": "Facture envoyée le",
     "pdp_receipt": "Accusé PDP",
     "lines_title": "Lignes",
     "no_lines": "Aucune ligne",
@@ -791,8 +868,13 @@
     "line_quantity": "Quantité",
     "line_unit_price": "PU HT",
     "line_unit_price_eur": "PU HT (€)",
+    "line_unit_price_placeholder": "ex. 62,50",
     "line_tax": "TVA %",
+    "manual_preview_net": "HT {amount}",
+    "manual_preview_tax": "TVA {amount}",
+    "manual_preview_ttc": "TTC {amount}",
     "col_id": "Réf.",
+    "col_client": "Client",
     "col_status": "Statut",
     "col_type": "Type",
     "col_amount": "Montant HT",
@@ -800,12 +882,40 @@
     "status": {
       "virtuelle": "Virtuelle",
       "preparee": "Préparée",
+      "proforma": "Proforma",
       "transmise": "Transmise",
       "acceptee": "Acceptée",
       "refusee": "Refusée",
       "encaissee": "Encaissée",
-      "annulee": "Annulée"
-    }
+      "annulee": "Annulée",
+      "proforma_refusee": "Proforma refusée"
+    },
+    "proforma_rejected_banner": "Le client a refusé cette proforma.",
+    "proforma_client_comment": "Commentaire client",
+    "proforma_rejected_at": "Refusée le"
+  },
+  "proforma": {
+    "title": "Validation proforma",
+    "lead": "Consultez le détail, ajoutez un commentaire si besoin, puis validez ou refusez.",
+    "client": "Client",
+    "amount_ht": "Montant HT",
+    "amount_tax": "TVA",
+    "amount_ttc": "Total TTC",
+    "expires": "Expire le",
+    "validate": "Valider la proforma",
+    "validating": "Validation…",
+    "validated": "Proforma validée. La facture vous a été envoyée par email.",
+    "validated_no_email": "Proforma validée. L'envoi de la facture par email a échoué ; le prestataire vous la renverra.",
+    "load_error": "Lien invalide ou expiré.",
+    "validate_error": "Impossible de valider cette proforma.",
+    "comment_label": "Commentaire",
+    "comment_placeholder": "Précisez un motif en cas de refus…",
+    "comment_hint": "Optionnel pour valider, obligatoire pour refuser.",
+    "reject": "Refuser",
+    "rejecting": "Envoi du refus…",
+    "rejected": "Proforma refusée. Votre commentaire a été transmis.",
+    "reject_comment_required": "Un commentaire est obligatoire pour refuser.",
+    "reject_error": "Impossible de refuser cette proforma."
   },
   "integrations": {
     "title": "Intégrations",
@@ -1037,7 +1147,9 @@
       "title": "À quoi sert ce module ?",
       "items": [
         "Consulter et créer des factures clients (module activable dans Organisation → Modules).",
-        "Générer des brouillons depuis les CRA définitifs (validation CRA ou Prestations → Créer factures).",
+        "Wizard « Depuis un CRA » : preview prérempli (client, heures, PU) puis édition avant création.",
+        "Émettre une proforma par email avec lien de validation client ; à validation, conversion en facture + envoi auto.",
+        "Générer aussi des brouillons depuis Prestations → Créer factures, ou en saisie manuelle.",
         "Tarif : TJM mission, sinon TJM défaut application, sinon TJM défaut société (converti en €/h)."
       ]
     },
@@ -1160,6 +1272,8 @@
     "preset_leave_desc": "Validation des demandes de congés (module Congés).",
     "preset_tma": "TMA — incident applicatif",
     "preset_tma_desc": "Cycle de vie des demandes TMA (module Évolutions & incidents).",
+    "preset_cra_proforma": "Facturation — CRA / proforma / facture",
+    "preset_cra_proforma_desc": "Après validation CRA : émission proforma, validation client et envoi de facture.",
     "entity_type": "Type d'entité",
     "states_title": "États du workflow",
     "transitions_title": "Transitions (actions)",
@@ -1205,9 +1319,12 @@
       "restored": "Modèle recommandé restauré.",
       "summary_leave": "Chaque demande de congé démarre en attente. Un manager valide ou refuse depuis l'écran Validation congés.",
       "summary_tma": "Chaque incident suit un cycle ouverture → affectation → résolution, avec une étape optionnelle de validation chef utilisateur.",
+      "summary_cra_proforma": "Après validation définitive du CRA, une facture préparée est créée. L'équipe émet une proforma ; le client valide ou refuse, puis la facture est envoyée.",
       "screens": {
         "conges_validation": "Congés → Validation",
-        "tma_detail": "TMA → Fiche incident"
+        "tma_detail": "TMA → Fiche incident",
+        "invoicing_detail": "Facturation → Fiche facture",
+        "proforma_public": "Lien public proforma client"
       },
       "states": {
         "en_attente": "État de départ : la demande vient d'être déposée.",
@@ -1217,7 +1334,11 @@
         "ouverte": "État de départ standard ou après validation de création.",
         "affectee": "Un responsable a été affecté à l'incident.",
         "resolue": "État final : l'incident est résolu.",
-        "rework": "L'incident a été réouvert pour correction."
+        "rework": "L'incident a été réouvert pour correction.",
+        "preparee": "État de départ : CRA validé, facture créée en statut préparée.",
+        "proforma": "Proforma envoyée au client, en attente de décision.",
+        "facture_envoyee": "État final : le client a validé la proforma (l'envoi email de la facture reste best-effort).",
+        "proforma_refusee": "Le client a refusé la proforma ; une réémission est possible."
       },
       "actions": {
         "approve": "Valider",
@@ -1225,7 +1346,10 @@
         "validate_creation": "Valider la création",
         "assign": "Affecter",
         "resolve": "Résoudre",
-        "reopen": "Réouvrir"
+        "reopen": "Réouvrir",
+        "emit_proforma": "Émettre la proforma",
+        "validate_client": "Validation client",
+        "reject_client": "Refus client"
       },
       "hints": {
         "leave_approve": "Correspond au bouton « Valider » sur la page Validation congés.",
@@ -1234,7 +1358,12 @@
         "tma_assign": "Correspond au bouton « Affecter » sur la fiche incident.",
         "tma_resolve": "Correspond au bouton « Résoudre » sur la fiche incident.",
         "tma_reopen": "Correspond au bouton « Réouvrir » sur la fiche incident.",
-        "tma_assign_rework": "Réaffectation après réouverture — même bouton « Affecter » sur la fiche incident."
+        "tma_assign_rework": "Réaffectation après réouverture — même bouton « Affecter » sur la fiche incident.",
+        "emit_proforma": "Correspond au bouton « Émettre une proforma » sur la fiche facture.",
+        "emit_proforma_resend": "Renvoi du lien proforma alors qu'une proforma est déjà en cours — laissez les profils vides.",
+        "emit_proforma_retry": "Réémission après un refus client — même bouton « Émettre une proforma ». Laissez les profils vides.",
+        "validate_client": "Correspond à la validation sur le lien public proforma. Ne pas restreindre les profils (acteur public).",
+        "reject_client": "Correspond au refus sur le lien public proforma. Ne pas restreindre les profils (acteur public)."
       }
     },
     "howto": {
@@ -1245,7 +1374,8 @@
       "step_effects": "Optionnel : configurez des emails à l'entrée d'un état ou lors d'une action (destinataires personnalisables).",
       "step_save": "Enregistrez puis testez depuis le module métier concerné.",
       "leave_example": "Exemple congés : En attente → approve → Validé, ou reject → Refusé.",
-      "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework."
+      "tma_example": "Exemple TMA : En attente création → validate_creation → Ouverte → assign → Affectée → resolve → Résolue, avec reopen → Rework.",
+      "cra_proforma_example": "Exemple facturation : Facture préparée → emit_proforma → Proforma → validate_client → Facture envoyée (ou reject_client → refus puis réémission)."
     },
     "validation": {
       "code_required": "Le code workflow est requis.",
@@ -1274,6 +1404,7 @@
       "scope_service": "Service",
       "scope_application": "Application",
       "scope_all": "Tout le monde",
+      "scope_requester": "Émetteur de la demande",
       "pick_users": "Sélectionner des utilisateurs",
       "pick_equipe": "Équipe",
       "pick_service": "Service",
@@ -1281,7 +1412,7 @@
       "select_option": "Choisir…",
       "subject": "Sujet",
       "body": "Corps du message",
-      "template_vars": "Variables : {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}"
+      "template_vars": "Variables : {'{'}{'{'}entityId{'}'}{'}'}, {'{'}{'{'}definitionCode{'}'}{'}'}, {'{'}{'{'}fromState{'}'}{'}'}, {'{'}{'{'}toState{'}'}{'}'}, {'{'}{'{'}action{'}'}{'}'}, {'{'}{'{'}actorId{'}'}{'}'}, {'{'}{'{'}instanceId{'}'}{'}'}, {'{'}{'{'}requesterId{'}'}{'}'}"
     }
   },
   "notifications": {
@@ -1491,15 +1622,29 @@
     "address_street": "Adresse (rue)",
     "address_number": "Numéro",
     "address_box": "Boîte",
+    "address_box_ca": "App. / Suite",
+    "address_box_other": "Complément",
     "postal_code": "Code postal",
     "city": "Ville",
     "country": "Pays",
     "country_fr": "France",
     "country_be": "Belgique",
+    "country_mg": "Madagascar",
+    "country_ma": "Maroc",
+    "country_tn": "Tunisie",
+    "country_ca": "Canada",
     "siret": "SIRET",
     "bce": "N° BCE",
+    "nif_stat": "NIF / STAT",
+    "ice": "ICE",
+    "matricule_fiscal": "Matricule fiscal",
+    "ne": "NE (n° d’entreprise)",
     "registry_hint_fr": "14 chiffres (format indicatif)",
     "registry_hint_be": "Numéro d’entreprise BCE (format indicatif)",
+    "registry_hint_mg": "NIF / numéro STAT (format indicatif)",
+    "registry_hint_ma": "Identifiant Commun de l’Entreprise — 15 chiffres (format indicatif)",
+    "registry_hint_tn": "Matricule fiscal (format indicatif)",
+    "registry_hint_ca": "Numéro d’entreprise (NE) — 9 chiffres (format indicatif)",
     "url": "URL tenant",
     "preview_title": "Aperçu",
     "preview_hint": "Rendu dans la barre latérale",
@@ -1742,7 +1887,7 @@
       "deleted": "Type supprimé ou désactivé",
       "delete_confirm": "Supprimer le type {code} ?",
       "reset_title": "Recharger les défauts pays",
-      "reset_desc": "Les libellés par défaut du pays {country} remplaceront les entrées existantes (codes identiques). Les types personnalisés ajoutés manuellement sont conservés s'ils n'existent pas dans le catalogue pays.",
+      "reset_desc": "Les types par défaut du pays {country} seront rechargés. Les types du catalogue d’un autre pays sont désactivés (ou supprimés s’ils n’ont jamais été utilisés). Les types personnalisés ajoutés manuellement sont conservés.",
       "reset_confirm": "Confirmer le rechargement",
       "reset_done": "Catalogue rechargé depuis le template pays"
     },
@@ -1892,6 +2037,30 @@
       "model_hint": "Ex. gemini-3.6-flash — pris en compte immédiatement sur les prochaines requêtes IA",
       "save_success": "Modèle IA mis à jour",
       "save_error": "Impossible d'enregistrer le modèle"
+    },
+    "provision": {
+      "title": "Nouvelle organisation",
+      "subtitle": "Crée un tenant, une société et un compte administrateur (essai 14 jours).",
+      "tenant_name": "Nom du tenant",
+      "raison_sociale": "Raison sociale",
+      "admin_login": "Login administrateur",
+      "admin_email": "Email administrateur",
+      "admin_password": "Mot de passe administrateur",
+      "seats": "Sièges (essai)",
+      "submit": "Créer l'organisation",
+      "success": "Organisation « {tenant} » créée. Login admin : {login}"
     }
+  },
+  "signup": {
+    "title": "Créer votre organisation",
+    "subtitle": "Essai gratuit 14 jours — sans carte bancaire.",
+    "raison_sociale": "Raison sociale",
+    "admin_login": "Login administrateur",
+    "admin_email": "Email professionnel",
+    "admin_password": "Mot de passe",
+    "trial_hint": "Les modules métiers principaux sont inclus pendant l'essai.",
+    "submit": "Créer mon compte",
+    "have_account": "Déjà un compte ?",
+    "login_link": "Se connecter"
   }
 }

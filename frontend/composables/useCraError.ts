@@ -75,6 +75,7 @@ const invoiceReasonKeys: Record<string, string> = {
   publish_failed: 'cra.invoice_reason.publish_failed',
   already_exists_or_empty: 'cra.invoice_reason.already_exists_or_empty',
   already_exists: 'cra.invoice_reason.already_exists',
+  already_exists_check_failed: 'cra.invoice_reason.publish_failed',
   invoicing_not_configured: 'cra.invoice_reason.invoicing_not_configured',
   invoicing_disabled: 'cra.invoice_reason.invoicing_disabled',
   zero_unit_price: 'cra.invoice_reason.zero_unit_price',

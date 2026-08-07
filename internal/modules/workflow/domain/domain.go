@@ -125,6 +125,8 @@ type WorkflowInstance struct {
 	DefinitionCode string
 	EntityID       string
 	CurrentState   StateCode
+	// RequesterID is the entity issuer (leave requester, TMA author, CRA collaborator).
+	RequesterID uuid.UUID
 }
 
 type TransitionLog struct {

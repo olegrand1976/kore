@@ -5,36 +5,39 @@
         <TenantLogo :logo-url="branding.logoUrl" :alt="branding.raisonSociale" size="md" />
         <p v-if="branding.raisonSociale" class="sidebar__company">{{ branding.raisonSociale }}</p>
       </div>
-      <nav class="sidebar__nav" aria-label="Navigation applicative">
-        <NuxtLink
-          v-for="item in mainNavItems"
-          :key="item.to"
-          :to="item.to"
-          :class="{ 'router-link-active': isNavActive(item) }"
-        >
-          <AppIcon :name="item.icon" />
-          {{ item.label }}
-        </NuxtLink>
-
-        <div v-if="settingsNavItems.length > 0" class="sidebar__divider" />
-        <p v-if="settingsNavItems.length > 0" class="sidebar__section-label">
-          {{ t('nav.settings') }}
-        </p>
-        <NuxtLink
-          v-for="item in settingsNavItems"
-          :key="item.to"
-          :to="item.to"
-          :class="{ 'router-link-active': isNavActive(item) }"
-        >
-          <AppIcon :name="item.icon" />
-          {{ item.label }}
-        </NuxtLink>
+      <nav class="sidebar__nav" :aria-label="t('nav.aria_app')">
+        <template v-for="(section, sectionIndex) in navSections" :key="section.id">
+          <div v-if="section.showDivider" class="sidebar__divider" aria-hidden="true" />
+          <div
+            class="nav-section"
+            :role="section.label ? 'group' : undefined"
+            :aria-labelledby="section.label ? `nav-section-sidebar-${section.id}` : undefined"
+          >
+            <p
+              v-if="section.label"
+              :id="`nav-section-sidebar-${section.id}`"
+              class="sidebar__section-label"
+              :class="{ 'sidebar__section-label--spaced': !section.showDivider && sectionIndex > 0 }"
+            >
+              {{ section.label }}
+            </p>
+            <NuxtLink
+              v-for="item in section.items"
+              :key="item.to"
+              :to="item.to"
+              :class="{ 'router-link-active': isNavActive(item) }"
+            >
+              <AppIcon :name="item.icon" />
+              {{ item.label }}
+            </NuxtLink>
+          </div>
+        </template>
       </nav>
     </aside>
     <div class="content">
       <header class="topbar">
         <div class="topbar__left">
-          <button type="button" class="menu-btn" aria-label="Menu" @click="drawerOpen = true">
+          <button type="button" class="menu-btn" :aria-label="t('nav.aria_menu')" @click="drawerOpen = true">
             <AppIcon name="menu" />
           </button>
           <div class="topbar__breadcrumb">
@@ -94,33 +97,34 @@
 
     <MobileDrawer v-model:open="drawerOpen">
       <p class="drawer-title">{{ branding.raisonSociale || 'Kore' }}</p>
-      <NuxtLink
-        v-for="item in mainNavItems"
-        :key="item.to"
-        :to="item.to"
-        class="drawer-link"
-        :class="{ 'router-link-active': isNavActive(item) }"
-        @click="drawerOpen = false"
-      >
-        <AppIcon :name="item.icon" />
-        {{ item.label }}
-      </NuxtLink>
-
-      <div v-if="settingsNavItems.length > 0" class="drawer-divider" />
-      <p v-if="settingsNavItems.length > 0" class="drawer-section-label">
-        {{ t('nav.settings') }}
-      </p>
-      <NuxtLink
-        v-for="item in settingsNavItems"
-        :key="item.to"
-        :to="item.to"
-        class="drawer-link"
-        :class="{ 'router-link-active': isNavActive(item) }"
-        @click="drawerOpen = false"
-      >
-        <AppIcon :name="item.icon" />
-        {{ item.label }}
-      </NuxtLink>
+      <template v-for="(section, sectionIndex) in navSections" :key="section.id">
+        <div v-if="section.showDivider" class="drawer-divider" aria-hidden="true" />
+        <div
+          class="nav-section"
+          :role="section.label ? 'group' : undefined"
+          :aria-labelledby="section.label ? `nav-section-drawer-${section.id}` : undefined"
+        >
+          <p
+            v-if="section.label"
+            :id="`nav-section-drawer-${section.id}`"
+            class="drawer-section-label"
+            :class="{ 'drawer-section-label--spaced': !section.showDivider && sectionIndex > 0 }"
+          >
+            {{ section.label }}
+          </p>
+          <NuxtLink
+            v-for="item in section.items"
+            :key="item.to"
+            :to="item.to"
+            class="drawer-link"
+            :class="{ 'router-link-active': isNavActive(item) }"
+            @click="drawerOpen = false"
+          >
+            <AppIcon :name="item.icon" />
+            {{ item.label }}
+          </NuxtLink>
+        </div>
+      </template>
       <button type="button" class="drawer-link drawer-link--btn" @click="onToggleTheme">
         <AppIcon :name="theme === 'dark' ? 'light_mode' : 'dark_mode'" />
         {{ theme === 'dark' ? $t('theme.switch_light') : $t('theme.switch_dark') }}
@@ -134,6 +138,9 @@
 </template>
 
 <script setup lang="ts">
+import { buildBottomNavItems, buildNavSections, isNavItemVisible, type NavSectionId } from '~/utils/appNav'
+import type { RbacModule } from '~/utils/rbac'
+
 const { locale, setLocale, t } = useI18n()
 const { theme, toggleTheme } = useTheme()
 const route = useRoute()
@@ -246,10 +253,12 @@ type NavItem = {
   to: string
   icon: string
   label: string
+  section: NavSectionId
   adminOnly?: boolean
   platformOnly?: boolean
   module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing' | 'ett' | 'integrations'
-  rbacModule?: 'support' | 'maintenance' | 'invoicing'
+  rbacModule?: RbacModule
+  rbacAnyOf?: RbacModule[]
   requestChannel?: 'tma' | 'support' | 'maintenance'
   orgInvoicing?: boolean
   activePrefix?: string
@@ -257,81 +266,62 @@ type NavItem = {
 }
 
 const allNavItems = computed<NavItem[]>(() => [
-  { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
-  { to: '/compte', icon: 'person', label: t('nav.profile'), activePrefix: '/compte' },
-  { to: '/demandes/nouveau', icon: 'add_circle', label: t('nav.new_request'), multiChannelOnly: true },
-  { to: '/cra', icon: 'schedule', label: t('nav.cra'), module: 'cra' },
-  { to: '/prestations', icon: 'fact_check', label: t('nav.prestations'), module: 'cra', adminOnly: true },
-  { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), module: 'ett' },
-  { to: '/conges', icon: 'beach_access', label: t('nav.conges'), module: 'conges', activePrefix: '/conges' },
-  { to: '/budget', icon: 'account_balance', label: t('nav.budget'), module: 'budget' },
-  { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), orgInvoicing: true, rbacModule: 'invoicing' },
-  { to: '/tma', icon: 'support_agent', label: t('nav.tma'), module: 'tma', requestChannel: 'tma' },
-  { to: '/support', icon: 'confirmation_number', label: t('nav.support'), rbacModule: 'support', requestChannel: 'support' },
-  { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), rbacModule: 'maintenance', requestChannel: 'maintenance' },
-  { to: '/platform', icon: 'hub', label: t('nav.platform'), platformOnly: true, activePrefix: '/platform' },
-  { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), adminOnly: true, module: 'billing' },
-  { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), adminOnly: true, module: 'notifications' },
-  { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.organisation'), adminOnly: true },
-  { to: '/admin/applications', icon: 'apps', label: t('nav.applications'), adminOnly: true },
-  { to: '/admin/users', icon: 'group', label: t('nav.users'), adminOnly: true },
-  { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), adminOnly: true },
-  { to: '/admin/integrations', icon: 'hub', label: t('nav.integrations'), adminOnly: true, module: 'integrations' },
-  { to: '/admin/workflows', icon: 'account_tree', label: t('nav.workflows'), adminOnly: true },
-  { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), adminOnly: true, activePrefix: '/admin/parametres' },
-  { to: '/aide', icon: 'help', label: t('nav.help'), activePrefix: '/aide' }
+  { to: '/dashboard', icon: 'dashboard', label: t('nav.dashboard'), section: 'home' },
+  { to: '/demandes/nouveau', icon: 'add_circle', label: t('nav.new_request'), section: 'home', multiChannelOnly: true },
+  { to: '/cra', icon: 'schedule', label: t('nav.cra'), section: 'time', module: 'cra' },
+  { to: '/prestations', icon: 'fact_check', label: t('nav.prestations'), section: 'time', module: 'cra', adminOnly: true },
+  { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), section: 'time', module: 'ett' },
+  { to: '/conges', icon: 'beach_access', label: t('nav.conges'), section: 'time', module: 'conges', activePrefix: '/conges' },
+  { to: '/tma', icon: 'support_agent', label: t('nav.tma'), section: 'requests', module: 'tma', requestChannel: 'tma' },
+  { to: '/support', icon: 'confirmation_number', label: t('nav.support'), section: 'requests', rbacModule: 'support', requestChannel: 'support' },
+  { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), section: 'requests', rbacModule: 'maintenance', requestChannel: 'maintenance' },
+  {
+    to: '/clients',
+    icon: 'apartment',
+    label: t('nav.clients'),
+    section: 'ops',
+    rbacAnyOf: ['org', 'ssii', 'cra'],
+    activePrefix: '/clients'
+  },
+  {
+    to: '/missions',
+    icon: 'work',
+    label: t('nav.missions'),
+    section: 'ops',
+    rbacAnyOf: ['ssii', 'cra'],
+    activePrefix: '/missions'
+  },
+  { to: '/budget', icon: 'account_balance', label: t('nav.budget'), section: 'ops', module: 'budget' },
+  { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), section: 'ops', orgInvoicing: true, rbacModule: 'invoicing' },
+  { to: '/compte', icon: 'person', label: t('nav.profile'), section: 'account', activePrefix: '/compte' },
+  { to: '/aide', icon: 'help', label: t('nav.help'), section: 'account', activePrefix: '/aide' },
+  { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.org_structure'), section: 'organisation', adminOnly: true },
+  { to: '/admin/applications', icon: 'apps', label: t('nav.applications'), section: 'organisation', adminOnly: true },
+  { to: '/admin/users', icon: 'group', label: t('nav.users'), section: 'organisation', adminOnly: true },
+  { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), section: 'organisation', adminOnly: true },
+  { to: '/admin/workflows', icon: 'account_tree', label: t('nav.workflows'), section: 'automation', adminOnly: true },
+  { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), section: 'automation', adminOnly: true, module: 'notifications' },
+  { to: '/admin/integrations', icon: 'extension', label: t('nav.integrations'), section: 'automation', adminOnly: true, module: 'integrations' },
+  { to: '/admin/parametres', icon: 'settings', label: t('nav.settings'), section: 'system', adminOnly: true, activePrefix: '/admin/parametres' },
+  { to: '/billing/abonnement', icon: 'payments', label: t('nav.billing'), section: 'system', adminOnly: true, module: 'billing' },
+  { to: '/platform', icon: 'hub', label: t('nav.platform'), section: 'system', platformOnly: true, activePrefix: '/platform' }
 ])
 
 const navItems = computed(() =>
-  allNavItems.value.filter((item) => {
-    if (item.platformOnly && !isPlatformAdmin.value) return false
-    if (item.adminOnly && !isAdmin.value) return false
-    if (item.multiChannelOnly && activeChannelCount.value < 2) return false
-    if (item.module && !hasModule(item.module)) return false
-    if (item.rbacModule && !can(item.rbacModule, 'L')) return false
-    if (item.requestChannel && !isChannelEnabled(item.requestChannel)) return false
-    if (item.orgInvoicing && !isInvoicingEnabled.value) return false
-    return true
-  })
-)
-
-const mainNavItems = computed(() =>
-  navItems.value.filter(
-    (item) =>
-      ![
-        '/compte',
-        '/aide',
-        '/admin/notifications',
-        '/admin/organisation',
-        '/admin/applications',
-        '/admin/users',
-        '/admin/identity-providers',
-        '/admin/workflows',
-        '/admin/parametres',
-        '/platform',
-        '/billing/abonnement'
-      ].includes(item.to)
+  allNavItems.value.filter((item) =>
+    isNavItemVisible(item, {
+      isAdmin: isAdmin.value,
+      isPlatformAdmin: isPlatformAdmin.value,
+      activeChannelCount: activeChannelCount.value,
+      hasModule,
+      can,
+      isChannelEnabled,
+      isInvoicingEnabled: isInvoicingEnabled.value
+    })
   )
 )
 
-const settingsNavItems = computed(() => {
-  const byTo = new Map(navItems.value.map((item) => [item.to, item]))
-
-  return [
-    byTo.get('/compte'),
-    byTo.get('/aide'),
-    byTo.get('/admin/notifications'),
-    byTo.get('/admin/organisation'),
-    byTo.get('/admin/applications'),
-    byTo.get('/admin/users'),
-    byTo.get('/admin/identity-providers'),
-    byTo.get('/admin/integrations'),
-    byTo.get('/admin/workflows'),
-    byTo.get('/admin/parametres'),
-    byTo.get('/platform'),
-    byTo.get('/billing/abonnement')
-  ].filter((item): item is NavItem => item !== undefined)
-})
+const navSections = computed(() => buildNavSections(navItems.value, t))
 
 const isNavActive = (item: NavItem) => {
   const prefix = item.activePrefix ?? item.to
@@ -342,7 +332,7 @@ const isNavActive = (item: NavItem) => {
 
 const activeNavItem = computed(() => navItems.value.find((item) => isNavActive(item)))
 
-const bottomNavItems = computed(() => mainNavItems.value.slice(0, 4))
+const bottomNavItems = computed(() => buildBottomNavItems(navItems.value))
 
 const isNarrowMain = computed(() => route.meta.narrow === true)
 
@@ -404,6 +394,12 @@ const logout = async () => {
   gap: var(--kore-space-xs);
 }
 
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
 .sidebar__divider {
   height: 1px;
   background: var(--kore-border);
@@ -417,6 +413,10 @@ const logout = async () => {
   color: var(--kore-text-muted);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.sidebar__section-label--spaced {
+  margin-top: var(--kore-space-md);
 }
 
 .sidebar__nav a {
@@ -591,6 +591,10 @@ const logout = async () => {
   color: var(--kore-text-muted);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.drawer-section-label--spaced {
+  margin-top: var(--kore-space-md);
 }
 
 @media (max-width: 768px) {

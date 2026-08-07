@@ -17,6 +17,8 @@ type StartInstanceCommand struct {
 	InstanceID *uuid.UUID
 	// InitialState optionnel : point d'entrée alternatif (ex. gate chef utilisateur TMA).
 	InitialState *domain.StateCode
+	// RequesterID optionnel : émetteur de la demande (scope email "requester").
+	RequesterID uuid.UUID
 }
 
 type FireTransitionCommand struct {
@@ -54,6 +56,7 @@ type SideEffectContext struct {
 	ToState        domain.StateCode
 	Action         domain.ActionCode
 	ActorID        uuid.UUID
+	RequesterID    uuid.UUID
 }
 
 type SideEffectExecutor interface {

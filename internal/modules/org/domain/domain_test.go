@@ -25,6 +25,22 @@ func TestFormatSocieteAddress(t *testing.T) {
 		Pays:       "FR",
 	})
 	require.Equal(t, "1 rue de la Paix, 75002 Paris, France", gotFR)
+
+	gotMA := FormatSocieteAddress(Societe{
+		Adresse:    "Bd Zerktouni",
+		CodePostal: "20000",
+		Ville:      "Casablanca",
+		Pays:       "ma",
+	})
+	require.Equal(t, "Bd Zerktouni, 20000 Casablanca, Maroc", gotMA)
+
+	gotCA := FormatSocieteAddress(Societe{
+		Adresse:    "Rue Sainte-Catherine",
+		CodePostal: "H3B 1A7",
+		Ville:      "Montréal",
+		Pays:       "CA",
+	})
+	require.Equal(t, "Rue Sainte-Catherine, H3B 1A7 Montréal, Canada", gotCA)
 }
 
 func TestLoginValid(t *testing.T) {

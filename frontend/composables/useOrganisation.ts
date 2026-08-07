@@ -124,7 +124,7 @@ export function useOrganisation() {
     apiFetch('/api/org/equipes', { method: 'POST', body })
 
   const listClients = async () =>
-    unwrap<{ id?: string; ID?: string; raisonSociale?: string; RaisonSociale?: string }>(
+    unwrap<{ id?: string; ID?: string; raisonSociale?: string; RaisonSociale?: string; tva?: string }>(
       await apiFetch('/api/org/clients')
     )
 

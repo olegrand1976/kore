@@ -69,6 +69,7 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 			DefinitionCode: "tma.incident",
 			EntityID:       demand.ID.String(),
 			InstanceID:     &demandID,
+			RequesterID:    cmd.AuthorID,
 		}
 		if demand.RequiresChefGate {
 			gate := string(domain.DemandStatusAwaitingCreation)
