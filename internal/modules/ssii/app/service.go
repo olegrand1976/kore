@@ -283,14 +283,7 @@ func (s *service) resolveClientContacts(
 		if !ok {
 			continue
 		}
-		out = append(out, ports.MissionClientContact{
-			ID:        c.ID,
-			Nom:       c.Nom,
-			Prenom:    c.Prenom,
-			Email:     c.Email,
-			Role:      c.Role,
-			Telephone: c.Telephone,
-		})
+		out = append(out, ports.MissionClientContact(c))
 		outIDs = append(outIDs, id)
 		names = append(names, contactDisplayName(c))
 	}
