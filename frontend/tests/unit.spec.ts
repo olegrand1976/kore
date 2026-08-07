@@ -15,6 +15,7 @@ import {
   groupByKey,
   useListControls
 } from '../composables/useListControls'
+import { resolveLogoUrl } from '../composables/useTenantBranding'
 
 beforeAll(() => {
   vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
@@ -245,6 +246,34 @@ describe('auth session shape', () => {
     const session = { ok: true, profile: 'Administrateur', userId: 'u1', tenantId: 't1' }
     expect(session.ok).toBe(true)
     expect(session.profile).toBe('Administrateur')
+  })
+})
+
+describe('resolveLogoUrl', () => {
+  const tenant = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+  const apiLogo = `/api/v1/branding/logo/${tenant}`
+
+  it('maps API logo path to BFF URL', () => {
+    expect(resolveLogoUrl(apiLogo, tenant)).toBe(`/api/org/branding/logo/${tenant}`)
+  })
+
+  it('ignores empty-object tenantId from legacy Go JSON', () => {
+    expect(resolveLogoUrl(apiLogo, {})).toBe(`/api/org/branding/logo/${tenant}`)
+    expect(resolveLogoUrl(apiLogo, { value: tenant })).toBe(`/api/org/branding/logo/${tenant}`)
+  })
+
+  it('uses string tenantId when logo has no path id', () => {
+    expect(resolveLogoUrl('stored', tenant)).toBe(`/api/org/branding/logo/${tenant}`)
+  })
+
+  it('keeps blob and BFF urls as-is', () => {
+    expect(resolveLogoUrl('blob:http://localhost/x')).toBe('blob:http://localhost/x')
+    expect(resolveLogoUrl(`/api/org/branding/logo/${tenant}`)).toBe(`/api/org/branding/logo/${tenant}`)
+  })
+
+  it('returns null when logo is missing', () => {
+    expect(resolveLogoUrl(null, tenant)).toBeNull()
+    expect(resolveLogoUrl(undefined)).toBeNull()
   })
 })
 
