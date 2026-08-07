@@ -30,9 +30,9 @@ func (s stubAuthorizer) Can(_ context.Context, module authx.Module, action authx
 
 type missionServiceStub struct {
 	ports.SSIIService
-	created *ports.CreateMissionCommand
-	updated *ports.UpdateApplicationsCommand
-	detail  ports.MissionDetail
+	created   *ports.CreateMissionCommand
+	updated   *ports.UpdateApplicationsCommand
+	detail    ports.MissionDetail
 	createErr error
 	updateErr error
 }
@@ -104,12 +104,12 @@ func TestCreateMission_forwardsApplicationIDs(t *testing.T) {
 	collabID := uuid.New()
 	rec := httptest.NewRecorder()
 	handler(rec, requestWithIdentity(t, http.MethodPost, "/missions", map[string]any{
-		"clientId":         clientID.String(),
-		"startDate":        time.Now().UTC().Format(time.RFC3339),
-		"rateUnit":         "tjm",
-		"tjmAmount":        50000,
-		"collaboratorIds":  []string{collabID.String()},
-		"applicationIds":   []string{appID.String()},
+		"clientId":        clientID.String(),
+		"startDate":       time.Now().UTC().Format(time.RFC3339),
+		"rateUnit":        "tjm",
+		"tjmAmount":       50000,
+		"collaboratorIds": []string{collabID.String()},
+		"applicationIds":  []string{appID.String()},
 	}))
 
 	if rec.Code != http.StatusCreated {
