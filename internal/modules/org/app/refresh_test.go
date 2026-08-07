@@ -107,6 +107,9 @@ func (r refreshUserRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.U
 }
 func (r refreshUserRepo) SaveClient(context.Context, domain.Client) error   { return nil }
 func (r refreshUserRepo) UpdateClient(context.Context, domain.Client) error { return nil }
+func (r refreshUserRepo) UpdateClientContacts(context.Context, kernel.TenantID, uuid.UUID, []domain.ClientContact) error {
+	return nil
+}
 func (r refreshUserRepo) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
 }

@@ -149,6 +149,14 @@ export function useOrganisation() {
       codePostal?: string
       ville?: string
       siret?: string
+      contacts?: Array<{
+        id?: string
+        nom?: string
+        prenom?: string
+        email?: string
+        role?: string
+        telephone?: string
+      }>
     }>(await apiFetch('/api/org/clients'))
 
   const createClient = (body: {
@@ -178,6 +186,21 @@ export function useOrganisation() {
     }
   ) => apiFetch(`/api/org/clients/${id}`, { method: 'PUT', body })
 
+  const replaceClientContacts = (
+    id: string,
+    contacts: Array<{
+      id?: string
+      nom?: string
+      prenom?: string
+      email?: string
+      role?: string
+      telephone?: string
+    }>
+  ) => apiFetch(`/api/org/clients/${id}/contacts`, {
+    method: 'PUT',
+    body: { contacts }
+  })
+
   return {
     listSocietes,
     listSites,
@@ -196,6 +219,7 @@ export function useOrganisation() {
     listClients,
     createClient,
     updateClient,
+    replaceClientContacts,
     orgId,
     orgLabel,
     buildEquipeOptions

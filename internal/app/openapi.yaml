@@ -588,6 +588,41 @@ paths:
           description: Client introuvable
         "422":
           description: Validation (raison sociale vide ou pays non supporté)
+  /clients/{id}/contacts:
+    put:
+      summary: Remplacer la liste des contacts client (hard replace)
+      description: >
+        Remplacement complet du tableau `contacts`. Chaque contact doit avoir
+        `id` (UUID) pour une mise à jour, ou l'omettre pour en créer un.
+        L'absence d'un contact existant dans le payload le supprime définitivement
+        et purge les références dans `ssii.missions.client_contact_ids`.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contacts]
+              properties:
+                contacts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      nom: { type: string }
+                      prenom: { type: string }
+                      email: { type: string }
+                      role: { type: string }
+                      telephone: { type: string }
+      responses:
+        "200":
+          description: Client mis à jour
+        "404":
+          description: Client introuvable
   /notification-rules:
     get:
       summary: Lister règles notifications
@@ -1855,6 +1890,7 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "201": { description: Créé }
+        "422": { description: Validation (collaborateurs / rateUnit) }
   /missions/{id}:
     get:
       summary: Détail mission
@@ -1862,6 +1898,16 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: OK }
+    put:
+      summary: Mettre à jour mission (titre, tarif, contacts)
+      description: >
+        `clientContactIds` omis = inchangé ; tableau vide = clear ;
+        tableau renseigné = remplacement des contacts sélectionnés.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+        "422": { description: rateUnit ou contact invalide }
   /missions/{id}/stop:
     post:
       summary: Arrêter mission

@@ -488,11 +488,74 @@ func DedupeUUIDs(ids []uuid.UUID) []uuid.UUID {
 }
 
 type ClientContact struct {
-	Nom       string `json:"nom"`
-	Prenom    string `json:"prenom"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	Telephone string `json:"telephone"`
+	ID        uuid.UUID `json:"id"`
+	Nom       string    `json:"nom"`
+	Prenom    string    `json:"prenom"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Telephone string    `json:"telephone"`
+}
+
+// NormalizeClientContacts assigns missing IDs and trims fields.
+func NormalizeClientContacts(contacts []ClientContact) []ClientContact {
+	out, _ := EnsureClientContactIDs(contacts)
+	return out
+}
+
+// SanitizeClientContacts trims fields without generating IDs (read path).
+func SanitizeClientContacts(contacts []ClientContact) []ClientContact {
+	if len(contacts) == 0 {
+		return []ClientContact{}
+	}
+	out := make([]ClientContact, 0, len(contacts))
+	for _, c := range contacts {
+		out = append(out, ClientContact{
+			ID:        c.ID,
+			Nom:       strings.TrimSpace(c.Nom),
+			Prenom:    strings.TrimSpace(c.Prenom),
+			Email:     strings.TrimSpace(c.Email),
+			Role:      strings.TrimSpace(c.Role),
+			Telephone: strings.TrimSpace(c.Telephone),
+		})
+	}
+	return out
+}
+
+// EnsureClientContactIDs normalizes contacts and reports whether any ID was generated.
+func EnsureClientContactIDs(contacts []ClientContact) ([]ClientContact, bool) {
+	if len(contacts) == 0 {
+		return []ClientContact{}, false
+	}
+	out := make([]ClientContact, 0, len(contacts))
+	changed := false
+	for _, c := range contacts {
+		id := c.ID
+		if id == uuid.Nil {
+			id = uuid.New()
+			changed = true
+		}
+		out = append(out, ClientContact{
+			ID:        id,
+			Nom:       strings.TrimSpace(c.Nom),
+			Prenom:    strings.TrimSpace(c.Prenom),
+			Email:     strings.TrimSpace(c.Email),
+			Role:      strings.TrimSpace(c.Role),
+			Telephone: strings.TrimSpace(c.Telephone),
+		})
+	}
+	return out, changed
+}
+
+// ClientContactDisplayName returns "Prenom Nom" or a fallback.
+func ClientContactDisplayName(c ClientContact) string {
+	name := strings.TrimSpace(strings.TrimSpace(c.Prenom) + " " + strings.TrimSpace(c.Nom))
+	if name != "" {
+		return name
+	}
+	if email := strings.TrimSpace(c.Email); email != "" {
+		return email
+	}
+	return c.ID.String()
 }
 
 type Client struct {

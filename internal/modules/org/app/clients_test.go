@@ -35,6 +35,19 @@ func (r *clientRepoFake) UpdateClient(_ context.Context, c domain.Client) error 
 	return nil
 }
 
+func (r *clientRepoFake) UpdateClientContacts(_ context.Context, _ kernel.TenantID, id uuid.UUID, contacts []domain.ClientContact) error {
+	if r.clients == nil {
+		return domain.ErrClientNotFound
+	}
+	c, ok := r.clients[id]
+	if !ok {
+		return domain.ErrClientNotFound
+	}
+	c.Contacts = contacts
+	r.clients[id] = c
+	return nil
+}
+
 func (r *clientRepoFake) GetClient(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Client, error) {
 	if r.clients == nil {
 		return domain.Client{}, domain.ErrClientNotFound
@@ -151,4 +164,96 @@ func TestUpdateClient_notFound(t *testing.T) {
 		RaisonSociale: "X",
 	})
 	require.ErrorIs(t, err, domain.ErrClientNotFound)
+}
+
+func TestReplaceClientContacts_assignsIDs(t *testing.T) {
+	repo := &clientRepoFake{}
+	svc := NewClientService(repo)
+	tenant := kernel.NewTenantID(uuid.New())
+	created, err := svc.CreateClient(context.Background(), ports.CreateClientCommand{
+		TenantID:      tenant,
+		RaisonSociale: "Acme",
+	})
+	require.NoError(t, err)
+
+	got, err := svc.ReplaceClientContacts(context.Background(), ports.ReplaceClientContactsCommand{
+		TenantID: tenant,
+		ClientID: created.ID,
+		Contacts: []domain.ClientContact{{
+			Prenom: "Marie",
+			Nom:    "Dupont",
+			Email:  "marie@acme.test",
+			Role:   "DSI",
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, got.Contacts, 1)
+	require.NotEqual(t, uuid.Nil, got.Contacts[0].ID)
+	require.Equal(t, "DSI", got.Contacts[0].Role)
+}
+
+type missionCleanerFake struct {
+	calls []struct {
+		clientID uuid.UUID
+		removed  []uuid.UUID
+	}
+}
+
+func (f *missionCleanerFake) PurgeRemovedClientContacts(_ context.Context, _ kernel.TenantID, clientID uuid.UUID, removedIDs []uuid.UUID) error {
+	f.calls = append(f.calls, struct {
+		clientID uuid.UUID
+		removed  []uuid.UUID
+	}{clientID: clientID, removed: append([]uuid.UUID{}, removedIDs...)})
+	return nil
+}
+
+func TestReplaceClientContacts_purgesRemovedFromMissions(t *testing.T) {
+	repo := &clientRepoFake{}
+	cleaner := &missionCleanerFake{}
+	svc := NewClientService(repo, WithMissionContactCleaner(cleaner))
+	tenant := kernel.NewTenantID(uuid.New())
+	created, err := svc.CreateClient(context.Background(), ports.CreateClientCommand{
+		TenantID:      tenant,
+		RaisonSociale: "Acme",
+	})
+	require.NoError(t, err)
+
+	keepID := uuid.New()
+	dropID := uuid.New()
+	_, err = svc.ReplaceClientContacts(context.Background(), ports.ReplaceClientContactsCommand{
+		TenantID: tenant,
+		ClientID: created.ID,
+		Contacts: []domain.ClientContact{
+			{ID: keepID, Prenom: "Keep"},
+			{ID: dropID, Prenom: "Drop"},
+		},
+	})
+	require.NoError(t, err)
+	require.Empty(t, cleaner.calls)
+
+	_, err = svc.ReplaceClientContacts(context.Background(), ports.ReplaceClientContactsCommand{
+		TenantID: tenant,
+		ClientID: created.ID,
+		Contacts: []domain.ClientContact{
+			{ID: keepID, Prenom: "Keep"},
+		},
+	})
+	require.NoError(t, err)
+	require.Len(t, cleaner.calls, 1)
+	require.Equal(t, created.ID, cleaner.calls[0].clientID)
+	require.Equal(t, []uuid.UUID{dropID}, cleaner.calls[0].removed)
+}
+
+func TestGetClient_doesNotPersistMissingIDs(t *testing.T) {
+	repo := &clientRepoFake{}
+	svc := NewClientService(repo)
+	tenant := kernel.NewTenantID(uuid.New())
+	id := uuid.New()
+	repo.clients = map[uuid.UUID]domain.Client{
+		id: {ID: id, TenantID: tenant, RaisonSociale: "Acme", Contacts: []domain.ClientContact{{Prenom: "Legacy"}}},
+	}
+	got, err := svc.GetClient(context.Background(), tenant, id)
+	require.NoError(t, err)
+	require.Equal(t, uuid.Nil, got.Contacts[0].ID)
+	require.Equal(t, uuid.Nil, repo.clients[id].Contacts[0].ID)
 }

@@ -97,8 +97,18 @@
       </AppCard>
 
       <AppCard padding="none" class="fiche-table-wrap fiche-block">
-        <div class="fiche-table-head">
+        <div class="fiche-table-head fiche-table-head--row">
           <h3 class="fiche-section-title">{{ $t('fiche.section_contacts') }}</h3>
+          <AppButton
+            v-if="canEdit"
+            variant="secondary"
+            size="sm"
+            type="button"
+            class="contact-add-btn"
+            @click="openContactCreate"
+          >
+            <AppIcon name="add" /> {{ $t('clients.contact_add') }}
+          </AppButton>
         </div>
         <div class="fiche-table-toolbar">
           <AppListToolbar
@@ -117,7 +127,7 @@
         <AppTable
           :columns="contactColumns"
           :rows="contactDisplayRows"
-          row-key="email"
+          row-key="id"
           :empty-title="contactHasActiveFilters ? $t('common.list.no_results') : $t('fiche.contacts_empty')"
         >
           <template #cell-name="{ row }">
@@ -127,8 +137,64 @@
             <a v-if="value" :href="`mailto:${value}`" class="fiche-link">{{ value }}</a>
             <span v-else>{{ $t('fiche.none') }}</span>
           </template>
+          <template v-if="canEdit" #cell-actions="{ row }">
+            <div class="contact-row-actions">
+              <AppButton variant="ghost" size="sm" type="button" @click="openContactEdit(row.id)">
+                {{ $t('common.edit') }}
+              </AppButton>
+              <AppButton variant="ghost" size="sm" type="button" @click="askDeleteContact(row.id)">
+                {{ $t('common.delete') }}
+              </AppButton>
+            </div>
+          </template>
         </AppTable>
       </AppCard>
+
+      <AppModal
+        v-model:open="contactModalOpen"
+        width="sm"
+        :aria-label="contactEditingId ? $t('clients.contact_edit') : $t('clients.contact_add')"
+      >
+        <form class="contact-form" @submit.prevent="submitContact">
+          <h2 class="contact-form__title">
+            {{ contactEditingId ? $t('clients.contact_edit') : $t('clients.contact_add') }}
+          </h2>
+          <AppInput id="contact-prenom" v-model="contactForm.prenom" :label="$t('clients.contact_prenom')" />
+          <AppInput id="contact-nom" v-model="contactForm.nom" :label="$t('clients.contact_nom')" />
+          <AppInput id="contact-role" v-model="contactForm.role" :label="$t('clients.contact_role')" />
+          <AppInput id="contact-email" v-model="contactForm.email" type="email" :label="$t('clients.contact_email')" />
+          <AppInput id="contact-phone" v-model="contactForm.telephone" :label="$t('clients.contact_phone')" />
+          <p v-if="contactError" class="flash flash--error" role="alert">{{ contactError }}</p>
+          <div class="contact-form__actions">
+            <AppButton variant="ghost" type="button" :disabled="contactSaving" @click="contactModalOpen = false">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="primary" type="submit" :loading="contactSaving">
+              {{ $t('common.save') }}
+            </AppButton>
+          </div>
+        </form>
+      </AppModal>
+
+      <AppModal
+        v-model:open="deleteContactOpen"
+        width="sm"
+        :aria-label="$t('clients.contact_delete_title')"
+      >
+        <div class="contact-delete">
+          <h2 class="contact-form__title">{{ $t('clients.contact_delete_title') }}</h2>
+          <p>{{ $t('clients.contact_delete_confirm') }}</p>
+          <p v-if="contactError" class="flash flash--error" role="alert">{{ contactError }}</p>
+          <div class="contact-form__actions">
+            <AppButton variant="ghost" type="button" :disabled="contactSaving" @click="deleteContactOpen = false">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="danger" type="button" :loading="contactSaving" @click="confirmDeleteContact">
+              {{ $t('common.delete') }}
+            </AppButton>
+          </div>
+        </div>
+      </AppModal>
 
       <AppCard padding="none" class="fiche-table-wrap">
         <div class="fiche-table-head">
@@ -190,6 +256,7 @@ import {
 definePageMeta({ layout: 'default' })
 
 type ClientContact = {
+  id?: string
   nom?: string
   prenom?: string
   email?: string
@@ -225,7 +292,7 @@ type MissionSummary = {
 const route = useRoute()
 const { t } = useI18n()
 const { can } = usePermissions()
-const { updateClient } = useOrganisation()
+const { updateClient, replaceClientContacts } = useOrganisation()
 const { extractFetchError } = useApiError()
 const { formatDate, formatMoney, missionStatusLabel, missionStatusVariant } = useFicheFormat()
 
@@ -339,18 +406,25 @@ const submitEdit = async () => {
 
 const contacts = computed(() => client.value?.contacts ?? [])
 
-const contactColumns = computed(() => [
-  { key: 'name', label: t('fiche.col_contact_name') },
-  { key: 'role', label: t('fiche.col_contact_role') },
-  { key: 'email', label: t('fiche.col_email') },
-  { key: 'phone', label: t('fiche.col_contact_phone') }
-])
+const contactColumns = computed(() => {
+  const cols = [
+    { key: 'name', label: t('fiche.col_contact_name') },
+    { key: 'role', label: t('fiche.col_contact_role') },
+    { key: 'email', label: t('fiche.col_email') },
+    { key: 'phone', label: t('fiche.col_contact_phone') }
+  ]
+  if (canEdit.value) {
+    cols.push({ key: 'actions', label: '' })
+  }
+  return cols
+})
 
 const contactRows = computed(() =>
-  contacts.value.map((c) => ({
-    email: c.email ?? `${c.prenom}-${c.nom}`,
+  contacts.value.map((c, index) => ({
+    id: c.id || `tmp-${index}`,
     name: [c.prenom, c.nom].filter(Boolean).join(' ') || '—',
     role: c.role || '—',
+    email: c.email || '',
     phone: c.telephone || '—'
   }))
 )
@@ -387,6 +461,110 @@ const {
 })
 
 const contactDisplayRows = computed(() => contactSortedItems.value)
+
+const contactModalOpen = ref(false)
+const deleteContactOpen = ref(false)
+const contactSaving = ref(false)
+const contactError = ref('')
+const contactEditingId = ref<string | null>(null)
+const deleteContactId = ref<string | null>(null)
+const contactForm = reactive({
+  prenom: '',
+  nom: '',
+  role: '',
+  email: '',
+  telephone: ''
+})
+
+const resetContactForm = () => {
+  contactForm.prenom = ''
+  contactForm.nom = ''
+  contactForm.role = ''
+  contactForm.email = ''
+  contactForm.telephone = ''
+}
+
+const contactsPayload = (items: ClientContact[]) =>
+  items.map((c) => ({
+    ...(c.id ? { id: c.id } : {}),
+    nom: c.nom ?? '',
+    prenom: c.prenom ?? '',
+    email: c.email ?? '',
+    role: c.role ?? '',
+    telephone: c.telephone ?? ''
+  }))
+
+const openContactCreate = () => {
+  contactEditingId.value = null
+  resetContactForm()
+  contactError.value = ''
+  contactModalOpen.value = true
+}
+
+const openContactEdit = (contactId: string) => {
+  const c = contacts.value.find((item) => item.id === contactId)
+  if (!c) return
+  contactEditingId.value = contactId
+  contactForm.prenom = c.prenom ?? ''
+  contactForm.nom = c.nom ?? ''
+  contactForm.role = c.role ?? ''
+  contactForm.email = c.email ?? ''
+  contactForm.telephone = c.telephone ?? ''
+  contactError.value = ''
+  contactModalOpen.value = true
+}
+
+const askDeleteContact = (contactId: string) => {
+  deleteContactId.value = contactId
+  contactError.value = ''
+  deleteContactOpen.value = true
+}
+
+const submitContact = async () => {
+  contactSaving.value = true
+  contactError.value = ''
+  try {
+    const next = [...contacts.value]
+    const draft: ClientContact = {
+      prenom: contactForm.prenom.trim(),
+      nom: contactForm.nom.trim(),
+      role: contactForm.role.trim(),
+      email: contactForm.email.trim(),
+      telephone: contactForm.telephone.trim()
+    }
+    if (contactEditingId.value) {
+      const idx = next.findIndex((c) => c.id === contactEditingId.value)
+      if (idx < 0) throw new Error('missing contact')
+      next[idx] = { ...next[idx], ...draft }
+    } else {
+      next.push(draft)
+    }
+    await replaceClientContacts(id.value, contactsPayload(next))
+    contactModalOpen.value = false
+    await refresh()
+  } catch (err) {
+    contactError.value = extractFetchError(err, t('clients.contact_save_error'))
+  } finally {
+    contactSaving.value = false
+  }
+}
+
+const confirmDeleteContact = async () => {
+  if (!deleteContactId.value) return
+  contactSaving.value = true
+  contactError.value = ''
+  try {
+    const next = contacts.value.filter((c) => c.id !== deleteContactId.value)
+    await replaceClientContacts(id.value, contactsPayload(next))
+    deleteContactOpen.value = false
+    deleteContactId.value = null
+    await refresh()
+  } catch (err) {
+    contactError.value = extractFetchError(err, t('clients.contact_delete_error'))
+  } finally {
+    contactSaving.value = false
+  }
+}
 
 const missions = computed((): MissionSummary[] => {
   const payload = (missionsData.value as { data?: MissionSummary[] })?.data ?? missionsData.value
@@ -529,6 +707,39 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
   padding: var(--kore-space-lg) var(--kore-space-lg) 0;
 }
 
+.fiche-table-head--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-md);
+  flex-wrap: wrap;
+}
+
+.contact-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
+  justify-content: flex-end;
+}
+
+.contact-form,
+.contact-delete {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.contact-form__title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+}
+
+.contact-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
+}
+
 .fiche-table-toolbar :deep(.list-toolbar) {
   margin-bottom: 0;
   border: none;
@@ -548,15 +759,26 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
 .fiche-nowrap { white-space: nowrap; }
 
 @media (max-width: 768px) {
-  .client-edit-btn {
+  .client-edit-btn,
+  .contact-add-btn {
     width: 100%;
   }
 
-  .client-edit-form__actions {
+  .client-edit-form__actions,
+  .contact-form__actions {
     flex-direction: column-reverse;
   }
 
-  .client-edit-form__actions :deep(.app-button) {
+  .client-edit-form__actions :deep(.app-button),
+  .contact-form__actions :deep(.app-button) {
+    width: 100%;
+  }
+
+  .contact-row-actions {
+    flex-direction: column;
+  }
+
+  .contact-row-actions :deep(.app-button) {
     width: 100%;
   }
 }

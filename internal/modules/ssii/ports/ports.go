@@ -10,16 +10,29 @@ import (
 )
 
 type CreateMissionCommand struct {
-	TenantID        kernel.TenantID
-	ClientID        uuid.UUID
-	StartDate       time.Time
-	EndDate         *time.Time
-	TJMAmount       int64
-	Currency        string
-	Technologies    []string
-	ClientContact   string
-	CollaboratorIDs []uuid.UUID
-	CountryCode     string
+	TenantID         kernel.TenantID
+	ClientID         uuid.UUID
+	StartDate        time.Time
+	EndDate          *time.Time
+	Title            string
+	RateUnit         string
+	TJMAmount        int64
+	Currency         string
+	Technologies     []string
+	ClientContact    string
+	ClientContactIDs []uuid.UUID
+	CollaboratorIDs  []uuid.UUID
+	CountryCode      string
+}
+
+type UpdateMissionCommand struct {
+	TenantID         kernel.TenantID
+	MissionID        uuid.UUID
+	Title            string
+	RateUnit         string
+	TJMAmount        int64
+	ClientContact    string
+	ClientContactIDs *[]uuid.UUID // nil = leave unchanged; empty slice = clear
 }
 
 type UpdateEndDateCommand struct {
@@ -41,19 +54,32 @@ type MissionCollaborator struct {
 	Nom    string    `json:"nom"`
 }
 
+type MissionClientContact struct {
+	ID        uuid.UUID `json:"id"`
+	Nom       string    `json:"nom"`
+	Prenom    string    `json:"prenom"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Telephone string    `json:"telephone"`
+}
+
 type MissionDetail struct {
-	ID            uuid.UUID             `json:"id"`
-	ClientID      uuid.UUID             `json:"clientId"`
-	ClientName    string                `json:"clientName"`
-	Status        string                `json:"status"`
-	StartDate     time.Time             `json:"startDate"`
-	EndDate       *time.Time            `json:"endDate,omitempty"`
-	TJMAmount     int64                 `json:"tjmAmount"`
-	Currency      string                `json:"currency"`
-	Technologies  []string              `json:"technologies"`
-	ClientContact string                `json:"clientContact"`
-	CreatedAt     time.Time             `json:"createdAt"`
-	Collaborators []MissionCollaborator `json:"collaborators"`
+	ID               uuid.UUID              `json:"id"`
+	ClientID         uuid.UUID              `json:"clientId"`
+	ClientName       string                 `json:"clientName"`
+	Status           string                 `json:"status"`
+	StartDate        time.Time              `json:"startDate"`
+	EndDate          *time.Time             `json:"endDate,omitempty"`
+	Title            string                 `json:"title"`
+	RateUnit         string                 `json:"rateUnit"`
+	TJMAmount        int64                  `json:"tjmAmount"`
+	Currency         string                 `json:"currency"`
+	Technologies     []string               `json:"technologies"`
+	ClientContact    string                 `json:"clientContact"`
+	ClientContactIDs []uuid.UUID            `json:"clientContactIds"`
+	ClientContacts   []MissionClientContact `json:"clientContacts"`
+	CreatedAt        time.Time              `json:"createdAt"`
+	Collaborators    []MissionCollaborator  `json:"collaborators"`
 }
 
 type MissionSummary struct {
@@ -63,8 +89,19 @@ type MissionSummary struct {
 	Status     string     `json:"status"`
 	StartDate  time.Time  `json:"startDate"`
 	EndDate    *time.Time `json:"endDate,omitempty"`
+	Title      string     `json:"title"`
+	RateUnit   string     `json:"rateUnit"`
 	TJMAmount  int64      `json:"tjmAmount"`
 	Currency   string     `json:"currency"`
+}
+
+type ClientContactSnapshot struct {
+	ID        uuid.UUID
+	Nom       string
+	Prenom    string
+	Email     string
+	Role      string
+	Telephone string
 }
 
 type SSIIService interface {
@@ -73,6 +110,7 @@ type SSIIService interface {
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error)
 	GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (MissionDetail, error)
 	Create(ctx context.Context, cmd CreateMissionCommand) (domain.Mission, error)
+	Update(ctx context.Context, cmd UpdateMissionCommand) (MissionDetail, error)
 	Stop(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error)
 	UpdateEndDate(ctx context.Context, cmd UpdateEndDateCommand) (domain.Mission, error)
 	UpdateCollaborators(ctx context.Context, cmd UpdateCollaboratorsCommand) (MissionDetail, error)
@@ -86,4 +124,6 @@ type SSIIRepository interface {
 	ListMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionCollaborator, error)
 	SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error
 	GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
+	ListClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) ([]ClientContactSnapshot, error)
+	PurgeClientContactsFromMissions(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, removedIDs []uuid.UUID) error
 }

@@ -906,11 +906,24 @@ func (s *userService) assertEquipesInTenant(ctx context.Context, tenant kernel.T
 }
 
 type clientService struct {
-	repo ports.OrganizationRepository
+	repo            ports.OrganizationRepository
+	missionContacts ports.ClientContactMissionCleaner
 }
 
-func NewClientService(repo ports.OrganizationRepository) ports.ClientService {
-	return &clientService{repo: repo}
+type ClientServiceOption func(*clientService)
+
+func WithMissionContactCleaner(cleaner ports.ClientContactMissionCleaner) ClientServiceOption {
+	return func(s *clientService) {
+		s.missionContacts = cleaner
+	}
+}
+
+func NewClientService(repo ports.OrganizationRepository, opts ...ClientServiceOption) ports.ClientService {
+	s := &clientService{repo: repo}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 func normalizeOptionalClientPays(pays string) (string, error) {
@@ -981,12 +994,59 @@ func (s *clientService) UpdateClient(ctx context.Context, cmd ports.UpdateClient
 	return client, nil
 }
 
+func (s *clientService) ReplaceClientContacts(ctx context.Context, cmd ports.ReplaceClientContactsCommand) (domain.Client, error) {
+	client, err := s.repo.GetClient(ctx, cmd.TenantID, cmd.ClientID)
+	if err != nil {
+		return domain.Client{}, err
+	}
+	previousIDs := make(map[uuid.UUID]struct{}, len(client.Contacts))
+	for _, c := range client.Contacts {
+		if c.ID != uuid.Nil {
+			previousIDs[c.ID] = struct{}{}
+		}
+	}
+	client.Contacts = domain.NormalizeClientContacts(cmd.Contacts)
+	if err := s.repo.UpdateClientContacts(ctx, cmd.TenantID, cmd.ClientID, client.Contacts); err != nil {
+		return domain.Client{}, err
+	}
+	if s.missionContacts != nil {
+		kept := make(map[uuid.UUID]struct{}, len(client.Contacts))
+		for _, c := range client.Contacts {
+			kept[c.ID] = struct{}{}
+		}
+		var removed []uuid.UUID
+		for id := range previousIDs {
+			if _, ok := kept[id]; !ok {
+				removed = append(removed, id)
+			}
+		}
+		if len(removed) > 0 {
+			if err := s.missionContacts.PurgeRemovedClientContacts(ctx, cmd.TenantID, cmd.ClientID, removed); err != nil {
+				return domain.Client{}, err
+			}
+		}
+	}
+	return client, nil
+}
+
 func (s *clientService) ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error) {
-	return s.repo.ListClients(ctx, tenant)
+	items, err := s.repo.ListClients(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].Contacts = domain.SanitizeClientContacts(items[i].Contacts)
+	}
+	return items, nil
 }
 
 func (s *clientService) GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error) {
-	return s.repo.GetClient(ctx, tenant, id)
+	client, err := s.repo.GetClient(ctx, tenant, id)
+	if err != nil {
+		return domain.Client{}, err
+	}
+	client.Contacts = domain.SanitizeClientContacts(client.Contacts)
+	return client, nil
 }
 
 type argon2Hasher struct{}

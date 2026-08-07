@@ -10,8 +10,12 @@ import (
 type MissionBilling struct {
 	MissionID   uuid.UUID
 	ClientID    uuid.UUID
+	Title       string
+	RateUnit    string // tjm | hourly
 	Days        float64
-	TJMAmount   int64
+	Hours       float64
+	Quantity    float64 // Days (tjm) or Hours (hourly)
+	UnitPrice   int64   // cents — TJM or hourly rate
 	Currency    string
 	TotalAmount int64
 }

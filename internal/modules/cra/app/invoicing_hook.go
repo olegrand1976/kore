@@ -535,7 +535,8 @@ func dominantApplicationFromLines(ts domain.Timesheet) uuid.UUID {
 	return id
 }
 
-// resolveSellUnitPriceCents: mission TJM > application default TJM > société default TJM → hourly cents.
+// resolveSellUnitPriceCents: mission rate > application default TJM > société default TJM.
+// Mission hourly rates are used as-is; TJM rates are converted to €/h via day capacity.
 func (s *Service) resolveSellUnitPriceCents(ctx context.Context, ts domain.Timesheet) (int64, string) {
 	cap := s.settingsForUser(ctx, ts.TenantID, ts.UserID).DayCapacityMinutes
 	if cap <= 0 {
@@ -554,7 +555,14 @@ func (s *Service) resolveSellUnitPriceCents(ctx context.Context, ts domain.Times
 	if missionID := s.resolveMissionID(ctx, ts); missionID != nil && s.missions != nil {
 		rate, err := s.missions.GetMissionRate(ctx, ts.TenantID, *missionID)
 		if err == nil && rate.TJMAmount > 0 {
-			return toHourly(rate.TJMAmount, rate.Currency)
+			currency := rate.Currency
+			if currency == "" {
+				currency = "EUR"
+			}
+			if rate.RateUnit == "hourly" {
+				return rate.TJMAmount, currency
+			}
+			return toHourly(rate.TJMAmount, currency)
 		}
 	}
 	if s.apps != nil {

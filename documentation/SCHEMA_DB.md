@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (adresse facturation `org.clients`)
+> **Dernière mise à jour doc** : 07/08/2026 (backfill IDs contacts client + purge missions)
 
 ---
 
@@ -351,7 +351,7 @@ Memberships N–N équipes.
 | `code_postal` | TEXT | NOT NULL, DEFAULT `''` |
 | `ville` | TEXT | NOT NULL, DEFAULT `''` |
 | `siret` | TEXT | NOT NULL, DEFAULT `''` (n° registre multi-pays : SIRET/BCE/ICE/…) |
-| `contacts` | JSONB | NOT NULL, DEFAULT `'[]'` |
+| `contacts` | JSONB | NOT NULL, DEFAULT `'[]'` — `[{id, nom, prenom, email, role, telephone}]` (`id` UUID stable, backfill migration `0029`) |
 | `archived` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
@@ -972,10 +972,13 @@ Missions ESN (staffing, TJM, collaborateurs).
 | `status` | TEXT | NOT NULL, DEFAULT `'active'` |
 | `start_date` | DATE | NOT NULL |
 | `end_date` | DATE | |
-| `tjm_amount` | BIGINT | NOT NULL, DEFAULT 0 |
+| `title` | TEXT | NOT NULL, DEFAULT `''` (optionnel) |
+| `rate_unit` | TEXT | NOT NULL, DEFAULT `'tjm'` (`tjm` \| `hourly`) |
+| `tjm_amount` | BIGINT | NOT NULL, DEFAULT 0 (cents — TJM/jour ou taux horaire selon `rate_unit`) |
 | `currency` | TEXT | NOT NULL, DEFAULT `'EUR'` |
 | `technologies` | TEXT[] | NOT NULL, DEFAULT `'{}'` |
-| `client_contact` | TEXT | NOT NULL, DEFAULT `''` |
+| `client_contact` | TEXT | NOT NULL, DEFAULT `''` (libellé dénormalisé des contacts sélectionnés) |
+| `client_contact_ids` | UUID[] | NOT NULL, DEFAULT `'{}'` (références vers `org.clients.contacts[].id`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `ssii.mission_collaborators`

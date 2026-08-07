@@ -84,6 +84,7 @@ func RegisterRoutes(
 		pr.Get("/clients/{id}", getClient(clients, authorizer))
 		pr.Post("/clients", createClient(clients, authorizer))
 		pr.Put("/clients/{id}", updateClient(clients, authorizer))
+		pr.Put("/clients/{id}/contacts", replaceClientContacts(clients, authorizer))
 
 		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
 		registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
@@ -959,6 +960,38 @@ func writeClientError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "client not found")
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, "internal error")
+	}
+}
+
+func replaceClientContacts(clients ports.ClientService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		clientID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid client id")
+			return
+		}
+		var req struct {
+			Contacts []domain.ClientContact `json:"contacts"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		client, err := clients.ReplaceClientContacts(r.Context(), ports.ReplaceClientContactsCommand{
+			TenantID: identity.TenantID,
+			ClientID: clientID,
+			Contacts: req.Contacts,
+		})
+		if err != nil {
+			writeClientError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, client)
 	}
 }
 

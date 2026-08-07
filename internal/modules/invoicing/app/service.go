@@ -185,10 +185,21 @@ func (s *service) ComputeVirtual(ctx context.Context, cmd ports.ComputeVirtualCo
 		}
 		clientID = billing.ClientID
 		currency = billing.Currency
+		label := "Mission SSII"
+		if billing.Title != "" {
+			label = billing.Title
+		}
+		desc := label
+		switch billing.RateUnit {
+		case "hourly":
+			desc = fmt.Sprintf("%s — %.2f h × taux horaire", label, billing.Quantity)
+		default:
+			desc = fmt.Sprintf("%s — %.0f j × TJM", label, billing.Quantity)
+		}
 		linesIn = []ports.InvoiceLineInput{{
-			Description: fmt.Sprintf("Mission SSII — %.0f j × TJM", billing.Days),
-			Quantity:    billing.Days,
-			UnitPrice:   billing.TJMAmount,
+			Description: desc,
+			Quantity:    billing.Quantity,
+			UnitPrice:   billing.UnitPrice,
 			TaxRate:     20,
 		}}
 	}

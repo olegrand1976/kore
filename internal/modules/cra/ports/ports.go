@@ -140,7 +140,8 @@ type InvoiceDraftPublisher interface {
 }
 
 type MissionRate struct {
-	TJMAmount int64
+	TJMAmount int64  // cents — daily or hourly depending on RateUnit
+	RateUnit  string // tjm | hourly
 	Currency  string
 }
 

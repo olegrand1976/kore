@@ -20,6 +20,7 @@ func RegisterRoutes(r chi.Router, svc ports.SSIIService, tokens *authx.TokenIssu
 		pr.Get("/missions", listMissions(svc, authorizer))
 		pr.Post("/missions", createMission(svc, authorizer))
 		pr.Get("/missions/{id}", getMission(svc, authorizer))
+		pr.Put("/missions/{id}", updateMission(svc, authorizer))
 		pr.Post("/missions/{id}/stop", stopMission(svc, authorizer))
 		pr.Put("/missions/{id}/end-date", updateEndDate(svc, authorizer))
 		pr.Put("/missions/{id}/collaborators", updateCollaborators(svc, authorizer))
@@ -51,15 +52,18 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			return
 		}
 		var req struct {
-			ClientID        uuid.UUID   `json:"clientId"`
-			StartDate       time.Time   `json:"startDate"`
-			EndDate         *time.Time  `json:"endDate"`
-			TJMAmount       int64       `json:"tjmAmount"`
-			Currency        string      `json:"currency"`
-			Technologies    []string    `json:"technologies"`
-			ClientContact   string      `json:"clientContact"`
-			CollaboratorIDs []uuid.UUID `json:"collaboratorIds"`
-			CountryCode     string      `json:"countryCode"`
+			ClientID         uuid.UUID   `json:"clientId"`
+			StartDate        time.Time   `json:"startDate"`
+			EndDate          *time.Time  `json:"endDate"`
+			Title            string      `json:"title"`
+			RateUnit         string      `json:"rateUnit"`
+			TJMAmount        int64       `json:"tjmAmount"`
+			Currency         string      `json:"currency"`
+			Technologies     []string    `json:"technologies"`
+			ClientContact    string      `json:"clientContact"`
+			ClientContactIDs []uuid.UUID `json:"clientContactIds"`
+			CollaboratorIDs  []uuid.UUID `json:"collaboratorIds"`
+			CountryCode      string      `json:"countryCode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -67,26 +71,80 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 		}
 		identity, _ := authx.FromContext(r.Context())
 		m, err := svc.Create(r.Context(), ports.CreateMissionCommand{
-			TenantID:        identity.TenantID,
-			ClientID:        req.ClientID,
-			StartDate:       req.StartDate,
-			EndDate:         req.EndDate,
-			TJMAmount:       req.TJMAmount,
-			Currency:        req.Currency,
-			Technologies:    req.Technologies,
-			ClientContact:   req.ClientContact,
-			CollaboratorIDs: req.CollaboratorIDs,
-			CountryCode:     req.CountryCode,
+			TenantID:         identity.TenantID,
+			ClientID:         req.ClientID,
+			StartDate:        req.StartDate,
+			EndDate:          req.EndDate,
+			Title:            req.Title,
+			RateUnit:         req.RateUnit,
+			TJMAmount:        req.TJMAmount,
+			Currency:         req.Currency,
+			Technologies:     req.Technologies,
+			ClientContact:    req.ClientContact,
+			ClientContactIDs: req.ClientContactIDs,
+			CollaboratorIDs:  req.CollaboratorIDs,
+			CountryCode:      req.CountryCode,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrMissionWithoutCollaborator) {
-				httpx.WriteError(w, http.StatusUnprocessableEntity, "MISSION_WITHOUT_COLLABORATOR", err.Error())
-				return
-			}
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeMissionError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, m)
+	}
+}
+
+func updateMission(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ssii", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			Title            string       `json:"title"`
+			RateUnit         string       `json:"rateUnit"`
+			TJMAmount        int64        `json:"tjmAmount"`
+			ClientContact    string       `json:"clientContact"`
+			ClientContactIDs *[]uuid.UUID `json:"clientContactIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		detail, err := svc.Update(r.Context(), ports.UpdateMissionCommand{
+			TenantID:         identity.TenantID,
+			MissionID:        id,
+			Title:            req.Title,
+			RateUnit:         req.RateUnit,
+			TJMAmount:        req.TJMAmount,
+			ClientContact:    req.ClientContact,
+			ClientContactIDs: req.ClientContactIDs,
+		})
+		if err != nil {
+			writeMissionError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, detail)
+	}
+}
+
+func writeMissionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrMissionWithoutCollaborator):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "MISSION_WITHOUT_COLLABORATOR", err.Error())
+	case errors.Is(err, domain.ErrInvalidRateUnit):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrInvalidClientContact):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrMissionNotFound):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, "internal error")
 	}
 }
 

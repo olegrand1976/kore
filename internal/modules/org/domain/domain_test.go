@@ -58,6 +58,35 @@ func TestFormatClientAddress(t *testing.T) {
 	require.Empty(t, empty)
 }
 
+func TestNormalizeClientContacts(t *testing.T) {
+	existing := uuid.New()
+	got := NormalizeClientContacts([]ClientContact{
+		{ID: existing, Prenom: "  Marie ", Nom: "Dupont", Role: " DSI "},
+		{Prenom: "Paul", Email: "paul@test.com"},
+	})
+	require.Len(t, got, 2)
+	require.Equal(t, existing, got[0].ID)
+	require.Equal(t, "Marie", got[0].Prenom)
+	require.Equal(t, "DSI", got[0].Role)
+	require.NotEqual(t, uuid.Nil, got[1].ID)
+	require.Equal(t, "Paul", ClientContactDisplayName(got[1]))
+}
+
+func TestEnsureClientContactIDs_reportsChange(t *testing.T) {
+	existing := uuid.New()
+	_, changed := EnsureClientContactIDs([]ClientContact{{ID: existing, Prenom: "A"}})
+	require.False(t, changed)
+	_, changed = EnsureClientContactIDs([]ClientContact{{Prenom: "B"}})
+	require.True(t, changed)
+}
+
+func TestSanitizeClientContacts_keepsNilID(t *testing.T) {
+	got := SanitizeClientContacts([]ClientContact{{Prenom: "  A ", Nom: "B"}})
+	require.Len(t, got, 1)
+	require.Equal(t, uuid.Nil, got[0].ID)
+	require.Equal(t, "A", got[0].Prenom)
+}
+
 func TestLoginValid(t *testing.T) {
 	tests := []struct {
 		name  string

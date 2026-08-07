@@ -162,6 +162,17 @@ type UpdateClientCommand struct {
 	Siret         string
 }
 
+type ReplaceClientContactsCommand struct {
+	TenantID kernel.TenantID
+	ClientID uuid.UUID
+	Contacts []domain.ClientContact
+}
+
+// ClientContactMissionCleaner removes deleted client contact IDs from missions (ssii).
+type ClientContactMissionCleaner interface {
+	PurgeRemovedClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, removedIDs []uuid.UUID) error
+}
+
 type AuthResult struct {
 	AccessToken           string          `json:"accessToken"`
 	RefreshToken          string          `json:"refreshToken"`
@@ -217,6 +228,7 @@ type OrganizationRepository interface {
 	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error)
 	SaveClient(ctx context.Context, c domain.Client) error
 	UpdateClient(ctx context.Context, c domain.Client) error
+	UpdateClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, contacts []domain.ClientContact) error
 	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
@@ -443,6 +455,7 @@ type UserService interface {
 type ClientService interface {
 	CreateClient(ctx context.Context, cmd CreateClientCommand) (domain.Client, error)
 	UpdateClient(ctx context.Context, cmd UpdateClientCommand) (domain.Client, error)
+	ReplaceClientContacts(ctx context.Context, cmd ReplaceClientContactsCommand) (domain.Client, error)
 	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 }

@@ -26,7 +26,15 @@ func (r *MissionRateReader) GetMissionRate(ctx context.Context, tenant kernel.Te
 	if currency == "" {
 		currency = "EUR"
 	}
-	return craports.MissionRate{TJMAmount: m.TJMAmount, Currency: currency}, nil
+	rateUnit := string(m.RateUnit)
+	if rateUnit == "" {
+		rateUnit = "tjm"
+	}
+	return craports.MissionRate{
+		TJMAmount: m.TJMAmount,
+		RateUnit:  rateUnit,
+		Currency:  currency,
+	}, nil
 }
 
 var _ craports.MissionRateReader = (*MissionRateReader)(nil)

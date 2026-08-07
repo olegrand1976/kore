@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -54,4 +55,210 @@ func TestPrefillMissionDays_SkipsBlockedDays(t *testing.T) {
 		}
 		_ = cradomain.Month(line.Month)
 	}
+}
+
+func TestCreate_rejectsInvalidRateUnit(t *testing.T) {
+	svc := NewService(&noopRepo{}, nil, nil, nil)
+	_, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:        kernel.NewTenantID(uuid.New()),
+		ClientID:        uuid.New(),
+		StartDate:       time.Now().UTC(),
+		RateUnit:        "weekly",
+		CollaboratorIDs: []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrInvalidRateUnit) {
+		t.Fatalf("err = %v, want ErrInvalidRateUnit", err)
+	}
+}
+
+func TestCreate_rejectsUnknownClientContact(t *testing.T) {
+	svc := NewService(&noopRepo{}, nil, nil, nil)
+	_, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:         kernel.NewTenantID(uuid.New()),
+		ClientID:         uuid.New(),
+		StartDate:        time.Now().UTC(),
+		RateUnit:         "tjm",
+		CollaboratorIDs:  []uuid.UUID{uuid.New()},
+		ClientContactIDs: []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrInvalidClientContact) {
+		t.Fatalf("err = %v, want ErrInvalidClientContact", err)
+	}
+}
+
+type contactRepo struct {
+	noopRepo
+	contacts []ports.ClientContactSnapshot
+	saved    domain.Mission
+}
+
+func (r *contactRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ports.ClientContactSnapshot, error) {
+	return r.contacts, nil
+}
+
+func (r *contactRepo) SaveMission(_ context.Context, m domain.Mission) error {
+	r.saved = m
+	return nil
+}
+
+func TestCreate_bindsClientContactIDs(t *testing.T) {
+	contactID := uuid.New()
+	repo := &contactRepo{
+		contacts: []ports.ClientContactSnapshot{{
+			ID: contactID, Prenom: "Marie", Nom: "Dupont", Email: "marie@acme.test",
+		}},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	m, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:         kernel.NewTenantID(uuid.New()),
+		ClientID:         uuid.New(),
+		StartDate:        time.Now().UTC(),
+		RateUnit:         "tjm",
+		CollaboratorIDs:  []uuid.UUID{uuid.New()},
+		ClientContactIDs: []uuid.UUID{contactID},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if len(m.ClientContactIDs) != 1 || m.ClientContactIDs[0] != contactID {
+		t.Fatalf("contact ids = %v", m.ClientContactIDs)
+	}
+	if m.ClientContact != "Marie Dupont" {
+		t.Fatalf("label = %q", m.ClientContact)
+	}
+}
+
+type missionStoreRepo struct {
+	noopRepo
+	mission  domain.Mission
+	contacts []ports.ClientContactSnapshot
+}
+
+func (r *missionStoreRepo) GetMission(context.Context, kernel.TenantID, uuid.UUID) (domain.Mission, error) {
+	return r.mission, nil
+}
+
+func (r *missionStoreRepo) SaveMission(_ context.Context, m domain.Mission) error {
+	r.mission = m
+	return nil
+}
+
+func (r *missionStoreRepo) ListMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionCollaborator, error) {
+	return []ports.MissionCollaborator{}, nil
+}
+
+func (r *missionStoreRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ports.ClientContactSnapshot, error) {
+	return r.contacts, nil
+}
+
+func TestUpdate_omittedContactIDsPreserves(t *testing.T) {
+	contactID := uuid.New()
+	repo := &missionStoreRepo{
+		mission: domain.Mission{
+			ID:               uuid.New(),
+			TenantID:         kernel.NewTenantID(uuid.New()),
+			ClientID:         uuid.New(),
+			Title:            "Old",
+			RateUnit:         domain.RateUnitTJM,
+			ClientContact:    "Marie Dupont",
+			ClientContactIDs: []uuid.UUID{contactID},
+		},
+		contacts: []ports.ClientContactSnapshot{{ID: contactID, Prenom: "Marie", Nom: "Dupont"}},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.Update(context.Background(), ports.UpdateMissionCommand{
+		TenantID:  repo.mission.TenantID,
+		MissionID: repo.mission.ID,
+		Title:     "New",
+		RateUnit:  "tjm",
+		TJMAmount: 1000,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if len(repo.mission.ClientContactIDs) != 1 || repo.mission.ClientContactIDs[0] != contactID {
+		t.Fatalf("contacts cleared unexpectedly: %v", repo.mission.ClientContactIDs)
+	}
+}
+
+func TestUpdate_emptyContactIDsClears(t *testing.T) {
+	contactID := uuid.New()
+	empty := []uuid.UUID{}
+	repo := &missionStoreRepo{
+		mission: domain.Mission{
+			ID:               uuid.New(),
+			TenantID:         kernel.NewTenantID(uuid.New()),
+			ClientID:         uuid.New(),
+			RateUnit:         domain.RateUnitTJM,
+			ClientContact:    "Marie Dupont",
+			ClientContactIDs: []uuid.UUID{contactID},
+		},
+		contacts: []ports.ClientContactSnapshot{{ID: contactID, Prenom: "Marie", Nom: "Dupont"}},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	detail, err := svc.Update(context.Background(), ports.UpdateMissionCommand{
+		TenantID:         repo.mission.TenantID,
+		MissionID:        repo.mission.ID,
+		RateUnit:         "tjm",
+		ClientContactIDs: &empty,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if len(repo.mission.ClientContactIDs) != 0 {
+		t.Fatalf("expected cleared ids, got %v", repo.mission.ClientContactIDs)
+	}
+	if detail.ClientContact != "" || len(detail.ClientContacts) != 0 {
+		t.Fatalf("expected empty detail contacts, got %+v", detail)
+	}
+}
+
+func TestGetDetail_noLegacyFallbackWhenIDsPresent(t *testing.T) {
+	repo := &missionStoreRepo{
+		mission: domain.Mission{
+			ID:               uuid.New(),
+			TenantID:         kernel.NewTenantID(uuid.New()),
+			ClientID:         uuid.New(),
+			RateUnit:         domain.RateUnitTJM,
+			ClientContact:    "Ghost Contact",
+			ClientContactIDs: []uuid.UUID{uuid.New()},
+		},
+		contacts: nil,
+	}
+	svc := NewService(repo, nil, nil, nil)
+	detail, err := svc.GetDetail(context.Background(), repo.mission.TenantID, repo.mission.ID)
+	if err != nil {
+		t.Fatalf("GetDetail: %v", err)
+	}
+	if detail.ClientContact != "" {
+		t.Fatalf("ghost label = %q", detail.ClientContact)
+	}
+}
+
+type noopRepo struct{}
+
+func (noopRepo) SaveMission(context.Context, domain.Mission) error { return nil }
+func (noopRepo) GetMission(context.Context, kernel.TenantID, uuid.UUID) (domain.Mission, error) {
+	return domain.Mission{}, domain.ErrMissionNotFound
+}
+func (noopRepo) ListMissions(context.Context, kernel.TenantID) ([]domain.Mission, error) {
+	return nil, nil
+}
+func (noopRepo) ListMissionSummaries(context.Context, kernel.TenantID) ([]ports.MissionSummary, error) {
+	return nil, nil
+}
+func (noopRepo) ListMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionCollaborator, error) {
+	return nil, nil
+}
+func (noopRepo) SaveMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
+	return nil
+}
+func (noopRepo) GetClientName(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	return "", nil
+}
+func (noopRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ports.ClientContactSnapshot, error) {
+	return nil, nil
+}
+func (noopRepo) PurgeClientContactsFromMissions(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
+	return nil
 }

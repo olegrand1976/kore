@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,19 +51,35 @@ func (s *service) GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid
 	if collaborators == nil {
 		collaborators = []ports.MissionCollaborator{}
 	}
+	clientContacts, contactIDs, contactLabel, err := s.resolveClientContacts(ctx, tenant, m.ClientID, m.ClientContactIDs)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	// Legacy free-text only when no structured contact IDs were stored.
+	if contactLabel == "" && len(m.ClientContactIDs) == 0 {
+		contactLabel = m.ClientContact
+	}
+	rateUnit := string(m.RateUnit)
+	if rateUnit == "" {
+		rateUnit = string(domain.RateUnitTJM)
+	}
 	return ports.MissionDetail{
-		ID:            m.ID,
-		ClientID:      m.ClientID,
-		ClientName:    clientName,
-		Status:        string(m.Status),
-		StartDate:     m.StartDate,
-		EndDate:       m.EndDate,
-		TJMAmount:     m.TJMAmount,
-		Currency:      m.Currency,
-		Technologies:  m.Technologies,
-		ClientContact: m.ClientContact,
-		CreatedAt:     m.CreatedAt,
-		Collaborators: collaborators,
+		ID:               m.ID,
+		ClientID:         m.ClientID,
+		ClientName:       clientName,
+		Status:           string(m.Status),
+		StartDate:        m.StartDate,
+		EndDate:          m.EndDate,
+		Title:            m.Title,
+		RateUnit:         rateUnit,
+		TJMAmount:        m.TJMAmount,
+		Currency:         m.Currency,
+		Technologies:     m.Technologies,
+		ClientContact:    contactLabel,
+		ClientContactIDs: contactIDs,
+		ClientContacts:   clientContacts,
+		CreatedAt:        m.CreatedAt,
+		Collaborators:    collaborators,
 	}, nil
 }
 
@@ -70,11 +87,25 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	if len(cmd.CollaboratorIDs) == 0 {
 		return domain.Mission{}, domain.ErrMissionWithoutCollaborator
 	}
+	rateUnit, err := domain.NormalizeRateUnit(cmd.RateUnit)
+	if err != nil {
+		return domain.Mission{}, err
+	}
+	contactIDs, contactLabel, err := s.validateAndLabelContacts(ctx, cmd.TenantID, cmd.ClientID, cmd.ClientContactIDs)
+	if err != nil {
+		return domain.Mission{}, err
+	}
+	if contactLabel == "" {
+		contactLabel = strings.TrimSpace(cmd.ClientContact)
+	}
 	m := domain.NewMission(cmd.TenantID, cmd.ClientID, cmd.StartDate, cmd.TJMAmount)
 	m.EndDate = cmd.EndDate
+	m.Title = strings.TrimSpace(cmd.Title)
+	m.RateUnit = rateUnit
 	m.Currency = cmd.Currency
 	m.Technologies = cmd.Technologies
-	m.ClientContact = cmd.ClientContact
+	m.ClientContact = contactLabel
+	m.ClientContactIDs = contactIDs
 	if m.Currency == "" {
 		m.Currency = "EUR"
 	}
@@ -92,6 +123,38 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 		return domain.Mission{}, err
 	}
 	return m, nil
+}
+
+func (s *service) Update(ctx context.Context, cmd ports.UpdateMissionCommand) (ports.MissionDetail, error) {
+	m, err := s.repo.GetMission(ctx, cmd.TenantID, cmd.MissionID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	rateUnit, err := domain.NormalizeRateUnit(cmd.RateUnit)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	m.Title = strings.TrimSpace(cmd.Title)
+	m.RateUnit = rateUnit
+	m.TJMAmount = cmd.TJMAmount
+	if cmd.ClientContactIDs != nil {
+		contactIDs, contactLabel, err := s.validateAndLabelContacts(ctx, cmd.TenantID, m.ClientID, *cmd.ClientContactIDs)
+		if err != nil {
+			return ports.MissionDetail{}, err
+		}
+		m.ClientContactIDs = contactIDs
+		if contactLabel != "" {
+			m.ClientContact = contactLabel
+		} else {
+			m.ClientContact = strings.TrimSpace(cmd.ClientContact)
+		}
+	} else if strings.TrimSpace(cmd.ClientContact) != "" {
+		m.ClientContact = strings.TrimSpace(cmd.ClientContact)
+	}
+	if err := s.repo.SaveMission(ctx, m); err != nil {
+		return ports.MissionDetail{}, err
+	}
+	return s.GetDetail(ctx, cmd.TenantID, m.ID)
 }
 
 func (s *service) Stop(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error) {
@@ -155,6 +218,94 @@ func (s *service) UpdateCollaborators(ctx context.Context, cmd ports.UpdateColla
 		return ports.MissionDetail{}, err
 	}
 	return s.GetDetail(ctx, cmd.TenantID, m.ID)
+}
+
+func (s *service) validateAndLabelContacts(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	clientID uuid.UUID,
+	ids []uuid.UUID,
+) ([]uuid.UUID, string, error) {
+	if len(ids) == 0 {
+		return []uuid.UUID{}, "", nil
+	}
+	all, err := s.repo.ListClientContacts(ctx, tenant, clientID)
+	if err != nil {
+		return nil, "", err
+	}
+	byID := make(map[uuid.UUID]ports.ClientContactSnapshot, len(all))
+	for _, c := range all {
+		byID[c.ID] = c
+	}
+	outIDs := make([]uuid.UUID, 0, len(ids))
+	names := make([]string, 0, len(ids))
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		c, ok := byID[id]
+		if !ok {
+			return nil, "", domain.ErrInvalidClientContact
+		}
+		seen[id] = struct{}{}
+		outIDs = append(outIDs, id)
+		names = append(names, contactDisplayName(c))
+	}
+	return outIDs, strings.Join(names, ", "), nil
+}
+
+func (s *service) resolveClientContacts(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	clientID uuid.UUID,
+	ids []uuid.UUID,
+) ([]ports.MissionClientContact, []uuid.UUID, string, error) {
+	if len(ids) == 0 {
+		return []ports.MissionClientContact{}, []uuid.UUID{}, "", nil
+	}
+	all, err := s.repo.ListClientContacts(ctx, tenant, clientID)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	byID := make(map[uuid.UUID]ports.ClientContactSnapshot, len(all))
+	for _, c := range all {
+		byID[c.ID] = c
+	}
+	out := make([]ports.MissionClientContact, 0, len(ids))
+	outIDs := make([]uuid.UUID, 0, len(ids))
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		c, ok := byID[id]
+		if !ok {
+			continue
+		}
+		out = append(out, ports.MissionClientContact{
+			ID:        c.ID,
+			Nom:       c.Nom,
+			Prenom:    c.Prenom,
+			Email:     c.Email,
+			Role:      c.Role,
+			Telephone: c.Telephone,
+		})
+		outIDs = append(outIDs, id)
+		names = append(names, contactDisplayName(c))
+	}
+	return out, outIDs, strings.Join(names, ", "), nil
+}
+
+func contactDisplayName(c ports.ClientContactSnapshot) string {
+	name := strings.TrimSpace(strings.TrimSpace(c.Prenom) + " " + strings.TrimSpace(c.Nom))
+	if name != "" {
+		return name
+	}
+	if email := strings.TrimSpace(c.Email); email != "" {
+		return email
+	}
+	return c.ID.String()
 }
 
 func (s *service) prefillMissionDays(ctx context.Context, m domain.Mission, collaborators []uuid.UUID, countryCode string) error {

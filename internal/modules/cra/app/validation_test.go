@@ -160,7 +160,7 @@ func TestResolveSellUnitPriceCents_FromMissionTJM(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	missionID := uuid.New()
 	svc := NewService(nil, nil, nil).WithMissionRateReader(missionRateStub{
-		rate: ports.MissionRate{TJMAmount: 80000, Currency: "EUR"},
+		rate: ports.MissionRate{TJMAmount: 80000, RateUnit: "tjm", Currency: "EUR"},
 	})
 	ts := domain.Timesheet{
 		TenantID:       tenant,
@@ -174,6 +174,23 @@ func TestResolveSellUnitPriceCents_FromMissionTJM(t *testing.T) {
 	// 800 EUR/day → 80000 cents / 480 min * 60 = 10000 cents/h
 	if price != 10000 {
 		t.Fatalf("expected 10000 cents/h, got %d", price)
+	}
+}
+
+func TestResolveSellUnitPriceCents_FromMissionHourly(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	missionID := uuid.New()
+	svc := NewService(nil, nil, nil).WithMissionRateReader(missionRateStub{
+		rate: ports.MissionRate{TJMAmount: 12500, RateUnit: "hourly", Currency: "EUR"},
+	})
+	ts := domain.Timesheet{
+		TenantID:       tenant,
+		UserID:         uuid.New(),
+		CommercialInfo: domain.CommercialInfo{MissionID: &missionID},
+	}
+	price, currency := svc.resolveSellUnitPriceCents(context.Background(), ts)
+	if currency != "EUR" || price != 12500 {
+		t.Fatalf("expected 12500 EUR/h cents, got %d %s", price, currency)
 	}
 }
 

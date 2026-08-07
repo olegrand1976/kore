@@ -1191,6 +1191,25 @@ func (r *Repository) UpdateClient(ctx context.Context, c domain.Client) error {
 	return nil
 }
 
+func (r *Repository) UpdateClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, contacts []domain.ClientContact) error {
+	raw, err := json.Marshal(contacts)
+	if err != nil {
+		return err
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.clients
+		SET contacts = $3::jsonb
+		WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
+	`, tenant.UUID(), clientID, raw)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrClientNotFound
+	}
+	return nil
+}
+
 func (r *Repository) GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error) {
 	var c domain.Client
 	var tenantID uuid.UUID

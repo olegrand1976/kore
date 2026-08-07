@@ -84,6 +84,7 @@ import (
 	ssiicalendar "github.com/kore/kore/internal/modules/ssii/adapters/calendar"
 	ssiicra "github.com/kore/kore/internal/modules/ssii/adapters/cra"
 	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
+	ssiiorg "github.com/kore/kore/internal/modules/ssii/adapters/org"
 	ssiipostgres "github.com/kore/kore/internal/modules/ssii/adapters/postgres"
 	ssiiapp "github.com/kore/kore/internal/modules/ssii/app"
 	supportcra "github.com/kore/kore/internal/modules/support/adapters/cra"
@@ -193,7 +194,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	attachmentChecker := NewAttachmentResourceChecker(tmaRepo, supportRepo, maintenanceRepo)
 	attachmentService := orgapp.NewAttachmentService(attachmentRepo, attachmentChecker)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
-	clientService := orgapp.NewClientService(orgRepo)
+	clientService := orgapp.NewClientService(orgRepo, orgapp.WithMissionContactCleaner(ssiiorg.MissionContactCleaner{Repo: ssiiRepo}))
 
 	emailSender := notifsmtp.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPFrom)
 	pushSender := notifapp.NewPushSender(cfg)
