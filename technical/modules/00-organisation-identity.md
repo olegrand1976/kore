@@ -219,7 +219,8 @@ Couverture cible : domaine > 90 %, app > 80 %.
   + soft deactivate ; page admin `/admin/applications`.
 - [x] Rattachement collaborateur → équipe modifiable après création (`PUT /users/{id}`, champ `equipeId`).
 - [x] Sites / services / équipes : **modification** (`PUT /sites/{id}`, `PUT /services/{id}`,
-  `PUT /equipes/{id}` — libellé ; équipes : + responsable) dans Structure. Suppression hard non exposée.
+  `PUT /equipes/{id}` — libellé ; équipes : + responsable) dans Structure **et** pages dédiées
+  `/admin/sites`, `/admin/services`, `/admin/equipes`. Suppression hard non exposée.
 - [x] Auth login/refresh/logout via cookies httpOnly opérationnelle.
 - [x] Matrice RBAC §3.3 chargée et appliquée par middleware.
 - [x] Isolation multi-tenant vérifiée par test d'intégration.

@@ -1,7 +1,7 @@
 # Guide d'accès utilisateurs (RBAC)
 
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-07 (platform provision + signup public)  
+> **Dernière mise à jour doc** : 2026-08-07 (menus Sites / Services / Équipes)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -46,10 +46,11 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Administrateur
 
-- Menus admin regroupés : **Organisation** (Structure, applications, utilisateurs, SSO), **Automatisation** (workflows, notifications, intégrations), **Système** (paramètres, abonnement). La navigation métier est sectionnée (Temps, Demandes, **Pilotage** : Clients, Missions, Budget, Facturation).
+- Menus admin regroupés : **Organisation** (Structure, sites, services, équipes, applications, utilisateurs, SSO), **Automatisation** (workflows, notifications, intégrations), **Système** (paramètres, abonnement). La navigation métier est sectionnée (Temps, Demandes, **Pilotage** : Clients, Missions, Budget, Facturation).
 - Pilotage → **Clients** (`/clients`) : liste et création (org écriture) ; fiche client et missions liées.
 - Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
+- Pages `/admin/sites`, `/admin/services`, `/admin/equipes` : listes dédiées (création / modification) ; l'onglet Structure conserve la vue arbre.
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.

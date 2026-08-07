@@ -28,6 +28,37 @@ test.describe('org admin', () => {
     ).toBeVisible({ timeout: 20_000 })
   })
 
+  test('sites admin page can create and rename', async ({ page }) => {
+    const siteName = `E2E Site ${Date.now()}`
+    const renamed = `${siteName} renommé`
+
+    await page.goto('/admin/sites')
+    await expect(page.getByRole('heading', { name: /^sites$/i })).toBeVisible({ timeout: 20_000 })
+
+    await page.getByRole('button', { name: /nouveau site|new site/i }).first().click()
+    await expect(page.getByRole('heading', { name: /nouveau site|new site/i })).toBeVisible()
+    await page.locator('#site-libelle').fill(siteName)
+    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+    await expect(page.getByText(siteName)).toBeVisible({ timeout: 20_000 })
+
+    const row = page.locator('tbody tr', { hasText: siteName }).first()
+    await row.getByRole('button', { name: /modifier|edit/i }).click()
+    await expect(page.getByRole('heading', { name: /modifier le site|edit site/i })).toBeVisible()
+    await page.locator('#site-libelle').fill(renamed)
+    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+    await expect(page.getByText(renamed)).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('services and equipes admin pages load', async ({ page }) => {
+    await page.goto('/admin/services')
+    await expect(page.getByRole('heading', { name: /^services$/i })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /nouveau service|new service/i }).first()).toBeVisible()
+
+    await page.goto('/admin/equipes')
+    await expect(page.getByRole('heading', { name: /équipes|teams/i })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /nouvelle équipe|new team/i }).first()).toBeVisible()
+  })
+
   test('creates a team, edits it, and attaches a collaborator to it', async ({ page }) => {
     const teamName = `E2E Équipe ${Date.now()}`
     const renamed = `${teamName} renommée`

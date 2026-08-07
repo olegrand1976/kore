@@ -32,6 +32,7 @@ export type OrgService = {
   Libelle?: string
   type?: string
   responsableId?: string
+  ResponsableID?: string
 }
 
 export type OrgApplication = {
