@@ -86,6 +86,9 @@ func TestEmitAndValidateProformaFlow(t *testing.T) {
 	if !validated.Validated || validated.Status != domain.InvoiceStatusPreparee {
 		t.Fatalf("unexpected %#v", validated)
 	}
+	if !validated.InvoiceEmailSent {
+		t.Fatal("expected invoice email sent")
+	}
 	if len(mailer.subjects) != 2 {
 		t.Fatalf("expected invoice email, subjects=%v", mailer.subjects)
 	}

@@ -869,6 +869,7 @@
     "validate": "Validate proforma",
     "validating": "Validating…",
     "validated": "Proforma validated. The invoice has been emailed to you.",
+    "validated_no_email": "Proforma validated. The invoice email could not be sent; your provider will resend it.",
     "load_error": "Invalid or expired link.",
     "validate_error": "Could not validate this proforma.",
     "comment_label": "Comment",

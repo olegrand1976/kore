@@ -869,6 +869,7 @@
     "validate": "Valider la proforma",
     "validating": "Validation…",
     "validated": "Proforma validée. La facture vous a été envoyée par email.",
+    "validated_no_email": "Proforma validée. L'envoi de la facture par email a échoué ; le prestataire vous la renverra.",
     "load_error": "Lien invalide ou expiré.",
     "validate_error": "Impossible de valider cette proforma.",
     "comment_label": "Commentaire",

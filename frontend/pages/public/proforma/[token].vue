@@ -115,6 +115,7 @@ const rejected = ref(false)
 const errorMsg = ref('')
 const comment = ref('')
 const preview = ref<ProformaPreview | null>(null)
+const emailWarning = computed(() => validated.value && preview.value?.invoiceEmailSent === false)
 
 const unwrap = <T>(raw: { data?: T } | T | null | undefined): T | null => {
   if (!raw) return null
