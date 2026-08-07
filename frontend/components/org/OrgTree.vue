@@ -10,6 +10,11 @@ import type {
   OrgEquipe
 } from '~/composables/useOrganisation'
 import type { OrgUserSummary } from '~/composables/useUsers'
+import {
+  pickAppEquipeIds,
+  pickAppServiceIds,
+  pickAppSiteIds
+} from '~/composables/useApplications'
 
 type Level = 'site' | 'service' | 'application' | 'equipe'
 
@@ -21,7 +26,9 @@ const {
   listApplications,
   listEquipes,
   createSite,
+  updateSite,
   createService,
+  updateService,
   createApplication,
   updateApplication,
   deactivateApplication,
@@ -49,15 +56,41 @@ const parentId = ref('')
 const parentLabel = ref('')
 const submitting = ref(false)
 const formError = ref('')
-const form = reactive({ libelle: '', type: 'interne', responsableId: '' })
+const form = reactive({
+  libelle: '',
+  type: 'interne',
+  responsableId: '',
+  siteIds: [] as string[],
+  serviceIds: [] as string[],
+  equipeIds: [] as string[]
+})
 
 const editOpen = ref(false)
 const editSubmitting = ref(false)
 const editError = ref('')
-const editForm = reactive({ id: '', libelle: '' })
+const editForm = reactive({
+  id: '',
+  libelle: '',
+  siteIds: [] as string[],
+  serviceIds: [] as string[],
+  equipeIds: [] as string[]
+})
 const actionBusyId = ref('')
 
 const isAppActive = (app: OrgApplication) => app.active ?? app.Active ?? true
+
+const siteOptions = computed(() =>
+  sites.value.map((s) => ({ value: orgId(s), label: orgLabel(s) || orgId(s) }))
+)
+const serviceOptions = computed(() =>
+  services.value.map((s) => ({
+    value: orgId(s),
+    label: orgLabel(s) || s.type || orgId(s)
+  }))
+)
+const equipeOptions = computed(() =>
+  equipes.value.map((e) => ({ value: orgId(e), label: orgLabel(e) || orgId(e) }))
+)
 
 const load = async () => {
   pending.value = true
@@ -93,10 +126,35 @@ const servicesOf = (siteId: string) =>
   services.value.filter((s) => (s.siteId ?? s.SiteID) === siteId)
 
 const applicationsOf = (serviceId: string) =>
-  applications.value.filter((a) => (a.serviceId ?? a.ServiceID) === serviceId)
+  applications.value.filter((a) => pickAppServiceIds(a).includes(serviceId))
+
+// Site-level list: apps linked via application_sites only, excluding those already
+// shown under a service of this site (avoids duplicate nodes).
+const applicationsOfSite = (siteId: string) => {
+  const serviceIdsOfSite = new Set(servicesOf(siteId).map((s) => orgId(s)))
+  return applications.value.filter((a) => {
+    if (!pickAppSiteIds(a).includes(siteId)) return false
+    return !pickAppServiceIds(a).some((sid) => serviceIdsOfSite.has(sid))
+  })
+}
+
+const isSharedBeyondService = (app: OrgApplication, serviceId: string) => {
+  const servicesLinked = pickAppServiceIds(app)
+  return (
+    pickAppSiteIds(app).length > 0 ||
+    pickAppEquipeIds(app).length > 0 ||
+    servicesLinked.length > 1 ||
+    (servicesLinked.length === 1 && servicesLinked[0] !== serviceId)
+  )
+}
 
 const equipesOf = (applicationId: string) =>
-  equipes.value.filter((e) => (e.applicationId ?? e.ApplicationID) === applicationId)
+  equipes.value.filter((e) => {
+    const home = (e.applicationId ?? e.ApplicationID) === applicationId
+    if (home) return true
+    const app = applications.value.find((a) => orgId(a) === applicationId)
+    return pickAppEquipeIds(app).includes(orgId(e))
+  })
 
 const memberCount = (equipeId: string) =>
   users.value.filter((u) => pickUserEquipeIds(u).includes(equipeId)).length
@@ -116,6 +174,9 @@ const openModal = (level: Level, parent: { id: string; label: string }) => {
   form.libelle = ''
   form.type = 'interne'
   form.responsableId = ''
+  form.siteIds = []
+  form.serviceIds = level === 'application' ? [parent.id] : []
+  form.equipeIds = []
   formError.value = ''
   modalOpen.value = true
 }
@@ -138,9 +199,19 @@ const submit = async () => {
           responsableId: form.responsableId
         })
         break
-      case 'application':
-        await createApplication({ serviceId: parentId.value, libelle: form.libelle })
+      case 'application': {
+        if (!form.siteIds.length && !form.serviceIds.length && !form.equipeIds.length) {
+          formError.value = t('org.tree.shares_required')
+          break
+        }
+        await createApplication({
+          libelle: form.libelle,
+          siteIds: form.siteIds,
+          serviceIds: form.serviceIds,
+          equipeIds: form.equipeIds
+        })
         break
+      }
       case 'equipe':
         await createEquipe({
           applicationId: parentId.value,
@@ -153,8 +224,10 @@ const submit = async () => {
         throw new Error(`Unhandled level: ${_exhaustive}`)
       }
     }
-    modalOpen.value = false
-    await load()
+    if (!formError.value) {
+      modalOpen.value = false
+      await load()
+    }
   } catch (err) {
     formError.value = extractFetchError(err, t('org.tree.create_error'))
   } finally {
@@ -165,15 +238,84 @@ const submit = async () => {
 const openEditApplication = (app: OrgApplication) => {
   editForm.id = orgId(app)
   editForm.libelle = orgLabel(app)
+  editForm.siteIds = [...pickAppSiteIds(app)]
+  editForm.serviceIds = [...pickAppServiceIds(app)]
+  editForm.equipeIds = [...pickAppEquipeIds(app)]
   editError.value = ''
   editOpen.value = true
+}
+
+type RenameLevel = 'site' | 'service'
+const renameOpen = ref(false)
+const renameLevel = ref<RenameLevel>('site')
+const renameSubmitting = ref(false)
+const renameError = ref('')
+const renameForm = reactive({ id: '', libelle: '' })
+
+const renameTitle = computed(() =>
+  renameLevel.value === 'site' ? t('org.tree.edit_site_title') : t('org.tree.edit_service_title')
+)
+
+const openRenameSite = (site: OrgSite) => {
+  renameLevel.value = 'site'
+  renameForm.id = orgId(site)
+  renameForm.libelle = orgLabel(site)
+  renameError.value = ''
+  renameOpen.value = true
+}
+
+const openRenameService = (service: OrgService) => {
+  renameLevel.value = 'service'
+  renameForm.id = orgId(service)
+  renameForm.libelle = orgLabel(service) || service.type || ''
+  renameError.value = ''
+  renameOpen.value = true
+}
+
+const submitRename = async () => {
+  renameSubmitting.value = true
+  renameError.value = ''
+  try {
+    const libelle = renameForm.libelle.trim()
+    if (!libelle) {
+      renameError.value = t('org.tree.field_libelle_required')
+      return
+    }
+    switch (renameLevel.value) {
+      case 'site':
+        await updateSite(renameForm.id, { libelle })
+        break
+      case 'service':
+        await updateService(renameForm.id, { libelle })
+        break
+      default: {
+        const _exhaustive: never = renameLevel.value
+        throw new Error(`Unhandled rename level: ${_exhaustive}`)
+      }
+    }
+    renameOpen.value = false
+    await load()
+  } catch (err) {
+    renameError.value = extractFetchError(err, t('org.tree.update_error'))
+  } finally {
+    renameSubmitting.value = false
+  }
 }
 
 const submitEditApplication = async () => {
   editSubmitting.value = true
   editError.value = ''
   try {
-    await updateApplication(editForm.id, { libelle: editForm.libelle })
+    if (!editForm.siteIds.length && !editForm.serviceIds.length && !editForm.equipeIds.length) {
+      editError.value = t('org.tree.shares_required')
+      return
+    }
+    await updateApplication(editForm.id, {
+      libelle: editForm.libelle,
+      siteIds: editForm.siteIds,
+      serviceIds: editForm.serviceIds,
+      equipeIds: editForm.equipeIds
+    })
     editOpen.value = false
     await load()
   } catch (err) {
@@ -251,6 +393,9 @@ defineExpose({ reload: load })
                 <AppIcon name="location_on" />
                 <span class="org-tree__label">{{ orgLabel(site) }}</span>
                 <AppBadge variant="default">{{ $t('org.tree.level_site') }}</AppBadge>
+                <AppButton variant="ghost" size="sm" type="button" @click="openRenameSite(site)">
+                  {{ $t('org.tree.edit_site') }}
+                </AppButton>
                 <AppButton
                   variant="ghost"
                   size="sm"
@@ -260,9 +405,61 @@ defineExpose({ reload: load })
                 </AppButton>
               </div>
 
-              <p v-if="servicesOf(orgId(site)).length === 0" class="org-tree__hint">
+              <p v-if="servicesOf(orgId(site)).length === 0 && applicationsOfSite(orgId(site)).length === 0" class="org-tree__hint">
                 {{ $t('org.tree.empty_services') }}
               </p>
+
+              <ul
+                v-if="applicationsOfSite(orgId(site)).length"
+                class="org-tree__list org-tree__list--site-apps"
+              >
+                <li
+                  v-for="application in applicationsOfSite(orgId(site))"
+                  :key="'site-app-' + orgId(application)"
+                  class="org-tree__node"
+                >
+                  <div class="org-tree__row">
+                    <AppIcon name="apps" />
+                    <span class="org-tree__label" :class="{ 'org-tree__label--inactive': !isAppActive(application) }">
+                      {{ orgLabel(application) }}
+                    </span>
+                    <AppBadge variant="default">{{ $t('org.tree.level_application') }}</AppBadge>
+                    <AppBadge variant="gold">{{ $t('org.tree.shared_badge') }}</AppBadge>
+                    <AppBadge v-if="!isAppActive(application)" variant="warning">
+                      {{ $t('org.tree.inactive_badge') }}
+                    </AppBadge>
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      @click="openEditApplication(application)"
+                    >
+                      {{ $t('org.tree.edit_application') }}
+                    </AppButton>
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      @click="navigateTo(`/admin/applications?id=${orgId(application)}`)"
+                    >
+                      {{ $t('applications.open_in_admin') }}
+                    </AppButton>
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      :disabled="actionBusyId === orgId(application)"
+                      @click="toggleApplicationActive(application)"
+                    >
+                      {{
+                        isAppActive(application)
+                          ? $t('org.tree.deactivate_application')
+                          : $t('org.tree.activate_application')
+                      }}
+                    </AppButton>
+                  </div>
+                </li>
+              </ul>
 
               <ul class="org-tree__list">
                 <li
@@ -274,6 +471,14 @@ defineExpose({ reload: load })
                     <AppIcon name="account_tree" />
                     <span class="org-tree__label">{{ serviceLabel(service) }}</span>
                     <AppBadge variant="default">{{ $t('org.tree.level_service') }}</AppBadge>
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      @click="openRenameService(service)"
+                    >
+                      {{ $t('org.tree.edit_service') }}
+                    </AppButton>
                     <AppButton
                       variant="ghost"
                       size="sm"
@@ -304,6 +509,12 @@ defineExpose({ reload: load })
                           {{ orgLabel(application) }}
                         </span>
                         <AppBadge variant="default">{{ $t('org.tree.level_application') }}</AppBadge>
+                        <AppBadge
+                          v-if="isSharedBeyondService(application, orgId(service))"
+                          variant="gold"
+                        >
+                          {{ $t('org.tree.shared_badge') }}
+                        </AppBadge>
                         <AppBadge v-if="!isAppActive(application)" variant="warning">
                           {{ $t('org.tree.inactive_badge') }}
                         </AppBadge>
@@ -394,6 +605,34 @@ defineExpose({ reload: load })
           required
         />
 
+        <template v-if="modalLevel === 'application'">
+          <div class="org-tree__field">
+            <label for="org-app-sites">{{ $t('org.tree.field_share_sites') }}</label>
+            <select id="org-app-sites" v-model="form.siteIds" multiple class="org-tree__multiselect">
+              <option v-for="opt in siteOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div class="org-tree__field">
+            <label for="org-app-services">{{ $t('org.tree.field_share_services') }}</label>
+            <select id="org-app-services" v-model="form.serviceIds" multiple class="org-tree__multiselect">
+              <option v-for="opt in serviceOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div class="org-tree__field">
+            <label for="org-app-equipes">{{ $t('org.tree.field_share_equipes') }}</label>
+            <select id="org-app-equipes" v-model="form.equipeIds" multiple class="org-tree__multiselect">
+              <option v-for="opt in equipeOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <p class="org-tree__field-hint">{{ $t('org.tree.shares_hint') }}</p>
+          </div>
+        </template>
+
         <div v-if="modalLevel === 'service'" class="org-tree__field">
           <label for="org-service-type">{{ $t('org.tree.field_type') }}</label>
           <select id="org-service-type" v-model="form.type">
@@ -438,7 +677,28 @@ defineExpose({ reload: load })
       </form>
     </AppModal>
 
-    <AppModal v-model:open="editOpen" width="sm" :aria-label="$t('org.tree.edit_application_title')">
+    <AppModal v-model:open="renameOpen" width="sm" :aria-label="renameTitle">
+      <form class="org-tree__form" @submit.prevent="submitRename">
+        <h2 class="org-tree__form-title">{{ renameTitle }}</h2>
+        <AppInput
+          id="org-rename-libelle"
+          v-model="renameForm.libelle"
+          :label="$t('org.tree.field_libelle')"
+          required
+        />
+        <p v-if="renameError" class="org-tree__form-error" role="alert">{{ renameError }}</p>
+        <div class="org-tree__form-actions">
+          <AppButton variant="ghost" type="button" @click="renameOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="renameSubmitting">
+            {{ renameSubmitting ? $t('org.tree.saving') : $t('org.tree.save') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
+
+    <AppModal v-model:open="editOpen" width="md" :aria-label="$t('org.tree.edit_application_title')">
       <form class="org-tree__form" @submit.prevent="submitEditApplication">
         <h2 class="org-tree__form-title">{{ $t('org.tree.edit_application_title') }}</h2>
         <AppInput
@@ -447,6 +707,31 @@ defineExpose({ reload: load })
           :label="$t('org.tree.field_libelle')"
           required
         />
+        <div class="org-tree__field">
+          <label for="org-edit-app-sites">{{ $t('org.tree.field_share_sites') }}</label>
+          <select id="org-edit-app-sites" v-model="editForm.siteIds" multiple class="org-tree__multiselect">
+            <option v-for="opt in siteOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+        <div class="org-tree__field">
+          <label for="org-edit-app-services">{{ $t('org.tree.field_share_services') }}</label>
+          <select id="org-edit-app-services" v-model="editForm.serviceIds" multiple class="org-tree__multiselect">
+            <option v-for="opt in serviceOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+        <div class="org-tree__field">
+          <label for="org-edit-app-equipes">{{ $t('org.tree.field_share_equipes') }}</label>
+          <select id="org-edit-app-equipes" v-model="editForm.equipeIds" multiple class="org-tree__multiselect">
+            <option v-for="opt in equipeOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+          <p class="org-tree__field-hint">{{ $t('org.tree.shares_hint') }}</p>
+        </div>
         <p v-if="editError" class="org-tree__form-error" role="alert">{{ editError }}</p>
         <div class="org-tree__form-actions">
           <AppButton variant="ghost" type="button" @click="editOpen = false">
@@ -540,6 +825,11 @@ defineExpose({ reload: load })
   background: var(--kore-bg);
   color: var(--kore-text);
   font-size: var(--kore-text-small);
+}
+
+.org-tree__multiselect {
+  min-height: 6.5rem;
+  width: 100%;
 }
 
 .org-tree__field-hint {

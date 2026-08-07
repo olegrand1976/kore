@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,4 +104,15 @@ func TestActivationPeriodExpired(t *testing.T) {
 		Expiration: &exp,
 	}
 	require.False(t, period.IsActive(time.Now()))
+}
+
+func TestApplication_HasSharesAndDedupe(t *testing.T) {
+	require.False(t, Application{}.HasShares())
+	require.True(t, Application{ServiceIDs: []uuid.UUID{uuid.New()}}.HasShares())
+	require.True(t, Application{SiteIDs: []uuid.UUID{uuid.New()}}.HasShares())
+	require.True(t, Application{EquipeIDs: []uuid.UUID{uuid.New()}}.HasShares())
+
+	a, b := uuid.New(), uuid.New()
+	got := DedupeUUIDs([]uuid.UUID{a, uuid.Nil, a, b})
+	require.Equal(t, []uuid.UUID{a, b}, got)
 }

@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (login unique global + provision atomique)
+> **Dernière mise à jour doc** : 07/08/2026 (applications partagées sites/services/équipes)
 
 ---
 
@@ -15,8 +15,13 @@ erDiagram
     org_tenants ||--o{ org_societes : "tenant_id"
     org_societes ||--o{ org_sites : "societe_id"
     org_sites ||--o{ org_services : "site_id"
-    org_services ||--o{ org_applications : "service_id"
     org_applications ||--o{ org_equipes : "application_id"
+    org_applications ||--o{ org_application_sites : "application_id"
+    org_sites ||--o{ org_application_sites : "site_id"
+    org_applications ||--o{ org_application_services : "application_id"
+    org_services ||--o{ org_application_services : "service_id"
+    org_applications ||--o{ org_application_equipes : "application_id"
+    org_equipes ||--o{ org_application_equipes : "equipe_id"
     org_equipes ||--o{ org_users : "equipe_id"
     org_users ||--o{ org_user_profiles : "user_id"
     org_users ||--o{ org_user_equipes : "user_id"
@@ -178,7 +183,6 @@ Index :
 | --- | --- | --- |
 | `id` | UUID | PK |
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
-| `service_id` | UUID | NOT NULL → `org.services(id)` |
 | `libelle` | TEXT | NOT NULL |
 | `proprietaire` | TEXT | |
 | `mode_facturation` | TEXT | NOT NULL, DEFAULT `'temps_passe'` |
@@ -190,6 +194,38 @@ Index :
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Index** : `idx_org_applications_tenant_active (tenant_id, active)`
+
+> Migration `0027` : suppression de `service_id` (propriétaire unique). Les rattachements passent par les tables junction ci-dessous (≥ 1 site, service ou équipe).
+
+### `org.application_sites` (migration `0027`)
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
+| `application_id` | UUID | NOT NULL → `org.applications(id)` ON DELETE CASCADE |
+| `site_id` | UUID | NOT NULL → `org.sites(id)` ON DELETE CASCADE |
+
+**PK** : `(application_id, site_id)` — **Index** : `idx_org_application_sites_site (tenant_id, site_id)`
+
+### `org.application_services` (migration `0027`)
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
+| `application_id` | UUID | NOT NULL → `org.applications(id)` ON DELETE CASCADE |
+| `service_id` | UUID | NOT NULL → `org.services(id)` ON DELETE CASCADE |
+
+**PK** : `(application_id, service_id)` — **Index** : `idx_org_application_services_service (tenant_id, service_id)`
+
+### `org.application_equipes` (migration `0027`)
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
+| `application_id` | UUID | NOT NULL → `org.applications(id)` ON DELETE CASCADE |
+| `equipe_id` | UUID | NOT NULL → `org.equipes(id)` ON DELETE CASCADE |
+
+**PK** : `(application_id, equipe_id)` — **Index** : `idx_org_application_equipes_equipe (tenant_id, equipe_id)`
 
 ### `org.equipes`
 
@@ -1254,7 +1290,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 
 | Schéma | Tables | Nb |
 | --- | --- | --- |
-| `org` | tenants, access_tokens, societes, sites, services, applications, equipes, users, user_profiles, user_equipes, user_totp_backup_codes, identity_providers, user_identities, clients, tenant_request_settings, request_attachments, authx_permissions, platform_settings | 18 |
+| `org` | tenants, access_tokens, societes, sites, services, applications, application_sites, application_services, application_equipes, equipes, users, user_profiles, user_equipes, user_totp_backup_codes, identity_providers, user_identities, clients, tenant_request_settings, request_attachments, authx_permissions, platform_settings | 21 |
 | `workflow` | definitions, states, transitions, instances, transition_logs | 5 |
 | `cra` | timesheets, week_entries, time_lines | 3 |
 | `notifications` | rules, messages, device_tokens | 3 |
@@ -1272,7 +1308,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **71** |
+| **Total** | | **74** |
 
 ---
 

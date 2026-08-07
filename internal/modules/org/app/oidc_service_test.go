@@ -40,8 +40,14 @@ func (s *oidcRepoStub) ListSocietes(context.Context, kernel.TenantID) ([]domain.
 func (s *oidcRepoStub) GetSociete(context.Context, kernel.TenantID, uuid.UUID) (domain.Societe, error) {
 	return domain.Societe{}, nil
 }
-func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error               { return nil }
-func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error         { return nil }
+func (s *oidcRepoStub) SaveSite(context.Context, domain.Site) error { return nil }
+func (s *oidcRepoStub) UpdateSite(context.Context, kernel.TenantID, uuid.UUID, string) (domain.SiteSummary, error) {
+	return domain.SiteSummary{}, domain.ErrSiteNotFound
+}
+func (s *oidcRepoStub) SaveService(context.Context, domain.Service) error { return nil }
+func (s *oidcRepoStub) UpdateService(context.Context, kernel.TenantID, uuid.UUID, string) (domain.ServiceSummary, error) {
+	return domain.ServiceSummary{}, domain.ErrServiceNotFound
+}
 func (s *oidcRepoStub) SaveApplication(context.Context, domain.Application) error { return nil }
 func (s *oidcRepoStub) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
 func (s *oidcRepoStub) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
@@ -50,7 +56,7 @@ func (s *oidcRepoStub) ListSites(context.Context, kernel.TenantID) ([]domain.Sit
 func (s *oidcRepoStub) ListApplications(context.Context, kernel.TenantID, ports.ApplicationListFilter) ([]domain.Application, error) {
 	return nil, nil
 }
-func (s *oidcRepoStub) UpdateApplication(context.Context, domain.Application) error { return nil }
+func (s *oidcRepoStub) UpdateApplication(context.Context, domain.Application, bool) error { return nil }
 func (s *oidcRepoStub) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return nil, nil
 }
@@ -59,6 +65,9 @@ func (s *oidcRepoStub) ListServices(context.Context, kernel.TenantID) ([]domain.
 }
 func (s *oidcRepoStub) GetApplication(context.Context, kernel.TenantID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrUserNotFound
+}
+func (s *oidcRepoStub) AssertApplicationSharesExist(context.Context, kernel.TenantID, []uuid.UUID, []uuid.UUID, []uuid.UUID) error {
+	return nil
 }
 func (s *oidcRepoStub) BudgetBelongsToApplication(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil

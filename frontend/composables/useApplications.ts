@@ -17,12 +17,22 @@ export type OrgApplication = {
   BudgetDefautID?: string
   active?: boolean
   Active?: boolean
+  /** @deprecated use serviceIds */
   serviceId?: string
   ServiceID?: string
+  siteIds?: string[]
+  SiteIDs?: string[]
+  serviceIds?: string[]
+  ServiceIDs?: string[]
+  equipeIds?: string[]
+  EquipeIDs?: string[]
 }
 
 export type ApplicationWriteBody = {
   serviceId?: string
+  siteIds?: string[]
+  serviceIds?: string[]
+  equipeIds?: string[]
   libelle?: string
   proprietaire?: string
   modeFacturation?: string
@@ -53,7 +63,40 @@ export function pickAppActive(app: OrgApplication | undefined | null) {
 }
 
 export function pickAppServiceId(app: OrgApplication | undefined | null) {
-  return app?.serviceId ?? app?.ServiceID ?? ''
+  const ids = pickAppServiceIds(app)
+  return ids[0] ?? ''
+}
+
+export function pickUUIDList(raw: string[] | undefined | null): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(String).filter(Boolean)
+}
+
+export function pickAppSiteIds(app: OrgApplication | undefined | null) {
+  return pickUUIDList(app?.siteIds ?? app?.SiteIDs)
+}
+
+export function pickAppServiceIds(app: OrgApplication | undefined | null) {
+  const ids = pickUUIDList(app?.serviceIds ?? app?.ServiceIDs)
+  if (ids.length) return ids
+  const legacy = app?.serviceId ?? app?.ServiceID ?? ''
+  return legacy ? [String(legacy)] : []
+}
+
+export function pickAppEquipeIds(app: OrgApplication | undefined | null) {
+  return pickUUIDList(app?.equipeIds ?? app?.EquipeIDs)
+}
+
+export function summarizeAppShares(app: OrgApplication | undefined | null): {
+  sites: number
+  services: number
+  equipes: number
+} {
+  return {
+    sites: pickAppSiteIds(app).length,
+    services: pickAppServiceIds(app).length,
+    equipes: pickAppEquipeIds(app).length
+  }
 }
 
 export function pickAppMode(app: OrgApplication | undefined | null) {
@@ -115,7 +158,14 @@ export function useApplications() {
     return (res?.data ?? res) as OrgApplication
   }
 
-  const create = async (body: ApplicationWriteBody & { serviceId: string; libelle: string }) => {
+  const create = async (
+    body: ApplicationWriteBody & { libelle: string } & (
+      | { serviceId: string }
+      | { serviceIds: string[] }
+      | { siteIds: string[] }
+      | { equipeIds: string[] }
+    )
+  ) => {
     return apiFetch<{ data?: OrgApplication }>('/api/org/applications', {
       method: 'POST',
       body
@@ -159,6 +209,10 @@ export function useApplications() {
     pickAppClient,
     pickAppActive,
     pickAppServiceId,
+    pickAppSiteIds,
+    pickAppServiceIds,
+    pickAppEquipeIds,
+    summarizeAppShares,
     pickAppMode,
     pickAppChefId,
     pickAppBudgetDefautId,

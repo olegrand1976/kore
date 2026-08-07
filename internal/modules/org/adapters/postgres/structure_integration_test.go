@@ -53,11 +53,11 @@ func seedStructure(t *testing.T, repo *postgres.Repository, tenant kernel.Tenant
 
 	appID = uuid.New()
 	require.NoError(t, repo.SaveApplication(ctx, domain.Application{
-		ID:        appID,
-		TenantID:  tenant,
-		ServiceID: serviceID,
-		Libelle:   "Portail Client",
-		Active:    true,
+		ID:         appID,
+		TenantID:   tenant,
+		Libelle:    "Portail Client",
+		Active:     true,
+		ServiceIDs: []uuid.UUID{serviceID},
 	}))
 
 	return siteID, serviceID, appID
@@ -199,7 +199,7 @@ func TestOrg_UpdateApplicationActiveRoundTrip(t *testing.T) {
 	got.Proprietaire = "ACME"
 	got.ModeFacturation = domain.ModeFacturationForfait
 	got.UOActivee = true
-	require.NoError(t, repo.UpdateApplication(ctx, got))
+	require.NoError(t, repo.UpdateApplication(ctx, got, false))
 
 	updated, err := repo.GetApplication(ctx, tenant, appID)
 	require.NoError(t, err)
@@ -266,4 +266,49 @@ func TestOrg_UpdateUserPersistsEquipe(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, detached.EquipeID)
 	require.Empty(t, detached.EquipeIDs)
+}
+
+func TestOrg_ApplicationSharesRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	siteID, serviceID, appID := seedStructure(t, repo, tenant)
+
+	// Second service on same site for multi-share.
+	svc2 := uuid.New()
+	responsable := uuid.New()
+	require.NoError(t, repo.SaveService(ctx, domain.Service{
+		ID:            svc2,
+		TenantID:      tenant,
+		SiteID:        siteID,
+		Libelle:       "Support",
+		Type:          "interne",
+		ResponsableID: &responsable,
+	}))
+
+	app, err := repo.GetApplication(ctx, tenant, appID)
+	require.NoError(t, err)
+	require.Equal(t, []uuid.UUID{serviceID}, app.ServiceIDs)
+
+	app.ServiceIDs = []uuid.UUID{serviceID, svc2}
+	app.SiteIDs = []uuid.UUID{siteID}
+	require.NoError(t, repo.UpdateApplication(ctx, app, true))
+
+	got, err := repo.GetApplication(ctx, tenant, appID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []uuid.UUID{serviceID, svc2}, got.ServiceIDs)
+	require.Equal(t, []uuid.UUID{siteID}, got.SiteIDs)
+
+	equipeID := uuid.New()
+	require.NoError(t, repo.SaveEquipe(ctx, domain.Equipe{
+		ID:            equipeID,
+		TenantID:      tenant,
+		ApplicationID: appID,
+		Libelle:       "Shared team",
+	}))
+	got, err = repo.GetApplication(ctx, tenant, appID)
+	require.NoError(t, err)
+	require.Contains(t, got.EquipeIDs, equipeID)
 }

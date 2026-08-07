@@ -55,6 +55,20 @@ func (s *equipeOrgService) ListSites(context.Context, kernel.TenantID) ([]domain
 	return s.sites, nil
 }
 
+func (s *equipeOrgService) UpdateSite(_ context.Context, cmd ports.UpdateSiteCommand) (domain.SiteSummary, error) {
+	if s.err != nil {
+		return domain.SiteSummary{}, s.err
+	}
+	return domain.SiteSummary{ID: cmd.SiteID, Libelle: cmd.Libelle}, nil
+}
+
+func (s *equipeOrgService) UpdateService(_ context.Context, cmd ports.UpdateServiceCommand) (domain.ServiceSummary, error) {
+	if s.err != nil {
+		return domain.ServiceSummary{}, s.err
+	}
+	return domain.ServiceSummary{ID: cmd.ServiceID, Libelle: cmd.Libelle}, nil
+}
+
 func requestWithIdentity(t *testing.T, method, target string, body any) *http.Request {
 	t.Helper()
 	var buf bytes.Buffer
@@ -183,7 +197,6 @@ func (s *applicationOrgService) CreateApplication(_ context.Context, cmd ports.C
 	return domain.Application{
 		ID:                uuid.New(),
 		TenantID:          cmd.TenantID,
-		ServiceID:         cmd.ServiceID,
 		Libelle:           cmd.Libelle,
 		Proprietaire:      cmd.Proprietaire,
 		ModeFacturation:   cmd.ModeFacturation,
@@ -191,6 +204,9 @@ func (s *applicationOrgService) CreateApplication(_ context.Context, cmd ports.C
 		ChefUtilisateurID: cmd.ChefUtilisateurID,
 		BudgetDefautID:    cmd.BudgetDefautID,
 		Active:            true,
+		SiteIDs:           cmd.SiteIDs,
+		ServiceIDs:        cmd.ServiceIDs,
+		EquipeIDs:         cmd.EquipeIDs,
 	}, nil
 }
 
@@ -237,11 +253,13 @@ func TestCreateApplication_created(t *testing.T) {
 	svc := &applicationOrgService{}
 	handler := createApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
 	serviceID := uuid.New()
+	siteID := uuid.New()
 	chefID := uuid.New()
 
 	rec := httptest.NewRecorder()
 	handler(rec, requestWithIdentity(t, http.MethodPost, "/applications", map[string]any{
-		"serviceId":         serviceID.String(),
+		"serviceIds":        []string{serviceID.String()},
+		"siteIds":           []string{siteID.String()},
 		"libelle":           "Portail",
 		"proprietaire":      "ACME",
 		"modeFacturation":   "forfait",
@@ -254,6 +272,12 @@ func TestCreateApplication_created(t *testing.T) {
 	}
 	if svc.created == nil || svc.created.Libelle != "Portail" || svc.created.Proprietaire != "ACME" {
 		t.Fatalf("created = %+v", svc.created)
+	}
+	if len(svc.created.ServiceIDs) != 1 || svc.created.ServiceIDs[0] != serviceID {
+		t.Fatalf("serviceIds = %v", svc.created.ServiceIDs)
+	}
+	if len(svc.created.SiteIDs) != 1 || svc.created.SiteIDs[0] != siteID {
+		t.Fatalf("siteIds = %v", svc.created.SiteIDs)
 	}
 	if svc.created.ChefUtilisateurID == nil || *svc.created.ChefUtilisateurID != chefID {
 		t.Fatalf("chef = %v", svc.created.ChefUtilisateurID)
@@ -387,6 +411,40 @@ func TestListSites_returnsSites(t *testing.T) {
 	}
 	if len(payload.Data) != 1 || payload.Data[0].Libelle != "Paris HQ" {
 		t.Fatalf("data = %+v", payload.Data)
+	}
+}
+
+func TestUpdateSite_ok(t *testing.T) {
+	siteID := uuid.New()
+	svc := &equipeOrgService{}
+	handler := updateSite(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/sites/"+siteID.String(), map[string]any{
+		"libelle": "Lyon",
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", siteID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUpdateService_ok(t *testing.T) {
+	serviceID := uuid.New()
+	svc := &equipeOrgService{}
+	handler := updateService(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/services/"+serviceID.String(), map[string]any{
+		"libelle": "Support",
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", serviceID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
 	}
 }
 

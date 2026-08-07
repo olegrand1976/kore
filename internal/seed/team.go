@@ -158,11 +158,11 @@ func (r *Runner) ensureApplication3(ctx context.Context, tenant kernel.TenantID)
 		return err
 	}
 	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
-		ID:        DemoApp3ID,
-		TenantID:  tenant,
-		ServiceID: DemoServiceID,
-		Libelle:   DemoApp3Label,
-		Active:    true,
+		ID:         DemoApp3ID,
+		TenantID:   tenant,
+		Libelle:    DemoApp3Label,
+		Active:     true,
+		ServiceIDs: []uuid.UUID{DemoServiceID},
 	})
 }
 
@@ -175,6 +175,14 @@ func (r *Runner) ensureEquipeNamed(ctx context.Context, tenant kernel.TenantID, 
 		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
 		VALUES ($1, $2, $3, $4, $5)
 	`, equipeID, tenant.UUID(), appID, label, managerID)
+	if err != nil {
+		return err
+	}
+	_, err = r.deps.Pool.Exec(ctx, `
+		INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING
+	`, tenant.UUID(), appID, equipeID)
 	return err
 }
 

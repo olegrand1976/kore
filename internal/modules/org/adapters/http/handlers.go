@@ -53,7 +53,10 @@ func RegisterRoutes(
 		pr.Get("/branding/logo/{tenantId}", serveTenantLogo(org, uploadsDir))
 		pr.Post("/sites", createSite(org, authorizer))
 		pr.Get("/sites", listSites(org, authorizer))
+		pr.Put("/sites/{id}", updateSite(org, authorizer))
 		pr.Post("/services", createService(org, authorizer))
+		pr.Get("/services", listServices(org, authorizer))
+		pr.Put("/services/{id}", updateService(org, authorizer))
 		pr.Post("/applications", createApplication(org, authorizer))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
@@ -62,7 +65,6 @@ func RegisterRoutes(
 		pr.Patch("/applications/{id}/activate", activateApplication(org, authorizer))
 		pr.Post("/equipes", createEquipe(org, authorizer))
 		pr.Get("/equipes", listEquipes(org, authorizer))
-		pr.Get("/services", listServices(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Get("/users/me/2fa", get2FAStatusHandler(users))
@@ -225,6 +227,46 @@ func createSite(org ports.OrganizationService, authorizer authx.Authorizer) http
 	}
 }
 
+func updateSite(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		siteID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid site id")
+			return
+		}
+		var req struct {
+			Libelle string `json:"libelle"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := org.UpdateSite(r.Context(), ports.UpdateSiteCommand{
+			TenantID: identity.TenantID,
+			SiteID:   siteID,
+			Libelle:  req.Libelle,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrSiteNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "site not found")
+				return
+			}
+			if errors.Is(err, domain.ErrInvalidSiteLibelle) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
+	}
+}
+
 func createService(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
@@ -261,6 +303,46 @@ func createService(org ports.OrganizationService, authorizer authx.Authorizer) h
 	}
 }
 
+func updateService(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		serviceID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid service id")
+			return
+		}
+		var req struct {
+			Libelle string `json:"libelle"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := org.UpdateService(r.Context(), ports.UpdateServiceCommand{
+			TenantID:  identity.TenantID,
+			ServiceID: serviceID,
+			Libelle:   req.Libelle,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrServiceNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "service not found")
+				return
+			}
+			if errors.Is(err, domain.ErrInvalidServiceLibelle) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
+	}
+}
+
 func createApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
@@ -268,23 +350,30 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			return
 		}
 		var req struct {
-			ServiceID         uuid.UUID  `json:"serviceId"`
-			Libelle           string     `json:"libelle"`
-			Proprietaire      string     `json:"proprietaire"`
-			ModeFacturation   string     `json:"modeFacturation"`
-			UOActivee         bool       `json:"uoActivee"`
-			ChefUtilisateurID *uuid.UUID `json:"chefUtilisateurId"`
-			BudgetDefautID    *uuid.UUID `json:"budgetDefautId"`
-			DefaultTJMCents   int64      `json:"defaultTjmCents"`
+			Libelle           string      `json:"libelle"`
+			Proprietaire      string      `json:"proprietaire"`
+			ModeFacturation   string      `json:"modeFacturation"`
+			UOActivee         bool        `json:"uoActivee"`
+			ChefUtilisateurID *uuid.UUID  `json:"chefUtilisateurId"`
+			BudgetDefautID    *uuid.UUID  `json:"budgetDefautId"`
+			DefaultTJMCents   int64       `json:"defaultTjmCents"`
+			SiteIDs           []uuid.UUID `json:"siteIds"`
+			ServiceIDs        []uuid.UUID `json:"serviceIds"`
+			EquipeIDs         []uuid.UUID `json:"equipeIds"`
+			// Legacy single serviceId still accepted and merged into serviceIds.
+			ServiceID uuid.UUID `json:"serviceId"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
+		serviceIDs := append([]uuid.UUID{}, req.ServiceIDs...)
+		if req.ServiceID != uuid.Nil {
+			serviceIDs = append(serviceIDs, req.ServiceID)
+		}
 		identity, _ := authx.FromContext(r.Context())
 		a, err := org.CreateApplication(r.Context(), ports.CreateApplicationCommand{
 			TenantID:          identity.TenantID,
-			ServiceID:         req.ServiceID,
 			Libelle:           req.Libelle,
 			Proprietaire:      req.Proprietaire,
 			ModeFacturation:   req.ModeFacturation,
@@ -292,6 +381,9 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			ChefUtilisateurID: req.ChefUtilisateurID,
 			BudgetDefautID:    req.BudgetDefautID,
 			DefaultTJMCents:   req.DefaultTJMCents,
+			SiteIDs:           req.SiteIDs,
+			ServiceIDs:        serviceIDs,
+			EquipeIDs:         req.EquipeIDs,
 		})
 		if err != nil {
 			if errors.Is(err, domain.ErrInvalidModeFacturation) {
@@ -301,7 +393,9 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			if errors.Is(err, domain.ErrUserNotFound) ||
 				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
 				errors.Is(err, domain.ErrBudgetNotFound) ||
-				errors.Is(err, domain.ErrBudgetNotAllowedOnCreate) {
+				errors.Is(err, domain.ErrBudgetNotAllowedOnCreate) ||
+				errors.Is(err, domain.ErrApplicationWithoutShare) ||
+				errors.Is(err, domain.ErrInvalidApplicationShare) {
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
@@ -547,10 +641,38 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			cmd.DefaultTJMCents = &n
 		}
+		sharesTouched := false
+		if v, ok := raw["siteIds"]; ok {
+			ids, err := parseUUIDSliceField(v)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid siteIds")
+				return
+			}
+			cmd.SiteIDs = &ids
+			sharesTouched = true
+		}
+		if v, ok := raw["serviceIds"]; ok {
+			ids, err := parseUUIDSliceField(v)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid serviceIds")
+				return
+			}
+			cmd.ServiceIDs = &ids
+			sharesTouched = true
+		}
+		if v, ok := raw["equipeIds"]; ok {
+			ids, err := parseUUIDSliceField(v)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid equipeIds")
+				return
+			}
+			cmd.EquipeIDs = &ids
+			sharesTouched = true
+		}
 		if cmd.Libelle == nil && cmd.Active == nil && cmd.Proprietaire == nil &&
 			cmd.ModeFacturation == nil && cmd.UOActivee == nil &&
 			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil &&
-			cmd.DefaultTJMCents == nil {
+			cmd.DefaultTJMCents == nil && !sharesTouched {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
 			return
 		}
@@ -565,7 +687,9 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			if errors.Is(err, domain.ErrInvalidModeFacturation) ||
 				errors.Is(err, domain.ErrUserNotFound) ||
 				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
-				errors.Is(err, domain.ErrBudgetNotFound) {
+				errors.Is(err, domain.ErrBudgetNotFound) ||
+				errors.Is(err, domain.ErrApplicationWithoutShare) ||
+				errors.Is(err, domain.ErrInvalidApplicationShare) {
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
@@ -586,6 +710,20 @@ func parseOptionalUUIDField(raw json.RawMessage) (*uuid.UUID, error) {
 		return nil, err
 	}
 	return &id, nil
+}
+
+func parseUUIDSliceField(raw json.RawMessage) ([]uuid.UUID, error) {
+	if string(raw) == "null" {
+		return []uuid.UUID{}, nil
+	}
+	var ids []uuid.UUID
+	if err := json.Unmarshal(raw, &ids); err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
 }
 
 func deactivateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {

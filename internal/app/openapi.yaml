@@ -1149,6 +1149,26 @@ paths:
       responses:
         "201":
           description: Site créé
+  /sites/{id}:
+    put:
+      summary: Renommer un site
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle: { type: string }
+      responses:
+        "200":
+          description: Site mis à jour
+        "404":
+          description: Site introuvable
   /equipes:
     get:
       summary: Liste des équipes
@@ -1226,6 +1246,26 @@ paths:
           description: Service créé
         "422":
           description: Responsable manquant
+  /services/{id}:
+    put:
+      summary: Renommer un service
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle]
+              properties:
+                libelle: { type: string }
+      responses:
+        "200":
+          description: Service mis à jour
+        "404":
+          description: Service introuvable
   /applications:
     get:
       summary: Liste applications
@@ -1248,10 +1288,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [serviceId, libelle]
+              required: [libelle]
               properties:
-                serviceId: { type: string, format: uuid }
                 libelle: { type: string }
+                siteIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                serviceIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                equipeIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                serviceId: { type: string, format: uuid, description: "Legacy — fusionné dans serviceIds" }
                 proprietaire: { type: string }
                 modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
                 uoActivee: { type: boolean }
@@ -1287,6 +1336,15 @@ paths:
                 uoActivee: { type: boolean }
                 chefUtilisateurId: { type: string, format: uuid, nullable: true }
                 budgetDefautId: { type: string, format: uuid, nullable: true }
+                siteIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                serviceIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                equipeIds:
+                  type: array
+                  items: { type: string, format: uuid }
       responses:
         "200":
           description: Application mise à jour

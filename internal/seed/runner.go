@@ -392,11 +392,11 @@ func (r *Runner) ensureApplication(ctx context.Context, tenant kernel.TenantID) 
 		return err
 	}
 	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
-		ID:        DemoAppID,
-		TenantID:  tenant,
-		ServiceID: DemoServiceID,
-		Libelle:   DemoAppLabel,
-		Active:    true,
+		ID:         DemoAppID,
+		TenantID:   tenant,
+		Libelle:    DemoAppLabel,
+		Active:     true,
+		ServiceIDs: []uuid.UUID{DemoServiceID},
 	})
 }
 
@@ -406,11 +406,11 @@ func (r *Runner) ensureApplication2(ctx context.Context, tenant kernel.TenantID)
 		return err
 	}
 	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
-		ID:        DemoApp2ID,
-		TenantID:  tenant,
-		ServiceID: DemoServiceID,
-		Libelle:   DemoApp2Label,
-		Active:    true,
+		ID:         DemoApp2ID,
+		TenantID:   tenant,
+		Libelle:    DemoApp2Label,
+		Active:     true,
+		ServiceIDs: []uuid.UUID{DemoServiceID},
 	})
 }
 
@@ -423,6 +423,14 @@ func (r *Runner) ensureEquipe(ctx context.Context, tenant kernel.TenantID, manag
 		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
 		VALUES ($1, $2, $3, $4, $5)
 	`, DemoEquipeID, tenant.UUID(), DemoAppID, DemoEquipeLabel, managerID)
+	if err != nil {
+		return err
+	}
+	_, err = r.deps.Pool.Exec(ctx, `
+		INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING
+	`, tenant.UUID(), DemoAppID, DemoEquipeID)
 	return err
 }
 
@@ -435,6 +443,14 @@ func (r *Runner) ensureEquipe2(ctx context.Context, tenant kernel.TenantID, mana
 		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
 		VALUES ($1, $2, $3, $4, $5)
 	`, DemoEquipe2ID, tenant.UUID(), DemoApp2ID, DemoEquipe2Label, managerID)
+	if err != nil {
+		return err
+	}
+	_, err = r.deps.Pool.Exec(ctx, `
+		INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING
+	`, tenant.UUID(), DemoApp2ID, DemoEquipe2ID)
 	return err
 }
 

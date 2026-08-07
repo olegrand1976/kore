@@ -6,9 +6,13 @@ import {
   isDefaultBudgetType,
   pickAppActive,
   pickAppClient,
+  pickAppEquipeIds,
   pickAppId,
   pickAppLabel,
-  pickAppMode
+  pickAppMode,
+  pickAppServiceIds,
+  pickAppSiteIds,
+  summarizeAppShares
 } from '~/composables/useApplications'
 
 describe('useApplications pickers', () => {
@@ -22,6 +26,19 @@ describe('useApplications pickers', () => {
     expect(pickAppMode({})).toBe('temps_passe')
     expect(pickAppActive({ active: false })).toBe(false)
     expect(pickAppActive({})).toBe(true)
+  })
+
+  it('reads share id lists and summarizes them', () => {
+    expect(pickAppServiceIds({ serviceIds: ['s1', 's2'] })).toEqual(['s1', 's2'])
+    expect(pickAppServiceIds({ ServiceIDs: ['s3'] })).toEqual(['s3'])
+    expect(pickAppServiceIds({ serviceId: 'legacy' })).toEqual(['legacy'])
+    expect(pickAppSiteIds({ siteIds: ['site-1'] })).toEqual(['site-1'])
+    expect(pickAppEquipeIds({ EquipeIDs: ['e1'] })).toEqual(['e1'])
+    expect(summarizeAppShares({ siteIds: ['a'], serviceIds: ['b', 'c'], equipeIds: [] })).toEqual({
+      sites: 1,
+      services: 2,
+      equipes: 0
+    })
   })
 
   it('filters items by applicationId', () => {

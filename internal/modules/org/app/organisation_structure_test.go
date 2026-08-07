@@ -66,6 +66,24 @@ func (r *structureRepo) SaveService(_ context.Context, s domain.Service) error {
 	return nil
 }
 
+func (r *structureRepo) UpdateSite(_ context.Context, _ kernel.TenantID, siteID uuid.UUID, libelle string) (domain.SiteSummary, error) {
+	for i := range r.sites {
+		if r.sites[i].ID == siteID {
+			r.sites[i].Libelle = libelle
+			return r.sites[i], nil
+		}
+	}
+	return domain.SiteSummary{}, domain.ErrSiteNotFound
+}
+
+func (r *structureRepo) UpdateService(_ context.Context, _ kernel.TenantID, serviceID uuid.UUID, libelle string) (domain.ServiceSummary, error) {
+	if r.savedService != nil && r.savedService.ID == serviceID {
+		r.savedService.Libelle = libelle
+		return domain.ServiceSummary{ID: serviceID, Libelle: libelle, SiteID: r.savedService.SiteID}, nil
+	}
+	return domain.ServiceSummary{}, domain.ErrServiceNotFound
+}
+
 func (r *structureRepo) SaveApplication(_ context.Context, a domain.Application) error {
 	r.savedApplication = &a
 	if r.applications == nil {
@@ -82,7 +100,7 @@ func (r *structureRepo) GetApplication(_ context.Context, _ kernel.TenantID, id 
 	return domain.Application{}, domain.ErrApplicationNotFound
 }
 
-func (r *structureRepo) UpdateApplication(_ context.Context, a domain.Application) error {
+func (r *structureRepo) UpdateApplication(_ context.Context, a domain.Application, _ bool) error {
 	if r.applications == nil {
 		return domain.ErrApplicationNotFound
 	}
@@ -200,6 +218,64 @@ func TestCreateService_rejectsMissingResponsible(t *testing.T) {
 	}
 	if repo.savedService != nil {
 		t.Fatal("expected no persistence without a responsible")
+	}
+}
+
+func TestUpdateSite_renames(t *testing.T) {
+	siteID := uuid.New()
+	repo := &structureRepo{sites: []domain.SiteSummary{{ID: siteID, Libelle: "Old"}}}
+	svc := NewOrganizationService(repo)
+	got, err := svc.UpdateSite(context.Background(), ports.UpdateSiteCommand{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		SiteID:   siteID,
+		Libelle:  "  Nouveau site  ",
+	})
+	if err != nil {
+		t.Fatalf("UpdateSite: %v", err)
+	}
+	if got.Libelle != "Nouveau site" {
+		t.Fatalf("libelle = %q", got.Libelle)
+	}
+}
+
+func TestUpdateSite_rejectsEmptyLibelle(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.UpdateSite(context.Background(), ports.UpdateSiteCommand{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		SiteID:   uuid.New(),
+		Libelle:  "   ",
+	})
+	if !errors.Is(err, domain.ErrInvalidSiteLibelle) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestUpdateService_renames(t *testing.T) {
+	svcID := uuid.New()
+	repo := &structureRepo{savedService: &domain.Service{ID: svcID, Libelle: "Old", SiteID: uuid.New()}}
+	svc := NewOrganizationService(repo)
+	got, err := svc.UpdateService(context.Background(), ports.UpdateServiceCommand{
+		TenantID:  kernel.NewTenantID(uuid.New()),
+		ServiceID: svcID,
+		Libelle:   "Delivery Renamed",
+	})
+	if err != nil {
+		t.Fatalf("UpdateService: %v", err)
+	}
+	if got.Libelle != "Delivery Renamed" {
+		t.Fatalf("libelle = %q", got.Libelle)
+	}
+}
+
+func TestUpdateService_notFound(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.UpdateService(context.Background(), ports.UpdateServiceCommand{
+		TenantID:  kernel.NewTenantID(uuid.New()),
+		ServiceID: uuid.New(),
+		Libelle:   "X",
+	})
+	if !errors.Is(err, domain.ErrServiceNotFound) {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -483,9 +559,9 @@ func TestCreateApplication_setsActive(t *testing.T) {
 	svc := NewOrganizationService(repo)
 
 	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
-		TenantID:  kernel.NewTenantID(uuid.New()),
-		ServiceID: uuid.New(),
-		Libelle:   "CRM",
+		TenantID:   kernel.NewTenantID(uuid.New()),
+		ServiceIDs: []uuid.UUID{uuid.New()},
+		Libelle:    "CRM",
 	})
 	if err != nil {
 		t.Fatalf("CreateApplication: %v", err)
@@ -512,7 +588,7 @@ func TestCreateApplication_persistsRichFields(t *testing.T) {
 
 	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:          tenant,
-		ServiceID:         uuid.New(),
+		ServiceIDs:        []uuid.UUID{uuid.New()},
 		Libelle:           "Portail",
 		Proprietaire:      "Client ACME",
 		ModeFacturation:   domain.ModeFacturationForfait,
@@ -535,7 +611,7 @@ func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
 	svc := NewOrganizationService(&structureRepo{})
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:       kernel.NewTenantID(uuid.New()),
-		ServiceID:      uuid.New(),
+		ServiceIDs:     []uuid.UUID{uuid.New()},
 		Libelle:        "X",
 		BudgetDefautID: &budgetID,
 	})
@@ -547,9 +623,9 @@ func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
 func TestCreateApplication_rejectsEmptyLibelle(t *testing.T) {
 	svc := NewOrganizationService(&structureRepo{})
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
-		TenantID:  kernel.NewTenantID(uuid.New()),
-		ServiceID: uuid.New(),
-		Libelle:   "   ",
+		TenantID:   kernel.NewTenantID(uuid.New()),
+		ServiceIDs: []uuid.UUID{uuid.New()},
+		Libelle:    "   ",
 	})
 	if !errors.Is(err, domain.ErrInvalidApplicationLibelle) {
 		t.Fatalf("err = %v", err)
@@ -560,7 +636,7 @@ func TestCreateApplication_rejectsInvalidMode(t *testing.T) {
 	svc := NewOrganizationService(&structureRepo{})
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:        kernel.NewTenantID(uuid.New()),
-		ServiceID:       uuid.New(),
+		ServiceIDs:      []uuid.UUID{uuid.New()},
 		Libelle:         "X",
 		ModeFacturation: "inconnu",
 	})
@@ -574,7 +650,7 @@ func TestCreateApplication_rejectsUnknownChef(t *testing.T) {
 	svc := NewOrganizationService(&structureRepo{users: map[uuid.UUID]domain.User{}})
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:          kernel.NewTenantID(uuid.New()),
-		ServiceID:         uuid.New(),
+		ServiceIDs:        []uuid.UUID{uuid.New()},
 		Libelle:           "X",
 		ChefUtilisateurID: &chefID,
 	})
@@ -588,11 +664,11 @@ func TestUpdateApplication_renamesAndDeactivates(t *testing.T) {
 	appID := uuid.New()
 	repo := &structureRepo{applications: map[uuid.UUID]domain.Application{
 		appID: {
-			ID:        appID,
-			TenantID:  tenant,
-			ServiceID: uuid.New(),
-			Libelle:   "Old",
-			Active:    true,
+			ID:         appID,
+			TenantID:   tenant,
+			ServiceIDs: []uuid.UUID{uuid.New()},
+			Libelle:    "Old",
+			Active:     true,
 		},
 	}}
 	svc := NewOrganizationService(repo)
@@ -634,7 +710,7 @@ func TestUpdateApplication_richFields(t *testing.T) {
 			appID: {
 				ID:              appID,
 				TenantID:        tenant,
-				ServiceID:       uuid.New(),
+				ServiceIDs:      []uuid.UUID{uuid.New()},
 				Libelle:         "App",
 				ModeFacturation: domain.ModeFacturationTempsPasse,
 				Active:          true,
@@ -688,7 +764,7 @@ func TestUpdateApplication_budgetDefaut(t *testing.T) {
 	budgetID := uuid.New()
 	repo := &structureRepo{
 		applications: map[uuid.UUID]domain.Application{
-			appID: {ID: appID, TenantID: tenant, ServiceID: uuid.New(), Libelle: "App", Active: true},
+			appID: {ID: appID, TenantID: tenant, ServiceIDs: []uuid.UUID{uuid.New()}, Libelle: "App", Active: true},
 		},
 		// Simulates EXISTS (... AND type = 'defaut')
 		budgetOK: map[uuid.UUID]bool{budgetID: true},
@@ -743,6 +819,86 @@ func TestUpdateApplication_notFound(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrApplicationNotFound) {
 		t.Fatalf("err = %v, want ErrApplicationNotFound", err)
+	}
+}
+
+func TestCreateApplication_rejectsWithoutShare(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		Libelle:  "Orpheline",
+	})
+	if !errors.Is(err, domain.ErrApplicationWithoutShare) {
+		t.Fatalf("err = %v, want ErrApplicationWithoutShare", err)
+	}
+}
+
+func TestCreateApplication_multiShares(t *testing.T) {
+	svcID1, svcID2 := uuid.New(), uuid.New()
+	siteID := uuid.New()
+	repo := &structureRepo{}
+	svc := NewOrganizationService(repo)
+	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
+		TenantID:   kernel.NewTenantID(uuid.New()),
+		Libelle:    "Shared",
+		SiteIDs:    []uuid.UUID{siteID},
+		ServiceIDs: []uuid.UUID{svcID1, svcID2, svcID1},
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if len(app.ServiceIDs) != 2 {
+		t.Fatalf("serviceIds = %v, want 2 unique", app.ServiceIDs)
+	}
+	if len(app.SiteIDs) != 1 || app.SiteIDs[0] != siteID {
+		t.Fatalf("siteIds = %v", app.SiteIDs)
+	}
+}
+
+func TestUpdateApplication_replaceShares(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	oldSvc, newSvc, siteID, equipeID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	repo := &structureRepo{applications: map[uuid.UUID]domain.Application{
+		appID: {
+			ID: appID, TenantID: tenant, Libelle: "App", Active: true,
+			ServiceIDs: []uuid.UUID{oldSvc},
+			SiteIDs:    []uuid.UUID{siteID},
+			EquipeIDs:  []uuid.UUID{equipeID},
+		},
+	}}
+	svc := NewOrganizationService(repo)
+	services := []uuid.UUID{newSvc}
+	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:      tenant,
+		ApplicationID: appID,
+		ServiceIDs:    &services,
+	})
+	if err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	if len(got.ServiceIDs) != 1 || got.ServiceIDs[0] != newSvc {
+		t.Fatalf("serviceIds = %v", got.ServiceIDs)
+	}
+	// Partial PUT: omitted categories are preserved.
+	if len(got.SiteIDs) != 1 || got.SiteIDs[0] != siteID {
+		t.Fatalf("siteIds = %v, want preserved", got.SiteIDs)
+	}
+	if len(got.EquipeIDs) != 1 || got.EquipeIDs[0] != equipeID {
+		t.Fatalf("equipeIds = %v, want preserved", got.EquipeIDs)
+	}
+	emptyServices := []uuid.UUID{}
+	emptySites := []uuid.UUID{}
+	emptyEquipes := []uuid.UUID{}
+	_, err = svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
+		TenantID:      tenant,
+		ApplicationID: appID,
+		ServiceIDs:    &emptyServices,
+		SiteIDs:       &emptySites,
+		EquipeIDs:     &emptyEquipes,
+	})
+	if !errors.Is(err, domain.ErrApplicationWithoutShare) {
+		t.Fatalf("err = %v, want ErrApplicationWithoutShare", err)
 	}
 }
 

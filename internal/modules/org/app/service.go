@@ -68,6 +68,14 @@ func (s *organizationService) CreateSite(ctx context.Context, cmd ports.CreateSi
 	return site, s.repo.SaveSite(ctx, site)
 }
 
+func (s *organizationService) UpdateSite(ctx context.Context, cmd ports.UpdateSiteCommand) (domain.SiteSummary, error) {
+	libelle := strings.TrimSpace(cmd.Libelle)
+	if libelle == "" {
+		return domain.SiteSummary{}, domain.ErrInvalidSiteLibelle
+	}
+	return s.repo.UpdateSite(ctx, cmd.TenantID, cmd.SiteID, libelle)
+}
+
 func (s *organizationService) CreateService(ctx context.Context, cmd ports.CreateServiceCommand) (domain.Service, error) {
 	if cmd.ResponsableID == uuid.Nil {
 		return domain.Service{}, domain.ErrServiceWithoutResponsible
@@ -85,6 +93,14 @@ func (s *organizationService) CreateService(ctx context.Context, cmd ports.Creat
 		ResponsableID: &cmd.ResponsableID,
 	}
 	return service, s.repo.SaveService(ctx, service)
+}
+
+func (s *organizationService) UpdateService(ctx context.Context, cmd ports.UpdateServiceCommand) (domain.ServiceSummary, error) {
+	libelle := strings.TrimSpace(cmd.Libelle)
+	if libelle == "" {
+		return domain.ServiceSummary{}, domain.ErrInvalidServiceLibelle
+	}
+	return s.repo.UpdateService(ctx, cmd.TenantID, cmd.ServiceID, libelle)
 }
 
 func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.CreateApplicationCommand) (domain.Application, error) {
@@ -106,10 +122,12 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 	if cmd.DefaultTJMCents < 0 {
 		return domain.Application{}, fmt.Errorf("defaultTjmCents must be >= 0")
 	}
+	siteIDs := domain.DedupeUUIDs(cmd.SiteIDs)
+	serviceIDs := domain.DedupeUUIDs(cmd.ServiceIDs)
+	equipeIDs := domain.DedupeUUIDs(cmd.EquipeIDs)
 	app := domain.Application{
 		ID:                uuid.New(),
 		TenantID:          cmd.TenantID,
-		ServiceID:         cmd.ServiceID,
 		Libelle:           libelle,
 		Proprietaire:      strings.TrimSpace(cmd.Proprietaire),
 		ModeFacturation:   mode,
@@ -117,6 +135,15 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 		ChefUtilisateurID: cmd.ChefUtilisateurID,
 		Active:            true,
 		DefaultTJMCents:   cmd.DefaultTJMCents,
+		SiteIDs:           siteIDs,
+		ServiceIDs:        serviceIDs,
+		EquipeIDs:         equipeIDs,
+	}
+	if !app.HasShares() {
+		return domain.Application{}, domain.ErrApplicationWithoutShare
+	}
+	if err := s.repo.AssertApplicationSharesExist(ctx, cmd.TenantID, siteIDs, serviceIDs, equipeIDs); err != nil {
+		return domain.Application{}, err
 	}
 	return app, s.repo.SaveApplication(ctx, app)
 }
@@ -175,10 +202,29 @@ func (s *organizationService) UpdateApplication(ctx context.Context, cmd ports.U
 		}
 		app.DefaultTJMCents = *cmd.DefaultTJMCents
 	}
-	if err := s.repo.UpdateApplication(ctx, app); err != nil {
+	replaceShares := cmd.SiteIDs != nil || cmd.ServiceIDs != nil || cmd.EquipeIDs != nil
+	if replaceShares {
+		// Partial merge: only categories present in the command are replaced.
+		if cmd.SiteIDs != nil {
+			app.SiteIDs = domain.DedupeUUIDs(*cmd.SiteIDs)
+		}
+		if cmd.ServiceIDs != nil {
+			app.ServiceIDs = domain.DedupeUUIDs(*cmd.ServiceIDs)
+		}
+		if cmd.EquipeIDs != nil {
+			app.EquipeIDs = domain.DedupeUUIDs(*cmd.EquipeIDs)
+		}
+		if !app.HasShares() {
+			return domain.Application{}, domain.ErrApplicationWithoutShare
+		}
+		if err := s.repo.AssertApplicationSharesExist(ctx, cmd.TenantID, app.SiteIDs, app.ServiceIDs, app.EquipeIDs); err != nil {
+			return domain.Application{}, err
+		}
+	}
+	if err := s.repo.UpdateApplication(ctx, app, replaceShares); err != nil {
 		return domain.Application{}, err
 	}
-	return app, nil
+	return s.repo.GetApplication(ctx, cmd.TenantID, app.ID)
 }
 
 func (s *organizationService) assertChefInTenant(ctx context.Context, tenant kernel.TenantID, chefID *uuid.UUID) error {

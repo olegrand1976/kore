@@ -37,6 +37,12 @@ export type OrgApplication = {
   ID?: string
   serviceId?: string
   ServiceID?: string
+  siteIds?: string[]
+  SiteIDs?: string[]
+  serviceIds?: string[]
+  ServiceIDs?: string[]
+  equipeIds?: string[]
+  EquipeIDs?: string[]
   libelle?: string
   Libelle?: string
   active?: boolean
@@ -106,12 +112,18 @@ export function useOrganisation() {
   const createSite = (body: { societeId: string; libelle: string; pays?: string }) =>
     apiFetch('/api/org/sites', { method: 'POST', body })
 
+  const updateSite = (id: string, body: { libelle: string }) =>
+    apiFetch(`/api/org/sites/${id}`, { method: 'PUT', body })
+
   const createService = (body: {
     siteId: string
     libelle: string
     type?: string
     responsableId: string
   }) => apiFetch('/api/org/services', { method: 'POST', body })
+
+  const updateService = (id: string, body: { libelle: string }) =>
+    apiFetch(`/api/org/services/${id}`, { method: 'PUT', body })
 
   const {
     create: createApplication,
@@ -138,7 +150,9 @@ export function useOrganisation() {
     listApplications,
     listEquipes,
     createSite,
+    updateSite,
     createService,
+    updateService,
     createApplication,
     updateApplication,
     deactivateApplication,

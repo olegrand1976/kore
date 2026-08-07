@@ -188,7 +188,9 @@ Légende : **L** = Lecture, **E** = Écriture, **V** = Validation, **—** = pas
 
 ### §4.1 Hiérarchie
 
-**Société → Site → Service → Application → Équipe → Utilisateur**
+**Société → Site → Service → Application → Équipe → Utilisateur** (arbre de création).
+
+Une **Application** peut en outre être **partagée** (rattachements N–N) avec un ou plusieurs **sites**, **services** et **équipes**, sans propriétaire unique. Au moins un rattachement est obligatoire.
 
 ### §4.2 Rôles rattachés au Service
 
@@ -1692,7 +1694,7 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 ### Application
 
 **Attributs** : Propriétaire, technologies, mode facturation, budget défaut, UO, chef utilisateur, équipe
-**Relations** : Service → N Application
+**Relations** : Application ↔ N Site / N Service / N Équipe (partages) ; Application → N Équipe (home)
 
 | Attribut | Type fonctionnel | Obligatoire | Règle |
 | --- | --- | --- | --- |
@@ -1700,12 +1702,12 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 | Libellé | Texte | Selon entité | — |
 | Statut | Énumération | Selon entité | Piloté workflow |
 | Dates | Date/heure | Selon entité | Traçabilité |
-| Références | FK fonctionnelle | Selon entité | Service → N Application |
+| Références | FK fonctionnelle | Selon entité | ≥ 1 partage site/service/équipe |
 
 ### Équipe
 
 **Attributs** : Libellé, membres, responsable
-**Relations** : Application → N Équipe
+**Relations** : Application → N Équipe (home) ; Équipe ↔ N Application (partages)
 
 | Attribut | Type fonctionnel | Obligatoire | Règle |
 | --- | --- | --- | --- |
@@ -1713,7 +1715,7 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 | Libellé | Texte | Selon entité | — |
 | Statut | Énumération | Selon entité | Piloté workflow |
 | Dates | Date/heure | Selon entité | Traçabilité |
-| Références | FK fonctionnelle | Selon entité | Application → N Équipe |
+| Références | FK fonctionnelle | Selon entité | Home Application + partages optionnels |
 
 ### Utilisateur
 

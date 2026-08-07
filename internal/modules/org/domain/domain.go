@@ -22,10 +22,16 @@ var (
 	ErrProfilesRequired          = errors.New("at least one profile is required")
 	ErrInvalidProfile            = errors.New("invalid profile")
 	ErrEquipeNotFound            = errors.New("equipe not found")
+	ErrSiteNotFound              = errors.New("site not found")
+	ErrServiceNotFound           = errors.New("service not found")
+	ErrInvalidSiteLibelle        = errors.New("site libelle required")
+	ErrInvalidServiceLibelle     = errors.New("service libelle required")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrSocieteNotFound           = errors.New("societe not found")
 	ErrLogoNotFound              = errors.New("logo not found")
 	ErrApplicationNotFound       = errors.New("application not found")
+	ErrApplicationWithoutShare   = errors.New("application requires at least one site, service or equipe share")
+	ErrInvalidApplicationShare   = errors.New("invalid application share")
 	ErrInvalidModeFacturation    = errors.New("invalid mode facturation")
 	ErrInvalidApplicationLibelle = errors.New("application libelle required")
 	ErrBudgetNotFound            = errors.New("budget not found for application")
@@ -437,7 +443,6 @@ func NormalizeModeFacturation(raw string) (string, error) {
 type Application struct {
 	ID                uuid.UUID       `json:"id"`
 	TenantID          kernel.TenantID `json:"tenantId"`
-	ServiceID         uuid.UUID       `json:"serviceId"`
 	Libelle           string          `json:"libelle"`
 	Proprietaire      string          `json:"proprietaire,omitempty"`
 	ModeFacturation   string          `json:"modeFacturation,omitempty"`
@@ -446,6 +451,34 @@ type Application struct {
 	BudgetDefautID    *uuid.UUID      `json:"budgetDefautId,omitempty"`
 	Active            bool            `json:"active"`
 	DefaultTJMCents   int64           `json:"defaultTjmCents"`
+	SiteIDs           []uuid.UUID     `json:"siteIds,omitempty"`
+	ServiceIDs        []uuid.UUID     `json:"serviceIds,omitempty"`
+	EquipeIDs         []uuid.UUID     `json:"equipeIds,omitempty"`
+}
+
+// HasShares reports whether the application has at least one org attachment.
+func (a Application) HasShares() bool {
+	return len(a.SiteIDs) > 0 || len(a.ServiceIDs) > 0 || len(a.EquipeIDs) > 0
+}
+
+// DedupeUUIDs returns unique non-nil UUIDs preserving first-seen order.
+func DedupeUUIDs(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 type ClientContact struct {

@@ -92,11 +92,25 @@
         </h2>
 
         <label class="apps-form__field">
-          <span>{{ $t('applications.field_service') }}</span>
-          <select v-model="form.serviceId" class="apps-form__input" :disabled="!!editingId" required>
-            <option value="" disabled>{{ $t('applications.field_service_placeholder') }}</option>
+          <span>{{ $t('applications.field_share_sites') }}</span>
+          <select v-model="form.siteIds" class="apps-form__input apps-form__multiselect" multiple>
+            <option v-for="s in siteOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+          </select>
+        </label>
+
+        <label class="apps-form__field">
+          <span>{{ $t('applications.field_share_services') }}</span>
+          <select v-model="form.serviceIds" class="apps-form__input apps-form__multiselect" multiple>
             <option v-for="s in serviceOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
           </select>
+        </label>
+
+        <label class="apps-form__field">
+          <span>{{ $t('applications.field_share_equipes') }}</span>
+          <select v-model="form.equipeIds" class="apps-form__input apps-form__multiselect" multiple>
+            <option v-for="e in equipeShareOptions" :key="e.value" :value="e.value">{{ e.label }}</option>
+          </select>
+          <span class="muted">{{ $t('applications.shares_hint') }}</span>
         </label>
 
         <label class="apps-form__field">
@@ -254,20 +268,22 @@ const {
   pickAppLabel,
   pickAppClient,
   pickAppActive,
-  pickAppServiceId,
+  pickAppSiteIds,
+  pickAppServiceIds,
+  pickAppEquipeIds,
   pickAppMode,
   pickAppChefId,
   pickAppBudgetDefautId
 } = useApplications()
-const { listServices, listEquipes, createEquipe, orgId, orgLabel } = useOrganisation()
+const { listSites, listServices, listEquipes, createEquipe, orgId, orgLabel } = useOrganisation()
 const { list: listUsers, update: updateUser, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
 const { list: listBudgets, pickId: pickBudgetId } = useBudget()
 
 type AppRow = {
   id: string
   libelle: string
-  serviceId: string
-  serviceLabel: string
+  serviceIds: string[]
+  sharesLabel: string
   proprietaire: string
   mode: string
   modeLabel: string
@@ -277,6 +293,8 @@ type AppRow = {
   equipeCount: number
   chefUtilisateurId: string
   budgetDefautId: string
+  siteIds: string[]
+  equipeIds: string[]
 }
 
 const rows = ref<AppRow[]>([])
@@ -294,12 +312,16 @@ const membershipEquipeId = ref('')
 const newEquipeLibelle = ref('')
 
 const serviceOptions = ref<{ value: string; label: string }[]>([])
+const siteOptions = ref<{ value: string; label: string }[]>([])
+const equipeShareOptions = ref<{ value: string; label: string }[]>([])
 const equipes = ref<OrgEquipe[]>([])
 const users = ref<OrgUserSummary[]>([])
 const budgets = ref<BudgetItem[]>([])
 
 const form = reactive({
-  serviceId: '',
+  siteIds: [] as string[],
+  serviceIds: [] as string[],
+  equipeIds: [] as string[],
   libelle: '',
   proprietaire: '',
   modeFacturation: 'temps_passe',
@@ -315,9 +337,12 @@ const modeLabel = (mode: string) => {
   return t('applications.mode_temps_passe')
 }
 
+const sharesLabel = (sites: number, services: number, equipesCount: number) =>
+  t('applications.shares_summary', { sites, services, equipes: equipesCount })
+
 const columns = computed(() => [
   { key: 'libelle', label: t('applications.col_libelle') },
-  { key: 'serviceLabel', label: t('applications.col_service') },
+  { key: 'sharesLabel', label: t('applications.col_shares') },
   { key: 'proprietaire', label: t('applications.col_proprietaire') },
   { key: 'modeLabel', label: t('applications.col_mode') },
   { key: 'equipeCount', label: t('applications.col_equipes') },
@@ -331,7 +356,7 @@ const listFilters = computed(() => ({
     label: t('common.list.search'),
     placeholder: t('applications.search_placeholder'),
     match: (item: AppRow, query: string) =>
-      applyTextSearch(query, item.libelle, item.proprietaire, item.serviceLabel)
+      applyTextSearch(query, item.libelle, item.proprietaire, item.sharesLabel)
   },
   active: {
     type: 'select' as const,
@@ -349,7 +374,7 @@ const listFilters = computed(() => ({
     type: 'select' as const,
     label: t('applications.col_service'),
     options: serviceOptions.value,
-    match: (item: AppRow, value: string) => !value || item.serviceId === value
+    match: (item: AppRow, value: string) => !value || item.serviceIds.includes(value)
   }
 }))
 
@@ -361,10 +386,10 @@ const sortKeys = computed(() => [
     accessor: (item: AppRow) => item.libelle
   },
   {
-    key: 'serviceLabel',
-    label: t('applications.col_service'),
+    key: 'sharesLabel',
+    label: t('applications.col_shares'),
     type: 'string' as const,
-    accessor: (item: AppRow) => item.serviceLabel
+    accessor: (item: AppRow) => item.sharesLabel
   },
   {
     key: 'equipeCount',
@@ -399,8 +424,14 @@ const userOptions = computed(() =>
 
 const editEquipes = computed(() => {
   if (!editingId.value) return []
+  const shared = new Set(
+    rows.value.find((r) => r.id === editingId.value)?.equipeIds ?? []
+  )
   return equipes.value
-    .filter((e) => (e.applicationId ?? e.ApplicationID) === editingId.value)
+    .filter(
+      (e) =>
+        (e.applicationId ?? e.ApplicationID) === editingId.value || shared.has(orgId(e))
+    )
     .map((e) => ({ id: orgId(e), label: orgLabel(e) }))
 })
 
@@ -486,37 +517,52 @@ const loadAll = async () => {
   pending.value = true
   forbidden.value = false
   try {
-    const [svcList, appList, equipeList, userList, budgetList] = await Promise.all([
+    const [siteList, svcList, appList, equipeList, userList, budgetList] = await Promise.all([
+      listSites(),
       listServices(),
       list({ active: 'all' }),
       listEquipes(),
       listUsers(),
       listBudgets()
     ])
+    siteOptions.value = siteList.map((s) => ({
+      value: orgId(s),
+      label: orgLabel(s) || orgId(s)
+    }))
     serviceOptions.value = svcList.map((s) => ({
       value: orgId(s),
       label: orgLabel(s) || orgId(s)
     }))
+    equipeShareOptions.value = equipeList.map((e) => ({
+      value: orgId(e),
+      label: orgLabel(e) || orgId(e)
+    }))
     equipes.value = equipeList
     users.value = userList
     budgets.value = budgetList
-    const serviceMap = new Map(serviceOptions.value.map((s) => [s.value, s.label]))
     rows.value = appList.map((app) => {
       const id = pickAppId(app)
-      const serviceId = pickAppServiceId(app)
+      const serviceIds = pickAppServiceIds(app)
+      const siteIds = pickAppSiteIds(app)
+      const equipeIds = pickAppEquipeIds(app)
       const mode = pickAppMode(app)
       return {
         id,
         libelle: pickAppLabel(app),
-        serviceId,
-        serviceLabel: serviceMap.get(serviceId) ?? serviceId,
+        serviceIds,
+        siteIds,
+        equipeIds,
+        sharesLabel: sharesLabel(siteIds.length, serviceIds.length, equipeIds.length),
         proprietaire: pickAppClient(app),
         mode,
         modeLabel: modeLabel(mode),
         defaultTjmCents: Number(app.defaultTjmCents ?? app.DefaultTJMCents ?? 0),
         uoActivee: app.uoActivee ?? app.UOActivee ?? false,
         active: pickAppActive(app),
-        equipeCount: equipeList.filter((e) => (e.applicationId ?? e.ApplicationID) === id).length,
+        equipeCount: equipeList.filter(
+          (e) =>
+            (e.applicationId ?? e.ApplicationID) === id || equipeIds.includes(orgId(e))
+        ).length,
         chefUtilisateurId: pickAppChefId(app),
         budgetDefautId: pickAppBudgetDefautId(app)
       }
@@ -537,7 +583,9 @@ const loadAll = async () => {
 
 const openCreate = () => {
   editingId.value = ''
-  form.serviceId = serviceOptions.value[0]?.value ?? ''
+  form.siteIds = []
+  form.serviceIds = serviceOptions.value[0] ? [serviceOptions.value[0].value] : []
+  form.equipeIds = []
   form.libelle = ''
   form.proprietaire = ''
   form.modeFacturation = 'temps_passe'
@@ -552,7 +600,9 @@ const openCreate = () => {
 
 const openEdit = (row: AppRow) => {
   editingId.value = row.id
-  form.serviceId = row.serviceId
+  form.siteIds = [...row.siteIds]
+  form.serviceIds = [...row.serviceIds]
+  form.equipeIds = [...row.equipeIds]
   form.libelle = row.libelle
   form.proprietaire = row.proprietaire
   form.modeFacturation = row.mode || 'temps_passe'
@@ -574,7 +624,9 @@ const closeForm = () => {
 
 const submitForm = async () => {
   formError.value = ''
-  if (!form.libelle.trim() || (!editingId.value && !form.serviceId)) {
+  const hasShare =
+    form.siteIds.length > 0 || form.serviceIds.length > 0 || form.equipeIds.length > 0
+  if (!form.libelle.trim() || !hasShare) {
     formError.value = t('applications.validation_required')
     return
   }
@@ -592,6 +644,9 @@ const submitForm = async () => {
         defaultTjmCents: number
         uoActivee: boolean
         chefUtilisateurId: string | null
+        siteIds: string[]
+        serviceIds: string[]
+        equipeIds: string[]
         budgetDefautId?: string | null
       } = {
         libelle: form.libelle.trim(),
@@ -599,9 +654,11 @@ const submitForm = async () => {
         modeFacturation: form.modeFacturation,
         defaultTjmCents: Math.max(0, Math.round((form.defaultTjmEuros || 0) * 100)),
         uoActivee: form.uoActivee,
-        chefUtilisateurId: chef
+        chefUtilisateurId: chef,
+        siteIds: form.siteIds,
+        serviceIds: form.serviceIds,
+        equipeIds: form.equipeIds
       }
-      // Only touch FK when the select actually changed (or stale value was cleared).
       if ((form.budgetDefautId || '') !== originalBudget) {
         body.budgetDefautId = nextBudget
       }
@@ -609,7 +666,9 @@ const submitForm = async () => {
       flash.value = t('applications.updated')
     } else {
       await create({
-        serviceId: form.serviceId,
+        siteIds: form.siteIds,
+        serviceIds: form.serviceIds,
+        equipeIds: form.equipeIds,
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
         modeFacturation: form.modeFacturation,
@@ -640,6 +699,12 @@ const addEquipe = async () => {
     flash.value = t('applications.equipe_created')
     flashError.value = false
     await loadAll()
+    const row = rows.value.find((r) => r.id === editingId.value)
+    if (row) {
+      form.equipeIds = [...row.equipeIds]
+      form.siteIds = [...row.siteIds]
+      form.serviceIds = [...row.serviceIds]
+    }
   } catch (err) {
     formError.value = extractFetchError(err)
   }
@@ -729,6 +794,9 @@ onMounted(async () => {
   border-radius: var(--kore-radius-md);
   background: var(--kore-surface);
   color: var(--kore-text);
+}
+.apps-form__multiselect {
+  min-height: 6.5rem;
 }
 .apps-form__toggle {
   display: flex;

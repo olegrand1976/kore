@@ -439,6 +439,29 @@ func (r *Repository) SaveSite(ctx context.Context, s domain.Site) error {
 	return err
 }
 
+func (r *Repository) UpdateSite(ctx context.Context, tenant kernel.TenantID, siteID uuid.UUID, libelle string) (domain.SiteSummary, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.sites SET libelle = $3
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), siteID, libelle)
+	if err != nil {
+		return domain.SiteSummary{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.SiteSummary{}, domain.ErrSiteNotFound
+	}
+	var item domain.SiteSummary
+	err = r.pool.QueryRow(ctx, `
+		SELECT id, societe_id, libelle, COALESCE(pays, '')
+		FROM org.sites
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), siteID).Scan(&item.ID, &item.SocieteID, &item.Libelle, &item.Pays)
+	if err != nil {
+		return domain.SiteSummary{}, err
+	}
+	return item, nil
+}
+
 func (r *Repository) ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, societe_id, libelle, COALESCE(pays, '')
@@ -473,12 +496,50 @@ func (r *Repository) SaveService(ctx context.Context, s domain.Service) error {
 	return err
 }
 
+func (r *Repository) UpdateService(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID, libelle string) (domain.ServiceSummary, error) {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.services SET libelle = $3
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), serviceID, libelle)
+	if err != nil {
+		return domain.ServiceSummary{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ServiceSummary{}, domain.ErrServiceNotFound
+	}
+	var item domain.ServiceSummary
+	err = r.pool.QueryRow(ctx, `
+		SELECT s.id, s.site_id, COALESCE(st.libelle, ''), COALESCE(st.societe_id, '00000000-0000-0000-0000-000000000000'::uuid),
+		       COALESCE(s.libelle, ''), COALESCE(s.type, ''), s.responsable_id
+		FROM org.services s
+		LEFT JOIN org.sites st ON st.id = s.site_id
+		WHERE s.tenant_id = $1 AND s.id = $2
+	`, tenant.UUID(), serviceID).Scan(
+		&item.ID, &item.SiteID, &item.SiteLabel, &item.SocieteID,
+		&item.Libelle, &item.Type, &item.ResponsableID,
+	)
+	if err != nil {
+		return domain.ServiceSummary{}, err
+	}
+	return item, nil
+}
+
 func (r *Repository) SaveEquipe(ctx context.Context, e domain.Equipe) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
-		VALUES ($1, $2, $3, $4, $5)
-	`, e.ID, e.TenantID.UUID(), e.ApplicationID, e.Libelle, e.ResponsableID)
-	return err
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO org.equipes (id, tenant_id, application_id, libelle, responsable_id)
+			VALUES ($1, $2, $3, $4, $5)
+		`, e.ID, e.TenantID.UUID(), e.ApplicationID, e.Libelle, e.ResponsableID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT DO NOTHING
+		`, e.TenantID.UUID(), e.ApplicationID, e.ID)
+		return err
+	})
 }
 
 func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) error {
@@ -486,36 +547,96 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 	if mode == "" {
 		mode = domain.DefaultModeFacturation
 	}
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.applications (
-			id, tenant_id, service_id, libelle, proprietaire, mode_facturation,
-			uo_activee, chef_utilisateur_id, budget_defaut_id, active, default_tjm_cents
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-	`, a.ID, a.TenantID.UUID(), a.ServiceID, a.Libelle, nullIfEmpty(a.Proprietaire), mode,
-		a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents)
-	return err
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `
+			INSERT INTO org.applications (
+				id, tenant_id, libelle, proprietaire, mode_facturation,
+				uo_activee, chef_utilisateur_id, budget_defaut_id, active, default_tjm_cents
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		`, a.ID, a.TenantID.UUID(), a.Libelle, nullIfEmpty(a.Proprietaire), mode,
+			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents)
+		if err != nil {
+			return err
+		}
+		return replaceApplicationShares(ctx, tx, a)
+	})
 }
 
-func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application) error {
+func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application, replaceShares bool) error {
 	mode := a.ModeFacturation
 	if mode == "" {
 		mode = domain.DefaultModeFacturation
 	}
-	tag, err := r.pool.Exec(ctx, `
-		UPDATE org.applications
-		SET libelle = $3, active = $4, proprietaire = $5, mode_facturation = $6,
-		    uo_activee = $7, chef_utilisateur_id = $8, budget_defaut_id = $9, default_tjm_cents = $10
-		WHERE tenant_id = $1 AND id = $2
-	`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active, nullIfEmpty(a.Proprietaire), mode,
-		a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.DefaultTJMCents)
-	if err != nil {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			UPDATE org.applications
+			SET libelle = $3, active = $4, proprietaire = $5, mode_facturation = $6,
+			    uo_activee = $7, chef_utilisateur_id = $8, budget_defaut_id = $9, default_tjm_cents = $10
+			WHERE tenant_id = $1 AND id = $2
+		`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active, nullIfEmpty(a.Proprietaire), mode,
+			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.DefaultTJMCents)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return domain.ErrApplicationNotFound
+		}
+		if !replaceShares {
+			return ensureHomeEquipeShares(ctx, tx, a.TenantID.UUID(), a.ID)
+		}
+		return replaceApplicationShares(ctx, tx, a)
+	})
+}
+
+func replaceApplicationShares(ctx context.Context, tx pgx.Tx, a domain.Application) error {
+	tenantID := a.TenantID.UUID()
+	if _, err := tx.Exec(ctx, `DELETE FROM org.application_sites WHERE application_id = $1`, a.ID); err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
-		return domain.ErrApplicationNotFound
+	if _, err := tx.Exec(ctx, `DELETE FROM org.application_services WHERE application_id = $1`, a.ID); err != nil {
+		return err
 	}
-	return nil
+	if _, err := tx.Exec(ctx, `DELETE FROM org.application_equipes WHERE application_id = $1`, a.ID); err != nil {
+		return err
+	}
+	for _, siteID := range a.SiteIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.application_sites (tenant_id, application_id, site_id)
+			VALUES ($1, $2, $3)
+		`, tenantID, a.ID, siteID); err != nil {
+			return err
+		}
+	}
+	for _, serviceID := range a.ServiceIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.application_services (tenant_id, application_id, service_id)
+			VALUES ($1, $2, $3)
+		`, tenantID, a.ID, serviceID); err != nil {
+			return err
+		}
+	}
+	for _, equipeID := range a.EquipeIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+			VALUES ($1, $2, $3)
+		`, tenantID, a.ID, equipeID); err != nil {
+			return err
+		}
+	}
+	return ensureHomeEquipeShares(ctx, tx, tenantID, a.ID)
+}
+
+// ensureHomeEquipeShares keeps equipes.application_id home links materialized in application_equipes.
+func ensureHomeEquipeShares(ctx context.Context, tx pgx.Tx, tenantID, applicationID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO org.application_equipes (tenant_id, application_id, equipe_id)
+		SELECT tenant_id, application_id, id
+		FROM org.equipes
+		WHERE application_id = $1 AND tenant_id = $2
+		ON CONFLICT DO NOTHING
+	`, applicationID, tenantID)
+	return err
 }
 
 func nullIfEmpty(s string) *string {
@@ -525,9 +646,41 @@ func nullIfEmpty(s string) *string {
 	return &s
 }
 
+func (r *Repository) AssertApplicationSharesExist(ctx context.Context, tenant kernel.TenantID, siteIDs, serviceIDs, equipeIDs []uuid.UUID) error {
+	if err := assertIDsInTenant(ctx, r.pool, `
+		SELECT COUNT(*) FROM org.sites WHERE tenant_id = $1 AND id = ANY($2)
+	`, tenant, siteIDs); err != nil {
+		return err
+	}
+	if err := assertIDsInTenant(ctx, r.pool, `
+		SELECT COUNT(*) FROM org.services WHERE tenant_id = $1 AND id = ANY($2)
+	`, tenant, serviceIDs); err != nil {
+		return err
+	}
+	return assertIDsInTenant(ctx, r.pool, `
+		SELECT COUNT(*) FROM org.equipes WHERE tenant_id = $1 AND id = ANY($2)
+	`, tenant, equipeIDs)
+}
+
+func assertIDsInTenant(ctx context.Context, db interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}, query string, tenant kernel.TenantID, ids []uuid.UUID) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	var n int
+	if err := db.QueryRow(ctx, query, tenant.UUID(), ids).Scan(&n); err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return domain.ErrInvalidApplicationShare
+	}
+	return nil
+}
+
 func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantID, filter ports.ApplicationListFilter) ([]domain.Application, error) {
 	query := `
-		SELECT id, tenant_id, service_id, libelle,
+		SELECT id, tenant_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
 		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0)
 		FROM org.applications
@@ -552,7 +705,10 @@ func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantI
 		}
 		out = append(out, app)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return r.attachApplicationShares(ctx, tenant, out)
 }
 
 func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID, filter ports.EquipeListFilter) ([]domain.Equipe, error) {
@@ -562,7 +718,13 @@ func (r *Repository) ListEquipes(ctx context.Context, tenant kernel.TenantID, fi
 		WHERE tenant_id = $1`
 	args := []any{tenant.UUID()}
 	if filter.ApplicationID != nil {
-		query += ` AND application_id = $2`
+		query += ` AND (
+			application_id = $2
+			OR EXISTS (
+				SELECT 1 FROM org.application_equipes ae
+				WHERE ae.equipe_id = org.equipes.id AND ae.application_id = $2
+			)
+		)`
 		args = append(args, *filter.ApplicationID)
 	}
 	query += ` ORDER BY libelle`
@@ -612,7 +774,7 @@ func (r *Repository) ListServices(ctx context.Context, tenant kernel.TenantID) (
 
 func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, service_id, libelle,
+		SELECT id, tenant_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
 		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0)
 		FROM org.applications
@@ -625,7 +787,11 @@ func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID,
 		}
 		return domain.Application{}, err
 	}
-	return app, nil
+	apps, err := r.attachApplicationShares(ctx, tenant, []domain.Application{app})
+	if err != nil {
+		return domain.Application{}, err
+	}
+	return apps[0], nil
 }
 
 func scanApplication(row pgx.Row) (domain.Application, error) {
@@ -633,7 +799,7 @@ func scanApplication(row pgx.Row) (domain.Application, error) {
 	var tenantID uuid.UUID
 	var proprietaire, modeFacturation string
 	if err := row.Scan(
-		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
+		&app.ID, &tenantID, &app.Libelle,
 		&proprietaire, &modeFacturation, &app.UOActivee,
 		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active, &app.DefaultTJMCents,
 	); err != nil {
@@ -650,7 +816,7 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 	var tenantID uuid.UUID
 	var proprietaire, modeFacturation string
 	if err := rows.Scan(
-		&app.ID, &tenantID, &app.ServiceID, &app.Libelle,
+		&app.ID, &tenantID, &app.Libelle,
 		&proprietaire, &modeFacturation, &app.UOActivee,
 		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active, &app.DefaultTJMCents,
 	); err != nil {
@@ -660,6 +826,87 @@ func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 	app.Proprietaire = proprietaire
 	app.ModeFacturation = modeFacturation
 	return app, nil
+}
+
+func (r *Repository) attachApplicationShares(ctx context.Context, tenant kernel.TenantID, apps []domain.Application) ([]domain.Application, error) {
+	if len(apps) == 0 {
+		return apps, nil
+	}
+	ids := make([]uuid.UUID, len(apps))
+	index := make(map[uuid.UUID]int, len(apps))
+	for i, a := range apps {
+		ids[i] = a.ID
+		index[a.ID] = i
+		apps[i].SiteIDs = nil
+		apps[i].ServiceIDs = nil
+		apps[i].EquipeIDs = nil
+	}
+	siteRows, err := r.pool.Query(ctx, `
+		SELECT application_id, site_id FROM org.application_sites
+		WHERE tenant_id = $1 AND application_id = ANY($2)
+		ORDER BY site_id
+	`, tenant.UUID(), ids)
+	if err != nil {
+		return nil, err
+	}
+	defer siteRows.Close()
+	for siteRows.Next() {
+		var appID, siteID uuid.UUID
+		if err := siteRows.Scan(&appID, &siteID); err != nil {
+			return nil, err
+		}
+		if i, ok := index[appID]; ok {
+			apps[i].SiteIDs = append(apps[i].SiteIDs, siteID)
+		}
+	}
+	if err := siteRows.Err(); err != nil {
+		return nil, err
+	}
+
+	svcRows, err := r.pool.Query(ctx, `
+		SELECT application_id, service_id FROM org.application_services
+		WHERE tenant_id = $1 AND application_id = ANY($2)
+		ORDER BY service_id
+	`, tenant.UUID(), ids)
+	if err != nil {
+		return nil, err
+	}
+	defer svcRows.Close()
+	for svcRows.Next() {
+		var appID, serviceID uuid.UUID
+		if err := svcRows.Scan(&appID, &serviceID); err != nil {
+			return nil, err
+		}
+		if i, ok := index[appID]; ok {
+			apps[i].ServiceIDs = append(apps[i].ServiceIDs, serviceID)
+		}
+	}
+	if err := svcRows.Err(); err != nil {
+		return nil, err
+	}
+
+	eqRows, err := r.pool.Query(ctx, `
+		SELECT application_id, equipe_id FROM org.application_equipes
+		WHERE tenant_id = $1 AND application_id = ANY($2)
+		ORDER BY equipe_id
+	`, tenant.UUID(), ids)
+	if err != nil {
+		return nil, err
+	}
+	defer eqRows.Close()
+	for eqRows.Next() {
+		var appID, equipeID uuid.UUID
+		if err := eqRows.Scan(&appID, &equipeID); err != nil {
+			return nil, err
+		}
+		if i, ok := index[appID]; ok {
+			apps[i].EquipeIDs = append(apps[i].EquipeIDs, equipeID)
+		}
+	}
+	if err := eqRows.Err(); err != nil {
+		return nil, err
+	}
+	return apps, nil
 }
 
 func (r *Repository) SaveUser(ctx context.Context, u domain.User) error {
@@ -1051,6 +1298,15 @@ func (r *Repository) ResolveApplicationUserEmails(ctx context.Context, tenant ke
 		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
 		      WHERE ue.user_id = u.id AND e.application_id = $2
 		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.application_equipes ae
+		      WHERE ae.application_id = $2 AND ae.equipe_id = u.equipe_id
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.application_equipes ae ON ae.equipe_id = ue.equipe_id AND ae.application_id = $2
+		      WHERE ue.user_id = u.id
+		    )
 		  )
 	`, tenant.UUID(), applicationID)
 	if err != nil {
@@ -1076,14 +1332,25 @@ func (r *Repository) ResolveServiceUserEmails(ctx context.Context, tenant kernel
 		  AND (
 		    EXISTS (
 		      SELECT 1 FROM org.equipes e
-		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND a.service_id = $2
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND asv.service_id = $2
 		    )
 		    OR EXISTS (
 		      SELECT 1 FROM org.user_equipes ue
 		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
-		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		      WHERE ue.user_id = u.id AND a.service_id = $2
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      WHERE ue.user_id = u.id AND asv.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.application_equipes ae
+		      JOIN org.application_services asv ON asv.application_id = ae.application_id
+		      WHERE ae.equipe_id = u.equipe_id AND asv.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.application_equipes ae ON ae.equipe_id = ue.equipe_id
+		      JOIN org.application_services asv ON asv.application_id = ae.application_id
+		      WHERE ue.user_id = u.id AND asv.service_id = $2
 		    )
 		  )
 	`, tenant.UUID(), serviceID)
@@ -1156,6 +1423,15 @@ func (r *Repository) ResolveApplicationUserIDs(ctx context.Context, tenant kerne
 		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
 		      WHERE ue.user_id = u.id AND e.application_id = $2
 		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.application_equipes ae
+		      WHERE ae.application_id = $2 AND ae.equipe_id = u.equipe_id
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.application_equipes ae ON ae.equipe_id = ue.equipe_id AND ae.application_id = $2
+		      WHERE ue.user_id = u.id
+		    )
 		  )
 	`, tenant.UUID(), applicationID)
 	if err != nil {
@@ -1173,14 +1449,25 @@ func (r *Repository) ResolveServiceUserIDs(ctx context.Context, tenant kernel.Te
 		  AND (
 		    EXISTS (
 		      SELECT 1 FROM org.equipes e
-		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND a.service_id = $2
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      WHERE e.id = u.equipe_id AND e.tenant_id = u.tenant_id AND asv.service_id = $2
 		    )
 		    OR EXISTS (
 		      SELECT 1 FROM org.user_equipes ue
 		      JOIN org.equipes e ON e.id = ue.equipe_id AND e.tenant_id = u.tenant_id
-		      JOIN org.applications a ON a.id = e.application_id AND a.tenant_id = u.tenant_id
-		      WHERE ue.user_id = u.id AND a.service_id = $2
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      WHERE ue.user_id = u.id AND asv.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.application_equipes ae
+		      JOIN org.application_services asv ON asv.application_id = ae.application_id
+		      WHERE ae.equipe_id = u.equipe_id AND asv.service_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.user_equipes ue
+		      JOIN org.application_equipes ae ON ae.equipe_id = ue.equipe_id
+		      JOIN org.application_services asv ON asv.application_id = ae.application_id
+		      WHERE ue.user_id = u.id AND asv.service_id = $2
 		    )
 		  )
 	`, tenant.UUID(), serviceID)
@@ -1213,22 +1500,50 @@ func (r *Repository) ResolveSocieteIDForUser(ctx context.Context, tenant kernel.
 		SELECT st.societe_id
 		FROM org.users u
 		LEFT JOIN org.equipes e ON e.id = u.equipe_id
-		LEFT JOIN org.applications a ON a.id = e.application_id
-		LEFT JOIN org.services sv ON sv.id = a.service_id
+		LEFT JOIN org.application_services asv ON asv.application_id = e.application_id
+		LEFT JOIN org.services sv ON sv.id = asv.service_id
 		LEFT JOIN org.sites st ON st.id = sv.site_id
-		WHERE u.tenant_id = $1 AND u.id = $2
+		WHERE u.tenant_id = $1 AND u.id = $2 AND st.societe_id IS NOT NULL
+		LIMIT 1
 	`, tenant.UUID(), userID).Scan(&societeID)
 	if err == nil && societeID != uuid.Nil {
 		return societeID, nil
 	}
-	// Fallback: any team membership via junction table.
+	// Via application_sites share on home app.
+	err = r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.users u
+		JOIN org.equipes e ON e.id = u.equipe_id
+		JOIN org.application_sites asi ON asi.application_id = e.application_id
+		JOIN org.sites st ON st.id = asi.site_id
+		WHERE u.tenant_id = $1 AND u.id = $2
+		LIMIT 1
+	`, tenant.UUID(), userID).Scan(&societeID)
+	if err == nil && societeID != uuid.Nil {
+		return societeID, nil
+	}
+	// Fallback: any team membership via junction table (service share).
 	err = r.pool.QueryRow(ctx, `
 		SELECT st.societe_id
 		FROM org.user_equipes ue
 		JOIN org.equipes e ON e.id = ue.equipe_id
-		JOIN org.applications a ON a.id = e.application_id
-		JOIN org.services sv ON sv.id = a.service_id
+		JOIN org.application_services asv ON asv.application_id = e.application_id
+		JOIN org.services sv ON sv.id = asv.service_id
 		JOIN org.sites st ON st.id = sv.site_id
+		WHERE ue.user_id = $1 AND e.tenant_id = $2
+		ORDER BY ue.equipe_id
+		LIMIT 1
+	`, userID, tenant.UUID()).Scan(&societeID)
+	if err == nil && societeID != uuid.Nil {
+		return societeID, nil
+	}
+	// Fallback: team membership via site share on home app.
+	err = r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.user_equipes ue
+		JOIN org.equipes e ON e.id = ue.equipe_id
+		JOIN org.application_sites asi ON asi.application_id = e.application_id
+		JOIN org.sites st ON st.id = asi.site_id
 		WHERE ue.user_id = $1 AND e.tenant_id = $2
 		ORDER BY ue.equipe_id
 		LIMIT 1
@@ -1250,10 +1565,22 @@ func (r *Repository) ResolveSocieteIDForEquipe(ctx context.Context, tenant kerne
 	err := r.pool.QueryRow(ctx, `
 		SELECT st.societe_id
 		FROM org.equipes e
-		JOIN org.applications a ON a.id = e.application_id
-		JOIN org.services sv ON sv.id = a.service_id
+		JOIN org.application_services asv ON asv.application_id = e.application_id
+		JOIN org.services sv ON sv.id = asv.service_id
 		JOIN org.sites st ON st.id = sv.site_id
 		WHERE e.tenant_id = $1 AND e.id = $2
+		LIMIT 1
+	`, tenant.UUID(), equipeID).Scan(&societeID)
+	if err == nil && societeID != uuid.Nil {
+		return societeID, nil
+	}
+	err = r.pool.QueryRow(ctx, `
+		SELECT st.societe_id
+		FROM org.equipes e
+		JOIN org.application_sites asi ON asi.application_id = e.application_id
+		JOIN org.sites st ON st.id = asi.site_id
+		WHERE e.tenant_id = $1 AND e.id = $2
+		LIMIT 1
 	`, tenant.UUID(), equipeID).Scan(&societeID)
 	if err != nil {
 		return uuid.Nil, err
@@ -1747,9 +2074,15 @@ func (r *Repository) MarkTotpEnrollmentRequiredForSocieteUsers(ctx context.Conte
 		  AND (
 		    EXISTS (
 		      SELECT 1 FROM org.equipes e
-		      JOIN org.applications a ON a.id = e.application_id
-		      JOIN org.services sv ON sv.id = a.service_id
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      JOIN org.services sv ON sv.id = asv.service_id
 		      JOIN org.sites st ON st.id = sv.site_id
+		      WHERE e.id = u.equipe_id AND st.societe_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.application_sites asi ON asi.application_id = e.application_id
+		      JOIN org.sites st ON st.id = asi.site_id
 		      WHERE e.id = u.equipe_id AND st.societe_id = $2
 		    )
 		    OR (
@@ -1773,9 +2106,15 @@ func (r *Repository) ClearTotpEnrollmentRequiredForSocieteUsers(ctx context.Cont
 		  AND (
 		    EXISTS (
 		      SELECT 1 FROM org.equipes e
-		      JOIN org.applications a ON a.id = e.application_id
-		      JOIN org.services sv ON sv.id = a.service_id
+		      JOIN org.application_services asv ON asv.application_id = e.application_id
+		      JOIN org.services sv ON sv.id = asv.service_id
 		      JOIN org.sites st ON st.id = sv.site_id
+		      WHERE e.id = u.equipe_id AND st.societe_id = $2
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM org.equipes e
+		      JOIN org.application_sites asi ON asi.application_id = e.application_id
+		      JOIN org.sites st ON st.id = asi.site_id
 		      WHERE e.id = u.equipe_id AND st.societe_id = $2
 		    )
 		    OR (

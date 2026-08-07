@@ -105,12 +105,15 @@ test.describe('org admin', () => {
     })
 
     await page.getByRole('button', { name: /ajouter|add/i }).first().click()
-    const serviceSelect = page.locator('select.apps-form__input').first()
+    // Second multi-select = services partagés (sites, services, équipes).
+    const serviceSelect = page.locator('select.apps-form__multiselect').nth(1)
     await expect(serviceSelect).toBeVisible()
     const options = serviceSelect.locator('option')
     const optionCount = await options.count()
-    expect(optionCount).toBeGreaterThan(1)
-    await serviceSelect.selectOption({ index: 1 })
+    expect(optionCount).toBeGreaterThan(0)
+    const firstServiceValue = await options.nth(0).getAttribute('value')
+    expect(firstServiceValue).toBeTruthy()
+    await serviceSelect.selectOption(firstServiceValue!)
     await page.locator('input.apps-form__input').first().fill(appName)
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
     await expect(page.getByText(appName)).toBeVisible({ timeout: 20_000 })

@@ -36,9 +36,20 @@ type CreateServiceCommand struct {
 	ResponsableID uuid.UUID
 }
 
+type UpdateSiteCommand struct {
+	TenantID kernel.TenantID
+	SiteID   uuid.UUID
+	Libelle  string
+}
+
+type UpdateServiceCommand struct {
+	TenantID  kernel.TenantID
+	ServiceID uuid.UUID
+	Libelle   string
+}
+
 type CreateApplicationCommand struct {
 	TenantID          kernel.TenantID
-	ServiceID         uuid.UUID
 	Libelle           string
 	Proprietaire      string
 	ModeFacturation   string
@@ -46,6 +57,9 @@ type CreateApplicationCommand struct {
 	ChefUtilisateurID *uuid.UUID
 	BudgetDefautID    *uuid.UUID
 	DefaultTJMCents   int64
+	SiteIDs           []uuid.UUID
+	ServiceIDs        []uuid.UUID
+	EquipeIDs         []uuid.UUID
 }
 
 // ApplicationListFilter filters ListApplications.
@@ -70,6 +84,11 @@ type UpdateApplicationCommand struct {
 	ChefUtilisateurID **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 	BudgetDefautID    **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 	DefaultTJMCents   *int64
+	// Share replace: if any of SiteIDs/ServiceIDs/EquipeIDs is non-nil, all three
+	// lists are replaced together (nil among them = empty for that category).
+	SiteIDs    *[]uuid.UUID
+	ServiceIDs *[]uuid.UUID
+	EquipeIDs  *[]uuid.UUID
 }
 
 type SetApplicationActiveCommand struct {
@@ -145,15 +164,21 @@ type OrganizationRepository interface {
 	ListSocietes(ctx context.Context, tenant kernel.TenantID) ([]domain.Societe, error)
 	GetSociete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Societe, error)
 	SaveSite(ctx context.Context, s domain.Site) error
+	UpdateSite(ctx context.Context, tenant kernel.TenantID, siteID uuid.UUID, libelle string) (domain.SiteSummary, error)
 	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	SaveService(ctx context.Context, s domain.Service) error
+	UpdateService(ctx context.Context, tenant kernel.TenantID, serviceID uuid.UUID, libelle string) (domain.ServiceSummary, error)
 	SaveApplication(ctx context.Context, a domain.Application) error
-	UpdateApplication(ctx context.Context, a domain.Application) error
+	// UpdateApplication persists application fields. When replaceShares is true, junction
+	// tables are rewritten from a.SiteIDs/ServiceIDs/EquipeIDs (home equipes are always kept).
+	UpdateApplication(ctx context.Context, a domain.Application, replaceShares bool) error
 	SaveEquipe(ctx context.Context, e domain.Equipe) error
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID, filter EquipeListFilter) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Application, error)
+	// AssertApplicationSharesExist verifies all share IDs belong to the tenant.
+	AssertApplicationSharesExist(ctx context.Context, tenant kernel.TenantID, siteIDs, serviceIDs, equipeIDs []uuid.UUID) error
 	// BudgetBelongsToApplication is true only for a budget of type "defaut" on that application (RG-BUD-01).
 	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
 	SaveUser(ctx context.Context, u domain.User) error
@@ -269,7 +294,9 @@ type UserCalendarSettings struct {
 type OrganizationService interface {
 	CreateSociete(ctx context.Context, cmd CreateSocieteCommand) (domain.Societe, error)
 	CreateSite(ctx context.Context, cmd CreateSiteCommand) (domain.Site, error)
+	UpdateSite(ctx context.Context, cmd UpdateSiteCommand) (domain.SiteSummary, error)
 	CreateService(ctx context.Context, cmd CreateServiceCommand) (domain.Service, error)
+	UpdateService(ctx context.Context, cmd UpdateServiceCommand) (domain.ServiceSummary, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
 	UpdateApplication(ctx context.Context, cmd UpdateApplicationCommand) (domain.Application, error)
 	SetApplicationActive(ctx context.Context, cmd SetApplicationActiveCommand) (domain.Application, error)
