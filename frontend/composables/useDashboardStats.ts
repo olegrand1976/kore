@@ -9,7 +9,8 @@ import {
   countLeaveByStatus,
   countTmaOpen,
   leaveStatusSeries,
-  tmaStatusSeries
+  tmaStatusSeries,
+  type CraTimesheet
 } from '~/composables/useKpiMetrics'
 import { currentMonthKey } from '~/composables/useCraStatus'
 import type { BudgetItem } from '~/composables/useBudget'
@@ -137,21 +138,8 @@ export function useDashboardStats() {
             return
           }
           try {
-            const res = await apiFetch<{ data?: unknown[] }>('/api/cra/timesheets/recent')
-            const items = (res?.data ?? []) as Array<{
-              status?: string
-              Status?: string
-              month?: string
-              Month?: string
-              totalMinutes?: number
-              TotalMinutes?: number
-              weeksSubmitted?: number
-              WeeksSubmitted?: number
-              weeksTotal?: number
-              WeeksTotal?: number
-              prefillRatio?: number
-              PrefillRatio?: number
-            }>
+            const res = await apiFetch<{ data?: CraTimesheet[] }>('/api/cra/timesheets/recent')
+            const items = res?.data ?? []
             stats.craCurrentStatus = craCurrentMonthStatus(items)
             charts.craMonths = craMonthSeries(items, locale.value)
             stats.craPrefillRatio = craPrefillRatioForMonth(items)
