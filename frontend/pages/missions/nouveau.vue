@@ -99,6 +99,17 @@
           :label="$t('missions.client_name')"
           required
         />
+        <div class="mission-client-form__field">
+          <label for="new-client-pays">{{ $t('org.country') }}</label>
+          <select id="new-client-pays" v-model="clientForm.pays" class="mission-form__select" required>
+            <option value="FR">{{ $t('org.country_fr') }}</option>
+            <option value="BE">{{ $t('org.country_be') }}</option>
+            <option value="MG">{{ $t('org.country_mg') }}</option>
+            <option value="MA">{{ $t('org.country_ma') }}</option>
+            <option value="TN">{{ $t('org.country_tn') }}</option>
+            <option value="CA">{{ $t('org.country_ca') }}</option>
+          </select>
+        </div>
         <AppInput id="new-client-tva" v-model="clientForm.tva" :label="$t('missions.client_tva')" />
         <p v-if="clientError" class="flash flash--error" role="alert">{{ clientError }}</p>
         <div class="mission-client-form__actions">
@@ -188,7 +199,11 @@ const clients = ref<{ id: string; label: string; contacts: OrgClientContact[] }[
 const clientModalOpen = ref(false)
 const creatingClient = ref(false)
 const clientError = ref('')
-const clientForm = reactive({ raisonSociale: '', tva: '' })
+const clientForm = reactive({
+  raisonSociale: '',
+  tva: '',
+  pays: 'FR' as 'FR' | 'BE' | 'MG' | 'MA' | 'TN' | 'CA'
+})
 const contactModalOpen = ref(false)
 const creatingContact = ref(false)
 const contactError = ref('')
@@ -234,6 +249,7 @@ const loadClients = async () => {
 const openClientModal = () => {
   clientForm.raisonSociale = ''
   clientForm.tva = ''
+  clientForm.pays = 'FR'
   clientError.value = ''
   clientModalOpen.value = true
 }
@@ -254,7 +270,8 @@ const submitClient = async () => {
   try {
     const res = await createClient({
       raisonSociale: clientForm.raisonSociale,
-      tva: clientForm.tva || undefined
+      tva: clientForm.tva || undefined,
+      pays: clientForm.pays
     })
     await loadClients()
     const created = (res as { data?: { id?: string; ID?: string } })?.data
@@ -415,6 +432,17 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: var(--kore-space-lg);
+}
+
+.mission-client-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.mission-client-form__field label {
+  font-size: var(--kore-text-small);
+  font-weight: 500;
 }
 
 .mission-client-form__title {

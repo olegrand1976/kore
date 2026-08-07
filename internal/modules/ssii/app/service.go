@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	cradomain "github.com/kore/kore/internal/modules/cra/domain"
+	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/ssii/domain"
 	"github.com/kore/kore/internal/modules/ssii/ports"
 	"github.com/kore/kore/pkg/kernel"
@@ -299,23 +301,19 @@ func contactDisplayName(c ports.ClientContactSnapshot) string {
 }
 
 // resolveClientCountry returns the client's billing country for holiday prefill.
-// Falls back to FR when the client has no pays or the lookup fails.
+// Falls back to FR when lookup fails or the value is outside the org whitelist.
 func (s *service) resolveClientCountry(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) string {
 	pays, err := s.repo.GetClientPays(ctx, tenant, clientID)
 	if err != nil {
+		slog.Default().WarnContext(ctx, "ssii: resolve client pays failed, defaulting to FR",
+			"clientId", clientID, "err", err)
 		return "FR"
 	}
-	code := strings.ToUpper(strings.TrimSpace(pays))
-	switch code {
-	case "BE", "FR", "MG", "MA", "TN", "CA":
-		return code
-	case "MD": // legacy non-ISO alias for Madagascar
-		return "MG"
-	case "":
-		return "FR"
-	default:
+	normalized, ok := orgdomain.NormalizeSocietePays(pays)
+	if !ok {
 		return "FR"
 	}
+	return normalized
 }
 
 func (s *service) prefillMissionDays(ctx context.Context, m domain.Mission, collaborators []uuid.UUID, countryCode string) error {

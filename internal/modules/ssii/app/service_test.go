@@ -247,9 +247,13 @@ func (c *capturingCalendar) IsHolidayOrLeave(_ context.Context, _ kernel.TenantI
 type paysRepo struct {
 	noopRepo
 	pays string
+	err  error
 }
 
 func (r *paysRepo) GetClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
+	if r.err != nil {
+		return "", r.err
+	}
 	return r.pays, nil
 }
 
@@ -275,15 +279,26 @@ func TestCreate_usesClientPaysForPrefill(t *testing.T) {
 }
 
 func TestResolveClientCountry_defaultsAndAliases(t *testing.T) {
-	svc := &service{repo: &paysRepo{pays: "md"}}
-	got := svc.resolveClientCountry(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New())
-	if got != "MG" {
-		t.Fatalf("got %q, want MG", got)
+	cases := []struct {
+		name string
+		pays string
+		err  error
+		want string
+	}{
+		{name: "md alias", pays: "md", want: "MG"},
+		{name: "unsupported", pays: "DE", want: "FR"},
+		{name: "empty", pays: "", want: "FR"},
+		{name: "spaces and casing", pays: "  Be ", want: "BE"},
+		{name: "lookup error", err: errors.New("db down"), want: "FR"},
 	}
-	svc.repo = &paysRepo{pays: "DE"}
-	got = svc.resolveClientCountry(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New())
-	if got != "FR" {
-		t.Fatalf("unsupported pays = %q, want FR", got)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &service{repo: &paysRepo{pays: tc.pays, err: tc.err}}
+			got := svc.resolveClientCountry(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New())
+			if got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
