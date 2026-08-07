@@ -28,8 +28,9 @@ test.describe('org admin', () => {
     ).toBeVisible({ timeout: 20_000 })
   })
 
-  test('creates a team and attaches a collaborator to it', async ({ page }) => {
+  test('creates a team, edits it, and attaches a collaborator to it', async ({ page }) => {
     const teamName = `E2E Équipe ${Date.now()}`
+    const renamed = `${teamName} renommée`
 
     await page.goto('/admin/organisation')
     await page.getByRole('tab', { name: /structure/i }).click()
@@ -42,6 +43,14 @@ test.describe('org admin', () => {
     // L'équipe apparaît dans l'arbre avec son compteur de collaborateurs.
     await expect(page.getByText(teamName)).toBeVisible({ timeout: 20_000 })
 
+    // Renomme l'équipe via le bouton Modifier du nœud feuille.
+    const teamRow = page.locator('.org-tree__node--leaf', { hasText: teamName }).first()
+    await teamRow.getByRole('button', { name: /modifier|edit/i }).click()
+    await expect(page.getByRole('heading', { name: /modifier l'équipe|edit team/i })).toBeVisible()
+    await page.locator('#org-rename-libelle').fill(renamed)
+    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+    await expect(page.getByText(renamed)).toBeVisible({ timeout: 20_000 })
+
     // Rattache un collaborateur à cette équipe depuis l'écran utilisateurs.
     await page.goto('/admin/users')
     const collabRow = page.locator('tbody tr', { hasText: 'COL_collab' }).first()
@@ -52,14 +61,14 @@ test.describe('org admin', () => {
     await expect(profileCheckbox).toBeEnabled()
     await profileCheckbox.check()
 
-    const equipeCheckbox = page.locator('label.users-check', { hasText: teamName }).locator('input[type="checkbox"]')
+    const equipeCheckbox = page.locator('label.users-check', { hasText: renamed }).locator('input[type="checkbox"]')
     await expect(equipeCheckbox).toBeVisible()
     await equipeCheckbox.check()
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
 
     // La colonne Équipe de la liste reflète le rattachement.
     await expect(
-      page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(new RegExp(teamName))
+      page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(new RegExp(renamed))
     ).toBeVisible({ timeout: 20_000 })
     await expect(
       page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(/chef d'équipe/i)

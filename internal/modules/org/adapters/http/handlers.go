@@ -65,6 +65,7 @@ func RegisterRoutes(
 		pr.Patch("/applications/{id}/activate", activateApplication(org, authorizer))
 		pr.Post("/equipes", createEquipe(org, authorizer))
 		pr.Get("/equipes", listEquipes(org, authorizer))
+		pr.Put("/equipes/{id}", updateEquipe(org, authorizer))
 		pr.Get("/users", listUsers(users, authorizer))
 		pr.Get("/users/{id}", getUser(users, authorizer))
 		pr.Get("/users/me/2fa", get2FAStatusHandler(users))
@@ -491,10 +492,64 @@ func createEquipe(org ports.OrganizationService, authorizer authx.Authorizer) ht
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
+			if errors.Is(err, domain.ErrInvalidEquipeLibelle) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrUserNotFound) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, e)
+	}
+}
+
+func updateEquipe(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		equipeID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid equipe id")
+			return
+		}
+		var req struct {
+			Libelle       string     `json:"libelle"`
+			ResponsableID *uuid.UUID `json:"responsableId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		item, err := org.UpdateEquipe(r.Context(), ports.UpdateEquipeCommand{
+			TenantID:      identity.TenantID,
+			EquipeID:      equipeID,
+			Libelle:       req.Libelle,
+			ResponsableID: req.ResponsableID,
+		})
+		if err != nil {
+			if errors.Is(err, domain.ErrEquipeNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "equipe not found")
+				return
+			}
+			if errors.Is(err, domain.ErrInvalidEquipeLibelle) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			if errors.Is(err, domain.ErrUserNotFound) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, item)
 	}
 }
 

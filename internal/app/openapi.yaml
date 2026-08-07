@@ -1276,6 +1276,40 @@ paths:
           description: Non autorisé (org:E requis)
         "422":
           description: Application manquante
+  /equipes/{id}:
+    put:
+      summary: Modifier une équipe (libellé, responsable)
+      description: |
+        Met à jour le libellé et le responsable. L'application home (`applicationId`)
+        n'est pas modifiable.
+        `responsableId` doit être envoyé explicitement : UUID pour affecter, `null` pour
+        détacher. Champ **omis** = même effet que `null` (détachement) — toujours
+        renvoyer la valeur courante si l'on veut la conserver.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [libelle, responsableId]
+              properties:
+                libelle: { type: string }
+                responsableId:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        "200":
+          description: Équipe mise à jour
+        "403":
+          description: Non autorisé (org:E requis)
+        "404":
+          description: Équipe introuvable
+        "422":
+          description: Libellé invalide ou responsable inconnu
   /services:
     get:
       summary: Liste des services

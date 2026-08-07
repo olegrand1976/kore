@@ -46,6 +46,12 @@ func (r refreshUserRepo) UpdateService(context.Context, kernel.TenantID, uuid.UU
 }
 func (r refreshUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
 func (r refreshUserRepo) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
+func (r refreshUserRepo) GetEquipe(context.Context, kernel.TenantID, uuid.UUID) (domain.Equipe, error) {
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
+func (r refreshUserRepo) UpdateEquipe(context.Context, kernel.TenantID, uuid.UUID, string, *uuid.UUID) (domain.Equipe, error) {
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
 func (r refreshUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
 	return nil, nil
 }

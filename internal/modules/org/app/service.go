@@ -266,14 +266,32 @@ func (s *organizationService) CreateEquipe(ctx context.Context, cmd ports.Create
 	if cmd.ApplicationID == uuid.Nil {
 		return domain.Equipe{}, domain.ErrEquipeWithoutApplication
 	}
+	libelle := strings.TrimSpace(cmd.Libelle)
+	if libelle == "" {
+		return domain.Equipe{}, domain.ErrInvalidEquipeLibelle
+	}
+	if err := s.assertChefInTenant(ctx, cmd.TenantID, cmd.ResponsableID); err != nil {
+		return domain.Equipe{}, err
+	}
 	equipe := domain.Equipe{
 		ID:            uuid.New(),
 		TenantID:      cmd.TenantID,
 		ApplicationID: cmd.ApplicationID,
-		Libelle:       cmd.Libelle,
+		Libelle:       libelle,
 		ResponsableID: cmd.ResponsableID,
 	}
 	return equipe, s.repo.SaveEquipe(ctx, equipe)
+}
+
+func (s *organizationService) UpdateEquipe(ctx context.Context, cmd ports.UpdateEquipeCommand) (domain.Equipe, error) {
+	libelle := strings.TrimSpace(cmd.Libelle)
+	if libelle == "" {
+		return domain.Equipe{}, domain.ErrInvalidEquipeLibelle
+	}
+	if err := s.assertChefInTenant(ctx, cmd.TenantID, cmd.ResponsableID); err != nil {
+		return domain.Equipe{}, err
+	}
+	return s.repo.UpdateEquipe(ctx, cmd.TenantID, cmd.EquipeID, libelle, cmd.ResponsableID)
 }
 
 func (s *organizationService) ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error) {

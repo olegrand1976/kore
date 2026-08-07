@@ -119,6 +119,47 @@ func TestOrg_SaveEquipeWithoutResponsable(t *testing.T) {
 	require.Nil(t, equipes[0].ResponsableID)
 }
 
+func TestOrg_UpdateEquipeRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	_, _, appID := seedStructure(t, repo, tenant)
+
+	responsable := uuid.New()
+	require.NoError(t, repo.SaveUser(ctx, domain.User{
+		ID:           responsable,
+		TenantID:     tenant,
+		Login:        "CHEF_equipe",
+		PasswordHash: "hash",
+		Profile:      domain.ProfileChefEquipe,
+		Active:       true,
+	}))
+
+	equipeID := uuid.New()
+	require.NoError(t, repo.SaveEquipe(ctx, domain.Equipe{
+		ID:            equipeID,
+		TenantID:      tenant,
+		ApplicationID: appID,
+		Libelle:       "Avant",
+	}))
+
+	updated, err := repo.UpdateEquipe(ctx, tenant, equipeID, "Après", &responsable)
+	require.NoError(t, err)
+	require.Equal(t, "Après", updated.Libelle)
+	require.NotNil(t, updated.ResponsableID)
+	require.Equal(t, responsable, *updated.ResponsableID)
+	require.Equal(t, appID, updated.ApplicationID)
+
+	cleared, err := repo.UpdateEquipe(ctx, tenant, equipeID, "Après", nil)
+	require.NoError(t, err)
+	require.Nil(t, cleared.ResponsableID)
+
+	_, err = repo.UpdateEquipe(ctx, tenant, uuid.New(), "Ghost", nil)
+	require.ErrorIs(t, err, domain.ErrEquipeNotFound)
+}
+
 func TestOrg_ListSites(t *testing.T) {
 	pool := dbtest.NewPostgres(t)
 	repo := postgres.NewRepository(pool)

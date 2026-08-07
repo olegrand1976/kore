@@ -59,6 +59,7 @@ export type OrgEquipe = {
   libelle?: string
   Libelle?: string
   responsableId?: string
+  ResponsableID?: string
 }
 
 // Les handlers Go sérialisent tantôt en camelCase (tags json) tantôt avec les noms
@@ -136,6 +137,11 @@ export function useOrganisation() {
 
   const createEquipe = (body: { applicationId: string; libelle: string; responsableId?: string }) =>
     apiFetch('/api/org/equipes', { method: 'POST', body })
+
+  const updateEquipe = (
+    id: string,
+    body: { libelle: string; responsableId: string | null }
+  ) => apiFetch(`/api/org/equipes/${id}`, { method: 'PUT', body })
 
   const listClients = async () =>
     unwrap<{
@@ -218,6 +224,7 @@ export function useOrganisation() {
     deactivateApplication,
     activateApplication,
     createEquipe,
+    updateEquipe,
     listClients,
     createClient,
     updateClient,

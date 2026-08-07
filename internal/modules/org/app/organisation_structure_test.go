@@ -57,6 +57,28 @@ func (r *structureRepo) SaveEquipe(_ context.Context, e domain.Equipe) error {
 	return nil
 }
 
+func (r *structureRepo) GetEquipe(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Equipe, error) {
+	for _, e := range r.equipes {
+		if e.ID == id {
+			return e, nil
+		}
+	}
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
+
+func (r *structureRepo) UpdateEquipe(_ context.Context, tenant kernel.TenantID, equipeID uuid.UUID, libelle string, responsableID *uuid.UUID) (domain.Equipe, error) {
+	for i := range r.equipes {
+		if r.equipes[i].ID == equipeID {
+			r.equipes[i].Libelle = libelle
+			r.equipes[i].ResponsableID = responsableID
+			r.equipes[i].TenantID = tenant
+			r.savedEquipe = &r.equipes[i]
+			return r.equipes[i], nil
+		}
+	}
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
+
 func (r *structureRepo) ListEquipes(context.Context, kernel.TenantID, ports.EquipeListFilter) ([]domain.Equipe, error) {
 	return r.equipes, nil
 }
@@ -132,16 +154,20 @@ func (r *structureRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.Us
 }
 
 func TestCreateEquipe_persistsWithApplication(t *testing.T) {
-	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
 	tenant := kernel.NewTenantID(uuid.New())
 	appID := uuid.New()
 	responsable := uuid.New()
+	repo := &structureRepo{
+		users: map[uuid.UUID]domain.User{
+			responsable: {ID: responsable, TenantID: tenant, Login: "chef"},
+		},
+	}
+	svc := NewOrganizationService(repo)
 
 	equipe, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
 		TenantID:      tenant,
 		ApplicationID: appID,
-		Libelle:       "Équipe Dev",
+		Libelle:       "  Équipe Dev  ",
 		ResponsableID: &responsable,
 	})
 	if err != nil {
@@ -149,6 +175,9 @@ func TestCreateEquipe_persistsWithApplication(t *testing.T) {
 	}
 	if equipe.ID == uuid.Nil {
 		t.Fatal("expected a generated equipe id")
+	}
+	if equipe.Libelle != "Équipe Dev" {
+		t.Fatalf("libelle = %q, want trimmed", equipe.Libelle)
 	}
 	if repo.savedEquipe == nil {
 		t.Fatal("expected SaveEquipe to be called")
@@ -177,6 +206,37 @@ func TestCreateEquipe_rejectsMissingApplication(t *testing.T) {
 	}
 	if repo.savedEquipe != nil {
 		t.Fatal("expected no persistence when the application is missing")
+	}
+}
+
+func TestCreateEquipe_rejectsEmptyLibelle(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
+		TenantID:      kernel.NewTenantID(uuid.New()),
+		ApplicationID: uuid.New(),
+		Libelle:       "   ",
+	})
+	if !errors.Is(err, domain.ErrInvalidEquipeLibelle) {
+		t.Fatalf("err = %v, want ErrInvalidEquipeLibelle", err)
+	}
+}
+
+func TestCreateEquipe_rejectsUnknownResponsable(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &structureRepo{users: map[uuid.UUID]domain.User{}}
+	svc := NewOrganizationService(repo)
+	unknown := uuid.New()
+	_, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
+		TenantID:      tenant,
+		ApplicationID: uuid.New(),
+		Libelle:       "Dev",
+		ResponsableID: &unknown,
+	})
+	if !errors.Is(err, domain.ErrUserNotFound) {
+		t.Fatalf("err = %v, want ErrUserNotFound", err)
+	}
+	if repo.savedEquipe != nil {
+		t.Fatal("expected no persistence with unknown responsable")
 	}
 }
 
@@ -276,6 +336,114 @@ func TestUpdateService_notFound(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrServiceNotFound) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestUpdateEquipe_renamesAndSetsResponsable(t *testing.T) {
+	equipeID := uuid.New()
+	appID := uuid.New()
+	responsable := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &structureRepo{
+		equipes: []domain.Equipe{{
+			ID:            equipeID,
+			TenantID:      tenant,
+			ApplicationID: appID,
+			Libelle:       "Old",
+		}},
+		users: map[uuid.UUID]domain.User{
+			responsable: {ID: responsable, TenantID: tenant, Login: "chef"},
+		},
+	}
+	svc := NewOrganizationService(repo)
+	got, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
+		TenantID:      tenant,
+		EquipeID:      equipeID,
+		Libelle:       "  Nouvelle équipe  ",
+		ResponsableID: &responsable,
+	})
+	if err != nil {
+		t.Fatalf("UpdateEquipe: %v", err)
+	}
+	if got.Libelle != "Nouvelle équipe" {
+		t.Fatalf("libelle = %q", got.Libelle)
+	}
+	if got.ResponsableID == nil || *got.ResponsableID != responsable {
+		t.Fatalf("responsable = %v", got.ResponsableID)
+	}
+	if got.ApplicationID != appID {
+		t.Fatalf("applicationId changed to %v", got.ApplicationID)
+	}
+}
+
+func TestUpdateEquipe_clearsResponsable(t *testing.T) {
+	equipeID := uuid.New()
+	responsable := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &structureRepo{
+		equipes: []domain.Equipe{{
+			ID:            equipeID,
+			TenantID:      tenant,
+			Libelle:       "Dev",
+			ResponsableID: &responsable,
+		}},
+	}
+	svc := NewOrganizationService(repo)
+	got, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
+		TenantID:      tenant,
+		EquipeID:      equipeID,
+		Libelle:       "Dev",
+		ResponsableID: nil,
+	})
+	if err != nil {
+		t.Fatalf("UpdateEquipe: %v", err)
+	}
+	if got.ResponsableID != nil {
+		t.Fatalf("responsable = %v, want nil", got.ResponsableID)
+	}
+}
+
+func TestUpdateEquipe_rejectsEmptyLibelle(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		EquipeID: uuid.New(),
+		Libelle:  "   ",
+	})
+	if !errors.Is(err, domain.ErrInvalidEquipeLibelle) {
+		t.Fatalf("err = %v, want ErrInvalidEquipeLibelle", err)
+	}
+}
+
+func TestUpdateEquipe_notFound(t *testing.T) {
+	svc := NewOrganizationService(&structureRepo{})
+	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		EquipeID: uuid.New(),
+		Libelle:  "X",
+	})
+	if !errors.Is(err, domain.ErrEquipeNotFound) {
+		t.Fatalf("err = %v, want ErrEquipeNotFound", err)
+	}
+}
+
+func TestUpdateEquipe_rejectsUnknownResponsable(t *testing.T) {
+	equipeID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &structureRepo{
+		equipes: []domain.Equipe{{ID: equipeID, TenantID: tenant, Libelle: "Dev"}},
+		users:   map[uuid.UUID]domain.User{},
+	}
+	svc := NewOrganizationService(repo)
+	unknown := uuid.New()
+	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
+		TenantID:      tenant,
+		EquipeID:      equipeID,
+		Libelle:       "Dev",
+		ResponsableID: &unknown,
+	})
+	if !errors.Is(err, domain.ErrUserNotFound) {
+		t.Fatalf("err = %v, want ErrUserNotFound", err)
 	}
 }
 

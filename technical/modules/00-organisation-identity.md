@@ -126,6 +126,7 @@ type UserIdentityRepository interface {
 | PATCH | `/api/v1/applications/{id}/activate\|deactivate` | Admin (E) | Soft activate/deactivate |
 | POST | `/api/v1/equipes` | Admin (E) | Créer équipe rattachée à une application |
 | GET | `/api/v1/equipes` | Admin / Workflow (L) | Liste des équipes (`?applicationId=`) |
+| PUT | `/api/v1/equipes/{id}` | Admin (E) | Modifier libellé et responsable (`responsableId` null ou omis = détachement ; toujours renvoyer le courant pour le conserver). `applicationId` non modifiable |
 | POST | `/api/v1/users` | Admin (E) | Créer compte (login libre, `equipeId` optionnel) |
 | PUT | `/api/v1/users/{id}` | Admin (E) | Modifier profil, mot de passe, activation, `equipeId` |
 | POST | `/api/v1/services/{id}/responsible` | Admin (E) | Affecter responsable |
@@ -217,9 +218,8 @@ Couverture cible : domaine > 90 %, app > 80 %.
 - [x] Applications : **update** paramétrage §4.3 (propriétaire, mode facturation, UO, chef, budget défaut)
   + soft deactivate ; page admin `/admin/applications`.
 - [x] Rattachement collaborateur → équipe modifiable après création (`PUT /users/{id}`, champ `equipeId`).
-- [ ] Hiérarchie org : **modification et suppression** des niveaux site/service/équipe (aucun `PUT`/`DELETE`
-  sur `sites`, `services`, `equipes`) — la correction d'une faute de frappe impose aujourd'hui un
-  passage en base.
+- [x] Sites / services / équipes : **modification** (`PUT /sites/{id}`, `PUT /services/{id}`,
+  `PUT /equipes/{id}` — libellé ; équipes : + responsable) dans Structure. Suppression hard non exposée.
 - [x] Auth login/refresh/logout via cookies httpOnly opérationnelle.
 - [x] Matrice RBAC §3.3 chargée et appliquée par middleware.
 - [x] Isolation multi-tenant vérifiée par test d'intégration.

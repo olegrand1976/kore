@@ -542,6 +542,45 @@ func (r *Repository) SaveEquipe(ctx context.Context, e domain.Equipe) error {
 	})
 }
 
+func (r *Repository) GetEquipe(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Equipe, error) {
+	var e domain.Equipe
+	var tenantID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, application_id, libelle, responsable_id
+		FROM org.equipes
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), id).Scan(&e.ID, &tenantID, &e.ApplicationID, &e.Libelle, &e.ResponsableID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Equipe{}, domain.ErrEquipeNotFound
+		}
+		return domain.Equipe{}, err
+	}
+	e.TenantID = kernel.NewTenantID(tenantID)
+	return e, nil
+}
+
+func (r *Repository) UpdateEquipe(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID, libelle string, responsableID *uuid.UUID) (domain.Equipe, error) {
+	var e domain.Equipe
+	var tenantID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
+		UPDATE org.equipes
+		SET libelle = $3, responsable_id = $4
+		WHERE tenant_id = $1 AND id = $2
+		RETURNING id, tenant_id, application_id, libelle, responsable_id
+	`, tenant.UUID(), equipeID, libelle, responsableID).Scan(
+		&e.ID, &tenantID, &e.ApplicationID, &e.Libelle, &e.ResponsableID,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Equipe{}, domain.ErrEquipeNotFound
+		}
+		return domain.Equipe{}, err
+	}
+	e.TenantID = kernel.NewTenantID(tenantID)
+	return e, nil
+}
+
 func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) error {
 	mode := a.ModeFacturation
 	if mode == "" {

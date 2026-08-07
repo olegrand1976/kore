@@ -104,6 +104,16 @@ type CreateEquipeCommand struct {
 	ResponsableID *uuid.UUID
 }
 
+type UpdateEquipeCommand struct {
+	TenantID kernel.TenantID
+	EquipeID uuid.UUID
+	Libelle  string
+	// ResponsableID nil clears the responsable. Omitted JSON field also yields nil
+	// (same semantics as explicit null) — callers must always send the field when
+	// they intend to keep an existing responsable.
+	ResponsableID *uuid.UUID
+}
+
 type CreateUserCommand struct {
 	TenantID  kernel.TenantID
 	Login     string
@@ -205,6 +215,8 @@ type OrganizationRepository interface {
 	// tables are rewritten from a.SiteIDs/ServiceIDs/EquipeIDs (home equipes are always kept).
 	UpdateApplication(ctx context.Context, a domain.Application, replaceShares bool) error
 	SaveEquipe(ctx context.Context, e domain.Equipe) error
+	GetEquipe(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Equipe, error)
+	UpdateEquipe(ctx context.Context, tenant kernel.TenantID, equipeID uuid.UUID, libelle string, responsableID *uuid.UUID) (domain.Equipe, error)
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID, filter EquipeListFilter) ([]domain.Equipe, error)
 	ListServices(ctx context.Context, tenant kernel.TenantID) ([]domain.ServiceSummary, error)
@@ -335,6 +347,7 @@ type OrganizationService interface {
 	UpdateApplication(ctx context.Context, cmd UpdateApplicationCommand) (domain.Application, error)
 	SetApplicationActive(ctx context.Context, cmd SetApplicationActiveCommand) (domain.Application, error)
 	CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (domain.Equipe, error)
+	UpdateEquipe(ctx context.Context, cmd UpdateEquipeCommand) (domain.Equipe, error)
 	ListSites(ctx context.Context, tenant kernel.TenantID) ([]domain.SiteSummary, error)
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter ApplicationListFilter) ([]domain.Application, error)
 	ListEquipes(ctx context.Context, tenant kernel.TenantID, filter EquipeListFilter) ([]domain.Equipe, error)

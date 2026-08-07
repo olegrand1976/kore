@@ -26,6 +26,7 @@ var (
 	ErrServiceNotFound           = errors.New("service not found")
 	ErrInvalidSiteLibelle        = errors.New("site libelle required")
 	ErrInvalidServiceLibelle     = errors.New("service libelle required")
+	ErrInvalidEquipeLibelle      = errors.New("equipe libelle required")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrSocieteNotFound           = errors.New("societe not found")
 	ErrClientNotFound            = errors.New("client not found")
@@ -406,7 +407,7 @@ type Equipe struct {
 	TenantID      kernel.TenantID `json:"tenantId"`
 	ApplicationID uuid.UUID       `json:"applicationId"`
 	Libelle       string          `json:"libelle"`
-	ResponsableID *uuid.UUID      `json:"responsableId,omitempty"`
+	ResponsableID *uuid.UUID      `json:"responsableId"`
 }
 
 type SiteSummary struct {

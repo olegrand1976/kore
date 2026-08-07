@@ -69,6 +69,18 @@ func (s *equipeOrgService) UpdateService(_ context.Context, cmd ports.UpdateServ
 	return domain.ServiceSummary{ID: cmd.ServiceID, Libelle: cmd.Libelle}, nil
 }
 
+func (s *equipeOrgService) UpdateEquipe(_ context.Context, cmd ports.UpdateEquipeCommand) (domain.Equipe, error) {
+	if s.err != nil {
+		return domain.Equipe{}, s.err
+	}
+	return domain.Equipe{
+		ID:            cmd.EquipeID,
+		TenantID:      cmd.TenantID,
+		Libelle:       cmd.Libelle,
+		ResponsableID: cmd.ResponsableID,
+	}, nil
+}
+
 func requestWithIdentity(t *testing.T, method, target string, body any) *http.Request {
 	t.Helper()
 	var buf bytes.Buffer
@@ -445,6 +457,113 @@ func TestUpdateService_ok(t *testing.T) {
 	handler(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUpdateEquipe_ok(t *testing.T) {
+	equipeID := uuid.New()
+	responsable := uuid.New()
+	svc := &equipeOrgService{}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/"+equipeID.String(), map[string]any{
+		"libelle":       "Équipe Data",
+		"responsableId": responsable.String(),
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", equipeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUpdateEquipe_forbiddenWithoutOrgWrite(t *testing.T) {
+	equipeID := uuid.New()
+	svc := &equipeOrgService{}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionRead, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/"+equipeID.String(), map[string]any{
+		"libelle": "X",
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", equipeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestUpdateEquipe_unprocessableEmptyLibelle(t *testing.T) {
+	equipeID := uuid.New()
+	svc := &equipeOrgService{err: domain.ErrInvalidEquipeLibelle}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/"+equipeID.String(), map[string]any{
+		"libelle":       "   ",
+		"responsableId": nil,
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", equipeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+}
+
+func TestUpdateEquipe_notFound(t *testing.T) {
+	equipeID := uuid.New()
+	svc := &equipeOrgService{err: domain.ErrEquipeNotFound}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/"+equipeID.String(), map[string]any{
+		"libelle":       "X",
+		"responsableId": nil,
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", equipeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestUpdateEquipe_unknownResponsable(t *testing.T) {
+	equipeID := uuid.New()
+	svc := &equipeOrgService{err: domain.ErrUserNotFound}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/"+equipeID.String(), map[string]any{
+		"libelle":       "Dev",
+		"responsableId": uuid.New().String(),
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", equipeID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+}
+
+func TestUpdateEquipe_invalidID(t *testing.T) {
+	svc := &equipeOrgService{}
+	handler := updateEquipe(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/equipes/not-a-uuid", map[string]any{
+		"libelle":       "X",
+		"responsableId": nil,
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "not-a-uuid")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	handler(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
 

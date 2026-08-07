@@ -50,6 +50,12 @@ func (r *totpUserRepo) UpdateService(context.Context, kernel.TenantID, uuid.UUID
 }
 func (r *totpUserRepo) SaveApplication(context.Context, domain.Application) error { return nil }
 func (r *totpUserRepo) SaveEquipe(context.Context, domain.Equipe) error           { return nil }
+func (r *totpUserRepo) GetEquipe(context.Context, kernel.TenantID, uuid.UUID) (domain.Equipe, error) {
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
+func (r *totpUserRepo) UpdateEquipe(context.Context, kernel.TenantID, uuid.UUID, string, *uuid.UUID) (domain.Equipe, error) {
+	return domain.Equipe{}, domain.ErrEquipeNotFound
+}
 func (r *totpUserRepo) ListSites(context.Context, kernel.TenantID) ([]domain.SiteSummary, error) {
 	return nil, nil
 }

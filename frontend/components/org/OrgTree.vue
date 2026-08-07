@@ -34,6 +34,7 @@ const {
   deactivateApplication,
   activateApplication,
   createEquipe,
+  updateEquipe,
   orgId,
   orgLabel
 } = useOrganisation()
@@ -245,21 +246,33 @@ const openEditApplication = (app: OrgApplication) => {
   editOpen.value = true
 }
 
-type RenameLevel = 'site' | 'service'
+type RenameLevel = 'site' | 'service' | 'equipe'
 const renameOpen = ref(false)
 const renameLevel = ref<RenameLevel>('site')
 const renameSubmitting = ref(false)
 const renameError = ref('')
-const renameForm = reactive({ id: '', libelle: '' })
+const renameForm = reactive({ id: '', libelle: '', responsableId: '' })
 
-const renameTitle = computed(() =>
-  renameLevel.value === 'site' ? t('org.tree.edit_site_title') : t('org.tree.edit_service_title')
-)
+const renameTitle = computed(() => {
+  switch (renameLevel.value) {
+    case 'site':
+      return t('org.tree.edit_site_title')
+    case 'service':
+      return t('org.tree.edit_service_title')
+    case 'equipe':
+      return t('org.tree.edit_equipe_title')
+    default: {
+      const _exhaustive: never = renameLevel.value
+      return _exhaustive
+    }
+  }
+})
 
 const openRenameSite = (site: OrgSite) => {
   renameLevel.value = 'site'
   renameForm.id = orgId(site)
   renameForm.libelle = orgLabel(site)
+  renameForm.responsableId = ''
   renameError.value = ''
   renameOpen.value = true
 }
@@ -268,6 +281,19 @@ const openRenameService = (service: OrgService) => {
   renameLevel.value = 'service'
   renameForm.id = orgId(service)
   renameForm.libelle = orgLabel(service) || service.type || ''
+  renameForm.responsableId = ''
+  renameError.value = ''
+  renameOpen.value = true
+}
+
+const equipeResponsableId = (equipe: OrgEquipe) =>
+  equipe.responsableId ?? equipe.ResponsableID ?? ''
+
+const openRenameEquipe = (equipe: OrgEquipe) => {
+  renameLevel.value = 'equipe'
+  renameForm.id = orgId(equipe)
+  renameForm.libelle = orgLabel(equipe)
+  renameForm.responsableId = equipeResponsableId(equipe)
   renameError.value = ''
   renameOpen.value = true
 }
@@ -287,6 +313,12 @@ const submitRename = async () => {
         break
       case 'service':
         await updateService(renameForm.id, { libelle })
+        break
+      case 'equipe':
+        await updateEquipe(renameForm.id, {
+          libelle,
+          responsableId: renameForm.responsableId || null
+        })
         break
       default: {
         const _exhaustive: never = renameLevel.value
@@ -578,6 +610,14 @@ defineExpose({ reload: load })
                             <AppBadge :variant="memberCount(orgId(equipe)) > 0 ? 'success' : 'default'">
                               {{ $t('org.tree.members', { count: memberCount(orgId(equipe)) }) }}
                             </AppBadge>
+                            <AppButton
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              @click="openRenameEquipe(equipe)"
+                            >
+                              {{ $t('org.tree.edit_equipe') }}
+                            </AppButton>
                           </div>
                         </li>
                       </ul>
@@ -686,6 +726,15 @@ defineExpose({ reload: load })
           :label="$t('org.tree.field_libelle')"
           required
         />
+        <div v-if="renameLevel === 'equipe'" class="org-tree__field">
+          <label for="org-rename-responsable">{{ $t('org.tree.field_responsable_optional') }}</label>
+          <select id="org-rename-responsable" v-model="renameForm.responsableId">
+            <option value="">{{ $t('org.tree.responsable_none') }}</option>
+            <option v-for="u in users" :key="pickUserId(u)" :value="pickUserId(u)">
+              {{ pickUserLogin(u) }}
+            </option>
+          </select>
+        </div>
         <p v-if="renameError" class="org-tree__form-error" role="alert">{{ renameError }}</p>
         <div class="org-tree__form-actions">
           <AppButton variant="ghost" type="button" @click="renameOpen = false">
