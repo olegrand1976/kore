@@ -110,3 +110,29 @@ func TestGetTenantLogo_NotFound(t *testing.T) {
 	_, _, err := svc.GetTenantLogo(context.Background(), kernel.NewTenantID(uuid.New()))
 	require.ErrorIs(t, err, domain.ErrLogoNotFound)
 }
+
+func TestUpdateSocieteBranding_AcceptsNewCountries(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	societeID := uuid.New()
+	repo := &brandingRepo{
+		societe: domain.Societe{
+			ID:            societeID,
+			TenantID:      tenant,
+			RaisonSociale: "Avant",
+			Pays:          "FR",
+		},
+	}
+	svc := NewOrganizationService(repo)
+
+	for _, country := range []string{"MA", "TN", "MG", "CA"} {
+		got, err := svc.UpdateSocieteBranding(context.Background(), ports.UpdateSocieteBrandingCommand{
+			TenantID:      tenant,
+			SocieteID:     societeID,
+			RaisonSociale: "Société " + country,
+			Pays:          country,
+			Siret:         "REG-" + country,
+		})
+		require.NoError(t, err)
+		require.Equal(t, country, got.Pays)
+	}
+}

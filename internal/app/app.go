@@ -63,6 +63,7 @@ import (
 	notifsmtp "github.com/kore/kore/internal/modules/notifications/adapters/smtp"
 	notifapp "github.com/kore/kore/internal/modules/notifications/app"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
+	orgbilling "github.com/kore/kore/internal/modules/org/adapters/billing"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
@@ -188,7 +189,6 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	orgService := orgapp.NewOrganizationService(orgRepo)
 	attachmentChecker := NewAttachmentResourceChecker(tmaRepo, supportRepo, maintenanceRepo)
 	attachmentService := orgapp.NewAttachmentService(attachmentRepo, attachmentChecker)
-	platformService := orgapp.NewPlatformService(orgRepo, cfg.GeminiModel)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
 	clientService := orgapp.NewClientService(orgRepo)
 
@@ -222,6 +222,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	leaveTypeConfigRepo := congespostgres.NewLeaveTypeConfigRepoAdapter(congesRepo)
 	societeReader := congesorg.NewSocieteReader(orgRepo)
 	leaveTypeConfigService := congesapp.NewLeaveTypeConfigService(leaveTypeConfigRepo, societeReader)
+	platformService := orgapp.NewPlatformServiceFull(
+		orgRepo,
+		orgRepo,
+		orgapp.NewArgon2Hasher(),
+		orgbilling.TrialAdapter{Ensure: billingRepo.EnsureTrial},
+		leaveTypeConfigService,
+		cfg.GeminiModel,
+	)
 	congesService := congesapp.NewService(
 		congesRepo,
 		congescra.NewFeederAdapter(craService),
@@ -310,6 +318,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
+		orghttp.RegisterPublicSignupRoutes(r, platformService, appCache, keyBuilder, cfg.PublicSignupEnabled)
 		notifhttp.RegisterRoutes(r, notifService, deviceService, tokenIssuer, authorizer, billingService)
 		wfhttp.RegisterRoutes(r, wfService, tokenIssuer, authorizer, billingService)
 		crahttp.RegisterRoutes(r, craService, tokenIssuer, authorizer, billingService, requestSettingsService)

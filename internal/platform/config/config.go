@@ -50,6 +50,7 @@ type Config struct {
 	OIDCGoogleClientSecret string
 	OIDCAzureClientSecret  string
 	PublicBaseURL          string // absolute frontend origin for magic links (proforma, etc.)
+	PublicSignupEnabled    bool
 }
 
 func Load() (Config, error) {
@@ -95,6 +96,7 @@ func Load() (Config, error) {
 		OIDCGoogleClientSecret: envOr("OIDC_GOOGLE_CLIENT_SECRET", ""),
 		OIDCAzureClientSecret:  envOr("OIDC_AZURE_CLIENT_SECRET", ""),
 		PublicBaseURL:          envOr("PUBLIC_BASE_URL", "http://localhost:3001"),
+		PublicSignupEnabled:    envBool("PUBLIC_SIGNUP_ENABLED", true),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

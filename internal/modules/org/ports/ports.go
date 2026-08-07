@@ -475,6 +475,43 @@ type PlatformService interface {
 	GetSettings(ctx context.Context) (PlatformSettings, error)
 	UpdateSettings(ctx context.Context, cmd UpdatePlatformSettingsCommand) (PlatformSettings, error)
 	CurrentGeminiModel(ctx context.Context) string
+	ProvisionTenant(ctx context.Context, cmd ProvisionTenantCommand) (ProvisionTenantResult, error)
+}
+
+// ProvisionTenantCommand creates a new SaaS tenant with one société and an admin user.
+type ProvisionTenantCommand struct {
+	TenantName     string
+	RaisonSociale  string
+	Pays           string
+	AdminLogin     string
+	AdminEmail     string
+	AdminPassword  string
+	Seats          int      // 0 = default
+	Modules        []string // empty = default trial modules
+}
+
+type ProvisionTenantResult struct {
+	TenantID     kernel.TenantID `json:"tenantId"`
+	SocieteID    uuid.UUID       `json:"societeId"`
+	AdminUserID  uuid.UUID       `json:"adminUserId"`
+	AdminLogin   string          `json:"adminLogin"`
+	TenantName   string          `json:"tenantName"`
+	RaisonSociale string         `json:"raisonSociale"`
+	Pays         string          `json:"pays"`
+}
+
+// TrialProvisioner bootstraps a billing trial for a new tenant (outbound port).
+type TrialProvisioner interface {
+	EnsureTrial(ctx context.Context, tenantID kernel.TenantID, seats int, modules []string) error
+}
+
+// TenantProvisionRepository is the subset of org persistence needed to provision a tenant.
+type TenantProvisionRepository interface {
+	FindUserByLoginGlobal(ctx context.Context, login string) (domain.User, error)
+	// ProvisionCore inserts tenant + société + admin user in a single transaction.
+	ProvisionCore(ctx context.Context, tenant domain.Tenant, societe domain.Societe, admin domain.User) error
+	// RollbackProvision removes a failed provision attempt (best-effort cleanup).
+	RollbackProvision(ctx context.Context, tenantID kernel.TenantID) error
 }
 
 type ConfigureIdPCommand struct {

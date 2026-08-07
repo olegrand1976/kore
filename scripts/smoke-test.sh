@@ -28,6 +28,14 @@ curl -sf "http://localhost:${API_PORT}/api/v1/societes" -H "Authorization: Beare
 curl -sf "http://localhost:${API_PORT}/api/v1/public/pricing" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/public/modules" >/dev/null
 
+# Public signup validation (empty body → 400)
+SIGNUP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:${API_PORT}/api/v1/public/signup" \
+  -H 'Content-Type: application/json' -d '{}')
+test "$SIGNUP_CODE" = "400"
+
+# Platform overview (ADM_admin is platform admin by default)
+curl -sf "http://localhost:${API_PORT}/api/v1/platform/overview" -H "Authorization: Bearer $TOKEN" >/dev/null
+
 # Auth refresh
 if [ -n "$REFRESH" ] && [ "$REFRESH" != "null" ]; then
   curl -sf -X POST "http://localhost:${API_PORT}/api/v1/auth/refresh" \

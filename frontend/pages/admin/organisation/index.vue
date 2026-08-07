@@ -69,7 +69,7 @@
           <AppInput id="adresse" v-model="form.adresse" :label="$t('org.address_street')" />
           <div class="org-form__row">
             <AppInput id="adresse-numero" v-model="form.adresseNumero" :label="$t('org.address_number')" />
-            <AppInput id="adresse-boite" v-model="form.adresseBoite" :label="$t('org.address_box')" />
+            <AppInput id="adresse-boite" v-model="form.adresseBoite" :label="addressBoxLabel" />
           </div>
           <div class="org-form__row">
             <AppInput id="code-postal" v-model="form.codePostal" :label="$t('org.postal_code')" />
@@ -80,6 +80,10 @@
             <select id="pays" v-model="form.pays" class="org-form__select">
               <option value="FR">{{ $t('org.country_fr') }}</option>
               <option value="BE">{{ $t('org.country_be') }}</option>
+              <option value="MG">{{ $t('org.country_mg') }}</option>
+              <option value="MA">{{ $t('org.country_ma') }}</option>
+              <option value="TN">{{ $t('org.country_tn') }}</option>
+              <option value="CA">{{ $t('org.country_ca') }}</option>
             </select>
           </div>
           <div>
@@ -126,7 +130,7 @@ const { extractFetchError } = useApiError()
 const { branding, fetchBranding } = useTenantBranding()
 const { settings, fetchSettings, saveSettings } = useRequestSettings()
 
-type CountryCode = 'FR' | 'BE'
+type CountryCode = 'FR' | 'BE' | 'MG' | 'MA' | 'TN' | 'CA'
 
 const route = useRoute()
 const tab = ref<'identite' | 'structure' | 'modules'>(
@@ -165,6 +169,15 @@ const normalizeCountry = (value: unknown): CountryCode => {
       return 'BE'
     case 'FR':
       return 'FR'
+    case 'MG':
+    case 'MD': // legacy typo (Moldova ISO); treat as Madagascar
+      return 'MG'
+    case 'MA':
+      return 'MA'
+    case 'TN':
+      return 'TN'
+    case 'CA':
+      return 'CA'
     default:
       return 'FR'
   }
@@ -176,6 +189,14 @@ const registryLabel = computed(() => {
       return t('org.bce')
     case 'FR':
       return t('org.siret')
+    case 'MG':
+      return t('org.nif_stat')
+    case 'MA':
+      return t('org.ice')
+    case 'TN':
+      return t('org.matricule_fiscal')
+    case 'CA':
+      return t('org.ne')
     default: {
       const _exhaustive: never = form.pays
       return _exhaustive
@@ -189,6 +210,14 @@ const registryPlaceholder = computed(() => {
       return '0123456789'
     case 'FR':
       return '12345678901234'
+    case 'MG':
+      return '1234567890'
+    case 'MA':
+      return '123456789012345'
+    case 'TN':
+      return '1234567/A/A/A/000'
+    case 'CA':
+      return '123456789'
     default: {
       const _exhaustive: never = form.pays
       return _exhaustive
@@ -202,6 +231,32 @@ const registryHint = computed(() => {
       return t('org.registry_hint_be')
     case 'FR':
       return t('org.registry_hint_fr')
+    case 'MG':
+      return t('org.registry_hint_mg')
+    case 'MA':
+      return t('org.registry_hint_ma')
+    case 'TN':
+      return t('org.registry_hint_tn')
+    case 'CA':
+      return t('org.registry_hint_ca')
+    default: {
+      const _exhaustive: never = form.pays
+      return _exhaustive
+    }
+  }
+})
+
+const addressBoxLabel = computed(() => {
+  switch (form.pays) {
+    case 'BE':
+    case 'FR':
+      return t('org.address_box')
+    case 'CA':
+      return t('org.address_box_ca')
+    case 'MG':
+    case 'MA':
+    case 'TN':
+      return t('org.address_box_other')
     default: {
       const _exhaustive: never = form.pays
       return _exhaustive

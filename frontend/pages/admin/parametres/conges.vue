@@ -11,7 +11,7 @@
           </select>
         </div>
         <p v-if="selectedSociete" class="settings-toolbar__pays">
-          {{ $t('settings.conges.country') }} : <strong>{{ selectedSociete.pays }}</strong>
+          {{ $t('settings.conges.country') }} : <strong>{{ countryLabel(selectedSociete.pays) }}</strong>
         </p>
       </div>
       <div class="settings-toolbar__actions">
@@ -83,7 +83,7 @@
       <AppCard padding="lg" class="settings-dialog">
         <h3 class="settings-form__title">{{ $t('settings.conges.reset_title') }}</h3>
         <p class="settings-dialog__text">
-          {{ $t('settings.conges.reset_desc', { country: selectedSociete?.pays ?? '—' }) }}
+          {{ $t('settings.conges.reset_desc', { country: selectedSociete ? countryLabel(selectedSociete.pays) : '—' }) }}
         </p>
         <div class="settings-form__actions">
           <AppButton variant="ghost" size="sm" type="button" @click="showResetConfirm = false">
@@ -138,6 +138,26 @@ const form = reactive({
 
 const selectedSociete = computed(() => societes.value.find((s) => s.id === selectedSocieteId.value))
 
+const countryLabel = (code: string): string => {
+  switch (code.trim().toUpperCase()) {
+    case 'FR':
+      return t('org.country_fr')
+    case 'BE':
+      return t('org.country_be')
+    case 'MD':
+    case 'MG':
+      return t('org.country_mg')
+    case 'MA':
+      return t('org.country_ma')
+    case 'TN':
+      return t('org.country_tn')
+    case 'CA':
+      return t('org.country_ca')
+    default:
+      return code
+  }
+}
+
 const columns = computed(() => [
   { key: 'code', label: t('settings.conges.col_code') },
   { key: 'label', label: t('settings.conges.col_label') },
@@ -166,7 +186,7 @@ const loadSocietes = async () => {
     const id = item.id ?? item.ID ?? ''
     const name = item.raisonSociale ?? item.RaisonSociale ?? '—'
     const pays = item.pays ?? item.Pays ?? 'FR'
-    return { id, label: `${name} (${pays})`, pays }
+    return { id, label: `${name} (${countryLabel(pays)})`, pays }
   })
   if (!selectedSocieteId.value && societes.value.length > 0) {
     selectedSocieteId.value = societes.value[0].id

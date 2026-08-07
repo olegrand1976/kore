@@ -28,21 +28,22 @@ func NewOrganizationService(repo ports.OrganizationRepository) ports.Organizatio
 }
 
 func (s *organizationService) CreateSociete(ctx context.Context, cmd ports.CreateSocieteCommand) (domain.Societe, error) {
+	pays, ok := domain.NormalizeSocietePays(cmd.Pays)
+	if !ok {
+		pays = "FR"
+	}
 	societe := domain.Societe{
 		ID:                 uuid.New(),
 		TenantID:           cmd.TenantID,
 		RaisonSociale:      cmd.RaisonSociale,
 		Devise:             cmd.Devise,
-		Pays:               cmd.Pays,
+		Pays:               pays,
 		WeekStartDay:       domain.DefaultWeekStartDay,
 		DayCapacityMinutes: domain.DefaultDayCapacityMinutes,
 		WeekSubmitPolicy:   domain.DefaultWeekSubmitPolicy,
 	}
 	if societe.Devise == "" {
 		societe.Devise = "EUR"
-	}
-	if societe.Pays == "" {
-		societe.Pays = "FR"
 	}
 	return societe, s.repo.SaveSociete(ctx, societe)
 }
@@ -275,18 +276,12 @@ func (s *organizationService) UpdateSocieteBranding(ctx context.Context, cmd por
 	societe.CodePostal = cmd.CodePostal
 	societe.Ville = cmd.Ville
 	societe.Siret = cmd.Siret
-	switch strings.ToUpper(strings.TrimSpace(cmd.Pays)) {
-	case "BE":
-		societe.Pays = "BE"
-	case "FR":
+	if pays, ok := domain.NormalizeSocietePays(cmd.Pays); ok {
+		societe.Pays = pays
+	} else if strings.TrimSpace(cmd.Pays) == "" && societe.Pays == "" {
 		societe.Pays = "FR"
-	case "":
-		if societe.Pays == "" {
-			societe.Pays = "FR"
-		}
-	default:
-		// Keep existing pays when unknown value is sent.
 	}
+	// Unknown non-empty pays: keep existing value.
 	if err := s.repo.UpdateSociete(ctx, societe); err != nil {
 		return domain.Societe{}, err
 	}

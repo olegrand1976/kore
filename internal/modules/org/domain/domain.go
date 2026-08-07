@@ -34,6 +34,8 @@ var (
 	ErrCannotDemoteSelf          = errors.New("cannot remove own administrator profile")
 	ErrLastAdmin                 = errors.New("cannot remove the last administrator")
 	ErrInvalidGeminiModel        = errors.New("invalid gemini model")
+	ErrInvalidPays               = errors.New("unsupported country code")
+	ErrProvisionInputRequired    = errors.New("tenant name and company name are required")
 	ErrSSONotEnabled             = errors.New("sso not enabled")
 	ErrInvalidIDPToken           = errors.New("invalid idp token")
 	ErrIdentityAlreadyLinked     = errors.New("identity already linked")
@@ -279,6 +281,27 @@ type Societe struct {
 	DefaultTJMCents      int64           `json:"defaultTjmCents"`
 }
 
+// NormalizeSocietePays returns the canonical ISO country code for a société.
+// ok is false when the value is non-empty but not in the supported whitelist.
+func NormalizeSocietePays(pays string) (normalized string, ok bool) {
+	switch strings.ToUpper(strings.TrimSpace(pays)) {
+	case "BE":
+		return "BE", true
+	case "FR", "":
+		return "FR", true
+	case "MG", "MD": // MD was a mistaken non-ISO alias for Madagascar
+		return "MG", true
+	case "MA":
+		return "MA", true
+	case "TN":
+		return "TN", true
+	case "CA":
+		return "CA", true
+	default:
+		return "", false
+	}
+}
+
 // FormatSocieteAddress builds a single-line postal address for display/PDF.
 func FormatSocieteAddress(s Societe) string {
 	street := strings.TrimSpace(s.Adresse)
@@ -286,12 +309,20 @@ func FormatSocieteAddress(s Societe) string {
 	boite := strings.TrimSpace(s.AdresseBoite)
 	cp := strings.TrimSpace(s.CodePostal)
 	ville := strings.TrimSpace(s.Ville)
-	pays := strings.TrimSpace(s.Pays)
+	pays := strings.ToUpper(strings.TrimSpace(s.Pays))
 	switch pays {
 	case "FR":
 		pays = "France"
 	case "BE":
 		pays = "Belgique"
+	case "MG":
+		pays = "Madagascar"
+	case "MA":
+		pays = "Maroc"
+	case "TN":
+		pays = "Tunisie"
+	case "CA":
+		pays = "Canada"
 	}
 
 	line1 := street

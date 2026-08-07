@@ -34,6 +34,41 @@ paths:
       responses:
         "200":
           description: Tokens émis
+  /platform/overview:
+    get:
+      summary: Vue consolidée tenants (platform admin)
+      responses:
+        "200":
+          description: Overview
+        "403":
+          description: Forbidden
+  /platform/settings:
+    get:
+      summary: Paramètres plateforme (LLM)
+      responses:
+        "200":
+          description: Settings
+        "403":
+          description: Forbidden
+    put:
+      summary: Mettre à jour les paramètres plateforme
+      responses:
+        "200":
+          description: Settings
+        "403":
+          description: Forbidden
+  /platform/tenants:
+    post:
+      summary: Provisionner un tenant / organisation (platform admin)
+      responses:
+        "201":
+          description: Tenant créé
+        "400":
+          description: Validation
+        "403":
+          description: Forbidden
+        "409":
+          description: Login déjà pris
   /auth/refresh:
     post:
       summary: Renouvellement token
@@ -1049,6 +1084,18 @@ paths:
       responses:
         "200":
           description: Tarifs
+  /public/signup:
+    post:
+      summary: Inscription organisation (trial sans paiement)
+      responses:
+        "201":
+          description: Tenant créé
+        "400":
+          description: Validation
+        "409":
+          description: Login déjà pris
+        "429":
+          description: Rate limit
   /public/modules:
     get:
       summary: Modules disponibles

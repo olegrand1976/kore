@@ -14,17 +14,37 @@ var geminiModelPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 type platformService struct {
 	repo               ports.PlatformRepository
+	orgRepo            ports.TenantProvisionRepository
+	hasher             ports.PasswordHasher
+	trial              ports.TrialProvisioner
+	leave              ports.LeaveTypeBootstrapper
 	defaultGeminiModel string
 	clock              func() time.Time
 }
 
 func NewPlatformService(repo ports.PlatformRepository, defaultGeminiModel string) ports.PlatformService {
+	return NewPlatformServiceFull(repo, nil, nil, nil, nil, defaultGeminiModel)
+}
+
+// NewPlatformServiceFull wires provisioning dependencies (org repo, hasher, trial, leave).
+func NewPlatformServiceFull(
+	repo ports.PlatformRepository,
+	orgRepo ports.TenantProvisionRepository,
+	hasher ports.PasswordHasher,
+	trial ports.TrialProvisioner,
+	leave ports.LeaveTypeBootstrapper,
+	defaultGeminiModel string,
+) ports.PlatformService {
 	model := strings.TrimSpace(defaultGeminiModel)
 	if model == "" {
 		model = ports.DefaultGeminiModel
 	}
 	return &platformService{
 		repo:               repo,
+		orgRepo:            orgRepo,
+		hasher:             hasher,
+		trial:              trial,
+		leave:              leave,
 		defaultGeminiModel: model,
 		clock:              time.Now,
 	}

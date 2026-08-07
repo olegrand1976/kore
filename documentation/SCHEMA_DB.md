@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (multi-pays org MD/MA/TN/CA + catalogues congés)
+> **Dernière mise à jour doc** : 07/08/2026 (login unique global + provision atomique)
 
 ---
 
@@ -130,9 +130,9 @@ Index :
 | `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `code_postal` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
 | `ville` | TEXT | NOT NULL, DEFAULT `''` — migration `0025` |
-| `siret` | TEXT | NOT NULL, DEFAULT `''` — n° d’immatriculation selon `pays` : SIRET (FR), BCE (BE), NIF/STAT (MD), ICE (MA), matricule fiscal (TN), NE (CA) |
+| `siret` | TEXT | NOT NULL, DEFAULT `''` — n° d’immatriculation selon `pays` : SIRET (FR), BCE (BE), NIF/STAT (MG), ICE (MA), matricule fiscal (TN), NE (CA) |
 | `url_tenant` | TEXT | NOT NULL, DEFAULT `''` |
-| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE` / `MD` / `MA` / `TN` / `CA`) |
+| `pays` | TEXT | NOT NULL, DEFAULT `'FR'` (`FR` / `BE` / `MG` / `MA` / `TN` / `CA`) |
 | `week_start_day` | SMALLINT | NOT NULL, DEFAULT `1`, CHECK 0–6 (0=dimanche … 6=samedi) |
 | `day_capacity_minutes` | INT | NOT NULL, DEFAULT `480`, CHECK 1–1440 |
 | `cra_mail_auto` | BOOLEAN | NOT NULL, DEFAULT `FALSE` (RG-CRA-03) |
@@ -230,7 +230,7 @@ Index :
 | `totp_enabled_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant`
+**Index / contraintes** : `UNIQUE (tenant_id, login)` — `idx_org_users_tenant` ; unicité globale active `UNIQUE (lower(login)) WHERE deleted_at IS NULL` — `idx_org_users_login_global` (migration `0026`)
 
 ### `org.user_profiles`
 
@@ -604,7 +604,7 @@ Demandes et soldes de congés.
 
 ### `conges.leave_type_configs`
 
-Paramétrage des types de congés par société. Les catalogues par défaut au bootstrap / reset suivent `org.societes.pays` : FR (`conges_payes`, `rtt`, `maladie`), BE (`conges_annuels`, `recuperation`, `maladie`), MA/TN/MD (`conges_payes`, `maladie`, `conge_exceptionnel`), CA (`conges_annuels`, `maladie`, `personnel`). L’admin peut ensuite personnaliser librement (CRUD).
+Paramétrage des types de congés par société. Les catalogues par défaut au bootstrap / reset suivent `org.societes.pays` : FR (`conges_payes`, `rtt`, `maladie`), BE (`conges_annuels`, `recuperation`, `maladie`), MA/TN/MG (`conges_payes`, `maladie`, `conge_exceptionnel`), CA (`conges_annuels`, `maladie`, `personnel`). Au reset, les types issus d’un autre catalogue pays sont désactivés (ou supprimés s’ils n’ont jamais été utilisés) ; l’admin peut ensuite personnaliser librement (CRUD).
 
 | Colonne | Type | Contraintes |
 | --- | --- | --- |

@@ -188,18 +188,24 @@ func (r *Repository) EnsureTrial(ctx context.Context, tenantID kernel.TenantID, 
 		Seats:            seats,
 		CurrentPeriodEnd: &end,
 	}
-	if err := r.Save(ctx, sub); err != nil {
-		return err
-	}
-	entitlements := make([]domain.ModuleEntitlement, 0, len(modules))
-	for _, code := range modules {
-		entitlements = append(entitlements, domain.ModuleEntitlement{
-			TenantID:   tenantID,
-			ModuleCode: code,
-			Enabled:    true,
-		})
-	}
-	return r.SaveEntitlements(ctx, tenantID, entitlements)
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO billing.subscriptions (
+				id, tenant_id, stripe_customer_id, stripe_subscription_id, status, seats, current_period_end, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		`, sub.ID, sub.TenantID.UUID(), nullIfEmpty(sub.StripeCustomerID), nullIfEmpty(sub.StripeSubscriptionID), string(sub.Status), sub.Seats, sub.CurrentPeriodEnd); err != nil {
+			return err
+		}
+		for _, code := range modules {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO billing.module_entitlements (id, tenant_id, module_code, enabled)
+				VALUES ($1, $2, $3, TRUE)
+			`, uuid.New(), tenantID.UUID(), string(code)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *Repository) GetSubscriptionStatus(ctx context.Context, tenantID kernel.TenantID) (domain.SubscriptionStatus, error) {

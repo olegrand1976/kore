@@ -49,6 +49,37 @@
         </form>
       </AppCard>
 
+      <AppCard padding="lg" class="platform-page__provision">
+        <h3 class="platform-page__section-title">{{ $t('platform.provision.title') }}</h3>
+        <p class="platform-page__llm-desc">{{ $t('platform.provision.subtitle') }}</p>
+        <form class="platform-page__provision-form" @submit.prevent="submitProvision">
+          <AppInput id="prov-tenant" v-model="provision.tenantName" :label="$t('platform.provision.tenant_name')" />
+          <AppInput id="prov-raison" v-model="provision.raisonSociale" :label="$t('platform.provision.raison_sociale')" required />
+          <div class="platform-page__field">
+            <label for="prov-pays" class="platform-page__label">{{ $t('org.country') }}</label>
+            <select id="prov-pays" v-model="provision.pays" class="platform-page__select" required>
+              <option value="FR">{{ $t('org.country_fr') }}</option>
+              <option value="BE">{{ $t('org.country_be') }}</option>
+              <option value="MG">{{ $t('org.country_mg') }}</option>
+              <option value="MA">{{ $t('org.country_ma') }}</option>
+              <option value="TN">{{ $t('org.country_tn') }}</option>
+              <option value="CA">{{ $t('org.country_ca') }}</option>
+            </select>
+          </div>
+          <AppInput id="prov-login" v-model="provision.adminLogin" :label="$t('platform.provision.admin_login')" required />
+          <AppInput id="prov-email" v-model="provision.adminEmail" type="email" :label="$t('platform.provision.admin_email')" required />
+          <AppInput id="prov-password" v-model="provision.adminPassword" type="password" :label="$t('platform.provision.admin_password')" required />
+          <AppInput id="prov-seats" v-model.number="provision.seats" type="number" :label="$t('platform.provision.seats')" />
+          <p v-if="provisionError" class="platform-page__llm-error" role="alert">{{ provisionError }}</p>
+          <p v-if="provisionSuccess" class="platform-page__llm-success" role="status">{{ provisionSuccess }}</p>
+          <div class="platform-page__llm-actions">
+            <AppButton type="submit" variant="primary" size="sm" :disabled="provisionSaving">
+              {{ provisionSaving ? $t('common.loading') : $t('platform.provision.submit') }}
+            </AppButton>
+          </div>
+        </form>
+      </AppCard>
+
       <AppKpiGrid>
         <AppKpiCard
           icon="corporate_fare"
@@ -134,6 +165,8 @@ definePageMeta({
 })
 
 const { t, locale } = useI18n()
+const { apiFetch } = useApiFetch()
+const { extractFetchError } = useApiError()
 const { overview, pending, error, forbidden, fetchOverview } = usePlatformOverview()
 const {
   settings,
@@ -146,6 +179,19 @@ const {
 
 const geminiModel = ref('')
 const settingsSaved = ref(false)
+
+const provision = reactive({
+  tenantName: '',
+  raisonSociale: '',
+  pays: 'FR',
+  adminLogin: '',
+  adminEmail: '',
+  adminPassword: '',
+  seats: 50
+})
+const provisionSaving = ref(false)
+const provisionError = ref('')
+const provisionSuccess = ref('')
 
 const modelSuggestions = [
   'gemini-3.6-flash',
@@ -172,6 +218,40 @@ async function saveLlmSettings() {
   const ok = await saveSettings(geminiModel.value.trim())
   if (ok) {
     settingsSaved.value = true
+  }
+}
+
+async function submitProvision() {
+  provisionSaving.value = true
+  provisionError.value = ''
+  provisionSuccess.value = ''
+  try {
+    const res = await apiFetch<{ data?: { adminLogin?: string; tenantName?: string } }>('/api/platform/tenants', {
+      method: 'POST',
+      body: {
+        tenantName: provision.tenantName || provision.raisonSociale,
+        raisonSociale: provision.raisonSociale,
+        pays: provision.pays,
+        adminLogin: provision.adminLogin,
+        adminEmail: provision.adminEmail,
+        adminPassword: provision.adminPassword,
+        seats: provision.seats || 50
+      }
+    })
+    provisionSuccess.value = t('platform.provision.success', {
+      login: res.data?.adminLogin ?? provision.adminLogin,
+      tenant: res.data?.tenantName ?? provision.raisonSociale
+    })
+    provision.tenantName = ''
+    provision.raisonSociale = ''
+    provision.adminLogin = ''
+    provision.adminEmail = ''
+    provision.adminPassword = ''
+    await fetchOverview()
+  } catch (err) {
+    provisionError.value = extractFetchError(err)
+  } finally {
+    provisionSaving.value = false
   }
 }
 
@@ -300,6 +380,35 @@ function formatDate(value: unknown): string {
 
 .platform-page__llm {
   margin-bottom: var(--kore-space-md);
+}
+
+.platform-page__provision {
+  margin-bottom: var(--kore-space-md);
+}
+
+.platform-page__provision-form {
+  display: grid;
+  gap: var(--kore-space-md);
+  max-width: var(--kore-form-wide-max);
+}
+
+.platform-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.platform-page__label {
+  font-size: var(--kore-text-sm);
+  color: var(--kore-text-muted);
+}
+
+.platform-page__select {
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-sm);
+  background: var(--kore-surface);
+  color: var(--kore-text);
 }
 
 .platform-page__llm-desc {

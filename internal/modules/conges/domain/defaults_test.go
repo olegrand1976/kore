@@ -27,6 +27,32 @@ func TestDefaultLeaveTypesForCountry_BE(t *testing.T) {
 	assert.Equal(t, "recuperation", types[1].Code)
 }
 
+func TestDefaultLeaveTypesForCountry_MaghrebAndMadagascar(t *testing.T) {
+	for _, country := range []string{"MA", "TN", "MG", "ma"} {
+		types, err := domain.DefaultLeaveTypesForCountry(country)
+		require.NoError(t, err, country)
+		require.Len(t, types, 3, country)
+		assert.Equal(t, "conges_payes", types[0].Code)
+		assert.True(t, types[0].TracksBalance)
+		assert.Equal(t, "maladie", types[1].Code)
+		assert.False(t, types[1].TracksBalance)
+		assert.Equal(t, "conge_exceptionnel", types[2].Code)
+		assert.False(t, types[2].TracksBalance)
+	}
+}
+
+func TestDefaultLeaveTypesForCountry_CA(t *testing.T) {
+	types, err := domain.DefaultLeaveTypesForCountry("CA")
+	require.NoError(t, err)
+	require.Len(t, types, 3)
+	assert.Equal(t, "conges_annuels", types[0].Code)
+	assert.True(t, types[0].TracksBalance)
+	assert.Equal(t, "maladie", types[1].Code)
+	assert.False(t, types[1].TracksBalance)
+	assert.Equal(t, "personnel", types[2].Code)
+	assert.True(t, types[2].TracksBalance)
+}
+
 func TestDefaultLeaveTypesForCountry_Unsupported(t *testing.T) {
 	_, err := domain.DefaultLeaveTypesForCountry("DE")
 	assert.ErrorIs(t, err, domain.ErrUnsupportedCountry)
