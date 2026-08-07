@@ -547,9 +547,17 @@ paths:
     post:
       summary: Créer client
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientWrite"
       responses:
         "201":
           description: Créé
+        "422":
+          description: Validation (raison sociale vide ou pays non supporté)
   /clients/{id}:
     get:
       summary: Détail client
@@ -559,6 +567,27 @@ paths:
       responses:
         "200":
           description: Détail
+    put:
+      summary: Mettre à jour client (remplacement complet des champs facturation)
+      description: >
+        Remplacement complet. Les champs optionnels absents ou vides effacent
+        les valeurs stockées. `raisonSociale` est obligatoire.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientWrite"
+      responses:
+        "200":
+          description: Mis à jour
+        "404":
+          description: Client introuvable
+        "422":
+          description: Validation (raison sociale vide ou pays non supporté)
   /notification-rules:
     get:
       summary: Lister règles notifications
@@ -2099,6 +2128,24 @@ components:
           enum: [created, skipped, unavailable]
         reason: { type: string }
         invoiceId: { type: string, format: uuid }
+    ClientWrite:
+      type: object
+      required: [raisonSociale]
+      properties:
+        raisonSociale: { type: string, minLength: 1 }
+        tva: { type: string }
+        pays:
+          type: string
+          description: FR|BE|MG|MA|TN|CA ou vide
+          enum: ["", FR, BE, MG, MA, TN, CA]
+        adresse: { type: string }
+        adresseNumero: { type: string }
+        adresseBoite: { type: string }
+        codePostal: { type: string }
+        ville: { type: string }
+        siret:
+          type: string
+          description: N° registre multi-pays (SIRET/BCE/ICE/…)
   securitySchemes:
     bearerAuth:
       type: http

@@ -744,7 +744,14 @@
     "col_name": "Raison sociale",
     "col_tva": "TVA",
     "field_name": "Raison sociale",
-    "field_tva": "Numéro de TVA"
+    "field_tva": "Numéro de TVA",
+    "billing_hint": "Informations de facturation (optionnelles) — labels d’immatriculation selon le pays.",
+    "section_billing": "Facturation",
+    "edit_billing": "Modifier",
+    "update_error": "Impossible de mettre à jour le client",
+    "country_unset": "Non renseigné",
+    "registry": "N° d’immatriculation",
+    "registry_hint": "Sélectionnez un pays pour afficher le format attendu."
   },
   "conges": {
     "title": "Congés",

@@ -1157,10 +1157,38 @@ func (r *Repository) ListUsers(ctx context.Context, tenant kernel.TenantID) ([]d
 
 func (r *Repository) SaveClient(ctx context.Context, c domain.Client) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO org.clients (id, tenant_id, raison_sociale, tva, archived)
-		VALUES ($1, $2, $3, $4, $5)
-	`, c.ID, c.TenantID.UUID(), c.RaisonSociale, c.TVA, c.Archived)
+		INSERT INTO org.clients (
+			id, tenant_id, raison_sociale, tva, archived,
+			pays, adresse, adresse_numero, adresse_boite, code_postal, ville, siret
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`, c.ID, c.TenantID.UUID(), c.RaisonSociale, c.TVA, c.Archived,
+		c.Pays, c.Adresse, c.AdresseNumero, c.AdresseBoite, c.CodePostal, c.Ville, c.Siret)
 	return err
+}
+
+func (r *Repository) UpdateClient(ctx context.Context, c domain.Client) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE org.clients
+		SET raison_sociale = $3,
+		    tva = $4,
+		    pays = $5,
+		    adresse = $6,
+		    adresse_numero = $7,
+		    adresse_boite = $8,
+		    code_postal = $9,
+		    ville = $10,
+		    siret = $11
+		WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
+	`, c.TenantID.UUID(), c.ID, c.RaisonSociale, c.TVA,
+		c.Pays, c.Adresse, c.AdresseNumero, c.AdresseBoite, c.CodePostal, c.Ville, c.Siret)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrClientNotFound
+	}
+	return nil
 }
 
 func (r *Repository) GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error) {
@@ -1168,12 +1196,18 @@ func (r *Repository) GetClient(ctx context.Context, tenant kernel.TenantID, id u
 	var tenantID uuid.UUID
 	var contacts []byte
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at
+		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at,
+		       COALESCE(pays, ''), COALESCE(adresse, ''), COALESCE(adresse_numero, ''),
+		       COALESCE(adresse_boite, ''), COALESCE(code_postal, ''), COALESCE(ville, ''),
+		       COALESCE(siret, '')
 		FROM org.clients WHERE tenant_id = $1 AND id = $2 AND archived = FALSE
-	`, tenant.UUID(), id).Scan(&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt)
+	`, tenant.UUID(), id).Scan(
+		&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt,
+		&c.Pays, &c.Adresse, &c.AdresseNumero, &c.AdresseBoite, &c.CodePostal, &c.Ville, &c.Siret,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Client{}, fmt.Errorf("client not found: %w", err)
+			return domain.Client{}, domain.ErrClientNotFound
 		}
 		return domain.Client{}, err
 	}
@@ -1186,7 +1220,10 @@ func (r *Repository) GetClient(ctx context.Context, tenant kernel.TenantID, id u
 
 func (r *Repository) ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at
+		SELECT id, tenant_id, raison_sociale, tva, contacts, archived, created_at,
+		       COALESCE(pays, ''), COALESCE(adresse, ''), COALESCE(adresse_numero, ''),
+		       COALESCE(adresse_boite, ''), COALESCE(code_postal, ''), COALESCE(ville, ''),
+		       COALESCE(siret, '')
 		FROM org.clients WHERE tenant_id = $1 AND archived = FALSE
 	`, tenant.UUID())
 	if err != nil {
@@ -1198,7 +1235,10 @@ func (r *Repository) ListClients(ctx context.Context, tenant kernel.TenantID) ([
 		var c domain.Client
 		var tenantID uuid.UUID
 		var contacts []byte
-		if err := rows.Scan(&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&c.ID, &tenantID, &c.RaisonSociale, &c.TVA, &contacts, &c.Archived, &c.CreatedAt,
+			&c.Pays, &c.Adresse, &c.AdresseNumero, &c.AdresseBoite, &c.CodePostal, &c.Ville, &c.Siret,
+		); err != nil {
 			return nil, err
 		}
 		c.TenantID = kernel.NewTenantID(tenantID)

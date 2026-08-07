@@ -106,11 +106,12 @@ func (r refreshUserRepo) ListUsers(context.Context, kernel.TenantID) ([]domain.U
 	return nil, nil
 }
 func (r refreshUserRepo) SaveClient(context.Context, domain.Client) error { return nil }
+func (r refreshUserRepo) UpdateClient(context.Context, domain.Client) error { return nil }
 func (r refreshUserRepo) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
 }
 func (r refreshUserRepo) GetClient(context.Context, kernel.TenantID, uuid.UUID) (domain.Client, error) {
-	return domain.Client{}, domain.ErrUserNotFound
+	return domain.Client{}, domain.ErrClientNotFound
 }
 func (r refreshUserRepo) GetPermissions(context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error) {
 	return nil, nil

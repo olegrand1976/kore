@@ -913,14 +913,72 @@ func NewClientService(repo ports.OrganizationRepository) ports.ClientService {
 	return &clientService{repo: repo}
 }
 
+func normalizeOptionalClientPays(pays string) (string, error) {
+	trimmed := strings.TrimSpace(pays)
+	if trimmed == "" {
+		return "", nil
+	}
+	normalized, ok := domain.NormalizeSocietePays(trimmed)
+	if !ok {
+		return "", domain.ErrInvalidPays
+	}
+	return normalized, nil
+}
+
+func applyClientBillingFields(client *domain.Client, raisonSociale, tva, pays, adresse, adresseNumero, adresseBoite, codePostal, ville, siret string) error {
+	name := strings.TrimSpace(raisonSociale)
+	if name == "" {
+		return domain.ErrInvalidClientName
+	}
+	normalizedPays, err := normalizeOptionalClientPays(pays)
+	if err != nil {
+		return err
+	}
+	client.RaisonSociale = name
+	client.TVA = strings.TrimSpace(tva)
+	client.Pays = normalizedPays
+	client.Adresse = strings.TrimSpace(adresse)
+	client.AdresseNumero = strings.TrimSpace(adresseNumero)
+	client.AdresseBoite = strings.TrimSpace(adresseBoite)
+	client.CodePostal = strings.TrimSpace(codePostal)
+	client.Ville = strings.TrimSpace(ville)
+	client.Siret = strings.TrimSpace(siret)
+	return nil
+}
+
 func (s *clientService) CreateClient(ctx context.Context, cmd ports.CreateClientCommand) (domain.Client, error) {
 	client := domain.Client{
-		ID:            uuid.New(),
-		TenantID:      cmd.TenantID,
-		RaisonSociale: cmd.RaisonSociale,
-		TVA:           cmd.TVA,
+		ID:       uuid.New(),
+		TenantID: cmd.TenantID,
+	}
+	if err := applyClientBillingFields(
+		&client,
+		cmd.RaisonSociale, cmd.TVA, cmd.Pays,
+		cmd.Adresse, cmd.AdresseNumero, cmd.AdresseBoite,
+		cmd.CodePostal, cmd.Ville, cmd.Siret,
+	); err != nil {
+		return domain.Client{}, err
 	}
 	return client, s.repo.SaveClient(ctx, client)
+}
+
+func (s *clientService) UpdateClient(ctx context.Context, cmd ports.UpdateClientCommand) (domain.Client, error) {
+	client, err := s.repo.GetClient(ctx, cmd.TenantID, cmd.ClientID)
+	if err != nil {
+		return domain.Client{}, err
+	}
+	if err := applyClientBillingFields(
+		&client,
+		cmd.RaisonSociale, cmd.TVA, cmd.Pays,
+		cmd.Adresse, cmd.AdresseNumero, cmd.AdresseBoite,
+		cmd.CodePostal, cmd.Ville, cmd.Siret,
+	); err != nil {
+		return domain.Client{}, err
+	}
+	if err := s.repo.UpdateClient(ctx, client); err != nil {
+		return domain.Client{}, err
+	}
+	return client, nil
 }
 
 func (s *clientService) ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error) {

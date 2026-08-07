@@ -28,6 +28,8 @@ var (
 	ErrInvalidServiceLibelle     = errors.New("service libelle required")
 	ErrUserNotFound              = errors.New("user not found")
 	ErrSocieteNotFound           = errors.New("societe not found")
+	ErrClientNotFound            = errors.New("client not found")
+	ErrInvalidClientName         = errors.New("client legal name is required")
 	ErrLogoNotFound              = errors.New("logo not found")
 	ErrApplicationNotFound       = errors.New("application not found")
 	ErrApplicationWithoutShare   = errors.New("application requires at least one site, service or equipe share")
@@ -310,12 +312,16 @@ func NormalizeSocietePays(pays string) (normalized string, ok bool) {
 
 // FormatSocieteAddress builds a single-line postal address for display/PDF.
 func FormatSocieteAddress(s Societe) string {
-	street := strings.TrimSpace(s.Adresse)
-	numero := strings.TrimSpace(s.AdresseNumero)
-	boite := strings.TrimSpace(s.AdresseBoite)
-	cp := strings.TrimSpace(s.CodePostal)
-	ville := strings.TrimSpace(s.Ville)
-	pays := strings.ToUpper(strings.TrimSpace(s.Pays))
+	return formatPostalAddress(s.Adresse, s.AdresseNumero, s.AdresseBoite, s.CodePostal, s.Ville, s.Pays)
+}
+
+func formatPostalAddress(street, numero, boite, cp, ville, paysRaw string) string {
+	street = strings.TrimSpace(street)
+	numero = strings.TrimSpace(numero)
+	boite = strings.TrimSpace(boite)
+	cp = strings.TrimSpace(cp)
+	ville = strings.TrimSpace(ville)
+	pays := strings.ToUpper(strings.TrimSpace(paysRaw))
 	switch pays {
 	case "FR":
 		pays = "France"
@@ -494,9 +500,21 @@ type Client struct {
 	TenantID      kernel.TenantID `json:"tenantId"`
 	RaisonSociale string          `json:"raisonSociale"`
 	TVA           string          `json:"tva"`
+	Pays          string          `json:"pays,omitempty"`
+	Adresse       string          `json:"adresse,omitempty"`
+	AdresseNumero string          `json:"adresseNumero,omitempty"`
+	AdresseBoite  string          `json:"adresseBoite,omitempty"`
+	CodePostal    string          `json:"codePostal,omitempty"`
+	Ville         string          `json:"ville,omitempty"`
+	Siret         string          `json:"siret,omitempty"`
 	Contacts      []ClientContact `json:"contacts"`
 	Archived      bool            `json:"archived"`
 	CreatedAt     time.Time       `json:"createdAt"`
+}
+
+// FormatClientAddress builds a single-line postal address for display/PDF.
+func FormatClientAddress(c Client) string {
+	return formatPostalAddress(c.Adresse, c.AdresseNumero, c.AdresseBoite, c.CodePostal, c.Ville, c.Pays)
 }
 
 type Tenant struct {

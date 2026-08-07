@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (index upsert `reporting.dashboard_snapshots`)
+> **Dernière mise à jour doc** : 07/08/2026 (adresse facturation `org.clients`)
 
 ---
 
@@ -344,6 +344,13 @@ Memberships N–N équipes.
 | `tenant_id` | UUID | NOT NULL → `org.tenants(id)` |
 | `raison_sociale` | TEXT | NOT NULL |
 | `tva` | TEXT | |
+| `pays` | TEXT | NOT NULL, DEFAULT `''` (FR/BE/MG/MA/TN/CA si renseigné) |
+| `adresse` | TEXT | NOT NULL, DEFAULT `''` |
+| `adresse_numero` | TEXT | NOT NULL, DEFAULT `''` |
+| `adresse_boite` | TEXT | NOT NULL, DEFAULT `''` |
+| `code_postal` | TEXT | NOT NULL, DEFAULT `''` |
+| `ville` | TEXT | NOT NULL, DEFAULT `''` |
+| `siret` | TEXT | NOT NULL, DEFAULT `''` (n° registre multi-pays : SIRET/BCE/ICE/…) |
 | `contacts` | JSONB | NOT NULL, DEFAULT `'[]'` |
 | `archived` | BOOLEAN | NOT NULL, DEFAULT FALSE |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |

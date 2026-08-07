@@ -467,13 +467,33 @@ func (a anyModuleAuthorizer) Can(_ context.Context, module authx.Module, action 
 
 type stubClientService struct {
 	ports.ClientService
-	listed bool
-	items  []domain.Client
+	listed    bool
+	created   *ports.CreateClientCommand
+	updated   *ports.UpdateClientCommand
+	items     []domain.Client
+	createErr error
+	updateErr error
 }
 
 func (s *stubClientService) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	s.listed = true
 	return s.items, nil
+}
+
+func (s *stubClientService) CreateClient(_ context.Context, cmd ports.CreateClientCommand) (domain.Client, error) {
+	s.created = &cmd
+	if s.createErr != nil {
+		return domain.Client{}, s.createErr
+	}
+	return domain.Client{ID: uuid.New(), RaisonSociale: cmd.RaisonSociale, Pays: cmd.Pays}, nil
+}
+
+func (s *stubClientService) UpdateClient(_ context.Context, cmd ports.UpdateClientCommand) (domain.Client, error) {
+	s.updated = &cmd
+	if s.updateErr != nil {
+		return domain.Client{}, s.updateErr
+	}
+	return domain.Client{ID: cmd.ClientID, RaisonSociale: cmd.RaisonSociale, Pays: cmd.Pays}, nil
 }
 
 func TestListClients_forbiddenWithoutOrgCraOrSsiiRead(t *testing.T) {
@@ -503,5 +523,80 @@ func TestListClients_allowedWithCraRead(t *testing.T) {
 	}
 	if !svc.listed {
 		t.Fatal("expected ListClients to be called")
+	}
+}
+
+func TestCreateClient_rejectsInvalidPays(t *testing.T) {
+	svc := &stubClientService{createErr: domain.ErrInvalidPays}
+	handler := createClient(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodPost, "/clients", map[string]any{
+		"raisonSociale": "Acme",
+		"pays":          "DE",
+	}))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+}
+
+func TestCreateClient_rejectsEmptyName(t *testing.T) {
+	svc := &stubClientService{createErr: domain.ErrInvalidClientName}
+	handler := createClient(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	rec := httptest.NewRecorder()
+	handler(rec, requestWithIdentity(t, http.MethodPost, "/clients", map[string]any{
+		"raisonSociale": "  ",
+	}))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+}
+
+func TestUpdateClient_ok(t *testing.T) {
+	clientID := uuid.New()
+	svc := &stubClientService{}
+	handler := updateClient(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/clients/"+clientID.String(), map[string]any{
+		"raisonSociale": "Acme BE",
+		"pays":          "BE",
+		"ville":         "Bruxelles",
+	})
+	req = req.WithContext(req.Context())
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", clientID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if svc.updated == nil || svc.updated.RaisonSociale != "Acme BE" || svc.updated.Pays != "BE" {
+		t.Fatalf("updated cmd = %+v", svc.updated)
+	}
+}
+
+func TestUpdateClient_notFound(t *testing.T) {
+	clientID := uuid.New()
+	svc := &stubClientService{updateErr: domain.ErrClientNotFound}
+	handler := updateClient(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	rec := httptest.NewRecorder()
+	req := requestWithIdentity(t, http.MethodPut, "/clients/"+clientID.String(), map[string]any{
+		"raisonSociale": "Acme",
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", clientID.String())
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }

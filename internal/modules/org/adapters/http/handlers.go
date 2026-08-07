@@ -83,6 +83,7 @@ func RegisterRoutes(
 		pr.Get("/clients", listClients(clients, authorizer))
 		pr.Get("/clients/{id}", getClient(clients, authorizer))
 		pr.Post("/clients", createClient(clients, authorizer))
+		pr.Put("/clients/{id}", updateClient(clients, authorizer))
 
 		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
 		registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
@@ -851,7 +852,7 @@ func getClient(clients ports.ClientService, authorizer authx.Authorizer) http.Ha
 		identity, _ := authx.FromContext(r.Context())
 		item, err := clients.GetClient(r.Context(), identity.TenantID, clientID)
 		if err != nil {
-			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "client not found")
+			writeClientError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, item)
@@ -864,25 +865,100 @@ func createClient(clients ports.ClientService, authorizer authx.Authorizer) http
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
-		var req struct {
-			RaisonSociale string `json:"raisonSociale"`
-			TVA           string `json:"tva"`
-		}
+		var req clientWriteRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		c, err := clients.CreateClient(r.Context(), ports.CreateClientCommand{
-			TenantID:      identity.TenantID,
-			RaisonSociale: req.RaisonSociale,
-			TVA:           req.TVA,
-		})
+		c, err := clients.CreateClient(r.Context(), req.toCreateCommand(identity.TenantID))
 		if err != nil {
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeClientError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, c)
+	}
+}
+
+func updateClient(clients ports.ClientService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		clientID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid client id")
+			return
+		}
+		var req clientWriteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		c, err := clients.UpdateClient(r.Context(), req.toUpdateCommand(identity.TenantID, clientID))
+		if err != nil {
+			writeClientError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, c)
+	}
+}
+
+// clientWriteRequest is the full-replace payload for create/update.
+// Omitted optional JSON fields decode as empty strings and clear stored values on update.
+type clientWriteRequest struct {
+	RaisonSociale string `json:"raisonSociale"`
+	TVA           string `json:"tva"`
+	Pays          string `json:"pays"`
+	Adresse       string `json:"adresse"`
+	AdresseNumero string `json:"adresseNumero"`
+	AdresseBoite  string `json:"adresseBoite"`
+	CodePostal    string `json:"codePostal"`
+	Ville         string `json:"ville"`
+	Siret         string `json:"siret"`
+}
+
+func (req clientWriteRequest) toCreateCommand(tenant kernel.TenantID) ports.CreateClientCommand {
+	return ports.CreateClientCommand{
+		TenantID:      tenant,
+		RaisonSociale: req.RaisonSociale,
+		TVA:           req.TVA,
+		Pays:          req.Pays,
+		Adresse:       req.Adresse,
+		AdresseNumero: req.AdresseNumero,
+		AdresseBoite:  req.AdresseBoite,
+		CodePostal:    req.CodePostal,
+		Ville:         req.Ville,
+		Siret:         req.Siret,
+	}
+}
+
+func (req clientWriteRequest) toUpdateCommand(tenant kernel.TenantID, clientID uuid.UUID) ports.UpdateClientCommand {
+	return ports.UpdateClientCommand{
+		TenantID:      tenant,
+		ClientID:      clientID,
+		RaisonSociale: req.RaisonSociale,
+		TVA:           req.TVA,
+		Pays:          req.Pays,
+		Adresse:       req.Adresse,
+		AdresseNumero: req.AdresseNumero,
+		AdresseBoite:  req.AdresseBoite,
+		CodePostal:    req.CodePostal,
+		Ville:         req.Ville,
+		Siret:         req.Siret,
+	}
+}
+
+func writeClientError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrInvalidClientName), errors.Is(err, domain.ErrInvalidPays):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrClientNotFound):
+		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "client not found")
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, "internal error")
 	}
 }
 

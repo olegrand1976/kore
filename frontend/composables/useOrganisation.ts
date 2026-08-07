@@ -136,12 +136,47 @@ export function useOrganisation() {
     apiFetch('/api/org/equipes', { method: 'POST', body })
 
   const listClients = async () =>
-    unwrap<{ id?: string; ID?: string; raisonSociale?: string; RaisonSociale?: string; tva?: string }>(
-      await apiFetch('/api/org/clients')
-    )
+    unwrap<{
+      id?: string
+      ID?: string
+      raisonSociale?: string
+      RaisonSociale?: string
+      tva?: string
+      pays?: string
+      adresse?: string
+      adresseNumero?: string
+      adresseBoite?: string
+      codePostal?: string
+      ville?: string
+      siret?: string
+    }>(await apiFetch('/api/org/clients'))
 
-  const createClient = (body: { raisonSociale: string; tva?: string }) =>
-    apiFetch('/api/org/clients', { method: 'POST', body })
+  const createClient = (body: {
+    raisonSociale: string
+    tva?: string
+    pays?: string
+    adresse?: string
+    adresseNumero?: string
+    adresseBoite?: string
+    codePostal?: string
+    ville?: string
+    siret?: string
+  }) => apiFetch('/api/org/clients', { method: 'POST', body })
+
+  const updateClient = (
+    id: string,
+    body: {
+      raisonSociale: string
+      tva: string
+      pays: string
+      adresse: string
+      adresseNumero: string
+      adresseBoite: string
+      codePostal: string
+      ville: string
+      siret: string
+    }
+  ) => apiFetch(`/api/org/clients/${id}`, { method: 'PUT', body })
 
   return {
     listSocietes,
@@ -160,6 +195,7 @@ export function useOrganisation() {
     createEquipe,
     listClients,
     createClient,
+    updateClient,
     orgId,
     orgLabel,
     buildEquipeOptions

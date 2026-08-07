@@ -118,11 +118,12 @@ func (s *oidcRepoStub) ListUsers(context.Context, kernel.TenantID) ([]domain.Use
 	return nil, nil
 }
 func (s *oidcRepoStub) SaveClient(context.Context, domain.Client) error { return nil }
+func (s *oidcRepoStub) UpdateClient(context.Context, domain.Client) error { return nil }
 func (s *oidcRepoStub) ListClients(context.Context, kernel.TenantID) ([]domain.Client, error) {
 	return nil, nil
 }
 func (s *oidcRepoStub) GetClient(context.Context, kernel.TenantID, uuid.UUID) (domain.Client, error) {
-	return domain.Client{}, domain.ErrUserNotFound
+	return domain.Client{}, domain.ErrClientNotFound
 }
 func (s *oidcRepoStub) GetPermissions(context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error) {
 	return nil, nil

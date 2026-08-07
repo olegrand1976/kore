@@ -744,7 +744,14 @@
     "col_name": "Legal name",
     "col_tva": "VAT",
     "field_name": "Legal name",
-    "field_tva": "VAT number"
+    "field_tva": "VAT number",
+    "billing_hint": "Billing details (optional) — registry labels depend on the country.",
+    "section_billing": "Billing",
+    "edit_billing": "Edit",
+    "update_error": "Could not update the client",
+    "country_unset": "Not set",
+    "registry": "Company registry number",
+    "registry_hint": "Select a country to see the expected format."
   },
   "conges": {
     "title": "Leave",

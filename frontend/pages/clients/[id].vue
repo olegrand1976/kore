@@ -2,6 +2,16 @@
   <div>
     <AppPageHeader :title="title" :subtitle="$t('fiche.client_title')">
       <template #actions>
+        <AppButton
+          v-if="canEdit && client && !editing"
+          variant="secondary"
+          size="sm"
+          type="button"
+          class="client-edit-btn"
+          @click="startEdit"
+        >
+          <AppIcon name="edit" /> {{ $t('clients.edit_billing') }}
+        </AppButton>
         <AppButton variant="ghost" size="sm" to="/clients">
           <AppIcon name="arrow_back" /> {{ $t('clients.back_list') }}
         </AppButton>
@@ -45,8 +55,24 @@
       </AppKpiGrid>
 
       <AppCard padding="lg" class="fiche-block">
-        <h3 class="fiche-section-title">{{ $t('fiche.section_company') }}</h3>
-        <dl class="fiche-dl fiche-dl--grid">
+        <div class="fiche-section-head">
+          <h3 class="fiche-section-title">{{ $t('clients.section_billing') }}</h3>
+        </div>
+
+        <form v-if="editing" class="client-edit-form" @submit.prevent="submitEdit">
+          <ClientBillingForm v-model="editForm" id-prefix="client-edit" />
+          <p v-if="editError" class="flash flash--error" role="alert">{{ editError }}</p>
+          <div class="client-edit-form__actions">
+            <AppButton variant="ghost" type="button" :disabled="saving" @click="cancelEdit">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="primary" type="submit" :loading="saving">
+              {{ $t('common.save') }}
+            </AppButton>
+          </div>
+        </form>
+
+        <dl v-else class="fiche-dl fiche-dl--grid">
           <div>
             <dt>{{ $t('fiche.col_company') }}</dt>
             <dd>{{ title }}</dd>
@@ -54,6 +80,14 @@
           <div>
             <dt>{{ $t('fiche.col_vat') }}</dt>
             <dd>{{ client.tva || $t('fiche.none') }}</dd>
+          </div>
+          <div>
+            <dt>{{ registryLabel }}</dt>
+            <dd>{{ client.siret || $t('fiche.none') }}</dd>
+          </div>
+          <div class="fiche-dl__wide">
+            <dt>{{ $t('org.address') }}</dt>
+            <dd>{{ formattedAddress }}</dd>
           </div>
           <div>
             <dt>{{ $t('fiche.col_created') }}</dt>
@@ -145,6 +179,13 @@
 
 <script setup lang="ts">
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
+import {
+  clientBillingPayload,
+  emptyClientBillingFields,
+  normalizeBillingCountry,
+  useBillingCountryLabels,
+  type ClientBillingFields
+} from '~/composables/useBillingCountry'
 
 definePageMeta({ layout: 'default' })
 
@@ -160,6 +201,13 @@ type ClientDetail = {
   id?: string
   raisonSociale?: string
   tva?: string
+  pays?: string
+  adresse?: string
+  adresseNumero?: string
+  adresseBoite?: string
+  codePostal?: string
+  ville?: string
+  siret?: string
   contacts?: ClientContact[]
   createdAt?: string
 }
@@ -175,12 +223,16 @@ type MissionSummary = {
 }
 
 const route = useRoute()
-const { t, locale } = useI18n()
+const { t } = useI18n()
+const { can } = usePermissions()
+const { updateClient } = useOrganisation()
+const { extractFetchError } = useApiError()
 const { formatDate, formatMoney, missionStatusLabel, missionStatusVariant } = useFicheFormat()
 
+const canEdit = computed(() => can('org', 'E'))
 const id = computed(() => String(route.params.id ?? ''))
 
-const { data, pending, error } = await useFetch<ClientDetail>(() => `/api/org/clients/${id.value}`, {
+const { data, pending, error, refresh } = await useFetch<ClientDetail>(() => `/api/org/clients/${id.value}`, {
   watch: [id]
 })
 
@@ -195,6 +247,95 @@ const client = computed(() => {
 })
 
 const title = computed(() => client.value?.raisonSociale ?? '—')
+
+const countryLabel = computed(() => {
+  const code = normalizeBillingCountry(client.value?.pays)
+  switch (code) {
+    case 'FR':
+      return t('org.country_fr')
+    case 'BE':
+      return t('org.country_be')
+    case 'MG':
+      return t('org.country_mg')
+    case 'MA':
+      return t('org.country_ma')
+    case 'TN':
+      return t('org.country_tn')
+    case 'CA':
+      return t('org.country_ca')
+    case '':
+      return t('fiche.none')
+    default: {
+      const _exhaustive: never = code
+      return _exhaustive
+    }
+  }
+})
+
+const formattedAddress = computed(() => {
+  const c = client.value
+  if (!c) return t('fiche.none')
+  const street = [c.adresse, c.adresseNumero].filter(Boolean).join(' ')
+  const withBox = c.adresseBoite ? (street ? `${street} / ${c.adresseBoite}` : c.adresseBoite) : street
+  const city = [c.codePostal, c.ville].filter(Boolean).join(' ')
+  const country = countryLabel.value === t('fiche.none') ? '' : countryLabel.value
+  const parts = [withBox, city, country].filter(Boolean)
+  return parts.length ? parts.join(', ') : t('fiche.none')
+})
+
+const paysRef = computed(() => normalizeBillingCountry(client.value?.pays))
+const { registryLabel } = useBillingCountryLabels(paysRef)
+
+const editing = ref(false)
+const saving = ref(false)
+const editError = ref('')
+const editForm = reactive<ClientBillingFields>(emptyClientBillingFields())
+
+const fillEditForm = () => {
+  const c = client.value
+  Object.assign(editForm, emptyClientBillingFields(), {
+    raisonSociale: c?.raisonSociale ?? '',
+    tva: c?.tva ?? '',
+    pays: normalizeBillingCountry(c?.pays),
+    adresse: c?.adresse ?? '',
+    adresseNumero: c?.adresseNumero ?? '',
+    adresseBoite: c?.adresseBoite ?? '',
+    codePostal: c?.codePostal ?? '',
+    ville: c?.ville ?? '',
+    siret: c?.siret ?? ''
+  })
+}
+
+const startEdit = () => {
+  fillEditForm()
+  editError.value = ''
+  editing.value = true
+}
+
+const cancelEdit = () => {
+  editing.value = false
+  editError.value = ''
+}
+
+const submitEdit = async () => {
+  saving.value = true
+  editError.value = ''
+  const payload = clientBillingPayload(editForm)
+  if (!payload.raisonSociale) {
+    editError.value = t('clients.update_error')
+    saving.value = false
+    return
+  }
+  try {
+    await updateClient(id.value, payload)
+    editing.value = false
+    await refresh()
+  } catch (err) {
+    editError.value = extractFetchError(err, t('clients.update_error'))
+  } finally {
+    saving.value = false
+  }
+}
 
 const contacts = computed(() => client.value?.contacts ?? [])
 
@@ -314,10 +455,20 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
 <style scoped>
 .muted { color: var(--kore-text-muted); }
 
+.flash--error { color: var(--kore-error); }
+
 .fiche-block { margin-bottom: var(--kore-space-lg); }
 
+.fiche-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kore-space-md);
+  margin-bottom: var(--kore-space-md);
+}
+
 .fiche-section-title {
-  margin: 0 0 var(--kore-space-md);
+  margin: 0;
   font-size: var(--kore-text-h3);
 }
 
@@ -334,6 +485,10 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
 @media (min-width: 768px) {
   .fiche-dl--grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fiche-dl__wide {
+    grid-column: 1 / -1;
   }
 }
 
@@ -353,6 +508,19 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
   margin: 0;
   color: var(--kore-text);
   font-weight: 500;
+}
+
+.client-edit-form {
+  display: grid;
+  gap: var(--kore-space-md);
+  max-width: var(--kore-form-wide-max);
+}
+
+.client-edit-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
 }
 
 .fiche-table-wrap { overflow: hidden; }
@@ -378,4 +546,18 @@ const missionDisplayRows = computed(() => missionSortedItems.value)
 .fiche-link:hover { text-decoration: underline; }
 
 .fiche-nowrap { white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .client-edit-btn {
+    width: 100%;
+  }
+
+  .client-edit-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .client-edit-form__actions :deep(.app-button) {
+    width: 100%;
+  }
+}
 </style>

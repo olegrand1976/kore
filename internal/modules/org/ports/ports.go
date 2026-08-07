@@ -139,6 +139,27 @@ type CreateClientCommand struct {
 	TenantID      kernel.TenantID
 	RaisonSociale string
 	TVA           string
+	Pays          string
+	Adresse       string
+	AdresseNumero string
+	AdresseBoite  string
+	CodePostal    string
+	Ville         string
+	Siret         string
+}
+
+type UpdateClientCommand struct {
+	TenantID      kernel.TenantID
+	ClientID      uuid.UUID
+	RaisonSociale string
+	TVA           string
+	Pays          string
+	Adresse       string
+	AdresseNumero string
+	AdresseBoite  string
+	CodePostal    string
+	Ville         string
+	Siret         string
 }
 
 type AuthResult struct {
@@ -195,6 +216,7 @@ type OrganizationRepository interface {
 	CountActiveUsers(ctx context.Context, tenant kernel.TenantID) (int, error)
 	ListUsers(ctx context.Context, tenant kernel.TenantID) ([]domain.User, error)
 	SaveClient(ctx context.Context, c domain.Client) error
+	UpdateClient(ctx context.Context, c domain.Client) error
 	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 	GetPermissions(ctx context.Context) (map[string]map[authx.Module]map[authx.Action]bool, error)
@@ -420,6 +442,7 @@ type UserService interface {
 
 type ClientService interface {
 	CreateClient(ctx context.Context, cmd CreateClientCommand) (domain.Client, error)
+	UpdateClient(ctx context.Context, cmd UpdateClientCommand) (domain.Client, error)
 	GetClient(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Client, error)
 	ListClients(ctx context.Context, tenant kernel.TenantID) ([]domain.Client, error)
 }

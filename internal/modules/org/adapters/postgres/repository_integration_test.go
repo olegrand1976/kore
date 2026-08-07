@@ -113,3 +113,46 @@ func TestOrg_SocieteAddressPartsRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Liège", updated.Ville)
 }
+
+func TestOrg_ClientBillingAddressRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	clientID := uuid.New()
+	require.NoError(t, repo.SaveTenant(ctx, domain.Tenant{ID: tenant.UUID(), Name: "ClientBill"}))
+	require.NoError(t, repo.SaveClient(ctx, domain.Client{
+		ID:            clientID,
+		TenantID:      tenant,
+		RaisonSociale: "Buyer SA",
+		TVA:           "BE0123456789",
+		Pays:          "BE",
+		Adresse:       "Rue du Midi",
+		AdresseNumero: "10",
+		AdresseBoite:  "B",
+		CodePostal:    "1000",
+		Ville:         "Bruxelles",
+		Siret:         "0123456789",
+	}))
+
+	got, err := repo.GetClient(ctx, tenant, clientID)
+	require.NoError(t, err)
+	require.Equal(t, "Buyer SA", got.RaisonSociale)
+	require.Equal(t, "BE0123456789", got.TVA)
+	require.Equal(t, "BE", got.Pays)
+	require.Equal(t, "Rue du Midi", got.Adresse)
+	require.Equal(t, "10", got.AdresseNumero)
+	require.Equal(t, "B", got.AdresseBoite)
+	require.Equal(t, "1000", got.CodePostal)
+	require.Equal(t, "Bruxelles", got.Ville)
+	require.Equal(t, "0123456789", got.Siret)
+
+	got.Ville = "Namur"
+	got.CodePostal = "5000"
+	require.NoError(t, repo.UpdateClient(ctx, got))
+	updated, err := repo.GetClient(ctx, tenant, clientID)
+	require.NoError(t, err)
+	require.Equal(t, "Namur", updated.Ville)
+	require.Equal(t, "5000", updated.CodePostal)
+}

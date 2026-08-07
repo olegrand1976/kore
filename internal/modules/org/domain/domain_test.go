@@ -44,6 +44,20 @@ func TestFormatSocieteAddress(t *testing.T) {
 	require.Equal(t, "Rue Sainte-Catherine, H3B 1A7 Montréal, Canada", gotCA)
 }
 
+func TestFormatClientAddress(t *testing.T) {
+	got := FormatClientAddress(Client{
+		Adresse:       "Avenue Louise",
+		AdresseNumero: "100",
+		CodePostal:    "1050",
+		Ville:         "Ixelles",
+		Pays:          "BE",
+	})
+	require.Equal(t, "Avenue Louise 100, 1050 Ixelles, Belgique", got)
+
+	empty := FormatClientAddress(Client{RaisonSociale: "Acme"})
+	require.Empty(t, empty)
+}
+
 func TestLoginValid(t *testing.T) {
 	tests := []struct {
 		name  string

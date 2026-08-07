@@ -38,20 +38,11 @@
       </AppTable>
     </AppCard>
 
-    <AppModal v-model:open="createOpen" width="sm" :aria-label="$t('clients.new')">
+    <AppModal v-model:open="createOpen" width="md" :aria-label="$t('clients.new')">
       <form class="clients-form" @submit.prevent="submitCreate">
         <h2 class="clients-form__title">{{ $t('clients.new') }}</h2>
-        <AppInput
-          id="client-raison-sociale"
-          v-model="createForm.raisonSociale"
-          :label="$t('clients.field_name')"
-          required
-        />
-        <AppInput
-          id="client-tva"
-          v-model="createForm.tva"
-          :label="$t('clients.field_tva')"
-        />
+        <p class="clients-form__hint">{{ $t('clients.billing_hint') }}</p>
+        <ClientBillingForm v-model="createForm" id-prefix="client-create" />
         <p v-if="createError" class="flash flash--error" role="alert">{{ createError }}</p>
         <div class="clients-form__actions">
           <AppButton variant="ghost" type="button" @click="createOpen = false">
@@ -67,6 +58,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  clientBillingPayload,
+  emptyClientBillingFields,
+  type ClientBillingFields
+} from '~/composables/useBillingCountry'
+
 definePageMeta({ layout: 'default' })
 
 const { t } = useI18n()
@@ -115,11 +112,10 @@ await load()
 const createOpen = ref(false)
 const creating = ref(false)
 const createError = ref('')
-const createForm = reactive({ raisonSociale: '', tva: '' })
+const createForm = reactive<ClientBillingFields>(emptyClientBillingFields())
 
 const openCreateModal = () => {
-  createForm.raisonSociale = ''
-  createForm.tva = ''
+  Object.assign(createForm, emptyClientBillingFields())
   createError.value = ''
   createOpen.value = true
 }
@@ -127,17 +123,14 @@ const openCreateModal = () => {
 const submitCreate = async () => {
   creating.value = true
   createError.value = ''
-  const name = createForm.raisonSociale.trim()
-  if (!name) {
+  const payload = clientBillingPayload(createForm)
+  if (!payload.raisonSociale) {
     createError.value = t('clients.create_error')
     creating.value = false
     return
   }
   try {
-    const res = await createClient({
-      raisonSociale: name,
-      tva: createForm.tva.trim() || undefined
-    })
+    const res = await createClient(payload)
     const created = (res as { data?: { id?: string; ID?: string } })?.data
     const createdId = created?.id ?? created?.ID ?? ''
     createOpen.value = false
@@ -173,6 +166,12 @@ const submitCreate = async () => {
   margin: 0;
   font-size: var(--kore-text-h3);
   color: var(--kore-text);
+}
+
+.clients-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
 }
 
 .clients-form__actions {
