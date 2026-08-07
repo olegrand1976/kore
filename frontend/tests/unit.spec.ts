@@ -277,6 +277,17 @@ describe('resolveLogoUrl', () => {
   })
 })
 
+describe('TenantLogo load fallback', () => {
+  it('exposes error handler pattern via component source', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const src = readFileSync(join(__dirname, '../components/brand/TenantLogo.vue'), 'utf8')
+    expect(src).toContain('@error="onLogoError"')
+    expect(src).toContain('loadFailed')
+    expect(src).not.toContain('logoUrl!')
+  })
+})
+
 describe('rollingWindow60', () => {
   it('returns a 60-day inclusive window', () => {
     const { rollingWindow60 } = useReporting()

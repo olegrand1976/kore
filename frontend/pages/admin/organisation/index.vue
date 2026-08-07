@@ -264,6 +264,12 @@ const addressBoxLabel = computed(() => {
   }
 })
 
+const revokePreviewBlob = () => {
+  if (previewUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+}
+
 onMounted(async () => {
   await Promise.all([fetchBranding(), fetchSettings()])
   form.raisonSociale = branding.value.raisonSociale
@@ -296,11 +302,14 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(revokePreviewBlob)
+
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
   form.logoFile = file
+  revokePreviewBlob()
   previewUrl.value = URL.createObjectURL(file)
 }
 
@@ -325,8 +334,10 @@ const save = async () => {
     body.append('siret', form.siret)
     if (form.logoFile) body.append('logo', form.logoFile)
     await apiFetch(`/api/org/societes/${branding.value.societeId}/branding`, { method: 'PUT', body })
-    await fetchBranding()
+    await fetchBranding({ bustCache: true })
+    revokePreviewBlob()
     previewUrl.value = branding.value.logoUrl
+    form.logoFile = null
     message.value = t('org.saved')
   } catch {
     message.value = t('org.error')

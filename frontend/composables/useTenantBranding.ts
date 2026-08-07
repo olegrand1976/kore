@@ -22,13 +22,17 @@ export function useTenantBranding() {
     societeId: null as string | null
   }))
 
-  const fetchBranding = async () => {
+  const fetchBranding = async (opts?: { bustCache?: boolean }) => {
     try {
       const res = await apiFetch<{ data: Array<{ id: string; raisonSociale: string; logo?: string; tenantId?: unknown }> }>('/api/org/societes')
       const first = res.data?.[0]
       if (first) {
+        let logoUrl = resolveLogoUrl(first.logo, first.tenantId)
+        if (logoUrl && opts?.bustCache) {
+          logoUrl = `${logoUrl}?v=${Date.now()}`
+        }
         branding.value = {
-          logoUrl: resolveLogoUrl(first.logo, first.tenantId),
+          logoUrl,
           raisonSociale: first.raisonSociale,
           societeId: first.id
         }

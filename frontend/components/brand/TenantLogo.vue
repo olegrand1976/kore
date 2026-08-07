@@ -19,17 +19,31 @@ const sizeMap: Record<LogoSize, string> = {
   lg: '48px'
 }
 
-const showTenant = computed(() => !!props.logoUrl)
+const loadFailed = ref(false)
+
+watch(
+  () => props.logoUrl,
+  () => {
+    loadFailed.value = false
+  }
+)
+
+const showTenant = computed(() => !!props.logoUrl && !loadFailed.value)
+
+const onLogoError = () => {
+  loadFailed.value = true
+}
 </script>
 
 <template>
   <div class="tenant-logo">
     <img
       v-if="showTenant"
-      :src="logoUrl!"
+      :src="logoUrl ?? undefined"
       :alt="alt"
       class="tenant-logo__img"
       :style="{ height: sizeMap[size] }"
+      @error="onLogoError"
     />
     <KoreLogo
       v-else
