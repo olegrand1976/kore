@@ -3,7 +3,7 @@
     <AppPageHeader :title="$t('applications.title')" :subtitle="$t('applications.subtitle')">
       <template #actions>
         <AppButton variant="primary" size="sm" type="button" @click="openCreate">
-          <AppIcon name="add" /> {{ $t('applications.add') }}
+          <AppIcon name="add" /> {{ $t('applications.create_title') }}
         </AppButton>
       </template>
     </AppPageHeader>
@@ -84,158 +84,194 @@
     <AppModal
       v-model:open="showForm"
       width="lg"
-      :aria-label="editingId ? $t('applications.edit_title') : $t('applications.create_title')"
+      title-id="apps-form-title"
     >
-      <form class="apps-form" @submit.prevent="submitForm">
-        <h2 class="apps-form__title">
+      <form class="apps-form" novalidate @submit.prevent="submitForm">
+        <h2 id="apps-form-title" class="apps-form__title">
           {{ editingId ? $t('applications.edit_title') : $t('applications.create_title') }}
         </h2>
 
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_share_sites') }}</span>
-          <select v-model="form.siteIds" class="apps-form__input apps-form__multiselect" multiple>
-            <option v-for="s in siteOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_share_services') }}</span>
-          <select v-model="form.serviceIds" class="apps-form__input apps-form__multiselect" multiple>
-            <option v-for="s in serviceOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-          </select>
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_share_equipes') }}</span>
-          <select v-model="form.equipeIds" class="apps-form__input apps-form__multiselect" multiple>
-            <option v-for="e in equipeShareOptions" :key="e.value" :value="e.value">{{ e.label }}</option>
-          </select>
-          <span class="muted">{{ $t('applications.shares_hint') }}</span>
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_libelle') }}</span>
-          <input v-model="form.libelle" class="apps-form__input" type="text" required maxlength="120" />
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_proprietaire') }}</span>
-          <input v-model="form.proprietaire" class="apps-form__input" type="text" maxlength="120" />
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_mode') }}</span>
-          <select v-model="form.modeFacturation" class="apps-form__input">
-            <option value="temps_passe">{{ $t('applications.mode_temps_passe') }}</option>
-            <option value="forfait">{{ $t('applications.mode_forfait') }}</option>
-            <option value="non">{{ $t('applications.mode_non') }}</option>
-          </select>
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_default_tjm') }}</span>
-          <input v-model.number="form.defaultTjmEuros" class="apps-form__input" type="number" min="0" step="1" />
-          <span class="muted">{{ $t('applications.field_default_tjm_hint') }}</span>
-        </label>
-
-        <label class="apps-form__toggle">
-          <input v-model="form.uoActivee" type="checkbox" />
-          <span>{{ $t('applications.field_uo') }}</span>
-        </label>
-
-        <label class="apps-form__field">
-          <span>{{ $t('applications.field_chef') }}</span>
-          <select v-model="form.chefUtilisateurId" class="apps-form__input">
-            <option value="">{{ $t('applications.field_chef_none') }}</option>
-            <option v-for="u in userOptions" :key="u.value" :value="u.value">{{ u.label }}</option>
-          </select>
-        </label>
-
-        <template v-if="editingId">
-          <section class="apps-form__section">
-            <h3>{{ $t('applications.section_equipes') }}</h3>
-            <ul v-if="editEquipes.length" class="apps-form__list">
-              <li v-for="e in editEquipes" :key="e.id">{{ e.label }}</li>
-            </ul>
-            <p v-else class="muted">{{ $t('applications.empty_equipes') }}</p>
-            <div class="apps-form__inline">
-              <input
-                v-model="newEquipeLibelle"
-                class="apps-form__input"
-                type="text"
-                :placeholder="$t('applications.new_equipe_placeholder')"
-              />
-              <AppButton
-                variant="secondary"
-                size="sm"
-                type="button"
-                :disabled="!newEquipeLibelle.trim()"
-                @click="addEquipe"
-              >
-                {{ $t('applications.add_equipe') }}
-              </AppButton>
-            </div>
-          </section>
-
-          <section class="apps-form__section">
-            <h3>{{ $t('applications.section_users') }}</h3>
-            <p class="muted">{{ $t('applications.users_hint') }}</p>
-            <template v-if="editEquipes.length">
-              <label class="apps-form__field">
-                <span>{{ $t('applications.membership_equipe') }}</span>
-                <select v-model="membershipEquipeId" class="apps-form__input">
-                  <option v-for="e in editEquipes" :key="e.id" :value="e.id">{{ e.label }}</option>
-                </select>
-              </label>
-              <fieldset v-if="membershipEquipeId" class="apps-form__checkgroup">
-                <legend>{{ $t('applications.membership_users') }}</legend>
-                <label v-for="u in userOptions" :key="u.value" class="apps-form__check">
-                  <input
-                    type="checkbox"
-                    :checked="userInMembershipEquipe(u.value)"
-                    :disabled="membershipBusyId === u.value"
-                    @change="toggleUserMembership(u.value, ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span>{{ u.label }}</span>
-                </label>
-              </fieldset>
-            </template>
-            <p v-else class="muted">{{ $t('applications.membership_need_equipe') }}</p>
-            <NuxtLink class="apps-form__link" to="/admin/users">{{ $t('applications.manage_users') }}</NuxtLink>
-          </section>
-
-          <section class="apps-form__section">
-            <h3>{{ $t('applications.section_budgets') }}</h3>
-            <ul v-if="editBudgets.length" class="apps-form__list">
-              <li v-for="b in editBudgets" :key="b.id">
-                {{ b.label }}
-                <AppBadge v-if="b.isDefault || b.id === form.budgetDefautId" variant="success">
-                  {{ $t('applications.budget_default') }}
-                </AppBadge>
-              </li>
-            </ul>
-            <p v-else class="muted">{{ $t('applications.empty_budgets') }}</p>
+        <div class="apps-form__body">
+          <section class="apps-form__section" aria-labelledby="apps-section-identity">
+            <h3 id="apps-section-identity">{{ $t('applications.section_identity') }}</h3>
+            <AppInput
+              id="app-libelle"
+              v-model="form.libelle"
+              :label="$t('applications.field_libelle')"
+              required
+            />
+            <AppInput
+              id="app-proprietaire"
+              v-model="form.proprietaire"
+              :label="$t('applications.field_proprietaire')"
+            />
             <label class="apps-form__field">
-              <span>{{ $t('applications.field_budget_defaut') }}</span>
-              <select v-model="form.budgetDefautId" class="apps-form__input">
-                <option value="">{{ $t('applications.field_budget_defaut_none') }}</option>
-                <option v-for="b in defaultBudgetOptions" :key="b.id" :value="b.id">{{ b.label }}</option>
+              <span>{{ $t('applications.field_chef') }}</span>
+              <select id="app-chef" v-model="form.chefUtilisateurId" class="apps-form__input">
+                <option value="">{{ $t('applications.field_chef_none') }}</option>
+                <option v-for="u in userOptions" :key="u.value" :value="u.value">{{ u.label }}</option>
               </select>
-              <span class="muted apps-form__hint">{{ $t('applications.field_budget_defaut_hint') }}</span>
             </label>
-            <AppButton variant="secondary" size="sm" type="button" @click="goCreateBudget">
-              {{ $t('applications.create_budget') }}
-            </AppButton>
           </section>
-        </template>
 
-        <p v-if="formError" class="apps-form__error" role="alert">{{ formError }}</p>
+          <section
+            class="apps-form__section"
+            :class="{ 'apps-form__section--invalid': sharesInvalid }"
+            aria-labelledby="apps-section-shares"
+            :aria-invalid="sharesInvalid ? 'true' : undefined"
+          >
+            <h3 id="apps-section-shares">{{ $t('applications.section_shares') }}</h3>
+            <p class="apps-form__hint">{{ $t('applications.shares_hint') }}</p>
+            <p class="apps-form__shares-summary" aria-live="polite">{{ formSharesSummary }}</p>
 
-        <div class="apps-form__actions">
-          <AppButton variant="ghost" type="button" @click="closeForm">{{ $t('common.cancel') }}</AppButton>
-          <AppButton variant="primary" type="submit" :disabled="saving">
-            {{ saving ? $t('common.saving') : $t('common.save') }}
-          </AppButton>
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_sites') }}</legend>
+              <p v-if="!siteOptions.length" class="apps-form__hint">{{ $t('applications.shares_empty_sites') }}</p>
+              <div v-else class="apps-form__checklist">
+                <label v-for="s in siteOptions" :key="s.value" class="apps-form__check">
+                  <input v-model="form.siteIds" type="checkbox" :value="s.value" />
+                  <span>{{ s.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_services') }}</legend>
+              <p v-if="!serviceOptions.length" class="apps-form__hint">{{ $t('applications.shares_empty_services') }}</p>
+              <div v-else class="apps-form__checklist">
+                <label v-for="s in serviceOptions" :key="s.value" class="apps-form__check">
+                  <input v-model="form.serviceIds" type="checkbox" :value="s.value" />
+                  <span>{{ s.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_equipes') }}</legend>
+              <p v-if="!equipeShareOptions.length" class="apps-form__hint">{{ $t('applications.shares_empty_equipes') }}</p>
+              <div v-else class="apps-form__checklist">
+                <label v-for="e in equipeShareOptions" :key="e.value" class="apps-form__check">
+                  <input v-model="form.equipeIds" type="checkbox" :value="e.value" />
+                  <span>{{ e.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="apps-form__section" aria-labelledby="apps-section-billing">
+            <h3 id="apps-section-billing">{{ $t('applications.section_billing') }}</h3>
+            <label class="apps-form__field">
+              <span>{{ $t('applications.field_mode') }}</span>
+              <select id="app-mode" v-model="form.modeFacturation" class="apps-form__input">
+                <option value="temps_passe">{{ $t('applications.mode_temps_passe') }}</option>
+                <option value="forfait">{{ $t('applications.mode_forfait') }}</option>
+                <option value="non">{{ $t('applications.mode_non') }}</option>
+              </select>
+            </label>
+            <AppInput
+              id="app-default-tjm"
+              v-model="defaultTjmModel"
+              type="number"
+              min="0"
+              step="1"
+              :label="$t('applications.field_default_tjm')"
+            />
+            <p class="apps-form__hint">{{ $t('applications.field_default_tjm_hint') }}</p>
+            <label class="apps-form__toggle">
+              <input v-model="form.uoActivee" type="checkbox" />
+              <span>{{ $t('applications.field_uo') }}</span>
+            </label>
+          </section>
+
+          <template v-if="editingId">
+            <section class="apps-form__section" aria-labelledby="apps-section-equipes">
+              <h3 id="apps-section-equipes">{{ $t('applications.section_equipes') }}</h3>
+              <ul v-if="editEquipes.length" class="apps-form__list">
+                <li v-for="e in editEquipes" :key="e.id">{{ e.label }}</li>
+              </ul>
+              <p v-else class="apps-form__hint">{{ $t('applications.empty_equipes') }}</p>
+              <div class="apps-form__inline">
+                <AppInput
+                  id="app-new-equipe"
+                  v-model="newEquipeLibelle"
+                  :label="$t('applications.new_equipe_placeholder')"
+                  :placeholder="$t('applications.new_equipe_placeholder')"
+                />
+                <AppButton
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  :disabled="!newEquipeLibelle.trim()"
+                  @click="addEquipe"
+                >
+                  {{ $t('applications.add_equipe') }}
+                </AppButton>
+              </div>
+            </section>
+
+            <section class="apps-form__section" aria-labelledby="apps-section-users">
+              <h3 id="apps-section-users">{{ $t('applications.section_users') }}</h3>
+              <p class="apps-form__hint">{{ $t('applications.users_hint') }}</p>
+              <template v-if="editEquipes.length">
+                <label class="apps-form__field">
+                  <span>{{ $t('applications.membership_equipe') }}</span>
+                  <select v-model="membershipEquipeId" class="apps-form__input">
+                    <option v-for="e in editEquipes" :key="e.id" :value="e.id">{{ e.label }}</option>
+                  </select>
+                </label>
+                <fieldset v-if="membershipEquipeId" class="apps-form__checkgroup">
+                  <legend>{{ $t('applications.membership_users') }}</legend>
+                  <div class="apps-form__checklist">
+                    <label v-for="u in userOptions" :key="u.value" class="apps-form__check">
+                      <input
+                        type="checkbox"
+                        :checked="userInMembershipEquipe(u.value)"
+                        :disabled="membershipBusyId === u.value"
+                        @change="toggleUserMembership(u.value, ($event.target as HTMLInputElement).checked)"
+                      />
+                      <span>{{ u.label }}</span>
+                    </label>
+                  </div>
+                </fieldset>
+              </template>
+              <p v-else class="apps-form__hint">{{ $t('applications.membership_need_equipe') }}</p>
+              <NuxtLink class="apps-form__link" to="/admin/users">{{ $t('applications.manage_users') }}</NuxtLink>
+            </section>
+
+            <section class="apps-form__section" aria-labelledby="apps-section-budgets">
+              <h3 id="apps-section-budgets">{{ $t('applications.section_budgets') }}</h3>
+              <ul v-if="editBudgets.length" class="apps-form__list">
+                <li v-for="b in editBudgets" :key="b.id" class="apps-form__list-item">
+                  <span>{{ b.label }}</span>
+                  <AppBadge v-if="b.isDefault || b.id === form.budgetDefautId" variant="success">
+                    {{ $t('applications.budget_default') }}
+                  </AppBadge>
+                </li>
+              </ul>
+              <p v-else class="apps-form__hint">{{ $t('applications.empty_budgets') }}</p>
+              <label class="apps-form__field">
+                <span>{{ $t('applications.field_budget_defaut') }}</span>
+                <select v-model="form.budgetDefautId" class="apps-form__input">
+                  <option value="">{{ $t('applications.field_budget_defaut_none') }}</option>
+                  <option v-for="b in defaultBudgetOptions" :key="b.id" :value="b.id">{{ b.label }}</option>
+                </select>
+                <span class="apps-form__hint">{{ $t('applications.field_budget_defaut_hint') }}</span>
+              </label>
+              <AppButton variant="secondary" size="sm" type="button" @click="goCreateBudget">
+                {{ $t('applications.create_budget') }}
+              </AppButton>
+            </section>
+          </template>
+        </div>
+
+        <div class="apps-form__footer">
+          <p v-if="formError" id="apps-form-error" class="apps-form__error" role="alert">{{ formError }}</p>
+          <div class="apps-form__actions">
+            <AppButton variant="ghost" type="button" @click="closeForm">{{ $t('common.cancel') }}</AppButton>
+            <AppButton variant="primary" type="submit" :disabled="saving">
+              {{ saving ? $t('common.saving') : $t('common.save') }}
+            </AppButton>
+          </div>
         </div>
       </form>
     </AppModal>
@@ -304,6 +340,7 @@ const saving = ref(false)
 const showForm = ref(false)
 const editingId = ref('')
 const formError = ref('')
+const sharesInvalid = ref(false)
 const flash = ref('')
 const flashError = ref(false)
 const actionBusyId = ref('')
@@ -418,6 +455,17 @@ const {
 
 const displayRows = computed(() => sortedItems.value)
 
+const formSharesSummary = computed(() =>
+  sharesLabel(form.siteIds.length, form.serviceIds.length, form.equipeIds.length)
+)
+
+const defaultTjmModel = computed({
+  get: () => String(form.defaultTjmEuros || 0),
+  set: (value: string) => {
+    form.defaultTjmEuros = Math.max(0, Math.round(Number(value) || 0))
+  }
+})
+
 const userOptions = computed(() =>
   users.value.map((u) => ({ value: pickUserId(u), label: pickUserLogin(u) }))
 )
@@ -434,6 +482,18 @@ const editEquipes = computed(() => {
     )
     .map((e) => ({ id: orgId(e), label: orgLabel(e) }))
 })
+
+watch(
+  () => [form.siteIds.length, form.serviceIds.length, form.equipeIds.length],
+  () => {
+    if (
+      sharesInvalid.value &&
+      (form.siteIds.length > 0 || form.serviceIds.length > 0 || form.equipeIds.length > 0)
+    ) {
+      sharesInvalid.value = false
+    }
+  }
+)
 
 watch(
   editEquipes,
@@ -584,7 +644,7 @@ const loadAll = async () => {
 const openCreate = () => {
   editingId.value = ''
   form.siteIds = []
-  form.serviceIds = serviceOptions.value[0] ? [serviceOptions.value[0].value] : []
+  form.serviceIds = []
   form.equipeIds = []
   form.libelle = ''
   form.proprietaire = ''
@@ -594,6 +654,7 @@ const openCreate = () => {
   form.chefUtilisateurId = ''
   form.budgetDefautId = ''
   formError.value = ''
+  sharesInvalid.value = false
   newEquipeLibelle.value = ''
   showForm.value = true
 }
@@ -611,6 +672,7 @@ const openEdit = (row: AppRow) => {
   form.chefUtilisateurId = row.chefUtilisateurId
   form.budgetDefautId = row.budgetDefautId
   formError.value = ''
+  sharesInvalid.value = false
   newEquipeLibelle.value = ''
   showForm.value = true
   sanitizeFormBudgetDefaut()
@@ -620,12 +682,14 @@ const closeForm = () => {
   showForm.value = false
   editingId.value = ''
   formError.value = ''
+  sharesInvalid.value = false
 }
 
 const submitForm = async () => {
   formError.value = ''
   const hasShare =
     form.siteIds.length > 0 || form.serviceIds.length > 0 || form.equipeIds.length > 0
+  sharesInvalid.value = !hasShare
   if (!form.libelle.trim() || !hasShare) {
     formError.value = t('applications.validation_required')
     return
@@ -758,96 +822,170 @@ onMounted(async () => {
 
 <style scoped>
 .apps-flash {
-  margin: 0 0 var(--kore-space-3);
-  padding: var(--kore-space-2) var(--kore-space-3);
+  margin: 0 0 var(--kore-space-md);
+  padding: var(--kore-space-sm) var(--kore-space-md);
   border-radius: var(--kore-radius-md);
   background: color-mix(in srgb, var(--kore-success) 18%, transparent);
   color: var(--kore-text);
 }
 .apps-flash--error {
-  background: color-mix(in srgb, var(--kore-danger) 18%, transparent);
+  background: color-mix(in srgb, var(--kore-error) 18%, transparent);
 }
 .apps-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--kore-space-1);
+  gap: var(--kore-space-xs);
 }
 .apps-form {
   display: flex;
   flex-direction: column;
-  gap: var(--kore-space-3);
-  max-width: var(--kore-form-wide-max);
+  gap: var(--kore-space-md);
 }
 .apps-form__title {
   margin: 0;
-  font-size: var(--kore-font-size-lg);
+  font-size: var(--kore-text-h3);
+}
+.apps-form__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-lg);
 }
 .apps-form__field {
   display: flex;
   flex-direction: column;
-  gap: var(--kore-space-1);
+  gap: var(--kore-space-xs);
+}
+.apps-form__field > span:first-child {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  font-weight: 500;
 }
 .apps-form__input {
   width: 100%;
-  padding: var(--kore-space-2);
+  padding: 0.75rem 1rem;
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-md);
-  background: var(--kore-surface);
+  background: var(--kore-bg-elevated);
   color: var(--kore-text);
-}
-.apps-form__multiselect {
-  min-height: 6.5rem;
+  font-family: var(--kore-font);
+  font-size: var(--kore-text-body);
 }
 .apps-form__toggle {
   display: flex;
   align-items: center;
-  gap: var(--kore-space-2);
+  gap: var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
 }
 .apps-form__section {
   display: flex;
   flex-direction: column;
-  gap: var(--kore-space-2);
-  padding-top: var(--kore-space-2);
+  gap: var(--kore-space-md);
+  padding-top: var(--kore-space-md);
   border-top: 1px solid var(--kore-border);
+}
+.apps-form__section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.apps-form__section--invalid .apps-form__checklist {
+  border-color: var(--kore-error);
 }
 .apps-form__section h3 {
   margin: 0;
-  font-size: var(--kore-font-size-md);
+  font-size: var(--kore-text-body);
+  font-weight: 600;
+}
+.apps-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+.apps-form__shares-summary {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+  font-weight: 500;
 }
 .apps-form__list {
   margin: 0;
-  padding-left: 1.2rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--kore-space-xs);
 }
-.apps-form__inline {
+.apps-form__list-item {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--kore-space-2);
+  align-items: center;
+  gap: var(--kore-space-sm);
+}
+.apps-form__inline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--kore-space-sm);
 }
 .apps-form__checkgroup {
   display: flex;
   flex-direction: column;
-  gap: var(--kore-space-1);
+  gap: var(--kore-space-xs);
   margin: 0;
   padding: 0;
   border: none;
 }
+.apps-form__checkgroup legend {
+  margin: 0 0 var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  font-weight: 500;
+}
+.apps-form__checklist {
+  display: grid;
+  gap: var(--kore-space-xs);
+  max-height: 10rem;
+  overflow: auto;
+  padding: var(--kore-space-sm);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-md);
+  background: var(--kore-bg-subtle);
+}
 .apps-form__check {
   display: flex;
-  align-items: center;
-  gap: var(--kore-space-2);
+  align-items: flex-start;
+  gap: var(--kore-space-sm);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+  cursor: pointer;
 }
 .apps-form__link {
-  color: var(--kore-accent);
+  color: var(--kore-link);
   text-decoration: underline;
+  font-size: var(--kore-text-small);
+  width: fit-content;
 }
 .apps-form__error {
-  color: var(--kore-danger);
+  color: var(--kore-error);
   margin: 0;
+  font-size: var(--kore-text-small);
+}
+.apps-form__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-sm);
+  padding-top: var(--kore-space-md);
+  margin-top: var(--kore-space-xs);
+  border-top: 1px solid var(--kore-border);
+  background: var(--kore-bg-elevated);
+  box-shadow: 0 -6px 12px color-mix(in srgb, var(--kore-bg-elevated) 85%, transparent);
 }
 .apps-form__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--kore-space-2);
+  gap: var(--kore-space-sm);
   justify-content: flex-end;
 }
 .muted {
@@ -855,10 +993,13 @@ onMounted(async () => {
   margin: 0;
 }
 @media (max-width: 768px) {
+  .apps-form__inline {
+    grid-template-columns: 1fr;
+  }
   .apps-form__actions {
     flex-direction: column;
   }
-  .apps-form__actions :deep(.app-button) {
+  .apps-form__actions :deep(.app-btn) {
     width: 100%;
   }
 }

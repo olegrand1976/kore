@@ -104,17 +104,14 @@ test.describe('org admin', () => {
       timeout: 20_000
     })
 
-    await page.getByRole('button', { name: /ajouter|add/i }).first().click()
-    // Second multi-select = services partagés (sites, services, équipes).
-    const serviceSelect = page.locator('select.apps-form__multiselect').nth(1)
-    await expect(serviceSelect).toBeVisible()
-    const options = serviceSelect.locator('option')
-    const optionCount = await options.count()
-    expect(optionCount).toBeGreaterThan(0)
-    const firstServiceValue = await options.nth(0).getAttribute('value')
-    expect(firstServiceValue).toBeTruthy()
-    await serviceSelect.selectOption(firstServiceValue!)
-    await page.locator('input.apps-form__input').first().fill(appName)
+    await page.getByRole('button', { name: /nouvelle application|new application/i }).first().click()
+    await expect(page.getByRole('heading', { name: /nouvelle application|new application/i })).toBeVisible()
+
+    const shareCheckbox = page.locator('.apps-form__checklist input[type="checkbox"]').first()
+    await expect(shareCheckbox).toBeVisible()
+    await shareCheckbox.check()
+
+    await page.locator('#app-libelle').fill(appName)
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
     await expect(page.getByText(appName)).toBeVisible({ timeout: 20_000 })
 
