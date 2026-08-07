@@ -57,7 +57,7 @@
 
     <AppModal
       v-model:open="showForm"
-      width="sm"
+      width="md"
       :aria-label="editingId ? $t('equipes_admin.edit_title') : $t('equipes_admin.create_title')"
     >
       <form class="org-admin-form" @submit.prevent="save">
@@ -90,7 +90,22 @@
               {{ u.label }}
             </option>
           </select>
+          <p class="org-admin-form__hint">{{ $t('equipes_admin.responsable_vs_members_hint') }}</p>
         </div>
+
+        <fieldset class="org-admin-form__field org-admin-form__checkgroup">
+          <legend>{{ $t('equipes_admin.field_members') }}</legend>
+          <label v-for="u in userOptions" :key="u.value" class="org-admin-form__check">
+            <input
+              v-model="form.memberIds"
+              type="checkbox"
+              :value="u.value"
+              :disabled="u.value === form.responsableId"
+            />
+            {{ u.label }}
+          </label>
+          <p class="org-admin-form__hint">{{ $t('equipes_admin.members_hint') }}</p>
+        </fieldset>
 
         <p v-if="formError" class="org-admin-form__error" role="alert">{{ formError }}</p>
 
@@ -118,9 +133,12 @@ const {
   createEquipe,
   updateEquipe,
   orgId,
-  orgLabel
+  orgLabel,
+  planEquipeMembershipUpdates,
+  unwrapOrgData
 } = useOrganisation()
-const { list: listUsers, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
+const { list: listUsers, update: updateUser, pickUserId, pickUserLogin, pickUserEquipeIds } =
+  useUsers()
 
 type EquipeRow = {
   id: string
@@ -139,6 +157,7 @@ const flashError = ref(false)
 const rows = ref<EquipeRow[]>([])
 const applicationOptions = ref<{ value: string; label: string }[]>([])
 const userOptions = ref<{ value: string; label: string }[]>([])
+const usersCache = ref<Awaited<ReturnType<typeof listUsers>>>([])
 
 const showForm = ref(false)
 const editingId = ref('')
@@ -147,7 +166,8 @@ const formError = ref('')
 const form = reactive({
   applicationId: '',
   libelle: '',
-  responsableId: ''
+  responsableId: '',
+  memberIds: [] as string[]
 })
 
 const columns = computed(() => [
@@ -160,6 +180,32 @@ const columns = computed(() => [
 
 const canCreate = computed(() => applicationOptions.value.length > 0)
 
+const ensureMemberSelected = (userId: string) => {
+  if (userId && !form.memberIds.includes(userId)) form.memberIds.push(userId)
+}
+
+watch(
+  () => form.responsableId,
+  (rid) => {
+    if (showForm.value) ensureMemberSelected(rid)
+  }
+)
+
+const syncEquipeMembers = async (
+  equipeId: string,
+  memberIds: string[],
+  ensureUserId?: string | null
+) => {
+  const snapshots = usersCache.value.map((u) => ({
+    userId: pickUserId(u),
+    equipeIds: pickUserEquipeIds(u)
+  }))
+  const updates = planEquipeMembershipUpdates(equipeId, memberIds, snapshots, { ensureUserId })
+  for (const u of updates) {
+    await updateUser(u.userId, { equipeIds: u.equipeIds })
+  }
+}
+
 const load = async () => {
   pending.value = true
   forbidden.value = false
@@ -169,6 +215,7 @@ const load = async () => {
       listEquipes(),
       listUsers()
     ])
+    usersCache.value = users
     const appMap = new Map<string, string>()
     applicationOptions.value = apps
       .filter((a) => a.active ?? a.Active ?? true)
@@ -227,6 +274,7 @@ const openCreate = () => {
   form.applicationId = applicationOptions.value[0]?.value ?? ''
   form.libelle = ''
   form.responsableId = ''
+  form.memberIds = []
   formError.value = ''
   flash.value = ''
   showForm.value = true
@@ -237,6 +285,10 @@ const openEdit = (row: EquipeRow) => {
   form.applicationId = row.applicationId
   form.libelle = row.libelle
   form.responsableId = row.responsableId
+  form.memberIds = usersCache.value
+    .filter((u) => pickUserEquipeIds(u).includes(row.id))
+    .map((u) => pickUserId(u))
+  ensureMemberSelected(row.responsableId)
   formError.value = ''
   flash.value = ''
   showForm.value = true
@@ -260,13 +312,20 @@ const save = async () => {
         libelle,
         responsableId: form.responsableId || null
       })
+      await syncEquipeMembers(editingId.value, form.memberIds, form.responsableId || null)
       flash.value = t('equipes_admin.updated')
     } else {
-      await createEquipe({
-        applicationId: form.applicationId,
-        libelle,
-        responsableId: form.responsableId || undefined
-      })
+      const created = unwrapOrgData<{ id?: string; ID?: string }>(
+        await createEquipe({
+          applicationId: form.applicationId,
+          libelle,
+          responsableId: form.responsableId || undefined
+        })
+      )
+      const createdId = orgId(created)
+      if (createdId) {
+        await syncEquipeMembers(createdId, form.memberIds, form.responsableId || null)
+      }
       flash.value = t('equipes_admin.created')
     }
     flashError.value = false
@@ -321,6 +380,32 @@ const save = async () => {
   background: var(--kore-bg-elevated);
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-md);
+}
+.org-admin-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+.org-admin-form__checkgroup {
+  margin: 0;
+  padding: 0;
+  border: none;
+  max-height: 12rem;
+  overflow: auto;
+}
+.org-admin-form__checkgroup legend {
+  margin: 0 0 var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  font-weight: 500;
+  color: var(--kore-text-muted);
+}
+.org-admin-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  padding: var(--kore-space-xs) 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
 }
 .org-admin-form__error {
   margin: 0;

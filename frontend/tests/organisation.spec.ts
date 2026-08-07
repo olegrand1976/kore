@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildEquipeOptions, orgId, orgLabel } from '~/composables/useOrganisation'
+import {
+  buildEquipeOptions,
+  orgId,
+  orgLabel,
+  planEquipeMembershipUpdates,
+  unwrapOrgData
+} from '~/composables/useOrganisation'
 
 describe('org payload normalisation', () => {
   // Les handlers Go renvoient tantôt les tags json camelCase, tantôt les noms de
@@ -61,5 +67,44 @@ describe('buildEquipeOptions', () => {
 
   it('returns an empty list when there is no team', () => {
     expect(buildEquipeOptions([], [{ id: 'a1', libelle: 'Portail Client' }])).toEqual([])
+  })
+})
+
+describe('planEquipeMembershipUpdates', () => {
+  const users = [
+    { userId: 'u1', equipeIds: ['e1'] },
+    { userId: 'u2', equipeIds: [] },
+    { userId: 'u3', equipeIds: ['e1', 'e2'] }
+  ]
+
+  it('adds and removes members to match the desired set', () => {
+    expect(planEquipeMembershipUpdates('e1', ['u2', 'u3'], users)).toEqual([
+      { userId: 'u1', equipeIds: [] },
+      { userId: 'u2', equipeIds: ['e1'] }
+    ])
+  })
+
+  it('forces the responsable into membership', () => {
+    expect(
+      planEquipeMembershipUpdates('e1', ['u1'], users, { ensureUserId: 'u2' })
+    ).toEqual([
+      { userId: 'u2', equipeIds: ['e1'] },
+      { userId: 'u3', equipeIds: ['e2'] }
+    ])
+  })
+
+  it('returns nothing when already in sync', () => {
+    expect(planEquipeMembershipUpdates('e1', ['u1', 'u3'], users)).toEqual([])
+  })
+
+  it('ignores empty equipe id', () => {
+    expect(planEquipeMembershipUpdates('', ['u1'], users)).toEqual([])
+  })
+})
+
+describe('unwrapOrgData', () => {
+  it('unwraps data envelopes and passes through bare payloads', () => {
+    expect(unwrapOrgData<{ id: string }>({ data: { id: 'x' } })).toEqual({ id: 'x' })
+    expect(unwrapOrgData<{ id: string }>({ id: 'y' })).toEqual({ id: 'y' })
   })
 })

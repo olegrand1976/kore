@@ -100,6 +100,45 @@ export function buildEquipeOptions(
   })
 }
 
+export type EquipeMemberSnapshot = {
+  userId: string
+  equipeIds: string[]
+}
+
+/**
+ * Diff membership so the given team matches desiredMemberIds.
+ * ensureUserId (responsable) is always forced into the desired set.
+ */
+export function planEquipeMembershipUpdates(
+  equipeId: string,
+  desiredMemberIds: string[],
+  users: EquipeMemberSnapshot[],
+  options?: { ensureUserId?: string | null }
+): { userId: string; equipeIds: string[] }[] {
+  if (!equipeId) return []
+  const desired = new Set(desiredMemberIds.filter(Boolean))
+  const ensure = options?.ensureUserId?.trim()
+  if (ensure) desired.add(ensure)
+
+  const updates: { userId: string; equipeIds: string[] }[] = []
+  for (const u of users) {
+    if (!u.userId) continue
+    const currentlyIn = u.equipeIds.includes(equipeId)
+    const shouldBeIn = desired.has(u.userId)
+    if (currentlyIn === shouldBeIn) continue
+    const next = shouldBeIn
+      ? Array.from(new Set([...u.equipeIds, equipeId]))
+      : u.equipeIds.filter((id) => id !== equipeId)
+    updates.push({ userId: u.userId, equipeIds: next })
+  }
+  return updates
+}
+
+/** Unwrap `{ data: T }` envelopes from Go/BFF responses. */
+export function unwrapOrgData<T>(res: unknown): T {
+  return ((res as { data?: T })?.data ?? res) as T
+}
+
 export function useOrganisation() {
   const { apiFetch } = useApiFetch()
 
@@ -232,6 +271,8 @@ export function useOrganisation() {
     replaceClientContacts,
     orgId,
     orgLabel,
-    buildEquipeOptions
+    buildEquipeOptions,
+    planEquipeMembershipUpdates,
+    unwrapOrgData
   }
 }

@@ -36,9 +36,11 @@ const {
   createEquipe,
   updateEquipe,
   orgId,
-  orgLabel
+  orgLabel,
+  planEquipeMembershipUpdates,
+  unwrapOrgData
 } = useOrganisation()
-const { list: listUsers, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
+const { list: listUsers, update: updateUser, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
 const { extractFetchError } = useApiError()
 
 const societes = ref<OrgSociete[]>([])
@@ -61,6 +63,7 @@ const form = reactive({
   libelle: '',
   type: 'interne',
   responsableId: '',
+  memberIds: [] as string[],
   siteIds: [] as string[],
   serviceIds: [] as string[],
   equipeIds: [] as string[]
@@ -160,6 +163,36 @@ const equipesOf = (applicationId: string) =>
 const memberCount = (equipeId: string) =>
   users.value.filter((u) => pickUserEquipeIds(u).includes(equipeId)).length
 
+const userSnapshots = () =>
+  users.value.map((u) => ({
+    userId: pickUserId(u),
+    equipeIds: pickUserEquipeIds(u)
+  }))
+
+const syncEquipeMembers = async (
+  equipeId: string,
+  memberIds: string[],
+  ensureUserId?: string | null
+) => {
+  const updates = planEquipeMembershipUpdates(equipeId, memberIds, userSnapshots(), {
+    ensureUserId
+  })
+  for (const u of updates) {
+    await updateUser(u.userId, { equipeIds: u.equipeIds })
+  }
+}
+
+const ensureMemberSelected = (memberIds: string[], userId: string) => {
+  if (userId && !memberIds.includes(userId)) memberIds.push(userId)
+}
+
+watch(
+  () => form.responsableId,
+  (rid) => {
+    if (modalLevel.value === 'equipe') ensureMemberSelected(form.memberIds, rid)
+  }
+)
+
 // Un service n'a pas toujours de libellé (colonne ajoutée en 0018) : on retombe
 // sur son type pour que le nœud reste identifiable.
 const serviceLabel = (service: OrgService) =>
@@ -175,6 +208,7 @@ const openModal = (level: Level, parent: { id: string; label: string }) => {
   form.libelle = ''
   form.type = 'interne'
   form.responsableId = ''
+  form.memberIds = []
   form.siteIds = []
   form.serviceIds = level === 'application' ? [parent.id] : []
   form.equipeIds = []
@@ -183,6 +217,7 @@ const openModal = (level: Level, parent: { id: string; label: string }) => {
 }
 
 const modalTitle = computed(() => t(`org.tree.add_${modalLevel.value}`))
+const createModalWidth = computed(() => (modalLevel.value === 'equipe' ? 'md' : 'sm'))
 
 const submit = async () => {
   submitting.value = true
@@ -213,13 +248,20 @@ const submit = async () => {
         })
         break
       }
-      case 'equipe':
-        await createEquipe({
-          applicationId: parentId.value,
-          libelle: form.libelle,
-          responsableId: form.responsableId || undefined
-        })
+      case 'equipe': {
+        const created = unwrapOrgData<{ id?: string; ID?: string }>(
+          await createEquipe({
+            applicationId: parentId.value,
+            libelle: form.libelle,
+            responsableId: form.responsableId || undefined
+          })
+        )
+        const createdId = orgId(created)
+        if (createdId) {
+          await syncEquipeMembers(createdId, form.memberIds, form.responsableId || null)
+        }
         break
+      }
       default: {
         const _exhaustive: never = modalLevel.value
         throw new Error(`Unhandled level: ${_exhaustive}`)
@@ -251,7 +293,12 @@ const renameOpen = ref(false)
 const renameLevel = ref<RenameLevel>('site')
 const renameSubmitting = ref(false)
 const renameError = ref('')
-const renameForm = reactive({ id: '', libelle: '', responsableId: '' })
+const renameForm = reactive({
+  id: '',
+  libelle: '',
+  responsableId: '',
+  memberIds: [] as string[]
+})
 
 const renameTitle = computed(() => {
   switch (renameLevel.value) {
@@ -268,11 +315,21 @@ const renameTitle = computed(() => {
   }
 })
 
+const renameModalWidth = computed(() => (renameLevel.value === 'equipe' ? 'md' : 'sm'))
+
+watch(
+  () => renameForm.responsableId,
+  (rid) => {
+    if (renameLevel.value === 'equipe') ensureMemberSelected(renameForm.memberIds, rid)
+  }
+)
+
 const openRenameSite = (site: OrgSite) => {
   renameLevel.value = 'site'
   renameForm.id = orgId(site)
   renameForm.libelle = orgLabel(site)
   renameForm.responsableId = ''
+  renameForm.memberIds = []
   renameError.value = ''
   renameOpen.value = true
 }
@@ -282,6 +339,7 @@ const openRenameService = (service: OrgService) => {
   renameForm.id = orgId(service)
   renameForm.libelle = orgLabel(service) || service.type || ''
   renameForm.responsableId = ''
+  renameForm.memberIds = []
   renameError.value = ''
   renameOpen.value = true
 }
@@ -290,10 +348,15 @@ const equipeResponsableId = (equipe: OrgEquipe) =>
   equipe.responsableId ?? equipe.ResponsableID ?? ''
 
 const openRenameEquipe = (equipe: OrgEquipe) => {
+  const id = orgId(equipe)
   renameLevel.value = 'equipe'
-  renameForm.id = orgId(equipe)
+  renameForm.id = id
   renameForm.libelle = orgLabel(equipe)
   renameForm.responsableId = equipeResponsableId(equipe)
+  renameForm.memberIds = users.value
+    .filter((u) => pickUserEquipeIds(u).includes(id))
+    .map((u) => pickUserId(u))
+  ensureMemberSelected(renameForm.memberIds, renameForm.responsableId)
   renameError.value = ''
   renameOpen.value = true
 }
@@ -319,6 +382,11 @@ const submitRename = async () => {
           libelle,
           responsableId: renameForm.responsableId || null
         })
+        await syncEquipeMembers(
+          renameForm.id,
+          renameForm.memberIds,
+          renameForm.responsableId || null
+        )
         break
       default: {
         const _exhaustive: never = renameLevel.value
@@ -631,7 +699,7 @@ defineExpose({ reload: load })
       </ul>
     </AppCard>
 
-    <AppModal v-model:open="modalOpen" width="sm" :aria-label="modalTitle">
+    <AppModal v-model:open="modalOpen" :width="createModalWidth" :aria-label="modalTitle">
       <form class="org-tree__form" @submit.prevent="submit">
         <h2 class="org-tree__form-title">{{ modalTitle }}</h2>
         <p class="org-tree__form-parent">
@@ -702,7 +770,22 @@ defineExpose({ reload: load })
           <p v-if="modalLevel === 'service'" class="org-tree__field-hint">
             {{ $t('org.tree.responsable_hint') }}
           </p>
+          <p v-else class="org-tree__field-hint">{{ $t('org.tree.responsable_vs_members_hint') }}</p>
         </div>
+
+        <fieldset v-if="modalLevel === 'equipe'" class="org-tree__field org-tree__checkgroup">
+          <legend>{{ $t('org.tree.field_members') }}</legend>
+          <label v-for="user in users" :key="`create-${pickUserId(user)}`" class="org-tree__check">
+            <input
+              v-model="form.memberIds"
+              type="checkbox"
+              :value="pickUserId(user)"
+              :disabled="pickUserId(user) === form.responsableId"
+            />
+            {{ pickUserLogin(user) }}
+          </label>
+          <p class="org-tree__field-hint">{{ $t('org.tree.members_hint') }}</p>
+        </fieldset>
 
         <p v-if="formError" class="org-tree__form-error" role="alert">{{ formError }}</p>
 
@@ -717,7 +800,7 @@ defineExpose({ reload: load })
       </form>
     </AppModal>
 
-    <AppModal v-model:open="renameOpen" width="sm" :aria-label="renameTitle">
+    <AppModal v-model:open="renameOpen" :width="renameModalWidth" :aria-label="renameTitle">
       <form class="org-tree__form" @submit.prevent="submitRename">
         <h2 class="org-tree__form-title">{{ renameTitle }}</h2>
         <AppInput
@@ -734,7 +817,21 @@ defineExpose({ reload: load })
               {{ pickUserLogin(u) }}
             </option>
           </select>
+          <p class="org-tree__field-hint">{{ $t('org.tree.responsable_vs_members_hint') }}</p>
         </div>
+        <fieldset v-if="renameLevel === 'equipe'" class="org-tree__field org-tree__checkgroup">
+          <legend>{{ $t('org.tree.field_members') }}</legend>
+          <label v-for="u in users" :key="`rename-${pickUserId(u)}`" class="org-tree__check">
+            <input
+              v-model="renameForm.memberIds"
+              type="checkbox"
+              :value="pickUserId(u)"
+              :disabled="pickUserId(u) === renameForm.responsableId"
+            />
+            {{ pickUserLogin(u) }}
+          </label>
+          <p class="org-tree__field-hint">{{ $t('org.tree.members_hint') }}</p>
+        </fieldset>
         <p v-if="renameError" class="org-tree__form-error" role="alert">{{ renameError }}</p>
         <div class="org-tree__form-actions">
           <AppButton variant="ghost" type="button" @click="renameOpen = false">
@@ -885,6 +982,29 @@ defineExpose({ reload: load })
   margin: 0;
   font-size: var(--kore-text-caption);
   color: var(--kore-text-muted);
+}
+
+.org-tree__checkgroup {
+  margin: 0;
+  padding: 0;
+  border: none;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.org-tree__checkgroup legend {
+  margin: 0 0 var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  font-weight: 500;
+}
+
+.org-tree__check {
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  padding: var(--kore-space-xs) 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
 }
 
 .org-tree__form-error {

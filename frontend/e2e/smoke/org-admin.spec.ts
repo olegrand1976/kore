@@ -74,36 +74,28 @@ test.describe('org admin', () => {
     // L'équipe apparaît dans l'arbre avec son compteur de collaborateurs.
     await expect(page.getByText(teamName)).toBeVisible({ timeout: 20_000 })
 
-    // Renomme l'équipe via le bouton Modifier du nœud feuille.
+    // Renomme l'équipe et rattache COL_collab directement depuis le modal Modifier.
     const teamRow = page.locator('.org-tree__node--leaf', { hasText: teamName }).first()
     await teamRow.getByRole('button', { name: /modifier|edit/i }).click()
     await expect(page.getByRole('heading', { name: /modifier l'équipe|edit team/i })).toBeVisible()
     await page.locator('#org-rename-libelle').fill(renamed)
+    const memberCheckbox = page
+      .locator('.org-tree__check', { hasText: 'COL_collab' })
+      .locator('input[type="checkbox"]')
+    await expect(memberCheckbox).toBeVisible()
+    await memberCheckbox.check()
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
     await expect(page.getByText(renamed)).toBeVisible({ timeout: 20_000 })
 
-    // Rattache un collaborateur à cette équipe depuis l'écran utilisateurs.
+    // Le compteur de l'arbre reflète le rattachement.
+    const renamedRow = page.locator('.org-tree__node--leaf', { hasText: renamed }).first()
+    await expect(renamedRow.getByText(/1 collaborateur|1 member/i)).toBeVisible({ timeout: 20_000 })
+
+    // La colonne Équipe de la liste utilisateurs reflète aussi le rattachement.
     await page.goto('/admin/users')
     const collabRow = page.locator('tbody tr', { hasText: 'COL_collab' }).first()
     await expect(collabRow).toBeVisible({ timeout: 20_000 })
-    await collabRow.getByRole('button', { name: /modifier|edit/i }).click()
-
-    const profileCheckbox = page.locator('label.users-check', { hasText: "Chef d'équipe" }).locator('input[type="checkbox"]')
-    await expect(profileCheckbox).toBeEnabled()
-    await profileCheckbox.check()
-
-    const equipeCheckbox = page.locator('label.users-check', { hasText: renamed }).locator('input[type="checkbox"]')
-    await expect(equipeCheckbox).toBeVisible()
-    await equipeCheckbox.check()
-    await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
-
-    // La colonne Équipe de la liste reflète le rattachement.
-    await expect(
-      page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(new RegExp(renamed))
-    ).toBeVisible({ timeout: 20_000 })
-    await expect(
-      page.locator('tbody tr', { hasText: 'COL_collab' }).first().getByText(/chef d'équipe/i)
-    ).toBeVisible({ timeout: 20_000 })
+    await expect(collabRow.getByText(new RegExp(renamed))).toBeVisible({ timeout: 20_000 })
   })
 
   test('self-edit keeps Administrateur locked and allows other profiles', async ({ page }) => {
