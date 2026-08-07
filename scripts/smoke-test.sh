@@ -62,6 +62,7 @@ curl -sf -X POST "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks
 # Budget (admin)
 curl -sf "http://localhost:${API_PORT}/api/v1/budgets" -H "Authorization: Bearer $TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications" -H "Authorization: Bearer $TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/missions" -H "Authorization: Bearer $TOKEN" >/dev/null
 
 # Billing checkout (stripe-mock)
 CHECKOUT=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/billing/checkout-session" \

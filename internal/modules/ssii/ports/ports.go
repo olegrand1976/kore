@@ -22,6 +22,7 @@ type CreateMissionCommand struct {
 	ClientContact    string
 	ClientContactIDs []uuid.UUID
 	CollaboratorIDs  []uuid.UUID
+	ApplicationIDs   []uuid.UUID
 }
 
 type UpdateMissionCommand struct {
@@ -46,11 +47,23 @@ type UpdateCollaboratorsCommand struct {
 	CollaboratorIDs []uuid.UUID
 }
 
+type UpdateApplicationsCommand struct {
+	TenantID       kernel.TenantID
+	MissionID      uuid.UUID
+	ApplicationIDs []uuid.UUID
+}
+
 type MissionCollaborator struct {
 	UserID uuid.UUID `json:"userId"`
 	Login  string    `json:"login"`
 	Prenom string    `json:"prenom"`
 	Nom    string    `json:"nom"`
+}
+
+type MissionApplication struct {
+	ApplicationID uuid.UUID `json:"applicationId"`
+	Libelle       string    `json:"libelle"`
+	Active        bool      `json:"active"`
 }
 
 type MissionClientContact struct {
@@ -79,6 +92,7 @@ type MissionDetail struct {
 	ClientContacts   []MissionClientContact `json:"clientContacts"`
 	CreatedAt        time.Time              `json:"createdAt"`
 	Collaborators    []MissionCollaborator  `json:"collaborators"`
+	Applications     []MissionApplication   `json:"applications"`
 }
 
 type MissionSummary struct {
@@ -113,15 +127,22 @@ type SSIIService interface {
 	Stop(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error)
 	UpdateEndDate(ctx context.Context, cmd UpdateEndDateCommand) (domain.Mission, error)
 	UpdateCollaborators(ctx context.Context, cmd UpdateCollaboratorsCommand) (MissionDetail, error)
+	UpdateApplications(ctx context.Context, cmd UpdateApplicationsCommand) (MissionDetail, error)
 }
 
 type SSIIRepository interface {
 	SaveMission(ctx context.Context, m domain.Mission) error
+	// CreateMissionWithRelations persists mission + collaborators + applications atomically.
+	CreateMissionWithRelations(ctx context.Context, m domain.Mission, collaboratorIDs, applicationIDs []uuid.UUID) error
 	GetMission(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error)
 	ListMissions(ctx context.Context, tenant kernel.TenantID) ([]domain.Mission, error)
 	ListMissionSummaries(ctx context.Context, tenant kernel.TenantID) ([]MissionSummary, error)
 	ListMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionCollaborator, error)
 	SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error
+	ListMissionApplications(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionApplication, error)
+	SaveMissionApplications(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, applicationIDs []uuid.UUID) error
+	// ValidateApplicationIDs keeps active apps; when missionID != Nil, also allows apps already linked (even inactive).
+	ValidateApplicationIDs(ctx context.Context, tenant kernel.TenantID, applicationIDs []uuid.UUID, missionID uuid.UUID) ([]uuid.UUID, error)
 	GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
 	// GetClientPays returns the client's billing country code (org.clients.pays).
 	GetClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)

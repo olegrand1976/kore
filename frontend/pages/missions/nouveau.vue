@@ -81,6 +81,24 @@
           :label="$t('missions.field_collaborators')"
           required
         />
+        <div class="mission-form__field">
+          <MissionApplicationMultiSelect
+            id="mission-applications"
+            v-model="form.applicationIds"
+            :applications="applicationOptions"
+            :label="$t('missions.field_applications')"
+          />
+          <p class="mission-form__hint">{{ $t('missions.apps_select_hint') }}</p>
+          <AppButton
+            v-if="canCreateApp"
+            variant="ghost"
+            size="sm"
+            type="button"
+            @click="appModalOpen = true"
+          >
+            <AppIcon name="add" /> {{ $t('missions.app_add_inline') }}
+          </AppButton>
+        </div>
         <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
         <div class="mission-form__actions">
           <AppButton variant="primary" type="submit" :loading="submitting">
@@ -142,6 +160,13 @@
         </div>
       </form>
     </AppModal>
+
+    <MissionApplicationCreateModal
+      v-model:open="appModalOpen"
+      :default-libelle="form.title"
+      :sites="sites"
+      @created="onAppCreated"
+    />
   </div>
 </template>
 
@@ -151,8 +176,11 @@ definePageMeta({ layout: 'default' })
 const { apiFetch } = useApiFetch()
 const { t } = useI18n()
 const { user } = useAuth()
-const { listClients, createClient, replaceClientContacts, orgId } = useOrganisation()
+const { can } = usePermissions()
+const { listClients, createClient, replaceClientContacts, listApplications, listSites, orgId, orgLabel } = useOrganisation()
 const { extractFetchError } = useApiError()
+
+const canCreateApp = computed(() => can('org', 'E'))
 
 type OrgClientContact = {
   id?: string
@@ -179,7 +207,8 @@ const form = reactive({
   rateUnit: 'tjm' as 'tjm' | 'hourly',
   amountEuros: 0,
   clientContactIds: [] as string[],
-  collaboratorIds: [] as string[]
+  collaboratorIds: [] as string[],
+  applicationIds: [] as string[]
 })
 
 const rateAmountLabel = computed(() => {
@@ -196,6 +225,8 @@ const rateAmountLabel = computed(() => {
 })
 
 const clients = ref<{ id: string; label: string; contacts: OrgClientContact[] }[]>([])
+const applicationOptions = ref<{ id: string; libelle: string; active?: boolean }[]>([])
+const sites = ref<{ id: string; label: string }[]>([])
 const clientModalOpen = ref(false)
 const creatingClient = ref(false)
 const clientError = ref('')
@@ -214,6 +245,7 @@ const contactForm = reactive({
   email: '',
   telephone: ''
 })
+const appModalOpen = ref(false)
 
 const selectedClientContacts = computed(() => {
   const client = clients.value.find((c) => c.id === form.clientId)
@@ -246,6 +278,34 @@ const loadClients = async () => {
   }
 }
 
+const loadApplications = async () => {
+  try {
+    const items = await listApplications()
+    applicationOptions.value = items
+      .map((a) => ({
+        id: orgId(a),
+        libelle: orgLabel(a) || orgId(a),
+        active: a.active ?? a.Active ?? true
+      }))
+      .filter((a) => a.id && a.active !== false)
+      .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'))
+  } catch {
+    applicationOptions.value = []
+  }
+}
+
+const loadSites = async () => {
+  try {
+    const items = await listSites()
+    sites.value = items
+      .map((s) => ({ id: orgId(s), label: orgLabel(s) || orgId(s) }))
+      .filter((s) => s.id)
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+  } catch {
+    sites.value = []
+  }
+}
+
 const openClientModal = () => {
   clientForm.raisonSociale = ''
   clientForm.tva = ''
@@ -262,6 +322,13 @@ const openContactModal = () => {
   contactForm.telephone = ''
   contactError.value = ''
   contactModalOpen.value = true
+}
+
+const onAppCreated = async (applicationId: string) => {
+  await loadApplications()
+  if (applicationId && !form.applicationIds.includes(applicationId)) {
+    form.applicationIds = [...form.applicationIds, applicationId]
+  }
 }
 
 const submitClient = async () => {
@@ -332,7 +399,7 @@ onMounted(async () => {
   if (selfId && !form.collaboratorIds.includes(selfId)) {
     form.collaboratorIds = [selfId]
   }
-  await loadClients()
+  await Promise.all([loadClients(), loadApplications(), loadSites()])
 })
 
 const submitting = ref(false)
@@ -355,7 +422,8 @@ async function submit() {
       currency: 'EUR',
       clientContactIds: form.clientContactIds,
       technologies: [],
-      collaboratorIds: form.collaboratorIds
+      collaboratorIds: form.collaboratorIds,
+      applicationIds: form.applicationIds
     }
     if (form.endDate) {
       body.endDate = new Date(form.endDate).toISOString()

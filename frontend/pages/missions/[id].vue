@@ -47,6 +47,12 @@
           :label="$t('fiche.section_staffing')"
         />
         <AppKpiCard
+          icon="apps"
+          tone="default"
+          :value="applications.length"
+          :label="$t('fiche.section_applications')"
+        />
+        <AppKpiCard
           icon="event"
           tone="warn"
           :value="periodLabel"
@@ -184,6 +190,46 @@
 
       <AppCard padding="none" class="fiche-table-wrap">
         <div class="fiche-table-head">
+          <h3 class="fiche-section-title">{{ $t('fiche.section_applications') }}</h3>
+        </div>
+        <div v-if="applications.length" class="fiche-tags mission-apps">
+          <AppBadge
+            v-for="app in applications"
+            :key="app.applicationId"
+            :variant="app.active === false ? 'warning' : 'default'"
+          >
+            {{ app.libelle }}
+          </AppBadge>
+        </div>
+        <p v-else class="muted mission-apps-empty">{{ $t('missions.apps_none') }}</p>
+      </AppCard>
+
+      <AppCard v-if="canEditApplications" padding="lg" class="fiche-apps-edit">
+        <h3 class="fiche-section-title">{{ $t('missions.edit_applications') }}</h3>
+        <MissionApplicationMultiSelect
+          id="mission-apps-edit"
+          :model-value="selectedApplicationIds"
+          :applications="applicationOptions"
+          :label="$t('missions.field_applications')"
+          @update:model-value="onApplicationsModelUpdate"
+        />
+        <AppButton
+          v-if="canCreateApp"
+          variant="ghost"
+          size="sm"
+          type="button"
+          @click="appModalOpen = true"
+        >
+          <AppIcon name="add" /> {{ $t('missions.app_add_inline') }}
+        </AppButton>
+        <p v-if="appsError" class="flash flash--error" role="alert">{{ appsError }}</p>
+        <AppButton variant="primary" size="sm" :loading="appsSaving" @click="saveApplications">
+          {{ $t('missions.save_applications') }}
+        </AppButton>
+      </AppCard>
+
+      <AppCard padding="none" class="fiche-table-wrap">
+        <div class="fiche-table-head">
           <h3 class="fiche-section-title">{{ $t('fiche.section_staffing') }}</h3>
         </div>
         <AppTable
@@ -237,6 +283,13 @@
         </div>
       </form>
     </AppModal>
+
+    <MissionApplicationCreateModal
+      v-model:open="appModalOpen"
+      :default-libelle="mission?.title"
+      :sites="sites"
+      @created="onAppCreated"
+    />
   </div>
 </template>
 
@@ -251,6 +304,12 @@ type MissionCollaborator = {
   login?: string
   prenom?: string
   nom?: string
+}
+
+type MissionApplication = {
+  applicationId: string
+  libelle: string
+  active?: boolean
 }
 
 type MissionClientContact = {
@@ -279,6 +338,7 @@ type MissionDetail = {
   clientContacts?: MissionClientContact[]
   createdAt?: string
   collaborators?: MissionCollaborator[]
+  applications?: MissionApplication[]
 }
 
 const route = useRoute()
@@ -286,15 +346,24 @@ const { t } = useI18n()
 const { isAdmin } = useAuth()
 const { can } = usePermissions()
 const { extractFetchError } = useApiError()
-const { replaceClientContacts } = useOrganisation()
+const { replaceClientContacts, listApplications, listSites, orgId, orgLabel } = useOrganisation()
 const { formatDate, formatMoney, missionStatusLabel, missionStatusVariant } = useFicheFormat()
 
 const id = computed(() => String(route.params.id ?? ''))
 const canEditStaffing = computed(() => isAdmin.value)
 const canEditBilling = computed(() => can('ssii', 'E'))
+const canEditApplications = computed(() => can('ssii', 'E'))
+const canCreateApp = computed(() => can('org', 'E'))
 const selectedCollaboratorIds = ref<string[]>([])
 const staffSaving = ref(false)
 const staffError = ref('')
+const selectedApplicationIds = ref<string[]>([])
+const appsDirty = ref(false)
+const applicationOptions = ref<{ id: string; libelle: string; active?: boolean }[]>([])
+const sites = ref<{ id: string; label: string }[]>([])
+const appsSaving = ref(false)
+const appsError = ref('')
+const appModalOpen = ref(false)
 
 type RateUnit = 'tjm' | 'hourly'
 const editingBilling = ref(false)
@@ -360,11 +429,13 @@ const mission = computed(() => {
     ...payload,
     status: payload.status ?? 'active',
     technologies: payload.technologies ?? [],
-    collaborators: payload.collaborators ?? []
+    collaborators: payload.collaborators ?? [],
+    applications: payload.applications ?? []
   }
 })
 
 const collaborators = computed(() => mission.value?.collaborators ?? [])
+const applications = computed(() => mission.value?.applications ?? [])
 const missionContacts = computed(() => mission.value?.clientContacts ?? [])
 
 const loadClientContacts = async () => {
@@ -379,6 +450,49 @@ const loadClientContacts = async () => {
     availableClientContacts.value = contacts.filter((c): c is MissionClientContact => Boolean(c.id))
   } catch {
     availableClientContacts.value = missionContacts.value
+  }
+}
+
+const loadApplicationCatalog = async () => {
+  try {
+    const items = await listApplications()
+    const byId = new Map<string, { id: string; libelle: string; active?: boolean }>()
+    for (const a of items) {
+      const appId = orgId(a)
+      if (!appId) continue
+      const active = a.active ?? a.Active ?? true
+      if (active === false) continue
+      byId.set(appId, { id: appId, libelle: orgLabel(a) || appId, active: true })
+    }
+    // Keep currently linked inactive apps visible (uncheckable to remove only).
+    for (const linked of applications.value) {
+      const appId = String(linked.applicationId ?? '')
+      if (!appId) continue
+      if (!byId.has(appId)) {
+        byId.set(appId, {
+          id: appId,
+          libelle: linked.libelle || appId,
+          active: linked.active !== false
+        })
+      }
+    }
+    applicationOptions.value = [...byId.values()].sort((a, b) =>
+      a.libelle.localeCompare(b.libelle, 'fr')
+    )
+  } catch {
+    applicationOptions.value = []
+  }
+}
+
+const loadSitesCatalog = async () => {
+  try {
+    const items = await listSites()
+    sites.value = items
+      .map((s) => ({ id: orgId(s), label: orgLabel(s) || orgId(s) }))
+      .filter((s) => s.id)
+      .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
+  } catch {
+    sites.value = []
   }
 }
 
@@ -400,6 +514,28 @@ watch(
   { immediate: true }
 )
 
+watch(
+  applications,
+  (items) => {
+    if (appsDirty.value) return
+    selectedApplicationIds.value = items
+      .map((a) => String(a.applicationId ?? ''))
+      .filter(Boolean)
+  },
+  { immediate: true }
+)
+
+const onApplicationsModelUpdate = (value: string[]) => {
+  appsDirty.value = true
+  selectedApplicationIds.value = value
+}
+
+onMounted(() => {
+  if (canEditApplications.value) {
+    void Promise.all([loadApplicationCatalog(), loadSitesCatalog()])
+  }
+})
+
 const saveCollaborators = async () => {
   staffError.value = ''
   if (!selectedCollaboratorIds.value.length) {
@@ -417,6 +553,32 @@ const saveCollaborators = async () => {
     staffError.value = t('missions.save_collaborators_error')
   } finally {
     staffSaving.value = false
+  }
+}
+
+const saveApplications = async () => {
+  appsError.value = ''
+  appsSaving.value = true
+  try {
+    await apiFetch(`/api/ssii/missions/${id.value}/applications`, {
+      method: 'PUT',
+      body: { applicationIds: selectedApplicationIds.value }
+    })
+    appsDirty.value = false
+    await refresh()
+    await loadApplicationCatalog()
+  } catch {
+    appsError.value = t('missions.save_applications_error')
+  } finally {
+    appsSaving.value = false
+  }
+}
+
+const onAppCreated = async (applicationId: string) => {
+  await loadApplicationCatalog()
+  appsDirty.value = true
+  if (applicationId && !selectedApplicationIds.value.includes(applicationId)) {
+    selectedApplicationIds.value = [...selectedApplicationIds.value, applicationId]
   }
 }
 
@@ -638,6 +800,33 @@ const staffRows = computed(() =>
   margin-top: var(--kore-space-lg);
   display: grid;
   gap: var(--kore-space-md);
+}
+
+.fiche-apps-edit {
+  margin-top: var(--kore-space-lg);
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.mission-apps {
+  padding: 0 var(--kore-space-lg) var(--kore-space-lg);
+}
+
+.mission-apps-empty {
+  margin: 0;
+  padding: 0 var(--kore-space-lg) var(--kore-space-lg);
+}
+
+.mission-contact-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kore-space-xs);
+}
+
+.mission-contact-form__field label {
+  font-size: var(--kore-text-small);
+  font-weight: 500;
+  color: var(--kore-text-muted);
 }
 
 .mission-billing-form {

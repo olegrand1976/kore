@@ -24,6 +24,7 @@ func RegisterRoutes(r chi.Router, svc ports.SSIIService, tokens *authx.TokenIssu
 		pr.Post("/missions/{id}/stop", stopMission(svc, authorizer))
 		pr.Put("/missions/{id}/end-date", updateEndDate(svc, authorizer))
 		pr.Put("/missions/{id}/collaborators", updateCollaborators(svc, authorizer))
+		pr.Put("/missions/{id}/applications", updateApplications(svc, authorizer))
 	})
 }
 
@@ -63,6 +64,7 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			ClientContact    string      `json:"clientContact"`
 			ClientContactIDs []uuid.UUID `json:"clientContactIds"`
 			CollaboratorIDs  []uuid.UUID `json:"collaboratorIds"`
+			ApplicationIDs   []uuid.UUID `json:"applicationIds"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -82,6 +84,7 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			ClientContact:    req.ClientContact,
 			ClientContactIDs: req.ClientContactIDs,
 			CollaboratorIDs:  req.CollaboratorIDs,
+			ApplicationIDs:   req.ApplicationIDs,
 		})
 		if err != nil {
 			writeMissionError(w, err)
@@ -138,6 +141,8 @@ func writeMissionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrInvalidRateUnit):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrInvalidClientContact):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrInvalidApplication):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrMissionNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
@@ -252,6 +257,38 @@ func updateCollaborators(svc ports.SSIIService, authorizer authx.Authorizer) htt
 				return
 			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, detail)
+	}
+}
+
+func updateApplications(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ssii", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			ApplicationIDs []uuid.UUID `json:"applicationIds"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		detail, err := svc.UpdateApplications(r.Context(), ports.UpdateApplicationsCommand{
+			TenantID:       identity.TenantID,
+			MissionID:      id,
+			ApplicationIDs: req.ApplicationIDs,
+		})
+		if err != nil {
+			writeMissionError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, detail)

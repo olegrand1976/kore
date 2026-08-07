@@ -101,6 +101,11 @@ func (r *contactRepo) SaveMission(_ context.Context, m domain.Mission) error {
 	return nil
 }
 
+func (r *contactRepo) CreateMissionWithRelations(_ context.Context, m domain.Mission, _, _ []uuid.UUID) error {
+	r.saved = m
+	return nil
+}
+
 func TestCreate_bindsClientContactIDs(t *testing.T) {
 	contactID := uuid.New()
 	repo := &contactRepo{
@@ -145,6 +150,10 @@ func (r *missionStoreRepo) SaveMission(_ context.Context, m domain.Mission) erro
 
 func (r *missionStoreRepo) ListMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionCollaborator, error) {
 	return []ports.MissionCollaborator{}, nil
+}
+
+func (r *missionStoreRepo) ListMissionApplications(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionApplication, error) {
+	return []ports.MissionApplication{}, nil
 }
 
 func (r *missionStoreRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) ([]ports.ClientContactSnapshot, error) {
@@ -250,6 +259,10 @@ type paysRepo struct {
 	err  error
 }
 
+func (r *paysRepo) CreateMissionWithRelations(context.Context, domain.Mission, []uuid.UUID, []uuid.UUID) error {
+	return nil
+}
+
 func (r *paysRepo) GetClientPays(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
 	if r.err != nil {
 		return "", r.err
@@ -302,9 +315,172 @@ func TestResolveClientCountry_defaultsAndAliases(t *testing.T) {
 	}
 }
 
+type appsRepo struct {
+	noopRepo
+	validIDs map[uuid.UUID]struct{}
+	saved    []uuid.UUID
+	mission  domain.Mission
+}
+
+func (r *appsRepo) ValidateApplicationIDs(_ context.Context, _ kernel.TenantID, ids []uuid.UUID, _ uuid.UUID) ([]uuid.UUID, error) {
+	out := make([]uuid.UUID, 0, len(ids))
+	seen := make(map[uuid.UUID]struct{})
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		if _, ok := r.validIDs[id]; !ok {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+func (r *appsRepo) CreateMissionWithRelations(_ context.Context, m domain.Mission, _, applicationIDs []uuid.UUID) error {
+	r.mission = m
+	r.saved = append([]uuid.UUID{}, applicationIDs...)
+	return nil
+}
+
+func (r *appsRepo) SaveMissionApplications(_ context.Context, _ kernel.TenantID, _ uuid.UUID, ids []uuid.UUID) error {
+	r.saved = append([]uuid.UUID{}, ids...)
+	return nil
+}
+
+func (r *appsRepo) GetMission(context.Context, kernel.TenantID, uuid.UUID) (domain.Mission, error) {
+	return r.mission, nil
+}
+
+func (r *appsRepo) ListMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionCollaborator, error) {
+	return []ports.MissionCollaborator{}, nil
+}
+
+func (r *appsRepo) ListMissionApplications(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionApplication, error) {
+	out := make([]ports.MissionApplication, 0, len(r.saved))
+	for _, id := range r.saved {
+		out = append(out, ports.MissionApplication{ApplicationID: id, Libelle: id.String(), Active: true})
+	}
+	return out, nil
+}
+
+func TestCreate_rejectsUnknownApplication(t *testing.T) {
+	svc := NewService(&appsRepo{validIDs: map[uuid.UUID]struct{}{}}, nil, nil, nil)
+	_, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:        kernel.NewTenantID(uuid.New()),
+		ClientID:        uuid.New(),
+		StartDate:       time.Now().UTC(),
+		RateUnit:        "tjm",
+		CollaboratorIDs: []uuid.UUID{uuid.New()},
+		ApplicationIDs:  []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrInvalidApplication) {
+		t.Fatalf("err = %v, want ErrInvalidApplication", err)
+	}
+}
+
+func TestCreate_bindsOptionalApplications(t *testing.T) {
+	appID := uuid.New()
+	repo := &appsRepo{validIDs: map[uuid.UUID]struct{}{appID: {}}}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.Create(context.Background(), ports.CreateMissionCommand{
+		TenantID:        kernel.NewTenantID(uuid.New()),
+		ClientID:        uuid.New(),
+		StartDate:       time.Now().UTC(),
+		RateUnit:        "tjm",
+		CollaboratorIDs: []uuid.UUID{uuid.New()},
+		ApplicationIDs:  []uuid.UUID{appID, appID},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if len(repo.saved) != 1 || repo.saved[0] != appID {
+		t.Fatalf("saved apps = %v", repo.saved)
+	}
+}
+
+func TestUpdateApplications_replacesAndAllowsEmpty(t *testing.T) {
+	appID := uuid.New()
+	repo := &appsRepo{
+		validIDs: map[uuid.UUID]struct{}{appID: {}},
+		mission: domain.Mission{
+			ID:       uuid.New(),
+			TenantID: kernel.NewTenantID(uuid.New()),
+			ClientID: uuid.New(),
+			RateUnit: domain.RateUnitTJM,
+		},
+		saved: []uuid.UUID{appID},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	detail, err := svc.UpdateApplications(context.Background(), ports.UpdateApplicationsCommand{
+		TenantID:       repo.mission.TenantID,
+		MissionID:      repo.mission.ID,
+		ApplicationIDs: nil,
+	})
+	if err != nil {
+		t.Fatalf("UpdateApplications: %v", err)
+	}
+	if len(repo.saved) != 0 {
+		t.Fatalf("expected clear, got %v", repo.saved)
+	}
+	if len(detail.Applications) != 0 {
+		t.Fatalf("detail apps = %+v", detail.Applications)
+	}
+}
+
+func TestUpdateApplications_rejectsUnknown(t *testing.T) {
+	repo := &appsRepo{
+		validIDs: map[uuid.UUID]struct{}{},
+		mission: domain.Mission{
+			ID:       uuid.New(),
+			TenantID: kernel.NewTenantID(uuid.New()),
+			ClientID: uuid.New(),
+			RateUnit: domain.RateUnitTJM,
+		},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.UpdateApplications(context.Background(), ports.UpdateApplicationsCommand{
+		TenantID:       repo.mission.TenantID,
+		MissionID:      repo.mission.ID,
+		ApplicationIDs: []uuid.UUID{uuid.New()},
+	})
+	if !errors.Is(err, domain.ErrInvalidApplication) {
+		t.Fatalf("err = %v, want ErrInvalidApplication", err)
+	}
+}
+
+func TestGetDetail_includesApplications(t *testing.T) {
+	appID := uuid.New()
+	repo := &appsRepo{
+		validIDs: map[uuid.UUID]struct{}{appID: {}},
+		mission: domain.Mission{
+			ID:       uuid.New(),
+			TenantID: kernel.NewTenantID(uuid.New()),
+			ClientID: uuid.New(),
+			RateUnit: domain.RateUnitTJM,
+		},
+		saved: []uuid.UUID{appID},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	detail, err := svc.GetDetail(context.Background(), repo.mission.TenantID, repo.mission.ID)
+	if err != nil {
+		t.Fatalf("GetDetail: %v", err)
+	}
+	if len(detail.Applications) != 1 || detail.Applications[0].ApplicationID != appID {
+		t.Fatalf("applications = %+v", detail.Applications)
+	}
+}
+
 type noopRepo struct{}
 
 func (noopRepo) SaveMission(context.Context, domain.Mission) error { return nil }
+func (noopRepo) CreateMissionWithRelations(context.Context, domain.Mission, []uuid.UUID, []uuid.UUID) error {
+	return nil
+}
 func (noopRepo) GetMission(context.Context, kernel.TenantID, uuid.UUID) (domain.Mission, error) {
 	return domain.Mission{}, domain.ErrMissionNotFound
 }
@@ -319,6 +495,15 @@ func (noopRepo) ListMissionCollaborators(context.Context, kernel.TenantID, uuid.
 }
 func (noopRepo) SaveMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
 	return nil
+}
+func (noopRepo) ListMissionApplications(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionApplication, error) {
+	return nil, nil
+}
+func (noopRepo) SaveMissionApplications(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
+	return nil
+}
+func (noopRepo) ValidateApplicationIDs(_ context.Context, _ kernel.TenantID, ids []uuid.UUID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return ids, nil
 }
 func (noopRepo) GetClientName(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
 	return "", nil

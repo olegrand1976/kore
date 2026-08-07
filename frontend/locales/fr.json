@@ -743,7 +743,22 @@
     "client_create_error": "La création du client a échoué.",
     "contacts_empty_hint": "Aucun contact sur ce client — ajoutez-en un ci-dessous.",
     "contact_add_inline": "Nouveau contact",
-    "contact_select_hint": "Sélectionnez un ou plusieurs contacts du client."
+    "contact_select_hint": "Sélectionnez un ou plusieurs contacts du client.",
+    "field_applications": "Applications",
+    "apps_select_hint": "Optionnel — rattachez une ou plusieurs applications existantes.",
+    "apps_empty_hint": "Aucune application dans l'organisation — créez-en une ci-dessous.",
+    "apps_none": "Aucune application rattachée",
+    "app_inactive": "inactive",
+    "app_add_inline": "Nouvelle application",
+    "app_libelle": "Libellé",
+    "app_site": "Site de rattachement",
+    "app_site_placeholder": "Sélectionner un site",
+    "app_create_hint": "L'application sera créée dans l'organisation et sélectionnée sur cette mission.",
+    "app_create_required": "Libellé et site obligatoires.",
+    "app_create_error": "Impossible de créer l'application",
+    "edit_applications": "Modifier les applications",
+    "save_applications": "Enregistrer les applications",
+    "save_applications_error": "Impossible de mettre à jour les applications"
   },
   "clients": {
     "title": "Clients",
@@ -1189,7 +1204,7 @@
       "title": "À quoi sert ce module ?",
       "items": [
         "Référencer les missions et les rattacher à un client.",
-        "Affecter les collaborateurs à chaque mission pour le CRA et le budget.",
+        "Affecter les collaborateurs et, en option, une ou plusieurs applications.",
         "Créer une nouvelle mission depuis le bouton en haut à droite."
       ]
     },
@@ -2025,6 +2040,7 @@
     "section_missions": "Missions",
     "section_overview": "Vue d'ensemble",
     "section_staffing": "Collaborateurs affectés",
+    "section_applications": "Applications",
     "section_cra": "Comptes-rendus récents",
     "mission_title": "Fiche mission",
     "collaborateur_title": "Fiche collaborateur",

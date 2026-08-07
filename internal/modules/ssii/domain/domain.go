@@ -15,6 +15,7 @@ var (
 	ErrMissionWithoutCollaborator = errors.New("mission without collaborator")
 	ErrInvalidRateUnit            = errors.New("invalid rate unit")
 	ErrInvalidClientContact       = errors.New("invalid client contact")
+	ErrInvalidApplication         = errors.New("invalid application")
 )
 
 type MissionStatus string

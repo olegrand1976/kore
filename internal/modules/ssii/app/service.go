@@ -53,6 +53,13 @@ func (s *service) GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid
 	if collaborators == nil {
 		collaborators = []ports.MissionCollaborator{}
 	}
+	applications, err := s.repo.ListMissionApplications(ctx, tenant, m.ID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if applications == nil {
+		applications = []ports.MissionApplication{}
+	}
 	clientContacts, contactIDs, contactLabel, err := s.resolveClientContacts(ctx, tenant, m.ClientID, m.ClientContactIDs)
 	if err != nil {
 		return ports.MissionDetail{}, err
@@ -82,6 +89,7 @@ func (s *service) GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid
 		ClientContacts:   clientContacts,
 		CreatedAt:        m.CreatedAt,
 		Collaborators:    collaborators,
+		Applications:     applications,
 	}, nil
 }
 
@@ -100,6 +108,10 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	if contactLabel == "" {
 		contactLabel = strings.TrimSpace(cmd.ClientContact)
 	}
+	appIDs, err := s.validateApplicationIDs(ctx, cmd.TenantID, cmd.ApplicationIDs, uuid.Nil)
+	if err != nil {
+		return domain.Mission{}, err
+	}
 	m := domain.NewMission(cmd.TenantID, cmd.ClientID, cmd.StartDate, cmd.TJMAmount)
 	m.EndDate = cmd.EndDate
 	m.Title = strings.TrimSpace(cmd.Title)
@@ -111,10 +123,7 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	if m.Currency == "" {
 		m.Currency = "EUR"
 	}
-	if err := s.repo.SaveMission(ctx, m); err != nil {
-		return domain.Mission{}, err
-	}
-	if err := s.repo.SaveMissionCollaborators(ctx, cmd.TenantID, m.ID, cmd.CollaboratorIDs); err != nil {
+	if err := s.repo.CreateMissionWithRelations(ctx, m, cmd.CollaboratorIDs, appIDs); err != nil {
 		return domain.Mission{}, err
 	}
 	country := s.resolveClientCountry(ctx, cmd.TenantID, cmd.ClientID)
@@ -217,6 +226,60 @@ func (s *service) UpdateCollaborators(ctx context.Context, cmd ports.UpdateColla
 		return ports.MissionDetail{}, err
 	}
 	return s.GetDetail(ctx, cmd.TenantID, m.ID)
+}
+
+func (s *service) UpdateApplications(ctx context.Context, cmd ports.UpdateApplicationsCommand) (ports.MissionDetail, error) {
+	m, err := s.repo.GetMission(ctx, cmd.TenantID, cmd.MissionID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	appIDs, err := s.validateApplicationIDs(ctx, cmd.TenantID, cmd.ApplicationIDs, m.ID)
+	if err != nil {
+		return ports.MissionDetail{}, err
+	}
+	if err := s.repo.SaveMissionApplications(ctx, cmd.TenantID, m.ID, appIDs); err != nil {
+		return ports.MissionDetail{}, err
+	}
+	return s.GetDetail(ctx, cmd.TenantID, m.ID)
+}
+
+func (s *service) validateApplicationIDs(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	ids []uuid.UUID,
+	missionID uuid.UUID,
+) ([]uuid.UUID, error) {
+	if len(ids) == 0 {
+		return []uuid.UUID{}, nil
+	}
+	requested := dedupeUUIDs(ids)
+	out, err := s.repo.ValidateApplicationIDs(ctx, tenant, requested, missionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(out) != len(requested) {
+		return nil, domain.ErrInvalidApplication
+	}
+	return out, nil
+}
+
+func dedupeUUIDs(ids []uuid.UUID) []uuid.UUID {
+	if len(ids) == 0 {
+		return []uuid.UUID{}
+	}
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 func (s *service) validateAndLabelContacts(

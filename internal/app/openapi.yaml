@@ -1889,11 +1889,39 @@ paths:
       summary: Créer mission
       description: >
         Le pays pour le préremplissage des jours fériés est dérivé de `org.clients.pays`
-        (plus de `countryCode` dans le body).
+        (plus de `countryCode` dans le body). `applicationIds` est optionnel (0..N, apps actives uniquement).
+        Persistance atomique (mission + collaborateurs + applications).
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientId: { type: string, format: uuid }
+                startDate: { type: string, format: date-time }
+                endDate: { type: string, format: date-time }
+                title: { type: string }
+                rateUnit: { type: string, enum: [tjm, hourly] }
+                tjmAmount: { type: integer }
+                currency: { type: string }
+                technologies:
+                  type: array
+                  items: { type: string }
+                clientContactIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                collaboratorIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                applicationIds:
+                  type: array
+                  items: { type: string, format: uuid }
+              required: [clientId, startDate, collaboratorIds]
       responses:
         "201": { description: Créé }
-        "422": { description: Validation (collaborateurs / rateUnit) }
+        "422": { description: Validation (collaborateurs / rateUnit / applications) }
   /missions/{id}:
     get:
       summary: Détail mission
@@ -1932,6 +1960,30 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: OK }
+  /missions/{id}/applications:
+    put:
+      summary: Modifier applications rattachées à la mission (optionnel, remplacement)
+      description: >
+        Remplacement total. Tableau vide ou `applicationIds: []` efface tous les liens.
+        Seules les applications actives sont acceptées, sauf celles déjà liées (même inactives).
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                applicationIds:
+                  type: array
+                  items: { type: string, format: uuid }
+              required: [applicationIds]
+      responses:
+        "200": { description: OK }
+        "403": { description: Forbidden }
+        "404": { description: Mission introuvable }
+        "422": { description: application invalide ou inactive }
   /request-attachments:
     get:
       summary: Liste pièces jointes demande

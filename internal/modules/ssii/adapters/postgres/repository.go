@@ -30,6 +30,10 @@ func (r *Repository) SaveMission(ctx context.Context, m domain.Mission) error {
 	if contactIDs == nil {
 		contactIDs = []uuid.UUID{}
 	}
+	technologies := m.Technologies
+	if technologies == nil {
+		technologies = []string{}
+	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO ssii.missions (
 			id, tenant_id, client_id, status, start_date, end_date,
@@ -46,7 +50,57 @@ func (r *Repository) SaveMission(ctx context.Context, m domain.Mission) error {
 			client_contact = EXCLUDED.client_contact,
 			client_contact_ids = EXCLUDED.client_contact_ids
 	`, m.ID, m.TenantID.UUID(), m.ClientID, string(m.Status), m.StartDate, m.EndDate,
-		m.Title, rateUnit, m.TJMAmount, m.Currency, m.Technologies, m.ClientContact,
+		m.Title, rateUnit, m.TJMAmount, m.Currency, technologies, m.ClientContact,
+		contactIDs, m.CreatedAt)
+	return err
+}
+
+func (r *Repository) CreateMissionWithRelations(
+	ctx context.Context,
+	m domain.Mission,
+	collaboratorIDs, applicationIDs []uuid.UUID,
+) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		if err := r.execSaveMission(ctx, tx, m); err != nil {
+			return err
+		}
+		if err := r.replaceMissionCollaborators(ctx, tx, m.TenantID, m.ID, collaboratorIDs); err != nil {
+			return err
+		}
+		return r.replaceMissionApplications(ctx, tx, m.TenantID, m.ID, applicationIDs)
+	})
+}
+
+func (r *Repository) execSaveMission(ctx context.Context, tx pgx.Tx, m domain.Mission) error {
+	rateUnit := string(m.RateUnit)
+	if rateUnit == "" {
+		rateUnit = string(domain.RateUnitTJM)
+	}
+	contactIDs := m.ClientContactIDs
+	if contactIDs == nil {
+		contactIDs = []uuid.UUID{}
+	}
+	technologies := m.Technologies
+	if technologies == nil {
+		technologies = []string{}
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO ssii.missions (
+			id, tenant_id, client_id, status, start_date, end_date,
+			title, rate_unit, tjm_amount, currency, technologies, client_contact,
+			client_contact_ids, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT (id) DO UPDATE SET
+			status = EXCLUDED.status,
+			end_date = EXCLUDED.end_date,
+			title = EXCLUDED.title,
+			rate_unit = EXCLUDED.rate_unit,
+			tjm_amount = EXCLUDED.tjm_amount,
+			technologies = EXCLUDED.technologies,
+			client_contact = EXCLUDED.client_contact,
+			client_contact_ids = EXCLUDED.client_contact_ids
+	`, m.ID, m.TenantID.UUID(), m.ClientID, string(m.Status), m.StartDate, m.EndDate,
+		m.Title, rateUnit, m.TJMAmount, m.Currency, technologies, m.ClientContact,
 		contactIDs, m.CreatedAt)
 	return err
 }
@@ -167,13 +221,28 @@ func (r *Repository) ListMissionCollaborators(ctx context.Context, tenant kernel
 }
 
 func (r *Repository) SaveMissionCollaborators(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, userIDs []uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, `
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		return r.replaceMissionCollaborators(ctx, tx, tenant, missionID, userIDs)
+	})
+}
+
+func (r *Repository) replaceMissionCollaborators(
+	ctx context.Context,
+	tx pgx.Tx,
+	tenant kernel.TenantID,
+	missionID uuid.UUID,
+	userIDs []uuid.UUID,
+) error {
+	if _, err := tx.Exec(ctx, `
 		DELETE FROM ssii.mission_collaborators WHERE tenant_id = $1 AND mission_id = $2
 	`, tenant.UUID(), missionID); err != nil {
 		return err
 	}
 	for _, userID := range userIDs {
-		if _, err := r.pool.Exec(ctx, `
+		if userID == uuid.Nil {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
 			INSERT INTO ssii.mission_collaborators (id, tenant_id, mission_id, user_id)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (mission_id, user_id) DO NOTHING
@@ -182,6 +251,136 @@ func (r *Repository) SaveMissionCollaborators(ctx context.Context, tenant kernel
 		}
 	}
 	return nil
+}
+
+func (r *Repository) ListMissionApplications(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]ports.MissionApplication, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id, a.libelle, a.active
+		FROM ssii.mission_applications ma
+		JOIN org.applications a ON a.id = ma.application_id AND a.tenant_id = ma.tenant_id
+		WHERE ma.tenant_id = $1 AND ma.mission_id = $2
+		ORDER BY a.libelle
+	`, tenant.UUID(), missionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.MissionApplication
+	for rows.Next() {
+		var a ports.MissionApplication
+		if err := rows.Scan(&a.ApplicationID, &a.Libelle, &a.Active); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) SaveMissionApplications(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID, applicationIDs []uuid.UUID) error {
+	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
+		return r.replaceMissionApplications(ctx, tx, tenant, missionID, applicationIDs)
+	})
+}
+
+func (r *Repository) replaceMissionApplications(
+	ctx context.Context,
+	tx pgx.Tx,
+	tenant kernel.TenantID,
+	missionID uuid.UUID,
+	applicationIDs []uuid.UUID,
+) error {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM ssii.mission_applications WHERE tenant_id = $1 AND mission_id = $2
+	`, tenant.UUID(), missionID); err != nil {
+		return err
+	}
+	for _, appID := range applicationIDs {
+		if appID == uuid.Nil {
+			continue
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO ssii.mission_applications (id, tenant_id, mission_id, application_id)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (mission_id, application_id) DO NOTHING
+		`, uuid.New(), tenant.UUID(), missionID, appID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) ValidateApplicationIDs(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	applicationIDs []uuid.UUID,
+	missionID uuid.UUID,
+) ([]uuid.UUID, error) {
+	if len(applicationIDs) == 0 {
+		return []uuid.UUID{}, nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(applicationIDs))
+	requested := make([]uuid.UUID, 0, len(applicationIDs))
+	for _, id := range applicationIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		requested = append(requested, id)
+	}
+	if len(requested) == 0 {
+		return []uuid.UUID{}, nil
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id
+		FROM org.applications a
+		WHERE a.tenant_id = $1
+			AND a.id = ANY($2::uuid[])
+			AND (
+				a.active = TRUE
+				OR (
+					$3::uuid IS NOT NULL
+					AND EXISTS (
+						SELECT 1 FROM ssii.mission_applications ma
+						WHERE ma.tenant_id = $1
+							AND ma.mission_id = $3
+							AND ma.application_id = a.id
+					)
+				)
+			)
+	`, tenant.UUID(), requested, uuidOrNull(missionID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	found := make(map[uuid.UUID]struct{}, len(requested))
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		found[id] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]uuid.UUID, 0, len(requested))
+	for _, id := range requested {
+		if _, ok := found[id]; !ok {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+func uuidOrNull(id uuid.UUID) any {
+	if id == uuid.Nil {
+		return nil
+	}
+	return id
 }
 
 func (r *Repository) GetClientName(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error) {

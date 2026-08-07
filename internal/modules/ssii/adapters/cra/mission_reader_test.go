@@ -17,6 +17,9 @@ type missionRepoStub struct {
 }
 
 func (r *missionRepoStub) SaveMission(context.Context, domain.Mission) error { return nil }
+func (r *missionRepoStub) CreateMissionWithRelations(context.Context, domain.Mission, []uuid.UUID, []uuid.UUID) error {
+	return nil
+}
 func (r *missionRepoStub) GetMission(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Mission, error) {
 	if id != r.mission.ID {
 		return domain.Mission{}, domain.ErrMissionNotFound
@@ -34,6 +37,15 @@ func (r *missionRepoStub) ListMissionCollaborators(context.Context, kernel.Tenan
 }
 func (r *missionRepoStub) SaveMissionCollaborators(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
 	return nil
+}
+func (r *missionRepoStub) ListMissionApplications(context.Context, kernel.TenantID, uuid.UUID) ([]ssiiports.MissionApplication, error) {
+	return nil, nil
+}
+func (r *missionRepoStub) SaveMissionApplications(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
+	return nil
+}
+func (r *missionRepoStub) ValidateApplicationIDs(_ context.Context, _ kernel.TenantID, ids []uuid.UUID, _ uuid.UUID) ([]uuid.UUID, error) {
+	return ids, nil
 }
 func (r *missionRepoStub) GetClientName(context.Context, kernel.TenantID, uuid.UUID) (string, error) {
 	return "", nil

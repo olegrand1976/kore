@@ -743,7 +743,22 @@
     "client_create_error": "Client creation failed.",
     "contacts_empty_hint": "No contacts on this client — add one below.",
     "contact_add_inline": "New contact",
-    "contact_select_hint": "Select one or more client contacts."
+    "contact_select_hint": "Select one or more client contacts.",
+    "field_applications": "Applications",
+    "apps_select_hint": "Optional — link one or more existing applications.",
+    "apps_empty_hint": "No applications in the organization — create one below.",
+    "apps_none": "No linked applications",
+    "app_inactive": "inactive",
+    "app_add_inline": "New application",
+    "app_libelle": "Label",
+    "app_site": "Linked site",
+    "app_site_placeholder": "Select a site",
+    "app_create_hint": "The application will be created in the organization and selected on this mission.",
+    "app_create_required": "Label and site are required.",
+    "app_create_error": "Could not create the application",
+    "edit_applications": "Edit applications",
+    "save_applications": "Save applications",
+    "save_applications_error": "Unable to update applications"
   },
   "clients": {
     "title": "Clients",
@@ -1189,7 +1204,7 @@
       "title": "What is this module for?",
       "items": [
         "Reference missions and link them to a client.",
-        "Assign collaborators to each mission for timesheets and budgets.",
+        "Assign collaborators and optionally one or more applications.",
         "Create a new mission from the button at top right."
       ]
     },
@@ -1958,6 +1973,7 @@
     "section_missions": "Missions",
     "section_overview": "Overview",
     "section_staffing": "Assigned contributors",
+    "section_applications": "Applications",
     "section_cra": "Recent timesheets",
     "mission_title": "Mission details",
     "collaborateur_title": "Contributor profile",

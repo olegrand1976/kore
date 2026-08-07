@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (pays client défaut FR)
+> **Dernière mise à jour doc** : 07/08/2026 (mission ↔ applications N–N)
 
 ---
 
@@ -27,6 +27,10 @@ erDiagram
     org_users ||--o{ org_user_equipes : "user_id"
     org_equipes ||--o{ org_user_equipes : "equipe_id"
     org_tenants ||--o{ org_clients : "tenant_id"
+
+    ssii_missions ||--o{ ssii_mission_collaborators : "mission_id"
+    ssii_missions ||--o{ ssii_mission_applications : "mission_id"
+    org_applications ||--o{ ssii_mission_applications : "application_id"
 
     org_societes ||--o{ conges_leave_type_configs : "societe_id"
 
@@ -992,6 +996,20 @@ Missions ESN (staffing, TJM, collaborateurs).
 
 **Contrainte** : UNIQUE (`mission_id`, `user_id`)
 
+### `ssii.mission_applications` (migration `0004`)
+
+Rattachement optionnel N–N mission ↔ applications org.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `mission_id` | UUID | NOT NULL → `ssii.missions(id)` ON DELETE CASCADE |
+| `application_id` | UUID | NOT NULL (réf. logique `org.applications` — pas de FK cross-schema ; lignes orphelines possibles si app supprimée) |
+
+**Contrainte** : UNIQUE (`mission_id`, `application_id`)  
+**Index** : `idx_ssii_mission_applications_tenant (tenant_id, mission_id)`, `idx_ssii_mission_applications_app (tenant_id, application_id)`
+
 ---
 
 ## Schéma `support`
@@ -1309,7 +1327,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `conges` | leave_requests, leave_balances, leave_type_configs | 3 |
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
 | `tma` | demands, analysis_dossiers, releases, delivery_codes | 4 |
-| `ssii` | missions, mission_collaborators | 2 |
+| `ssii` | missions, mission_collaborators, mission_applications | 3 |
 | `support` | tickets, ticket_replies | 2 |
 | `maintenance` | work_requests | 1 |
 | `invoicing` | invoices, invoice_lines, pdp_queue | 3 |
@@ -1320,7 +1338,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **74** |
+| **Total** | | **75** |
 
 ---
 
