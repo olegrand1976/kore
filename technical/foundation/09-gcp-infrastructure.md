@@ -44,7 +44,7 @@ flowchart TB
 | Paramètre | API Go | Frontend Nuxt |
 | --- | --- | --- |
 | Concurrence | 80 (I/O bound) | 80 |
-| Min instances | 1 (évite le cold start métier) | 0/1 selon trafic |
+| Min instances | **0** (scale-to-zero FinOps Premedica ; hors daylight Infiswap/BYC) | **0** |
 | CPU | 1 vCPU (ajustable) | 1 vCPU |
 | Port | `$PORT` (injecté par Cloud Run) | `$PORT` |
 | Connexion DB | Cloud SQL via **connecteur intégré** (socket `/cloudsql/...`) ou IP privée via connector | via API uniquement |

@@ -9,7 +9,7 @@ Voir aussi `technical/foundation/09-gcp-infrastructure.md`.
 | Ressource | Valeur |
 |-----------|--------|
 | Projet GCP | `premedica-prod-2025` |
-| Cloud Run | `kore-api`, `kore-frontend` (europe-west9) |
+| Cloud Run | `kore-api`, `kore-frontend` (europe-west9) — **`min-instances=0`** (scale-to-zero ; hors daylight warm Premedica) |
 | PostgreSQL | `premedica-db-staging` / base `kore` |
 | Redis | VM `shared-redis`, DB **13**, préfixe `kore:` |
 | Domaine | `kore.ll-it-sc.be` |
