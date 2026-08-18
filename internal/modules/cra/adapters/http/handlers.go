@@ -33,6 +33,7 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Post("/timesheets/{id}/pdf", generatePDF(svc, authorizer))
 		pr.Post("/timesheets/{id}/validate", validateFinal(svc, authorizer))
 		pr.Post("/timesheets/{id}/reject", rejectTimesheet(svc, authorizer))
+		pr.Post("/timesheets/{id}/unvalidate", unvalidateTimesheet(svc, authorizer))
 		pr.Get("/prestations", listPrestations(svc, authorizer))
 		pr.Get("/prestations/export.xml", exportPrestationsXML(svc, authorizer))
 		pr.Get("/prestations/billable-summary", billableSummary(svc, authorizer))
@@ -351,6 +352,30 @@ func deleteTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.Han
 	}
 }
 
+func unvalidateTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := authx.FromContext(r.Context())
+		if !ok || identity.Profile != authx.ProfileAdmin {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		if !authorizer.Can(r.Context(), "cra", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		if err := svc.UnvalidateTimesheet(r.Context(), identity.TenantID, id); err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "unvalidated"})
+	}
+}
+
 func listPrestations(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
@@ -550,6 +575,8 @@ func writeCRAError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrCRAAlreadyValidated):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyValidated, err.Error())
+	case errors.Is(err, domain.ErrCRANotFinal):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
 	case errors.Is(err, domain.ErrCommercialInfoRequired):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeCommercialInfoRequired, err.Error())
 	case errors.Is(err, domain.ErrDayCapacityExceeded):

@@ -16,6 +16,21 @@ func (s *Service) ListPrestations(ctx context.Context, tenant kernel.TenantID, m
 	return s.repo.ListSummariesByTenantMonth(ctx, tenant, month)
 }
 
+func (s *Service) UnvalidateTimesheet(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) error {
+	ts, err := s.repo.GetByID(ctx, tenant, id)
+	if err != nil {
+		return err
+	}
+	if err := ts.Unvalidate(); err != nil {
+		return err
+	}
+	if err := s.repo.Save(ctx, ts); err != nil {
+		return err
+	}
+	s.invalidateConsumptionCache(ctx, tenant)
+	return nil
+}
+
 func (s *Service) DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) error {
 	ts, err := s.repo.GetByID(ctx, tenant, id)
 	if err != nil {

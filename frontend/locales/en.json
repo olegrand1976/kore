@@ -343,6 +343,16 @@
     "empty_desc": "Create your first activity report.",
     "new": "Current month timesheet",
     "open": "Open",
+    "delete_confirm": "Delete the timesheet for {user} ({month})? This cannot be undone.",
+    "delete_confirm_simple": "Delete this timesheet ({month})? This cannot be undone.",
+    "delete_ok": "Timesheet deleted.",
+    "delete_error": "Could not delete this timesheet.",
+    "unvalidate": "Unvalidate",
+    "unvalidate_confirm": "Remove final validation for {user} ({month})? You can delete it afterwards.",
+    "unvalidate_confirm_simple": "Remove final validation for this timesheet ({month})? You can delete it afterwards.",
+    "unvalidate_ok": "Timesheet unvalidated.",
+    "unvalidate_error": "Could not unvalidate this timesheet.",
+    "admin_invoice_warning": "Already issued invoices are not cancelled.",
     "col_period": "Period",
     "col_status": "Status",
     "col_user": "Contributor",
@@ -523,9 +533,7 @@
     "col_ett": "ETT delta",
     "ett_delta": "Δ {delta} h",
     "ett_ok": "OK",
-    "ett_reconcile": "Reconciliation",
-    "delete_confirm": "Delete the service tracking line for {user} ({month})? This cannot be undone.",
-    "delete_ok": "Service tracking line deleted."
+    "ett_reconcile": "Reconciliation"
   },
   "ett": {
     "reconciliation_title": "ETT / timesheet reconciliation",

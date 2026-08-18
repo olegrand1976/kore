@@ -14,6 +14,7 @@ import {
   missionCommercialPatch,
   unwrapMissionPayload
 } from '../utils/craCommercial'
+import { timesheetAdminAction, timesheetAdminConfirmKey } from '../utils/craTimesheetAdmin'
 import {
   applyTextSearch,
   compareValues,
@@ -93,6 +94,21 @@ describe('useCraStatus', () => {
     expect(statusVariant('Définitif')).toBe('success')
     expect(statusVariant('ValidéSemaine')).toBe('warning')
     expect(statusVariant('Brouillon')).toBe('default')
+  })
+})
+
+describe('timesheetAdminAction', () => {
+  it('asks to unvalidate a final timesheet before delete', () => {
+    expect(timesheetAdminAction('Définitif')).toBe('unvalidate')
+    expect(timesheetAdminAction('ValidéSemaine')).toBe('delete')
+    expect(timesheetAdminAction('Brouillon')).toBe('delete')
+  })
+
+  it('picks confirm copy with or without a user name', () => {
+    expect(timesheetAdminConfirmKey('unvalidate', true)).toBe('cra.unvalidate_confirm')
+    expect(timesheetAdminConfirmKey('unvalidate', false)).toBe('cra.unvalidate_confirm_simple')
+    expect(timesheetAdminConfirmKey('delete', true)).toBe('cra.delete_confirm')
+    expect(timesheetAdminConfirmKey('delete', false)).toBe('cra.delete_confirm_simple')
   })
 })
 

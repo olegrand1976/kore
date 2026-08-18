@@ -150,6 +150,7 @@ type CRAService interface {
 	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) (ValidateFinalResult, error)
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
+	UnvalidateTimesheet(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)

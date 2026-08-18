@@ -54,6 +54,12 @@ func TestWriteCRAError_BusinessCodes(t *testing.T) {
 			wantStatus: http.StatusUnprocessableEntity,
 			wantCode:   httpx.ErrCodeWeekIncomplete,
 		},
+		{
+			name:       "not final",
+			err:        domain.ErrCRANotFinal,
+			wantStatus: http.StatusConflict,
+			wantCode:   httpx.ErrCodeConflict,
+		},
 	}
 
 	for _, tc := range tests {
@@ -97,12 +103,18 @@ func (s stubAuthorizer) Can(_ context.Context, module authx.Module, action authx
 
 type stubDeleteCRAService struct {
 	ports.CRAService
-	deleted ports.TimesheetID
-	err     error
+	deleted     ports.TimesheetID
+	unvalidated ports.TimesheetID
+	err         error
 }
 
 func (s *stubDeleteCRAService) DeleteTimesheet(_ context.Context, _ kernel.TenantID, id ports.TimesheetID) error {
 	s.deleted = id
+	return s.err
+}
+
+func (s *stubDeleteCRAService) UnvalidateTimesheet(_ context.Context, _ kernel.TenantID, id ports.TimesheetID) error {
+	s.unvalidated = id
 	return s.err
 }
 
@@ -175,6 +187,53 @@ func TestDeleteTimesheet_NotFound(t *testing.T) {
 func TestDeleteTimesheet_FinalConflict(t *testing.T) {
 	svc := &stubDeleteCRAService{err: domain.ErrCRAAlreadyValidated}
 	rec := serveDeleteTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), uuid.New().String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status: got %d want 409", rec.Code)
+	}
+}
+
+func serveUnvalidateTimesheet(t *testing.T, svc ports.CRAService, authorizer authx.Authorizer, identity authx.Identity, id string) *httptest.ResponseRecorder {
+	t.Helper()
+	r := chi.NewRouter()
+	r.Post("/timesheets/{id}/unvalidate", unvalidateTimesheet(svc, authorizer))
+	req := httptest.NewRequest(http.MethodPost, "/timesheets/"+id+"/unvalidate", nil)
+	req = req.WithContext(authx.WithIdentity(req.Context(), identity))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestUnvalidateTimesheet_ForbiddenForNonAdmin(t *testing.T) {
+	svc := &stubDeleteCRAService{}
+	id := uuid.New()
+	rec := serveUnvalidateTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, authx.Identity{
+		UserID:   uuid.New(),
+		TenantID: kernel.NewTenantID(uuid.New()),
+		Profile:  authx.ProfileCollaborateur,
+	}, id.String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d want 403", rec.Code)
+	}
+	if svc.unvalidated != uuid.Nil {
+		t.Fatal("expected no unvalidate for non-admin")
+	}
+}
+
+func TestUnvalidateTimesheet_AdminOK(t *testing.T) {
+	svc := &stubDeleteCRAService{}
+	id := uuid.New()
+	rec := serveUnvalidateTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), id.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200", rec.Code)
+	}
+	if svc.unvalidated != id {
+		t.Fatalf("unvalidated id: got %s want %s", svc.unvalidated, id)
+	}
+}
+
+func TestUnvalidateTimesheet_NotFinal(t *testing.T) {
+	svc := &stubDeleteCRAService{err: domain.ErrCRANotFinal}
+	rec := serveUnvalidateTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), uuid.New().String())
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status: got %d want 409", rec.Code)
 	}

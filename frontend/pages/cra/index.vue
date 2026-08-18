@@ -150,7 +150,17 @@
           <span class="cra-updated">{{ formatUpdated(String(value)) }}</span>
         </template>
         <template #cell-actions="{ row }">
-          <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">{{ $t('cra.open') }}</AppButton>
+          <div class="cra-actions">
+            <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">{{ $t('cra.open') }}</AppButton>
+            <CraDeleteTimesheetControl
+              :timesheet-id="String(row.id)"
+              :status="String(row.status)"
+              :user-label="String(row.userDisplay)"
+              :month="String(row.month)"
+              @changed="onTimesheetAdminChange"
+              @error="onTimesheetDeleteError"
+            />
+          </div>
         </template>
       </AppTable>
       </AppCard>
@@ -203,12 +213,21 @@
               <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${(item as CraRow).id}`)">
                 {{ $t('cra.open') }}
               </AppButton>
+              <CraDeleteTimesheetControl
+                :timesheet-id="(item as CraRow).id"
+                :status="(item as CraRow).status"
+                :user-label="(item as CraRow).userDisplay"
+                :month="(item as CraRow).month"
+                @changed="onTimesheetAdminChange"
+                @error="onTimesheetDeleteError"
+              />
             </div>
           </template>
         </AppKanbanBoard>
       </AppCard>
     </template>
 
+    <p v-if="successMsg" class="flash" role="status">{{ successMsg }}</p>
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
   </div>
 </template>
@@ -265,6 +284,7 @@ const { canValidateCra, canReadReporting } = usePermissions()
 
 const creating = ref(false)
 const errorMsg = ref('')
+const successMsg = ref('')
 
 const { data, pending, refresh } = await useFetch('/api/cra/timesheets/recent')
 
@@ -463,6 +483,28 @@ const openCurrentMonth = async () => {
     creating.value = false
   }
 }
+
+const onTimesheetAdminChange = async (action: 'unvalidate' | 'delete') => {
+  errorMsg.value = ''
+  switch (action) {
+    case 'delete':
+      successMsg.value = t('cra.delete_ok')
+      break
+    case 'unvalidate':
+      successMsg.value = t('cra.unvalidate_ok')
+      break
+    default: {
+      const _exhaustive: never = action
+      return _exhaustive
+    }
+  }
+  await refresh()
+}
+
+const onTimesheetDeleteError = (message: string) => {
+  successMsg.value = ''
+  errorMsg.value = message
+}
 </script>
 
 <style scoped>
@@ -523,6 +565,12 @@ const openCurrentMonth = async () => {
   white-space: nowrap;
 }
 
+.cra-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
+}
+
 .muted { color: var(--kore-text-muted); }
 
 .flash {
@@ -553,6 +601,11 @@ const openCurrentMonth = async () => {
   .cra-link--truncate,
   .cra-context {
     max-width: 8rem;
+  }
+
+  .cra-actions :deep(.app-btn),
+  .cra-kanban-card :deep(.app-btn) {
+    width: 100%;
   }
 }
 </style>

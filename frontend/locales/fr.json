@@ -343,6 +343,16 @@
     "empty_desc": "Créez votre premier compte-rendu d'activité.",
     "new": "CRA du mois en cours",
     "open": "Ouvrir",
+    "delete_confirm": "Supprimer le CRA de {user} pour {month} ? Cette action est irréversible.",
+    "delete_confirm_simple": "Supprimer ce CRA ({month}) ? Cette action est irréversible.",
+    "delete_ok": "CRA supprimé.",
+    "delete_error": "Impossible de supprimer ce CRA.",
+    "unvalidate": "Dévalider",
+    "unvalidate_confirm": "Dévalider le CRA de {user} pour {month} ? Vous pourrez ensuite le supprimer.",
+    "unvalidate_confirm_simple": "Dévalider ce CRA ({month}) ? Vous pourrez ensuite le supprimer.",
+    "unvalidate_ok": "CRA dévalidé.",
+    "unvalidate_error": "Impossible de dévalider ce CRA.",
+    "admin_invoice_warning": "Les factures déjà émises ne sont pas annulées.",
     "col_period": "Période",
     "col_status": "Statut",
     "col_user": "Collaborateur",
@@ -523,9 +533,7 @@
     "col_ett": "Écart ETT",
     "ett_delta": "Δ {delta} h",
     "ett_ok": "OK",
-    "ett_reconcile": "Réconciliation",
-    "delete_confirm": "Supprimer le suivi de prestation de {user} pour {month} ? Cette action est irréversible.",
-    "delete_ok": "Suivi de prestation supprimé."
+    "ett_reconcile": "Réconciliation"
   },
   "ett": {
     "reconciliation_title": "Réconciliation ETT / CRA",

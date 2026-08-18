@@ -150,3 +150,42 @@ func TestDeleteTimesheet_BlocksFinal(t *testing.T) {
 		t.Fatal("final timesheet must not be deleted")
 	}
 }
+
+func TestUnvalidateTimesheet_ReopensFinal(t *testing.T) {
+	id := uuid.New()
+	now := time.Now()
+	manager := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:          id,
+		UserID:      uuid.New(),
+		Month:       "2026-07",
+		Status:      domain.StatusDefinitif,
+		TenantID:    kernel.NewTenantID(uuid.New()),
+		ValidatedAt: &now,
+		ValidatedBy: &manager,
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}}
+	if err := svc.UnvalidateTimesheet(context.Background(), repo.ts.TenantID, id); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.ts.Status != domain.StatusValideSemaine {
+		t.Fatalf("status: got %s want %s", repo.ts.Status, domain.StatusValideSemaine)
+	}
+	if err := svc.DeleteTimesheet(context.Background(), repo.ts.TenantID, id); err != nil {
+		t.Fatalf("delete after unvalidate: %v", err)
+	}
+}
+
+func TestUnvalidateTimesheet_RejectsDraft(t *testing.T) {
+	id := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:       id,
+		Status:   domain.StatusBrouillon,
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}}
+	err := svc.UnvalidateTimesheet(context.Background(), repo.ts.TenantID, id)
+	if !errors.Is(err, domain.ErrCRANotFinal) {
+		t.Fatalf("expected not final, got %v", err)
+	}
+}
