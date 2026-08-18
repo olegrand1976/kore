@@ -25,6 +25,8 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
         return t('cra.errors.conflict_absence')
       case 'CRA_ALREADY_VALIDATED':
         return t('cra.errors.already_validated')
+      case 'CRA_ALREADY_INVOICED':
+        return t('cra.errors.already_invoiced')
       case 'WEEK_INCOMPLETE':
         return t('cra.errors.week_incomplete')
       default:
@@ -42,6 +44,9 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
     }
     if (message.includes('already validated') || message.includes('définitif')) {
       return t('cra.errors.already_validated')
+    }
+    if (message.includes('already invoiced')) {
+      return t('cra.errors.already_invoiced')
     }
     if (message.includes('incomplete') || message.includes('incomplet')) {
       return t('cra.errors.week_incomplete')

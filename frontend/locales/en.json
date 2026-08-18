@@ -490,7 +490,7 @@
     "unvalidate_confirm_simple": "Remove final validation for this timesheet ({month})? You can delete it afterwards.",
     "unvalidate_ok": "Timesheet unvalidated.",
     "unvalidate_error": "Could not unvalidate this timesheet.",
-    "admin_invoice_warning": "Already issued invoices are not cancelled.",
+    "admin_invoice_warning": "A timesheet that already has an invoice cannot be unvalidated or deleted.",
     "col_period": "Period",
     "col_status": "Status",
     "col_user": "Contributor",
@@ -625,6 +625,7 @@
       "day_capacity": "Daily capacity exceeded on one or more days.",
       "conflict_absence": "Conflict between a mission and an absence on the same day.",
       "already_validated": "This timesheet is already finalized.",
+      "already_invoiced": "This timesheet already has an invoice. Cancel it before unvalidating or deleting.",
       "week_incomplete": "Incomplete week: all working days must be filled in.",
       "conflict": "Conflict: action not allowed in the current state.",
       "validation": "Invalid data."

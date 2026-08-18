@@ -26,6 +26,7 @@ const (
 	ErrCodeTooManyRequests        ErrorCode = "TOO_MANY_REQUESTS"
 	ErrCodeInternal               ErrorCode = "INTERNAL_ERROR"
 	ErrCodeCRAAlreadyValidated    ErrorCode = "CRA_ALREADY_VALIDATED"
+	ErrCodeCRAAlreadyInvoiced     ErrorCode = "CRA_ALREADY_INVOICED"
 	ErrCodeCommercialInfoRequired ErrorCode = "COMMERCIAL_INFO_REQUIRED"
 	ErrCodeDayCapacityExceeded    ErrorCode = "DAY_CAPACITY_EXCEEDED"
 	ErrCodeCRAConflictAbsence     ErrorCode = "CRA_CONFLICT_ABSENCE"

@@ -16,6 +16,23 @@ import (
 
 const defaultInvoiceTaxRate = 20.0
 
+func (s *Service) rejectIfTimesheetInvoiced(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	if s.invoices == nil {
+		return nil
+	}
+	exists, err := s.invoices.TimesheetAlreadyInvoiced(ctx, tenant, id)
+	if err != nil {
+		if errors.Is(err, invoicingdomain.ErrInvoicingDisabled) {
+			return nil
+		}
+		return err
+	}
+	if exists {
+		return domain.ErrCRAAlreadyInvoiced
+	}
+	return nil
+}
+
 // hardInvoiceBlockers cannot be cleared via create-invoices overrides (fail-closed billing rules).
 var hardInvoiceBlockers = map[string]struct{}{
 	"already_exists":              {},

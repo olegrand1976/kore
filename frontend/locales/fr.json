@@ -490,7 +490,7 @@
     "unvalidate_confirm_simple": "Dévalider ce CRA ({month}) ? Vous pourrez ensuite le supprimer.",
     "unvalidate_ok": "CRA dévalidé.",
     "unvalidate_error": "Impossible de dévalider ce CRA.",
-    "admin_invoice_warning": "Les factures déjà émises ne sont pas annulées.",
+    "admin_invoice_warning": "Un CRA déjà facturé ne peut pas être dévalidé ni supprimé.",
     "col_period": "Période",
     "col_status": "Statut",
     "col_user": "Collaborateur",
@@ -625,6 +625,7 @@
       "day_capacity": "Capacité journalière dépassée sur un ou plusieurs jours.",
       "conflict_absence": "Conflit entre une mission et une absence le même jour.",
       "already_validated": "Ce CRA est déjà validé définitivement.",
+      "already_invoiced": "Ce CRA a déjà une facture. Annulez-la avant de dévalider ou supprimer.",
       "week_incomplete": "Semaine incomplète : tous les jours ouvrés doivent être renseignés.",
       "conflict": "Conflit : action impossible dans l'état actuel.",
       "validation": "Données invalides."

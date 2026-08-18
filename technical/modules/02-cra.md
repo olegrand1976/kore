@@ -107,7 +107,7 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 | POST | `/api/v1/timesheets/{id}/unvalidate` | Admin + CRA (E) | Dévalider un CRA définitif (retour `ValidéSemaine`) |
 | DELETE | `/api/v1/timesheets/{id}` | Admin + CRA (E) | Supprimer un CRA non définitif |
 
-Erreurs : `409 CRA_ALREADY_VALIDATED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`, `422 WEEK_INCOMPLETE`. `DELETE /timesheets/{id}` refuse un CRA `Définitif` (`409`) : dévalider d'abord.
+Erreurs : `409 CRA_ALREADY_VALIDATED`, `409 CRA_ALREADY_INVOICED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`, `422 WEEK_INCOMPLETE`. `DELETE /timesheets/{id}` refuse un CRA `Définitif` (`409`) : dévalider d'abord. `POST /timesheets/{id}/unvalidate` et `DELETE` refusent un CRA déjà facturé (`409 CRA_ALREADY_INVOICED`).
 
 Réponse `POST /timesheets/{id}/validate` : inclut `invoiceDraft` (`created` | `skipped` | `unavailable` + `reason`).
 

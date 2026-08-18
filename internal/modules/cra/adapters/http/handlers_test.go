@@ -31,6 +31,12 @@ func TestWriteCRAError_BusinessCodes(t *testing.T) {
 			wantCode:   httpx.ErrCodeCRAAlreadyValidated,
 		},
 		{
+			name:       "already invoiced",
+			err:        domain.ErrCRAAlreadyInvoiced,
+			wantStatus: http.StatusConflict,
+			wantCode:   httpx.ErrCodeCRAAlreadyInvoiced,
+		},
+		{
 			name:       "commercial info",
 			err:        domain.ErrCommercialInfoRequired,
 			wantStatus: http.StatusUnprocessableEntity,
@@ -192,6 +198,14 @@ func TestDeleteTimesheet_FinalConflict(t *testing.T) {
 	}
 }
 
+func TestDeleteTimesheet_InvoicedConflict(t *testing.T) {
+	svc := &stubDeleteCRAService{err: domain.ErrCRAAlreadyInvoiced}
+	rec := serveDeleteTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), uuid.New().String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status: got %d want 409", rec.Code)
+	}
+}
+
 func serveUnvalidateTimesheet(t *testing.T, svc ports.CRAService, authorizer authx.Authorizer, identity authx.Identity, id string) *httptest.ResponseRecorder {
 	t.Helper()
 	r := chi.NewRouter()
@@ -233,6 +247,14 @@ func TestUnvalidateTimesheet_AdminOK(t *testing.T) {
 
 func TestUnvalidateTimesheet_NotFinal(t *testing.T) {
 	svc := &stubDeleteCRAService{err: domain.ErrCRANotFinal}
+	rec := serveUnvalidateTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), uuid.New().String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status: got %d want 409", rec.Code)
+	}
+}
+
+func TestUnvalidateTimesheet_InvoicedConflict(t *testing.T) {
+	svc := &stubDeleteCRAService{err: domain.ErrCRAAlreadyInvoiced}
 	rec := serveUnvalidateTimesheet(t, svc, stubAuthorizer{module: "cra", action: authx.ActionWrite, allow: true}, adminIdentity(), uuid.New().String())
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status: got %d want 409", rec.Code)

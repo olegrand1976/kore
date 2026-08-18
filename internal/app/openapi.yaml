@@ -740,7 +740,7 @@ paths:
         "404":
           description: CRA introuvable
         "409":
-          description: CRA déjà validé définitivement
+          description: CRA déjà validé définitivement ou déjà facturé
   /timesheets/{id}/unvalidate:
     post:
       summary: Dévalider un CRA définitif (admin)
@@ -758,7 +758,7 @@ paths:
         "404":
           description: CRA introuvable
         "409":
-          description: CRA non définitif
+          description: CRA non définitif ou déjà facturé
   /timesheets/{id}/weeks/{week}:
     put:
       summary: Enregistrer semaine CRA
@@ -2229,6 +2229,7 @@ components:
               type: string
               enum:
                 - CRA_ALREADY_VALIDATED
+                - CRA_ALREADY_INVOICED
                 - COMMERCIAL_INFO_REQUIRED
                 - DAY_CAPACITY_EXCEEDED
                 - CRA_CONFLICT_ABSENCE

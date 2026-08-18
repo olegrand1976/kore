@@ -193,3 +193,41 @@ func TestUnvalidateTimesheet_RejectsDraft(t *testing.T) {
 		t.Fatalf("expected not final, got %v", err)
 	}
 }
+
+func TestUnvalidateTimesheet_BlocksInvoiced(t *testing.T) {
+	id := uuid.New()
+	now := time.Now()
+	manager := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:          id,
+		Status:      domain.StatusDefinitif,
+		TenantID:    kernel.NewTenantID(uuid.New()),
+		ValidatedAt: &now,
+		ValidatedBy: &manager,
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}, invoices: &recordingPublisher{exists: true}}
+	err := svc.UnvalidateTimesheet(context.Background(), repo.ts.TenantID, id)
+	if !errors.Is(err, domain.ErrCRAAlreadyInvoiced) {
+		t.Fatalf("expected already invoiced, got %v", err)
+	}
+	if repo.ts.Status != domain.StatusDefinitif {
+		t.Fatal("invoiced timesheet must stay final")
+	}
+}
+
+func TestDeleteTimesheet_BlocksInvoiced(t *testing.T) {
+	id := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:       id,
+		Status:   domain.StatusValideSemaine,
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}, invoices: &recordingPublisher{exists: true}}
+	err := svc.DeleteTimesheet(context.Background(), repo.ts.TenantID, id)
+	if !errors.Is(err, domain.ErrCRAAlreadyInvoiced) {
+		t.Fatalf("expected already invoiced, got %v", err)
+	}
+	if repo.ts.ID != id {
+		t.Fatal("invoiced timesheet must not be deleted")
+	}
+}

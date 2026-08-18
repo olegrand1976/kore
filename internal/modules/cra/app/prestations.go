@@ -21,6 +21,9 @@ func (s *Service) UnvalidateTimesheet(ctx context.Context, tenant kernel.TenantI
 	if err != nil {
 		return err
 	}
+	if err := s.rejectIfTimesheetInvoiced(ctx, tenant, id); err != nil {
+		return err
+	}
 	if err := ts.Unvalidate(); err != nil {
 		return err
 	}
@@ -34,6 +37,9 @@ func (s *Service) UnvalidateTimesheet(ctx context.Context, tenant kernel.TenantI
 func (s *Service) DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) error {
 	ts, err := s.repo.GetByID(ctx, tenant, id)
 	if err != nil {
+		return err
+	}
+	if err := s.rejectIfTimesheetInvoiced(ctx, tenant, id); err != nil {
 		return err
 	}
 	if ts.IsFinal() {

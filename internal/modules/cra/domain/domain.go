@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrCRAAlreadyValidated    = errors.New("cra already validated")
+	ErrCRAAlreadyInvoiced     = errors.New("cra already invoiced")
 	ErrCommercialInfoRequired = errors.New("commercial info required")
 	ErrDayCapacityExceeded    = errors.New("day capacity exceeded")
 	ErrCRAConflictAbsence     = errors.New("cra conflict absence")

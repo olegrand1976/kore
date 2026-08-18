@@ -330,6 +330,14 @@ describe('mapCraApiError', () => {
     }
     expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.commercial_required')
   })
+
+  it('maps already invoiced conflict', () => {
+    const err = {
+      statusCode: 409,
+      data: { error: { code: 'CRA_ALREADY_INVOICED', message: 'cra already invoiced' } }
+    }
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.already_invoiced')
+  })
 })
 
 describe('mapInvoiceDraftReason', () => {

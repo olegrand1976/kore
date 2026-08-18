@@ -24,6 +24,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const { isAdmin } = useAuth()
 const { mapCraError } = useCraError()
+const { apiFetch } = useApiFetch()
 
 const open = ref(false)
 const busy = ref(false)
@@ -56,10 +57,10 @@ const confirm = async () => {
   try {
     switch (current) {
       case 'unvalidate':
-        await $fetch(`/api/cra/timesheets/${props.timesheetId}/unvalidate`, { method: 'POST' })
+        await apiFetch(`/api/cra/timesheets/${props.timesheetId}/unvalidate`, { method: 'POST' })
         break
       case 'delete':
-        await $fetch(`/api/cra/timesheets/${props.timesheetId}`, { method: 'DELETE' })
+        await apiFetch(`/api/cra/timesheets/${props.timesheetId}`, { method: 'DELETE' })
         break
       default: {
         const _exhaustive: never = current

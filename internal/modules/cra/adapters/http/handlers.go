@@ -731,6 +731,8 @@ func writeCRAError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrCRAAlreadyValidated):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyValidated, err.Error())
+	case errors.Is(err, domain.ErrCRAAlreadyInvoiced):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAAlreadyInvoiced, err.Error())
 	case errors.Is(err, domain.ErrCRANotFinal):
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
 	case errors.Is(err, domain.ErrCommercialInfoRequired):
