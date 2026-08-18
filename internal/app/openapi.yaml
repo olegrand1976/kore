@@ -595,6 +595,23 @@ paths:
       responses:
         "200":
           description: Feuille de temps
+    delete:
+      summary: Supprimer un CRA (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: CRA supprimé
+        "403":
+          description: Réservé aux administrateurs
+        "404":
+          description: CRA introuvable
+        "409":
+          description: CRA déjà validé définitivement
   /timesheets/{id}/weeks/{week}:
     put:
       summary: Enregistrer semaine CRA

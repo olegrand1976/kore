@@ -104,8 +104,9 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 | PUT | `/api/v1/timesheets/{id}/commercial-info` | CRA (E) | Compléter infos commerciales |
 | POST | `/api/v1/timesheets/{id}/pdf` | CRA (E) | Générer le PDF mensuel |
 | POST | `/api/v1/timesheets/{id}/validate` | CRA (V) | Validation manager (définitif) |
+| DELETE | `/api/v1/timesheets/{id}` | Admin + CRA (E) | Supprimer un CRA non définitif |
 
-Erreurs : `409 CRA_ALREADY_VALIDATED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`, `422 WEEK_INCOMPLETE`.
+Erreurs : `409 CRA_ALREADY_VALIDATED`, `422 COMMERCIAL_INFO_REQUIRED` (RG-CRA-02), `422 DAY_CAPACITY_EXCEEDED` (RG-CRA-03), `409 CRA_CONFLICT_ABSENCE`, `422 WEEK_INCOMPLETE`. `DELETE /timesheets/{id}` refuse un CRA `Définitif` (`409`).
 
 Réponse `POST /timesheets/{id}/validate` : inclut `invoiceDraft` (`created` | `skipped` | `unavailable` + `reason`).
 

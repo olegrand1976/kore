@@ -523,6 +523,19 @@ func (r *Repository) FindConsumption(ctx context.Context, tenant kernel.TenantID
 	return out, rows.Err()
 }
 
+func (r *Repository) Delete(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) error {
+	tag, err := r.pool.Exec(ctx, `
+		DELETE FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrTimesheetNotFound
+	}
+	return nil
+}
+
 func (r *Repository) DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error {
 	_, err := r.pool.Exec(ctx, `
 		DELETE FROM cra.time_lines tl

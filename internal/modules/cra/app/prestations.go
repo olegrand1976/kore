@@ -16,6 +16,17 @@ func (s *Service) ListPrestations(ctx context.Context, tenant kernel.TenantID, m
 	return s.repo.ListSummariesByTenantMonth(ctx, tenant, month)
 }
 
+func (s *Service) DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) error {
+	ts, err := s.repo.GetByID(ctx, tenant, id)
+	if err != nil {
+		return err
+	}
+	if ts.IsFinal() {
+		return domain.ErrCRAAlreadyValidated
+	}
+	return s.repo.Delete(ctx, tenant, id)
+}
+
 func (s *Service) RejectTimesheet(ctx context.Context, cmd ports.RejectTimesheetCommand) error {
 	ts, err := s.repo.GetByID(ctx, cmd.TenantID, cmd.TimesheetID)
 	if err != nil {

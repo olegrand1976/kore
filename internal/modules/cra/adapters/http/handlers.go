@@ -26,6 +26,7 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 		pr.Get("/timesheets/recent", listTimesheets(svc, authorizer))
 		pr.Get("/timesheets", getTimesheet(svc, authorizer))
 		pr.Get("/timesheets/{id}", getTimesheetByID(svc, authorizer))
+		pr.Delete("/timesheets/{id}", deleteTimesheet(svc, authorizer))
 		pr.Put("/timesheets/{id}/weeks/{week}", saveWeek(svc, authorizer))
 		pr.Post("/timesheets/{id}/weeks/{week}/submit", submitWeek(svc, authorizer))
 		pr.Put("/timesheets/{id}/commercial-info", completeCommercialInfo(svc, authorizer))
@@ -323,6 +324,30 @@ func rejectTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.Han
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "rejected"})
+	}
+}
+
+func deleteTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, ok := authx.FromContext(r.Context())
+		if !ok || identity.Profile != authx.ProfileAdmin {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		if !authorizer.Can(r.Context(), "cra", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
+			return
+		}
+		if err := svc.DeleteTimesheet(r.Context(), identity.TenantID, id); err != nil {
+			writeCRAError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
 	}
 }
 

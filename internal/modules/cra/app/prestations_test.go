@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -64,6 +65,14 @@ func (f *fakeCRARepo) ListDailyActivityInPeriod(context.Context, kernel.TenantID
 	return nil, nil
 }
 
+func (f *fakeCRARepo) Delete(_ context.Context, _ kernel.TenantID, id ports.TimesheetID) error {
+	if f.ts.ID != id {
+		return domain.ErrTimesheetNotFound
+	}
+	f.ts = domain.Timesheet{}
+	return nil
+}
+
 func (f *fakeCRARepo) DeleteFutureLines(context.Context, kernel.TenantID, domain.SourceRef, time.Time) error {
 	return nil
 }
@@ -90,5 +99,54 @@ func TestValidateAll_SkipsNonSubmitted(t *testing.T) {
 	}
 	if len(result.Failed) != 1 {
 		t.Fatalf("expected 1 failure, got %d", len(result.Failed))
+	}
+}
+
+func TestDeleteTimesheet_RemovesExisting(t *testing.T) {
+	id := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:       id,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}}
+	if err := svc.DeleteTimesheet(context.Background(), repo.ts.TenantID, id); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.ts.ID != uuid.Nil {
+		t.Fatal("expected timesheet to be deleted")
+	}
+}
+
+func TestDeleteTimesheet_NotFound(t *testing.T) {
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}}
+	err := svc.DeleteTimesheet(context.Background(), repo.ts.TenantID, uuid.New())
+	if !errors.Is(err, domain.ErrTimesheetNotFound) {
+		t.Fatalf("expected not found, got %v", err)
+	}
+}
+
+func TestDeleteTimesheet_BlocksFinal(t *testing.T) {
+	id := uuid.New()
+	repo := &fakeCRARepo{ts: domain.Timesheet{
+		ID:       id,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusDefinitif,
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}}
+	svc := &Service{repo: repo, clock: ports.RealClock{}}
+	err := svc.DeleteTimesheet(context.Background(), repo.ts.TenantID, id)
+	if !errors.Is(err, domain.ErrCRAAlreadyValidated) {
+		t.Fatalf("expected already validated, got %v", err)
+	}
+	if repo.ts.ID != id {
+		t.Fatal("final timesheet must not be deleted")
 	}
 }

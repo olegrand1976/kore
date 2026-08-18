@@ -106,6 +106,15 @@
               >
                 {{ $t('prestations.reject') }}
               </AppButton>
+              <AppButton
+                v-if="canDelete(row)"
+                variant="danger"
+                size="sm"
+                :disabled="rowActionId === row.id"
+                @click="openDelete(row)"
+              >
+                {{ $t('common.delete') }}
+              </AppButton>
             </td>
           </tr>
         </tbody>
@@ -160,6 +169,15 @@
               >
                 {{ $t('prestations.reject') }}
               </AppButton>
+              <AppButton
+                v-if="canDelete(item as PrestationRow)"
+                variant="danger"
+                size="sm"
+                :disabled="rowActionId === (item as PrestationRow).id"
+                @click="openDelete(item as PrestationRow)"
+              >
+                {{ $t('common.delete') }}
+              </AppButton>
             </div>
           </div>
         </template>
@@ -180,6 +198,21 @@
         </div>
       </form>
     </AppModal>
+
+    <AppModal v-model:open="deleteOpen" width="md" :title-id="deleteTitleId" :aria-label="$t('common.delete')">
+      <form class="reject-form" @submit.prevent="confirmDelete">
+        <h2 :id="deleteTitleId" class="delete-title">{{ $t('common.delete') }}</h2>
+        <p>{{ $t('prestations.delete_confirm', { user: deleteTarget ? userLabel(deleteTarget) : '', month: month }) }}</p>
+        <div class="reject-form__actions">
+          <AppButton variant="ghost" size="sm" type="button" @click="deleteOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="danger" size="sm" type="submit" :disabled="deleting">
+            {{ $t('common.delete') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -193,8 +226,9 @@ const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const CRA_STATUSES = ['Brouillon', 'ValidéSemaine', 'Définitif'] as const
 
 const { t } = useI18n()
+const { isAdmin } = useAuth()
 const { statusVariant, statusLabel } = useCraStatus()
-const { mapInvoiceDraftMessage } = useCraError()
+const { mapInvoiceDraftMessage, mapCraError } = useCraError()
 
 type PrestationRow = {
   id: string
@@ -242,6 +276,10 @@ const rejecting = ref(false)
 const rejectTarget = ref<PrestationRow | null>(null)
 const rejectTitleId = 'prestations-reject-title'
 const rejectReasonId = 'prestations-reject-reason'
+const deleteOpen = ref(false)
+const deleting = ref(false)
+const deleteTarget = ref<PrestationRow | null>(null)
+const deleteTitleId = 'prestations-delete-title'
 
 const { data, pending, refresh } = await useFetch<{ data?: PrestationRow[] }>(
   () => `/api/prestations?month=${month.value}`
@@ -369,6 +407,8 @@ const userLabel = (row: PrestationRow) => {
   const name = [row.userPrenom, row.userNom].filter(Boolean).join(' ').trim()
   return name || row.userLogin || '—'
 }
+
+const canDelete = (row: PrestationRow) => isAdmin.value && row.status !== 'Définitif'
 
 const weeksLabel = (row: PrestationRow) => {
   const submitted = row.weeksSubmitted ?? 0
@@ -500,6 +540,29 @@ const confirmReject = async () => {
     rejecting.value = false
   }
 }
+
+const openDelete = (row: PrestationRow) => {
+  deleteTarget.value = row
+  deleteOpen.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  rowActionId.value = deleteTarget.value.id
+  setActionMsg('')
+  try {
+    await $fetch(`/api/cra/timesheets/${deleteTarget.value.id}`, { method: 'DELETE' })
+    deleteOpen.value = false
+    setActionMsg(t('prestations.delete_ok'))
+    await refresh()
+  } catch (err) {
+    setActionMsg(mapCraError(err, t('prestations.action_error')), true)
+  } finally {
+    deleting.value = false
+    rowActionId.value = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -539,6 +602,17 @@ const confirmReject = async () => {
 .reject-form {
   display: grid;
   gap: var(--kore-space-md);
+}
+
+.delete-title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+  color: var(--kore-text);
+}
+
+.reject-form p {
+  margin: 0;
+  color: var(--kore-text);
 }
 
 .reject-form textarea {
@@ -622,6 +696,19 @@ const confirmReject = async () => {
 
   .prestations-table__actions {
     margin-top: var(--kore-space-sm);
+  }
+
+  .prestations-table__actions :deep(.app-btn),
+  .prestations-kanban-card__actions :deep(.app-btn) {
+    width: 100%;
+  }
+
+  .reject-form__actions {
+    flex-direction: column;
+  }
+
+  .reject-form__actions :deep(.app-btn) {
+    width: 100%;
   }
 }
 </style>

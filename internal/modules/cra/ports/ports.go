@@ -150,6 +150,7 @@ type CRAService interface {
 	ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) (ValidateFinalResult, error)
 	ValidateAll(ctx context.Context, cmd ValidateAllCommand) (ValidateAllResult, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
+	DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)
 	ExportPrestationsXML(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]PrestationExportRow, error)
@@ -214,6 +215,7 @@ type CRARepository interface {
 	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
 	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
+	Delete(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
 
