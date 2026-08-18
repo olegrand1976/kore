@@ -3,6 +3,7 @@
     "unavailable": "Indisponible",
     "loading": "Chargement…",
     "cancel": "Annuler",
+    "optional": "optionnel",
     "yes": "Oui",
     "no": "Non",
     "info": "Information",
@@ -358,7 +359,7 @@
     "period": "Période",
     "weeks": "Semaines",
     "commercial_title": "Informations commerciales",
-    "commercial_hint": "Requis pour générer le PDF client (RG-CRA-02).",
+    "commercial_hint": "Client et mission sont requis pour le PDF (RG-CRA-02). Ne saisissez en option que ce qui n'est pas déjà porté par la mission ou le CRA.",
     "commercial_description": "Description mission",
     "commercial_technologies": "Technologies (séparées par des virgules)",
     "commercial_lieu": "Lieu de prestation",
@@ -369,6 +370,7 @@
     "save_commercial": "Enregistrer",
     "commercial_saved": "Informations enregistrées",
     "commercial_save_error": "Impossible d'enregistrer les informations commerciales.",
+    "commercial_mission_load_error": "Impossible de charger le détail de la mission. Technologies et responsable client ne sont pas repris.",
     "invoice_unavailable": "CRA validé — facturation indisponible.",
     "invoice_reason": {
       "client_unresolved": "client non identifié",
@@ -521,7 +523,9 @@
     "col_ett": "Écart ETT",
     "ett_delta": "Δ {delta} h",
     "ett_ok": "OK",
-    "ett_reconcile": "Réconciliation"
+    "ett_reconcile": "Réconciliation",
+    "delete_confirm": "Supprimer le suivi de prestation de {user} pour {month} ? Cette action est irréversible.",
+    "delete_ok": "Suivi de prestation supprimé."
   },
   "ett": {
     "reconciliation_title": "Réconciliation ETT / CRA",

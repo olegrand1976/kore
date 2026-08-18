@@ -3,6 +3,7 @@
     "unavailable": "Unavailable",
     "loading": "Loading…",
     "cancel": "Cancel",
+    "optional": "optional",
     "yes": "Yes",
     "no": "No",
     "info": "Information",
@@ -358,7 +359,7 @@
     "period": "Period",
     "weeks": "Weeks",
     "commercial_title": "Commercial information",
-    "commercial_hint": "Required to generate the client PDF (RG-CRA-02).",
+    "commercial_hint": "Client and mission are required for the PDF (RG-CRA-02). Optional fields are only what the mission or timesheet does not already provide.",
     "commercial_description": "Mission description",
     "commercial_technologies": "Technologies (comma-separated)",
     "commercial_lieu": "Work location",
@@ -369,6 +370,7 @@
     "save_commercial": "Save",
     "commercial_saved": "Information saved",
     "commercial_save_error": "Could not save commercial information.",
+    "commercial_mission_load_error": "Could not load mission details. Technologies and client contact were not copied.",
     "invoice_unavailable": "Validated — billing unavailable.",
     "invoice_reason": {
       "client_unresolved": "client not identified",
@@ -521,7 +523,9 @@
     "col_ett": "ETT delta",
     "ett_delta": "Δ {delta} h",
     "ett_ok": "OK",
-    "ett_reconcile": "Reconciliation"
+    "ett_reconcile": "Reconciliation",
+    "delete_confirm": "Delete the service tracking line for {user} ({month})? This cannot be undone.",
+    "delete_ok": "Service tracking line deleted."
   },
   "ett": {
     "reconciliation_title": "ETT / timesheet reconciliation",
