@@ -168,3 +168,43 @@ func TestCRA_SaveAndGetWithoutRejectReasonColumn(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, domain.StatusValideSemaine, got.Status)
 }
+
+func TestCRA_DeleteTimesheet_CascadesWeeks(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	weekID := uuid.New()
+	month := domain.Month("2026-07")
+	ts := domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    month,
+		Status:   domain.StatusBrouillon,
+		Weeks: []domain.WeekEntry{{
+			ID:         weekID,
+			WeekNumber: 1,
+			Lines: []domain.TimeLine{{
+				ID:          uuid.New(),
+				TenantID:    tenant,
+				WeekEntryID: weekID,
+				Source:      domain.SourceRef{Type: "manual", ID: "day"},
+				Day:         time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC),
+				Duration:    kernel.Duration{Minutes: 480},
+			}},
+		}},
+	}
+	require.NoError(t, repo.Save(ctx, ts))
+
+	require.NoError(t, repo.Delete(ctx, tenant, ts.ID))
+
+	_, err := repo.GetByID(ctx, tenant, ts.ID)
+	require.ErrorIs(t, err, domain.ErrTimesheetNotFound)
+
+	summaries, err := repo.ListSummariesByTenantMonth(ctx, tenant, month)
+	require.NoError(t, err)
+	require.Empty(t, summaries)
+}

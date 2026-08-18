@@ -22,6 +22,14 @@
         >
           {{ $t('cra.reject') }}
         </AppButton>
+        <CraDeleteTimesheetControl
+          v-if="timesheet"
+          :timesheet-id="id"
+          :status="timesheet.status"
+          :month="timesheet.month"
+          @changed="onTimesheetAdminChange"
+          @error="onTimesheetDeleteError"
+        />
         <AppButton
           v-if="canEdit"
           variant="secondary"
@@ -450,6 +458,26 @@ const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
   return t('cra.detail_title', { period: formatMonth(timesheet.value.month) })
 })
+
+const onTimesheetAdminChange = async (action: 'unvalidate' | 'delete') => {
+  switch (action) {
+    case 'delete':
+      await navigateTo('/cra')
+      return
+    case 'unvalidate':
+      validateMsg.value = t('cra.unvalidate_ok')
+      await load()
+      return
+    default: {
+      const _exhaustive: never = action
+      return _exhaustive
+    }
+  }
+}
+
+const onTimesheetDeleteError = (message: string) => {
+  actionError.value = message
+}
 
 const formatMonth = (raw: string) => {
   const [y, m] = raw.split('-').map(Number)

@@ -17,6 +17,7 @@ var (
 	ErrTimesheetNotFound      = errors.New("timesheet not found")
 	ErrWeekNotFound           = errors.New("week not found")
 	ErrWeekIncomplete         = errors.New("week has days without hours")
+	ErrCRANotFinal            = errors.New("cra is not validated")
 )
 
 const (
@@ -171,6 +172,16 @@ func (ts *Timesheet) Reject(now time.Time, managerID uuid.UUID, reason string) e
 	for i := range ts.Weeks {
 		ts.Weeks[i].SubmittedAt = nil
 	}
+	return nil
+}
+
+func (ts *Timesheet) Unvalidate() error {
+	if !ts.IsFinal() {
+		return ErrCRANotFinal
+	}
+	ts.Status = StatusValideSemaine
+	ts.ValidatedAt = nil
+	ts.ValidatedBy = nil
 	return nil
 }
 

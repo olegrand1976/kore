@@ -125,6 +125,15 @@
               >
                 {{ $t('prestations.reject') }}
               </AppButton>
+              <CraDeleteTimesheetControl
+                :timesheet-id="row.id"
+                :status="row.status"
+                :user-label="userLabel(row)"
+                :month="month"
+                :disabled="rowActionId === row.id"
+                @changed="onTimesheetAdminChange"
+                @error="onTimesheetDeleteError"
+              />
             </td>
           </tr>
         </tbody>
@@ -179,6 +188,15 @@
               >
                 {{ $t('prestations.reject') }}
               </AppButton>
+              <CraDeleteTimesheetControl
+                :timesheet-id="(item as PrestationRow).id"
+                :status="(item as PrestationRow).status"
+                :user-label="userLabel(item as PrestationRow)"
+                :month="month"
+                :disabled="rowActionId === (item as PrestationRow).id"
+                @changed="onTimesheetAdminChange"
+                @error="onTimesheetDeleteError"
+              />
             </div>
           </div>
         </template>
@@ -615,6 +633,26 @@ const confirmReject = async () => {
     rejecting.value = false
   }
 }
+
+const onTimesheetAdminChange = async (action: 'unvalidate' | 'delete') => {
+  switch (action) {
+    case 'delete':
+      setActionMsg(t('cra.delete_ok'))
+      break
+    case 'unvalidate':
+      setActionMsg(t('cra.unvalidate_ok'))
+      break
+    default: {
+      const _exhaustive: never = action
+      return _exhaustive
+    }
+  }
+  await refresh()
+}
+
+const onTimesheetDeleteError = (message: string) => {
+  setActionMsg(message, true)
+}
 </script>
 
 <style scoped>
@@ -770,6 +808,19 @@ const confirmReject = async () => {
 
   .prestations-table__actions {
     margin-top: var(--kore-space-sm);
+  }
+
+  .prestations-table__actions :deep(.app-btn),
+  .prestations-kanban-card__actions :deep(.app-btn) {
+    width: 100%;
+  }
+
+  .reject-form__actions {
+    flex-direction: column;
+  }
+
+  .reject-form__actions :deep(.app-btn) {
+    width: 100%;
   }
 }
 </style>

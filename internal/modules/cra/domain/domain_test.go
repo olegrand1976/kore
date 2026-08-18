@@ -182,3 +182,25 @@ func TestReminderCandidate_IsIncomplete(t *testing.T) {
 		})
 	}
 }
+
+func TestUnvalidate_FinalTimesheetBecomesSubmitted(t *testing.T) {
+	now := time.Now()
+	manager := uuid.New()
+	ts := Timesheet{Status: StatusDefinitif, ValidatedAt: &now, ValidatedBy: &manager}
+	if err := ts.Unvalidate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ts.Status != StatusValideSemaine {
+		t.Fatalf("status: got %s want %s", ts.Status, StatusValideSemaine)
+	}
+	if ts.ValidatedAt != nil || ts.ValidatedBy != nil {
+		t.Fatal("expected validation metadata to be cleared")
+	}
+}
+
+func TestUnvalidate_DraftFails(t *testing.T) {
+	ts := Timesheet{Status: StatusBrouillon}
+	if err := ts.Unvalidate(); err != ErrCRANotFinal {
+		t.Fatalf("expected ErrCRANotFinal, got %v", err)
+	}
+}

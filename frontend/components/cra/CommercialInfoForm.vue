@@ -17,21 +17,40 @@
         </option>
       </select>
 
-      <AppInput id="client" v-model="local.client" :label="$t('cra.client')" :disabled="disabled" />
-      <AppInput id="mission" v-model="local.mission" :label="$t('cra.mission')" :disabled="disabled" />
-      <AppInput id="description" v-model="local.description" :label="$t('cra.commercial_description')" :disabled="disabled" />
-      <AppInput id="technologies" v-model="technologiesText" :label="$t('cra.commercial_technologies')" :disabled="disabled" />
-      <AppInput id="lieu" v-model="local.lieu" :label="$t('cra.commercial_lieu')" :disabled="disabled" />
-      <AppInput id="responsable" v-model="local.responsableClient" :label="$t('cra.commercial_responsable')" :disabled="disabled" />
+      <AppInput id="client" v-model="local.client" :label="$t('cra.client')" required :disabled="identityLocked" />
+      <AppInput id="mission" v-model="local.mission" :label="$t('cra.mission')" required :disabled="identityLocked" />
+      <AppInput id="description" v-model="local.description" :label="optionalLabel('cra.commercial_description')" :disabled="disabled" />
+      <AppInput
+        v-if="manualEntry"
+        id="technologies"
+        v-model="technologiesText"
+        :label="optionalLabel('cra.commercial_technologies')"
+        :disabled="disabled"
+      />
+      <AppInput id="lieu" v-model="local.lieu" :label="optionalLabel('cra.commercial_lieu')" :disabled="disabled" />
+      <AppInput
+        v-if="manualEntry"
+        id="responsable"
+        v-model="local.responsableClient"
+        :label="optionalLabel('cra.commercial_responsable')"
+        :disabled="disabled"
+      />
       <AppButton variant="primary" size="sm" type="submit" :disabled="disabled || saving">
         {{ $t('cra.save_commercial') }}
       </AppButton>
     </form>
+    <p v-if="missionLoadError" class="flash flash--error" role="alert">{{ missionLoadError }}</p>
     <p v-if="message" class="flash" :class="{ 'flash--error': isError }" role="status">{{ message }}</p>
   </AppCard>
 </template>
 
 <script setup lang="ts">
+import {
+  isManualCommercialEntry,
+  missionCommercialPatch,
+  unwrapMissionPayload
+} from '~/utils/craCommercial'
+
 export type CommercialMissionOption = {
   id: string
   clientName: string
@@ -57,6 +76,7 @@ const props = defineProps<{
 
 defineEmits<{ submit: [] }>()
 
+const { t } = useI18n()
 const missions = computed(() => props.missions ?? [])
 
 const local = reactive({
@@ -69,6 +89,12 @@ const local = reactive({
   lieu: props.lieu ?? '',
   responsableClient: props.responsableClient ?? ''
 })
+
+const manualEntry = computed(() => isManualCommercialEntry(local.missionId))
+const identityLocked = computed(() => Boolean(props.disabled) || !manualEntry.value)
+const missionLoadError = ref('')
+
+const optionalLabel = (key: string) => `${t(key)} (${t('common.optional')})`
 
 const technologiesText = computed({
   get: () => local.technologies.join(', '),
@@ -83,7 +109,19 @@ const missionLabel = (mission: CommercialMissionOption) => {
   return client ? `${client} — ${name}` : name
 }
 
-const onMissionPick = () => {
+const applyMissionDetail = (raw: Record<string, unknown>) => {
+  const patch = missionCommercialPatch(raw)
+  if (patch.client) local.client = patch.client
+  if (patch.clientId) local.clientId = patch.clientId
+  local.technologies = patch.technologies
+  local.responsableClient = patch.responsableClient
+}
+
+let missionPickToken = 0
+
+const onMissionPick = async () => {
+  const token = ++missionPickToken
+  missionLoadError.value = ''
   const picked = missions.value.find((item) => item.id === local.missionId)
   if (!picked) {
     local.clientId = ''
@@ -95,6 +133,16 @@ const onMissionPick = () => {
   }
   if (picked.label) {
     local.mission = picked.label
+  }
+  local.technologies = []
+  local.responsableClient = ''
+  try {
+    const res = await $fetch(`/api/ssii/missions/${picked.id}`)
+    if (token !== missionPickToken) return
+    applyMissionDetail(unwrapMissionPayload(res))
+  } catch {
+    if (token !== missionPickToken) return
+    missionLoadError.value = t('cra.commercial_mission_load_error')
   }
 }
 
@@ -109,6 +157,7 @@ watch(
     local.technologies = [...(props.technologies ?? [])]
     local.lieu = props.lieu ?? ''
     local.responsableClient = props.responsableClient ?? ''
+    missionLoadError.value = ''
   }
 )
 

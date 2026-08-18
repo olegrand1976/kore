@@ -10,6 +10,12 @@ import { useReporting } from '../composables/useReporting'
 import { buildKey, useWeekRows } from '../composables/useWeekRows'
 import { decodeWorkRef, encodeWorkRef } from '../composables/useCraWorkRefs'
 import {
+  isManualCommercialEntry,
+  missionCommercialPatch,
+  unwrapMissionPayload
+} from '../utils/craCommercial'
+import { timesheetAdminAction, timesheetAdminConfirmKey } from '../utils/craTimesheetAdmin'
+import {
   applyTextSearch,
   compareValues,
   groupByKey,
@@ -89,6 +95,21 @@ describe('useCraStatus', () => {
     expect(statusVariant('Définitif')).toBe('success')
     expect(statusVariant('ValidéSemaine')).toBe('warning')
     expect(statusVariant('Brouillon')).toBe('default')
+  })
+})
+
+describe('timesheetAdminAction', () => {
+  it('asks to unvalidate a final timesheet before delete', () => {
+    expect(timesheetAdminAction('Définitif')).toBe('unvalidate')
+    expect(timesheetAdminAction('ValidéSemaine')).toBe('delete')
+    expect(timesheetAdminAction('Brouillon')).toBe('delete')
+  })
+
+  it('picks confirm copy with or without a user name', () => {
+    expect(timesheetAdminConfirmKey('unvalidate', true)).toBe('cra.unvalidate_confirm')
+    expect(timesheetAdminConfirmKey('unvalidate', false)).toBe('cra.unvalidate_confirm_simple')
+    expect(timesheetAdminConfirmKey('delete', true)).toBe('cra.delete_confirm')
+    expect(timesheetAdminConfirmKey('delete', false)).toBe('cra.delete_confirm_simple')
   })
 })
 
@@ -455,6 +476,45 @@ describe('useCraWorkRefs encoding', () => {
     const encoded = encodeWorkRef('ticket', 'uuid-1')
     expect(decodeWorkRef(encoded)).toEqual({ type: 'ticket', id: 'uuid-1' })
     expect(decodeWorkRef('')).toEqual({ type: '', id: '' })
+  })
+})
+
+describe('craCommercial', () => {
+  it('treats blank mission id as manual entry', () => {
+    expect(isManualCommercialEntry('')).toBe(true)
+    expect(isManualCommercialEntry('   ')).toBe(true)
+    expect(isManualCommercialEntry(undefined)).toBe(true)
+    expect(isManualCommercialEntry('mission-1')).toBe(false)
+  })
+
+  it('unwraps BFF { data } and flat payloads', () => {
+    expect(unwrapMissionPayload({ data: { clientName: 'ACME' } })).toEqual({ clientName: 'ACME' })
+    expect(unwrapMissionPayload({ clientName: 'ACME' })).toEqual({ clientName: 'ACME' })
+    expect(unwrapMissionPayload(null)).toEqual({})
+  })
+
+  it('copies technologies and contact from a mission, including empty contact', () => {
+    const filled = missionCommercialPatch({
+      clientName: 'ACME',
+      clientId: 'c1',
+      technologies: ['Go', ' Vue '],
+      clientContact: 'Jane'
+    })
+    expect(filled).toEqual({
+      client: 'ACME',
+      clientId: 'c1',
+      technologies: ['Go', 'Vue'],
+      responsableClient: 'Jane'
+    })
+
+    const cleared = missionCommercialPatch({
+      ClientName: 'Initech',
+      Technologies: [],
+      ClientContact: '  '
+    })
+    expect(cleared.client).toBe('Initech')
+    expect(cleared.technologies).toEqual([])
+    expect(cleared.responsableClient).toBe('')
   })
 })
 

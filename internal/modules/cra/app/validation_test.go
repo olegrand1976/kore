@@ -64,6 +64,14 @@ func (r *validationRepo) ListDailyActivityInPeriod(context.Context, kernel.Tenan
 	return nil, nil
 }
 
+func (r *validationRepo) Delete(_ context.Context, _ kernel.TenantID, id ports.TimesheetID) error {
+	if r.ts.ID != id {
+		return domain.ErrTimesheetNotFound
+	}
+	r.ts = domain.Timesheet{}
+	return nil
+}
+
 func (r *validationRepo) DeleteFutureLines(context.Context, kernel.TenantID, domain.SourceRef, time.Time) error {
 	return nil
 }

@@ -5,6 +5,7 @@ defineProps<{
   type?: string
   placeholder?: string
   required?: boolean
+  disabled?: boolean
   error?: string
   id?: string
   list?: string
@@ -32,6 +33,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
       :value="modelValue"
       :placeholder="placeholder"
       :required="required"
+      :disabled="disabled"
       :list="list"
       :pattern="pattern"
       :min="min"
@@ -57,5 +59,9 @@ defineEmits<{ 'update:modelValue': [value: string] }>()
   border-radius: var(--kore-radius-md);
 }
 .app-input__field--error { border-color: var(--kore-error); }
+.app-input__field:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
 .app-input__error { margin: 0; font-size: var(--kore-text-caption); color: var(--kore-error); }
 </style>

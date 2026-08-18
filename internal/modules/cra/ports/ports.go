@@ -185,6 +185,8 @@ type CRAService interface {
 	CreateInvoicesFromTimesheetItems(ctx context.Context, tenant kernel.TenantID, items []CreateInvoiceFromTimesheetItem) ([]InvoiceDraftOutcome, error)
 	PreviewInvoicesFromTimesheets(ctx context.Context, tenant kernel.TenantID, ids []uuid.UUID) ([]InvoiceDraftPreview, error)
 	RejectTimesheet(ctx context.Context, cmd RejectTimesheetCommand) error
+	UnvalidateTimesheet(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
+	DeleteTimesheet(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	PrefillPublicHolidays(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month, countryCode string) (int, error)
 	PrefillFromETT(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (int, error)
 	ExportPrestationsXML(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]PrestationExportRow, error)
@@ -260,6 +262,7 @@ type CRARepository interface {
 	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
 	ListReminderCandidatesByMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.ReminderCandidate, error)
 	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
+	Delete(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error
 	DeleteFutureLines(ctx context.Context, tenant kernel.TenantID, source domain.SourceRef, from time.Time) error
 }
 
