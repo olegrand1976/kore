@@ -3,6 +3,8 @@ import {
   buildBottomNavItems,
   buildNavSections,
   isNavItemVisible,
+  ORG_ADMIN_NAV_PATHS,
+  orderOrgAdminNavItems,
   type NavSectionId,
   type NavVisibilityContext
 } from '../utils/appNav'
@@ -96,6 +98,34 @@ describe('buildNavSections', () => {
       '/budget',
       '/facturation'
     ])
+  })
+
+  it('orders Organisation items basic → detailed even when input is shuffled', () => {
+    expect([...ORG_ADMIN_NAV_PATHS]).toEqual([
+      '/admin/organisation',
+      '/admin/sites',
+      '/admin/services',
+      '/admin/applications',
+      '/admin/equipes',
+      '/admin/users',
+      '/admin/identity-providers'
+    ])
+
+    const shuffled = orderOrgAdminNavItems([
+      item('/admin/equipes', 'organisation'),
+      item('/admin/identity-providers', 'organisation'),
+      item('/admin/sites', 'organisation'),
+      item('/admin/applications', 'organisation'),
+      item('/admin/organisation', 'organisation'),
+      item('/admin/users', 'organisation'),
+      item('/admin/services', 'organisation')
+    ])
+    expect(shuffled.map((i) => i.to)).toEqual([...ORG_ADMIN_NAV_PATHS])
+
+    const sections = buildNavSections(shuffled, t)
+    expect(sections).toHaveLength(1)
+    expect(sections[0]?.id).toBe('organisation')
+    expect(sections[0]?.items.map((i) => i.to)).toEqual([...ORG_ADMIN_NAV_PATHS])
   })
 })
 

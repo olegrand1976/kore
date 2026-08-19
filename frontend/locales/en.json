@@ -129,7 +129,7 @@
         "admin": {
           "summary": "Full tenant setup and access to all subscribed modules.",
           "bullets": [
-            "Admin area grouped as: Organization (Structure, sites, services, teams, applications, users, SSO), Automation (workflows, notifications, integrations), System (settings, subscription).",
+            "Admin area grouped as: Organization (Structure, sites, services, applications, teams, users, SSO), Automation (workflows, notifications, integrations), System (settings, subscription).",
             "Operations: Clients (list / create) and SSII Missions (list / create / staffing).",
             "Organization → Modules: enable / disable client invoicing (outside SaaS subscription).",
             "Sites / Services / Teams: dedicated list pages (create and edit); Structure keeps the tree view.",

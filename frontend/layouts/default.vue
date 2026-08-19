@@ -155,7 +155,13 @@
 </template>
 
 <script setup lang="ts">
-import { buildBottomNavItems, buildNavSections, isNavItemVisible, type NavSectionId } from '~/utils/appNav'
+import {
+  buildBottomNavItems,
+  buildNavSections,
+  isNavItemVisible,
+  orderOrgAdminNavItems,
+  type NavSectionId
+} from '~/utils/appNav'
 import type { RbacModule } from '~/utils/rbac'
 
 const { locale, setLocale, t } = useI18n()
@@ -322,13 +328,15 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/facturation', icon: 'receipt_long', label: t('nav.invoicing'), section: 'ops', orgInvoicing: true, rbacModule: 'invoicing' },
   { to: '/compte', icon: 'person', label: t('nav.profile'), section: 'account', activePrefix: '/compte' },
   { to: '/aide', icon: 'help', label: t('nav.help'), section: 'account', activePrefix: '/aide' },
-  { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.org_structure'), section: 'organisation', adminOnly: true },
-  { to: '/admin/sites', icon: 'location_on', label: t('nav.sites'), section: 'organisation', adminOnly: true },
-  { to: '/admin/services', icon: 'account_tree', label: t('nav.services'), section: 'organisation', adminOnly: true },
-  { to: '/admin/equipes', icon: 'groups', label: t('nav.equipes'), section: 'organisation', adminOnly: true },
-  { to: '/admin/applications', icon: 'apps', label: t('nav.applications'), section: 'organisation', adminOnly: true },
-  { to: '/admin/users', icon: 'group', label: t('nav.users'), section: 'organisation', adminOnly: true },
-  { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), section: 'organisation', adminOnly: true },
+  ...orderOrgAdminNavItems([
+    { to: '/admin/organisation', icon: 'corporate_fare', label: t('nav.org_structure'), section: 'organisation', adminOnly: true },
+    { to: '/admin/sites', icon: 'location_on', label: t('nav.sites'), section: 'organisation', adminOnly: true },
+    { to: '/admin/services', icon: 'account_tree', label: t('nav.services'), section: 'organisation', adminOnly: true },
+    { to: '/admin/applications', icon: 'apps', label: t('nav.applications'), section: 'organisation', adminOnly: true },
+    { to: '/admin/equipes', icon: 'groups', label: t('nav.equipes'), section: 'organisation', adminOnly: true },
+    { to: '/admin/users', icon: 'group', label: t('nav.users'), section: 'organisation', adminOnly: true },
+    { to: '/admin/identity-providers', icon: 'key', label: t('nav.identity_providers'), section: 'organisation', adminOnly: true }
+  ]),
   { to: '/admin/workflows', icon: 'account_tree', label: t('nav.workflows'), section: 'automation', adminOnly: true },
   { to: '/admin/notifications', icon: 'notifications', label: t('nav.notifications'), section: 'automation', adminOnly: true, module: 'notifications' },
   { to: '/admin/integrations', icon: 'extension', label: t('nav.integrations'), section: 'automation', adminOnly: true, module: 'integrations' },

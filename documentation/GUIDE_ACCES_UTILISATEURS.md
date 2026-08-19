@@ -1,7 +1,7 @@
 # Guide d'accès utilisateurs (RBAC)
 
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-07 (menus Sites / Services / Équipes)  
+> **Dernière mise à jour doc** : 2026-08-19 (ordre Organisation : Applications avant Équipes)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -46,7 +46,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Administrateur
 
-- Menus admin regroupés : **Organisation** (Structure, sites, services, équipes, applications, utilisateurs, SSO), **Automatisation** (workflows, notifications, intégrations), **Système** (paramètres, abonnement). La navigation métier est sectionnée (Temps, Demandes, **Pilotage** : Clients, Missions, Budget, Facturation).
+- Menus admin regroupés : **Organisation** (Structure, sites, services, applications, équipes, utilisateurs, SSO), **Automatisation** (workflows, notifications, intégrations), **Système** (paramètres, abonnement). La navigation métier est sectionnée (Temps, Demandes, **Pilotage** : Clients, Missions, Budget, Facturation).
 - Pilotage → **Clients** (`/clients`) : liste et création (org écriture) ; fiche client et missions liées.
 - Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.

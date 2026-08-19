@@ -129,7 +129,7 @@
         "admin": {
           "summary": "Paramétrage complet du tenant et de tous les modules souscrits.",
           "bullets": [
-            "Accès à l'administration regroupée : Organisation (Structure, sites, services, équipes, applications, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
+            "Accès à l'administration regroupée : Organisation (Structure, sites, services, applications, équipes, utilisateurs, SSO), Automatisation (workflows, notifications, intégrations), Système (paramètres, abonnement).",
             "Pilotage : Clients (liste / création) et Missions SSII (liste / création / staffing).",
             "Organisation → Modules : activer / désactiver la facturation client (hors abonnement SaaS).",
             "Sites / Services / Équipes : listes dédiées (création et modification) ; Structure conserve la vue arbre.",

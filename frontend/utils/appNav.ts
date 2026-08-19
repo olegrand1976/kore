@@ -35,6 +35,38 @@ export const NAV_SECTIONS: readonly NavSectionDef[] = [
   { id: 'system', labelKey: 'nav.section_system', secondary: true }
 ] as const
 
+/**
+ * Organisation admin sidebar paths, ordered basic → detailed
+ * (Société → Site → Service → Application → Équipe → Utilisateur → SSO).
+ */
+export const ORG_ADMIN_NAV_PATHS = [
+  '/admin/organisation',
+  '/admin/sites',
+  '/admin/services',
+  '/admin/applications',
+  '/admin/equipes',
+  '/admin/users',
+  '/admin/identity-providers'
+] as const
+
+export type OrgAdminNavPath = (typeof ORG_ADMIN_NAV_PATHS)[number]
+
+const ORG_ADMIN_NAV_RANK = new Map<string, number>(
+  ORG_ADMIN_NAV_PATHS.map((path, index) => [path, index])
+)
+
+/** Sort organisation nav items by {@link ORG_ADMIN_NAV_PATHS}; unknown paths stay at the end. */
+export function orderOrgAdminNavItems<T extends { to: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const rankA = ORG_ADMIN_NAV_RANK.get(a.to)
+    const rankB = ORG_ADMIN_NAV_RANK.get(b.to)
+    if (rankA === undefined && rankB === undefined) return 0
+    if (rankA === undefined) return 1
+    if (rankB === undefined) return -1
+    return rankA - rankB
+  })
+}
+
 const BOTTOM_NAV_CORE = ['/dashboard', '/cra', '/conges'] as const
 const BOTTOM_NAV_REQUEST_CHANNELS = ['/tma', '/support', '/maintenance'] as const
 const BOTTOM_NAV_NEW_REQUEST = '/demandes/nouveau'
