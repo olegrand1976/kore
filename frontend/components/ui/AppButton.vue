@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success'
 
 withDefaults(defineProps<{
   variant?: ButtonVariant
@@ -79,6 +79,11 @@ withDefaults(defineProps<{
 
 .app-btn--danger {
   background: var(--kore-error);
-  color: #fff;
+  color: var(--kore-text-inverse);
+}
+
+.app-btn--success {
+  background: var(--kore-success);
+  color: var(--kore-text-inverse);
 }
 </style>

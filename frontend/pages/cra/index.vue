@@ -154,7 +154,7 @@
         </template>
         <template #cell-actions="{ row }">
           <div class="cra-actions">
-            <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${row.id}`)">{{ $t('cra.open') }}</AppButton>
+            <AppButton variant="success" size="sm" :to="`/cra/${row.id}`">{{ $t('cra.open') }}</AppButton>
             <CraDeleteTimesheetControl
               :timesheet-id="String(row.id)"
               :status="String(row.status)"
@@ -213,7 +213,7 @@
               <AppBadge :variant="statusVariant(String((item as CraRow).status))">
                 {{ statusLabel(String((item as CraRow).status)) }}
               </AppBadge>
-              <AppButton variant="ghost" size="sm" @click="navigateTo(`/cra/${(item as CraRow).id}`)">
+              <AppButton variant="success" size="sm" :to="`/cra/${(item as CraRow).id}`">
                 {{ $t('cra.open') }}
               </AppButton>
               <CraDeleteTimesheetControl
