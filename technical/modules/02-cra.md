@@ -181,8 +181,8 @@ Couverture : domaine > 90 %, app > 80 %.
 
 | Élément | Détail |
 | --- | --- |
-| Pages | `cra/index`, `cra/[id]` (saisie hebdo + infos commerciales), `cra/planning`, `cra/gantt`, `prestations/index`, `reporting/facturation` |
-| Composants | `WeekMatrix`, `CommercialInfoForm`, `CraPdfPreview`, `CraGanttChart`, `DayActivityBlock` |
+| Pages | `cra/index`, `cra/[id]` (saisie hebdo + infos de prestation), `cra/planning`, `cra/gantt`, `prestations/index`, `reporting/facturation` |
+| Composants | `WeekMatrix`, `PrestationInfoForm`, `CraPdfPreview`, `CraGanttChart`, `DayActivityBlock` |
 | Composables | `useCra()` (chargement, sauvegarde, soumission, validation, RBAC `cra:E`), `useCraError()` (mapping codes `CRA_*`), `useCraGate()` |
 | Store Pinia | `cra` (CRA courant, statut, dirty state) |
 | Routes BFF | `server/api/timesheets/*`, `server/api/billing-stats`, `server/api/gantt`, `server/api/planning` |

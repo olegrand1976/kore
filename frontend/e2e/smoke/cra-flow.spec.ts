@@ -17,6 +17,9 @@ test.describe('CRA flow', () => {
     await openMonth.click()
     await expect(page).toHaveURL(/\/cra\/[0-9a-f-]{8,}/i, { timeout: 20_000 })
     await expect(page.locator('.app-page-header__title')).toBeVisible({ timeout: 20_000 })
+    await expect(
+      page.getByRole('heading', { name: /informations de prestation|service delivery information/i })
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('CRA list shows table or empty state', async ({ page }) => {

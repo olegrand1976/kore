@@ -61,6 +61,7 @@
           variant="secondary"
           size="sm"
           :disabled="downloading || !canDownload"
+          :aria-describedby="canDownload ? undefined : 'cra-download-hint'"
           @click="openPdfPreview"
         >
           {{ $t('cra.preview_pdf') }}
@@ -69,6 +70,7 @@
           variant="primary"
           size="sm"
           :disabled="downloading || !canDownload"
+          :aria-describedby="canDownload ? undefined : 'cra-download-hint'"
           @click="downloadPdf"
         >
           <AppIcon name="download" /> {{ $t('cra.download') }}
@@ -95,6 +97,42 @@
             <dt>{{ $t('cra.col_status') }}</dt>
             <dd><AppBadge :variant="statusVariant(timesheet.status)">{{ statusLabel(timesheet.status) }}</AppBadge></dd>
           </div>
+          <div>
+            <dt>{{ $t('cra.client') }}</dt>
+            <dd>
+              <NuxtLink
+                v-if="commercial.clientId"
+                :to="`/clients/${commercial.clientId}`"
+                class="meta__link"
+              >
+                {{ commercial.client || $t('cra.context_empty') }}
+              </NuxtLink>
+              <span
+                v-else
+                :class="{ 'meta__empty': !commercial.client }"
+              >
+                {{ commercial.client || $t('cra.context_empty') }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>{{ $t('cra.mission') }}</dt>
+            <dd>
+              <NuxtLink
+                v-if="commercial.missionId"
+                :to="`/missions/${commercial.missionId}`"
+                class="meta__link"
+              >
+                {{ commercial.mission || $t('cra.context_empty') }}
+              </NuxtLink>
+              <span
+                v-else
+                :class="{ 'meta__empty': !commercial.mission }"
+              >
+                {{ commercial.mission || $t('cra.context_empty') }}
+              </span>
+            </dd>
+          </div>
         </dl>
         <CraMonthlyPreview
           class="cra-detail__preview"
@@ -107,48 +145,55 @@
         />
       </AppCard>
 
-      <TimesheetGrid
-        :weeks="selectedWeeks"
-        :month="timesheet.month"
-        :week-start-day="weekStartDay"
-        :day-capacity-minutes="dayCapacityMinutes"
-        :week-submit-policy="weekSubmitPolicy"
-        :can-edit="canEdit"
-        :saving="saving"
-        :missions="missions"
-        :task-types="taskTypesEnabled"
-        :work-ref-options="workRefOptions"
-        :work-ref-label-for="workRefLabelFor"
-        @save="onSaveWeek"
-        @submit="onSubmitWeek"
-      />
+      <div class="cra-detail__body">
+        <aside class="cra-detail__aside">
+          <PrestationInfoForm
+            ref="prestationFormRef"
+            :client="commercial.client"
+            :mission="commercial.mission"
+            :client-id="commercial.clientId"
+            :mission-id="commercial.missionId"
+            :missions="missions"
+            :description="commercial.description"
+            :technologies="commercial.technologies"
+            :lieu="commercial.lieu"
+            :responsable-client="commercial.responsableClient"
+            :disabled="!canEdit"
+            :saving="savingCommercial"
+            :message="commercialMsg"
+            :is-error="commercialError"
+            @change="onPrestationChange"
+            @submit="saveCommercial"
+          />
+        </aside>
 
-      <AppCard v-if="anomalies.length || anomaliesLoading" padding="lg" class="cra-detail__anomalies">
-        <h3 class="cra-detail__anomalies-title">{{ $t('cra.anomalies_title') }}</h3>
-        <p v-if="anomaliesLoading" class="muted">{{ $t('cra.loading') }}</p>
-        <ul v-else-if="anomalies.length" class="cra-detail__anomalies-list">
-          <li v-for="(item, idx) in anomalies" :key="idx">{{ item }}</li>
-        </ul>
-        <p v-else class="muted">{{ $t('cra.anomalies_empty') }}</p>
-      </AppCard>
+        <div class="cra-detail__main">
+          <TimesheetGrid
+            :weeks="selectedWeeks"
+            :month="timesheet.month"
+            :week-start-day="weekStartDay"
+            :day-capacity-minutes="dayCapacityMinutes"
+            :week-submit-policy="weekSubmitPolicy"
+            :can-edit="canEdit"
+            :saving="saving"
+            :missions="missions"
+            :task-types="taskTypesEnabled"
+            :work-ref-options="workRefOptions"
+            :work-ref-label-for="workRefLabelFor"
+            @save="onSaveWeek"
+            @submit="onSubmitWeek"
+          />
 
-      <CommercialInfoForm
-        ref="commercialFormRef"
-        :client="commercial.client"
-        :mission="commercial.mission"
-        :client-id="commercial.clientId"
-        :mission-id="commercial.missionId"
-        :missions="missions"
-        :description="commercial.description"
-        :technologies="commercial.technologies"
-        :lieu="commercial.lieu"
-        :responsable-client="commercial.responsableClient"
-        :disabled="!canEdit"
-        :saving="savingCommercial"
-        :message="commercialMsg"
-        :is-error="commercialError"
-        @submit="saveCommercial"
-      />
+          <AppCard v-if="anomalies.length || anomaliesLoading" padding="lg" class="cra-detail__anomalies">
+            <h3 class="cra-detail__anomalies-title">{{ $t('cra.anomalies_title') }}</h3>
+            <p v-if="anomaliesLoading" class="muted">{{ $t('cra.loading') }}</p>
+            <ul v-else-if="anomalies.length" class="cra-detail__anomalies-list">
+              <li v-for="(item, idx) in anomalies" :key="idx">{{ item }}</li>
+            </ul>
+            <p v-else class="muted">{{ $t('cra.anomalies_empty') }}</p>
+          </AppCard>
+        </div>
+      </div>
     </div>
 
     <CraPdfPreview
@@ -189,6 +234,7 @@ import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
+import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craCommercial'
 
 definePageMeta({ layout: 'default' })
 
@@ -209,7 +255,7 @@ const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
-const commercialFormRef = ref<{ local: Record<string, unknown> } | null>(null)
+const prestationFormRef = ref<{ local: Record<string, unknown> } | null>(null)
 const pdfPreviewOpen = ref(false)
 const pdfPreviewLoading = ref(false)
 const pdfPreviewError = ref('')
@@ -452,7 +498,7 @@ watch(timesheet, (ts) => {
   commercial.responsableClient = ts.commercialInfo.responsableClient ?? ''
 }, { immediate: true })
 
-const canDownload = computed(() => Boolean(commercial.client.trim() && commercial.mission.trim()))
+const canDownload = computed(() => prestationInfoComplete(commercial.client, commercial.mission))
 
 const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
@@ -540,8 +586,19 @@ const confirmReject = async () => {
   }
 }
 
+const onPrestationChange = (payload: PrestationInfoFields) => {
+  commercial.client = payload.client
+  commercial.mission = payload.mission
+  commercial.clientId = payload.clientId
+  commercial.missionId = payload.missionId
+  commercial.description = payload.description
+  commercial.technologies = payload.technologies
+  commercial.lieu = payload.lieu
+  commercial.responsableClient = payload.responsableClient
+}
+
 const persistCommercial = async () => {
-  const local = (commercialFormRef.value?.local ?? commercial) as typeof commercial
+  const local = (prestationFormRef.value?.local ?? commercial) as typeof commercial
   await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
     method: 'PUT',
     body: {
@@ -573,6 +630,11 @@ const saveCommercial = async () => {
   }
 }
 
+const ensurePrestationPersisted = async () => {
+  if (!canEdit.value) return
+  await persistCommercial()
+}
+
 const fetchPdfBlob = async () =>
   apiFetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
 
@@ -596,6 +658,7 @@ const openPdfPreview = async () => {
   pdfPreviewError.value = ''
   revokePdfPreviewUrl()
   try {
+    await ensurePrestationPersisted()
     const blob = await fetchPdfBlob()
     pdfPreviewUrl.value = URL.createObjectURL(blob)
   } catch (err) {
@@ -610,6 +673,7 @@ const downloadPdf = async () => {
   downloading.value = true
   downloadError.value = ''
   try {
+    await ensurePrestationPersisted()
     const blob = await fetchPdfBlob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -664,6 +728,55 @@ const downloadPdf = async () => {
 
 .meta dd { margin: 0; font-weight: 600; }
 
+.meta__empty {
+  font-weight: 400;
+  color: var(--kore-text-muted);
+}
+
+.meta__link {
+  color: var(--kore-link);
+  text-decoration: underline;
+}
+
+.cra-detail__body {
+  display: grid;
+  gap: var(--kore-space-lg);
+  align-items: start;
+}
+
+.cra-detail__main {
+  display: grid;
+  gap: var(--kore-space-lg);
+  min-width: 0;
+}
+
+.cra-detail__aside {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .cra-detail__body {
+    grid-template-columns: 1fr min(360px, 32%);
+  }
+
+  .cra-detail__aside {
+    position: sticky;
+    top: var(--kore-space-lg);
+    order: 2;
+  }
+
+  .cra-detail__main {
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .meta div {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .cra-detail__preview {
   margin-top: var(--kore-space-lg);
   padding-top: var(--kore-space-lg);
@@ -675,7 +788,7 @@ const downloadPdf = async () => {
 .flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
 .flash__link {
   margin-left: var(--kore-space-sm);
-  color: var(--kore-accent);
+  color: var(--kore-link);
   text-decoration: underline;
 }
 

@@ -5,8 +5,32 @@ export type MissionCommercialPatch = {
   responsableClient: string
 }
 
+export type PrestationInfoFields = {
+  client: string
+  mission: string
+  clientId: string
+  missionId: string
+  description: string
+  technologies: string[]
+  lieu: string
+  responsableClient: string
+}
+
 export const isManualCommercialEntry = (missionId: string | undefined | null): boolean =>
   !String(missionId ?? '').trim()
+
+export function isKnownMissionLink(
+  missionId: string | undefined | null,
+  missions: Array<{ id: string }>
+): boolean {
+  const id = String(missionId ?? '').trim()
+  if (!id) return false
+  return missions.some((item) => item.id === id)
+}
+
+export function prestationInfoComplete(client: string, mission: string): boolean {
+  return Boolean(client.trim() && mission.trim())
+}
 
 export function unwrapMissionPayload(res: unknown): Record<string, unknown> {
   if (!res || typeof res !== 'object') return {}
