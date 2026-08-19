@@ -64,7 +64,7 @@ func (r *Runner) seedScrumProjectData(ctx context.Context, tenant kernel.TenantI
 		ApplicationID: DemoAppID,
 		Title:         "Portail client — stabilisation",
 		Description:   "Epic demo : parcours export PDF et performance CRA.",
-		Priority:      "high",
+		Priority:      string(kernel.PriorityHigh),
 	}); err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (r *Runner) seedScrumProjectData(ctx context.Context, tenant kernel.TenantI
 		ApplicationID: DemoAppID,
 		Title:         "SSO et accès mobile",
 		Description:   "Epic demo : authentification mobile et portail client.",
-		Priority:      "medium",
+		Priority:      string(kernel.PriorityNormal),
 	}); err != nil {
 		return err
 	}

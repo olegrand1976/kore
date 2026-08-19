@@ -804,7 +804,7 @@ Planification agile par application (Epic, Sprint, Kanban).
 | `title` | TEXT | NOT NULL |
 | `description` | TEXT | NOT NULL, DEFAULT `''` |
 | `status` | TEXT | NOT NULL, DEFAULT `'draft'`, CHECK IN (`draft`, `active`, `done`) |
-| `priority` | TEXT | NOT NULL, DEFAULT `'medium'` |
+| `priority` | TEXT | NOT NULL, DEFAULT `'normal'`, CHECK IN (`low`, `normal`, `high`, `urgent`) |
 | `target_sprint_id` | UUID | → `project.sprints(id)` ON DELETE SET NULL |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
