@@ -586,6 +586,10 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 	if mode == "" {
 		mode = domain.DefaultModeFacturation
 	}
+	methodology := a.MethodologyProfile
+	if methodology == "" {
+		methodology = domain.DefaultMethodologyProfile()
+	}
 	return r.pool.WithTx(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, `
 			INSERT INTO org.applications (
@@ -594,7 +598,7 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 			)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`, a.ID, a.TenantID.UUID(), a.Libelle, nullIfEmpty(a.Proprietaire), mode,
-			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents, string(a.MethodologyProfile))
+			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents, string(methodology))
 		if err != nil {
 			return err
 		}

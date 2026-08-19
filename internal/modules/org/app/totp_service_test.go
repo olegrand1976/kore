@@ -78,6 +78,9 @@ func (r *totpUserRepo) AssertApplicationSharesExist(context.Context, kernel.Tena
 func (r *totpUserRepo) BudgetBelongsToApplication(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil
 }
+func (r *totpUserRepo) CountProjectArtifacts(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
+	return 0, nil
+}
 func (r *totpUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r *totpUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {
 	return r.user, nil

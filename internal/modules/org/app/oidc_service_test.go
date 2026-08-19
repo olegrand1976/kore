@@ -78,6 +78,9 @@ func (s *oidcRepoStub) AssertApplicationSharesExist(context.Context, kernel.Tena
 func (s *oidcRepoStub) BudgetBelongsToApplication(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil
 }
+func (s *oidcRepoStub) CountProjectArtifacts(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
+	return 0, nil
+}
 func (s *oidcRepoStub) SaveUser(_ context.Context, u domain.User) error {
 	if s.users == nil {
 		s.users = map[uuid.UUID]domain.User{}
