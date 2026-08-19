@@ -353,16 +353,16 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			return
 		}
 		var req struct {
-			Libelle           string      `json:"libelle"`
-			Proprietaire      string      `json:"proprietaire"`
-			ModeFacturation   string      `json:"modeFacturation"`
-			UOActivee         bool        `json:"uoActivee"`
-			ChefUtilisateurID *uuid.UUID  `json:"chefUtilisateurId"`
-			BudgetDefautID    *uuid.UUID  `json:"budgetDefautId"`
-			DefaultTJMCents   int64       `json:"defaultTjmCents"`
-			SiteIDs           []uuid.UUID `json:"siteIds"`
-			ServiceIDs        []uuid.UUID `json:"serviceIds"`
-			EquipeIDs         []uuid.UUID `json:"equipeIds"`
+			Libelle            string      `json:"libelle"`
+			Proprietaire       string      `json:"proprietaire"`
+			ModeFacturation    string      `json:"modeFacturation"`
+			UOActivee          bool        `json:"uoActivee"`
+			ChefUtilisateurID  *uuid.UUID  `json:"chefUtilisateurId"`
+			BudgetDefautID     *uuid.UUID  `json:"budgetDefautId"`
+			DefaultTJMCents    int64       `json:"defaultTjmCents"`
+			SiteIDs            []uuid.UUID `json:"siteIds"`
+			ServiceIDs         []uuid.UUID `json:"serviceIds"`
+			EquipeIDs          []uuid.UUID `json:"equipeIds"`
 			MethodologyProfile string      `json:"methodologyProfile"`
 			// Legacy single serviceId still accepted and merged into serviceIds.
 			ServiceID uuid.UUID `json:"serviceId"`
@@ -377,17 +377,17 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 		}
 		identity, _ := authx.FromContext(r.Context())
 		a, err := org.CreateApplication(r.Context(), ports.CreateApplicationCommand{
-			TenantID:          identity.TenantID,
-			Libelle:           req.Libelle,
-			Proprietaire:      req.Proprietaire,
-			ModeFacturation:   req.ModeFacturation,
-			UOActivee:         req.UOActivee,
-			ChefUtilisateurID: req.ChefUtilisateurID,
-			BudgetDefautID:    req.BudgetDefautID,
-			DefaultTJMCents:   req.DefaultTJMCents,
-			SiteIDs:           req.SiteIDs,
-			ServiceIDs:        serviceIDs,
-			EquipeIDs:         req.EquipeIDs,
+			TenantID:           identity.TenantID,
+			Libelle:            req.Libelle,
+			Proprietaire:       req.Proprietaire,
+			ModeFacturation:    req.ModeFacturation,
+			UOActivee:          req.UOActivee,
+			ChefUtilisateurID:  req.ChefUtilisateurID,
+			BudgetDefautID:     req.BudgetDefautID,
+			DefaultTJMCents:    req.DefaultTJMCents,
+			SiteIDs:            req.SiteIDs,
+			ServiceIDs:         serviceIDs,
+			EquipeIDs:          req.EquipeIDs,
 			MethodologyProfile: req.MethodologyProfile,
 		})
 		if err != nil {

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	tmadomain "github.com/kore/kore/internal/modules/tma/domain"
 	projectdomain "github.com/kore/kore/internal/modules/project/domain"
 	projectports "github.com/kore/kore/internal/modules/project/ports"
+	tmadomain "github.com/kore/kore/internal/modules/tma/domain"
 	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	"github.com/kore/kore/pkg/kernel"
 )

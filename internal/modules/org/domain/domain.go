@@ -485,13 +485,13 @@ type Application struct {
 	ModeFacturation    string             `json:"modeFacturation,omitempty"`
 	MethodologyProfile MethodologyProfile `json:"methodologyProfile"`
 	UOActivee          bool               `json:"uoActivee"`
-	ChefUtilisateurID *uuid.UUID      `json:"chefUtilisateurId,omitempty"`
-	BudgetDefautID    *uuid.UUID      `json:"budgetDefautId,omitempty"`
-	Active            bool            `json:"active"`
-	DefaultTJMCents   int64           `json:"defaultTjmCents"`
-	SiteIDs           []uuid.UUID     `json:"siteIds,omitempty"`
-	ServiceIDs        []uuid.UUID     `json:"serviceIds,omitempty"`
-	EquipeIDs         []uuid.UUID     `json:"equipeIds,omitempty"`
+	ChefUtilisateurID  *uuid.UUID         `json:"chefUtilisateurId,omitempty"`
+	BudgetDefautID     *uuid.UUID         `json:"budgetDefautId,omitempty"`
+	Active             bool               `json:"active"`
+	DefaultTJMCents    int64              `json:"defaultTjmCents"`
+	SiteIDs            []uuid.UUID        `json:"siteIds,omitempty"`
+	ServiceIDs         []uuid.UUID        `json:"serviceIds,omitempty"`
+	EquipeIDs          []uuid.UUID        `json:"equipeIds,omitempty"`
 }
 
 // HasShares reports whether the application has at least one org attachment.

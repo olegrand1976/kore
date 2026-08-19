@@ -20,12 +20,12 @@ import (
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
+	projecthttp "github.com/kore/kore/internal/modules/project/adapters/http"
 	publichttp "github.com/kore/kore/internal/modules/publicsite/adapters/http"
 	reportinghttp "github.com/kore/kore/internal/modules/reporting/adapters/http"
 	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
 	supporthttp "github.com/kore/kore/internal/modules/support/adapters/http"
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
-	projecthttp "github.com/kore/kore/internal/modules/project/adapters/http"
 	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
 	"gopkg.in/yaml.v3"
 )

@@ -11,13 +11,13 @@ import (
 )
 
 type service struct {
-	repo            ports.DemandRepository
-	workflow        ports.WorkflowService
-	cra             ports.CRAFeeder
-	notifier        ports.NotificationPublisher
-	clock           ports.Clock
-	agileValidator  ports.AgileArtifactValidator
-	wipChecker      ports.WipChecker
+	repo           ports.DemandRepository
+	workflow       ports.WorkflowService
+	cra            ports.CRAFeeder
+	notifier       ports.NotificationPublisher
+	clock          ports.Clock
+	agileValidator ports.AgileArtifactValidator
+	wipChecker     ports.WipChecker
 }
 
 func NewService(

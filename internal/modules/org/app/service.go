@@ -137,12 +137,12 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 		ModeFacturation:    mode,
 		MethodologyProfile: methodology,
 		UOActivee:          cmd.UOActivee,
-		ChefUtilisateurID: cmd.ChefUtilisateurID,
-		Active:            true,
-		DefaultTJMCents:   cmd.DefaultTJMCents,
-		SiteIDs:           siteIDs,
-		ServiceIDs:        serviceIDs,
-		EquipeIDs:         equipeIDs,
+		ChefUtilisateurID:  cmd.ChefUtilisateurID,
+		Active:             true,
+		DefaultTJMCents:    cmd.DefaultTJMCents,
+		SiteIDs:            siteIDs,
+		ServiceIDs:         serviceIDs,
+		EquipeIDs:          equipeIDs,
 	}
 	if !app.HasShares() {
 		return domain.Application{}, domain.ErrApplicationWithoutShare
@@ -1146,7 +1146,7 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 			"tma":     readWrite,
 			"project": read,
 			"conges":  readWrite,
-			"budget": read,
+			"budget":  read,
 		},
 		"Chef d'équipe": {
 			"org":       read,
