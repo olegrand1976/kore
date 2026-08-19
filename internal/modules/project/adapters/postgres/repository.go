@@ -146,7 +146,7 @@ func (r *Repository) GetActiveSprint(ctx context.Context, tenant kernel.TenantID
 	`, tenant.UUID(), appID)
 	s, err := scanSprint(row)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, domain.ErrSprintNotFound) {
 			return nil, nil
 		}
 		return nil, err
