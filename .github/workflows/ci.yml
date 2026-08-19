@@ -88,10 +88,11 @@ jobs:
           DEV_SEED_ENABLED: 'true'
           MIGRATE_ON_BOOT: 'true'
         run: |
-          go run ./cmd/kore-api migrate
-          go run ./cmd/kore-api seed
-          DEV_SEED_ENABLED=false go run ./cmd/kore-api &
-          for i in $(seq 1 30); do
+          go build -o /tmp/kore-api ./cmd/kore-api
+          /tmp/kore-api migrate
+          /tmp/kore-api seed
+          DEV_SEED_ENABLED=false /tmp/kore-api &
+          for i in $(seq 1 60); do
             if curl -sf http://localhost:8081/health >/dev/null; then
               break
             fi
