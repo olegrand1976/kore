@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	ErrDefaultBudgetRequired = errors.New("default budget required")
 	ErrDemandNotVisible      = errors.New("demand not visible until chef utilisateur validation")
 	ErrTransitionNotAllowed  = errors.New("transition not allowed")
 	ErrDemandAlreadyResolved = errors.New("demand already resolved")

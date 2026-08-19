@@ -10,10 +10,10 @@ import { useReporting } from '../composables/useReporting'
 import { buildKey, useWeekRows } from '../composables/useWeekRows'
 import { decodeWorkRef, encodeWorkRef } from '../composables/useCraWorkRefs'
 import {
-  isManualCommercialEntry,
-  missionCommercialPatch,
+  isManualPrestationEntry,
+  missionPrestationPatch,
   unwrapMissionPayload
-} from '../utils/craCommercial'
+} from '../utils/craPrestation'
 import { timesheetAdminAction, timesheetAdminConfirmKey } from '../utils/craTimesheetAdmin'
 import {
   applyTextSearch,
@@ -328,7 +328,23 @@ describe('mapCraApiError', () => {
       statusCode: 422,
       data: { error: { code: 'COMMERCIAL_INFO_REQUIRED', message: 'commercial info required' } }
     }
-    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.commercial_required')
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.prestation_required')
+  })
+
+  it('maps the backend sentinel message without a code', () => {
+    const err = {
+      statusCode: 422,
+      data: { error: { message: 'commercial info required' } }
+    }
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.prestation_required')
+  })
+
+  it('does not treat unrelated commercial wording as a CRA prestation error', () => {
+    const err = {
+      statusCode: 422,
+      data: { error: { code: 'VALIDATION', message: 'invalid commercialId' } }
+    }
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.validation')
   })
 
   it('maps already invoiced conflict', () => {
@@ -487,12 +503,12 @@ describe('useCraWorkRefs encoding', () => {
   })
 })
 
-describe('craCommercial', () => {
+describe('craPrestation', () => {
   it('treats blank mission id as manual entry', () => {
-    expect(isManualCommercialEntry('')).toBe(true)
-    expect(isManualCommercialEntry('   ')).toBe(true)
-    expect(isManualCommercialEntry(undefined)).toBe(true)
-    expect(isManualCommercialEntry('mission-1')).toBe(false)
+    expect(isManualPrestationEntry('')).toBe(true)
+    expect(isManualPrestationEntry('   ')).toBe(true)
+    expect(isManualPrestationEntry(undefined)).toBe(true)
+    expect(isManualPrestationEntry('mission-1')).toBe(false)
   })
 
   it('unwraps BFF { data } and flat payloads', () => {
@@ -502,7 +518,7 @@ describe('craCommercial', () => {
   })
 
   it('copies technologies and contact from a mission, including empty contact', () => {
-    const filled = missionCommercialPatch({
+    const filled = missionPrestationPatch({
       clientName: 'ACME',
       clientId: 'c1',
       technologies: ['Go', ' Vue '],
@@ -515,7 +531,7 @@ describe('craCommercial', () => {
       responsableClient: 'Jane'
     })
 
-    const cleared = missionCommercialPatch({
+    const cleared = missionPrestationPatch({
       ClientName: 'Initech',
       Technologies: [],
       ClientContact: '  '

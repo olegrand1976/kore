@@ -14,7 +14,6 @@ type service struct {
 	repo     ports.DemandRepository
 	workflow ports.WorkflowService
 	cra      ports.CRAFeeder
-	budget   ports.BudgetReader
 	notifier ports.NotificationPublisher
 	clock    ports.Clock
 }
@@ -23,14 +22,12 @@ func NewService(
 	repo ports.DemandRepository,
 	workflow ports.WorkflowService,
 	cra ports.CRAFeeder,
-	budget ports.BudgetReader,
 	opts ...Option,
 ) ports.TMAService {
 	s := &service{
 		repo:     repo,
 		workflow: workflow,
 		cra:      cra,
-		budget:   budget,
 		clock:    realClock{},
 	}
 	for _, opt := range opts {
@@ -54,13 +51,6 @@ type realClock struct{}
 func (realClock) Now() time.Time { return time.Now() }
 
 func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandCommand) (domain.Demand, error) {
-	hasBudget, err := s.budget.HasDefaultBudget(ctx, cmd.TenantID, cmd.ApplicationID)
-	if err != nil {
-		return domain.Demand{}, err
-	}
-	if !hasBudget {
-		return domain.Demand{}, domain.ErrDefaultBudgetRequired
-	}
 	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
 	if s.workflow != nil {
 		demandID := demand.ID

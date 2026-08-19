@@ -2,8 +2,8 @@
   <AppCard padding="lg" class="prestation-info">
     <div class="prestation-info__header">
       <div>
-        <h3 class="prestation-info__title">{{ $t('cra.commercial_title') }}</h3>
-        <p class="prestation-info__hint">{{ $t('cra.commercial_hint') }}</p>
+        <h3 class="prestation-info__title">{{ $t('cra.prestation_title') }}</h3>
+        <p class="prestation-info__hint">{{ $t('cra.prestation_hint') }}</p>
       </div>
       <AppBadge :variant="isComplete ? 'success' : 'warning'">
         {{ isComplete ? $t('cra.prestation_complete') : $t('cra.prestation_incomplete') }}
@@ -51,32 +51,32 @@
         <AppInput
           id="description"
           v-model="local.description"
-          :label="optionalLabel('cra.commercial_description')"
+          :label="optionalLabel('cra.prestation_description')"
           :disabled="disabled"
         />
         <AppInput
           id="lieu"
           v-model="local.lieu"
-          :label="optionalLabel('cra.commercial_lieu')"
+          :label="optionalLabel('cra.prestation_lieu')"
           :disabled="disabled"
         />
         <template v-if="manualEntry">
           <AppInput
             id="technologies"
             v-model="technologiesText"
-            :label="optionalLabel('cra.commercial_technologies')"
+            :label="optionalLabel('cra.prestation_technologies')"
             :disabled="disabled"
           />
           <AppInput
             id="responsable"
             v-model="local.responsableClient"
-            :label="optionalLabel('cra.commercial_responsable')"
+            :label="optionalLabel('cra.prestation_responsable')"
             :disabled="disabled"
           />
         </template>
         <template v-else>
           <div class="prestation-info__readonly">
-            <p class="prestation-info__readonly-label">{{ $t('cra.commercial_technologies') }}</p>
+            <p class="prestation-info__readonly-label">{{ $t('cra.prestation_technologies') }}</p>
             <p v-if="local.technologies.length" class="prestation-info__readonly-value">
               {{ local.technologies.join(', ') }}
             </p>
@@ -85,7 +85,7 @@
             </p>
           </div>
           <div class="prestation-info__readonly">
-            <p class="prestation-info__readonly-label">{{ $t('cra.commercial_responsable') }}</p>
+            <p class="prestation-info__readonly-label">{{ $t('cra.prestation_responsable') }}</p>
             <p
               class="prestation-info__readonly-value"
               :class="{ 'prestation-info__readonly-value--muted': !local.responsableClient.trim() }"
@@ -101,7 +101,7 @@
           type="submit"
           :disabled="disabled || saving"
         >
-          {{ $t('cra.save_commercial') }}
+          {{ $t('cra.save_prestation') }}
         </AppButton>
       </section>
     </form>
@@ -121,11 +121,11 @@
 <script setup lang="ts">
 import {
   isKnownMissionLink,
-  missionCommercialPatch,
+  missionPrestationPatch,
   prestationInfoComplete,
   unwrapMissionPayload,
   type PrestationInfoFields
-} from '~/utils/craCommercial'
+} from '~/utils/craPrestation'
 
 export type PrestationMissionOption = {
   id: string
@@ -202,7 +202,7 @@ const missionLabel = (mission: PrestationMissionOption) => {
 }
 
 const applyMissionDetail = (raw: Record<string, unknown>) => {
-  const patch = missionCommercialPatch(raw)
+  const patch = missionPrestationPatch(raw)
   if (patch.client) local.client = patch.client
   if (patch.clientId) local.clientId = patch.clientId
   local.technologies = patch.technologies
@@ -234,7 +234,7 @@ const onMissionPick = async () => {
     applyMissionDetail(unwrapMissionPayload(res))
   } catch {
     if (token !== missionPickToken) return
-    missionLoadError.value = t('cra.commercial_mission_load_error')
+    missionLoadError.value = t('cra.prestation_mission_load_error')
   }
 }
 

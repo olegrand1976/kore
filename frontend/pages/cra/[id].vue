@@ -101,17 +101,17 @@
             <dt>{{ $t('cra.client') }}</dt>
             <dd>
               <NuxtLink
-                v-if="commercial.clientId"
-                :to="`/clients/${commercial.clientId}`"
+                v-if="prestation.clientId"
+                :to="`/clients/${prestation.clientId}`"
                 class="meta__link"
               >
-                {{ commercial.client || $t('cra.context_empty') }}
+                {{ prestation.client || $t('cra.context_empty') }}
               </NuxtLink>
               <span
                 v-else
-                :class="{ 'meta__empty': !commercial.client }"
+                :class="{ 'meta__empty': !prestation.client }"
               >
-                {{ commercial.client || $t('cra.context_empty') }}
+                {{ prestation.client || $t('cra.context_empty') }}
               </span>
             </dd>
           </div>
@@ -119,17 +119,17 @@
             <dt>{{ $t('cra.mission') }}</dt>
             <dd>
               <NuxtLink
-                v-if="commercial.missionId"
-                :to="`/missions/${commercial.missionId}`"
+                v-if="prestation.missionId"
+                :to="`/missions/${prestation.missionId}`"
                 class="meta__link"
               >
-                {{ commercial.mission || $t('cra.context_empty') }}
+                {{ prestation.mission || $t('cra.context_empty') }}
               </NuxtLink>
               <span
                 v-else
-                :class="{ 'meta__empty': !commercial.mission }"
+                :class="{ 'meta__empty': !prestation.mission }"
               >
-                {{ commercial.mission || $t('cra.context_empty') }}
+                {{ prestation.mission || $t('cra.context_empty') }}
               </span>
             </dd>
           </div>
@@ -149,21 +149,21 @@
         <aside class="cra-detail__aside">
           <PrestationInfoForm
             ref="prestationFormRef"
-            :client="commercial.client"
-            :mission="commercial.mission"
-            :client-id="commercial.clientId"
-            :mission-id="commercial.missionId"
+            :client="prestation.client"
+            :mission="prestation.mission"
+            :client-id="prestation.clientId"
+            :mission-id="prestation.missionId"
             :missions="missions"
-            :description="commercial.description"
-            :technologies="commercial.technologies"
-            :lieu="commercial.lieu"
-            :responsable-client="commercial.responsableClient"
+            :description="prestation.description"
+            :technologies="prestation.technologies"
+            :lieu="prestation.lieu"
+            :responsable-client="prestation.responsableClient"
             :disabled="!canEdit"
-            :saving="savingCommercial"
-            :message="commercialMsg"
-            :is-error="commercialError"
+            :saving="savingPrestation"
+            :message="prestationMsg"
+            :is-error="prestationError"
             @change="onPrestationChange"
-            @submit="saveCommercial"
+            @submit="savePrestation"
           />
         </aside>
 
@@ -234,7 +234,7 @@ import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
-import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craCommercial'
+import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craPrestation'
 
 definePageMeta({ layout: 'default' })
 
@@ -322,9 +322,9 @@ const loadMissions = async () => {
   }
 }
 
-const savingCommercial = ref(false)
-const commercialMsg = ref('')
-const commercialError = ref(false)
+const savingPrestation = ref(false)
+const prestationMsg = ref('')
+const prestationError = ref(false)
 const downloading = ref(false)
 const downloadError = ref('')
 const prefillLoading = ref(false)
@@ -392,7 +392,7 @@ const {
   progress
 } = useCraMonthStats(weeksRef, monthRef, weekStartDayRef, dayCapacityMinutes)
 
-const commercial = reactive({
+const prestation = reactive({
   client: '',
   mission: '',
   clientId: '' as string,
@@ -488,17 +488,17 @@ const loadPrefillSuggest = async () => {
 
 watch(timesheet, (ts) => {
   if (!ts?.commercialInfo) return
-  commercial.client = ts.commercialInfo.client ?? ''
-  commercial.mission = ts.commercialInfo.mission ?? ''
-  commercial.clientId = ts.commercialInfo.clientId ?? ''
-  commercial.missionId = ts.commercialInfo.missionId ?? ''
-  commercial.description = ts.commercialInfo.description ?? ''
-  commercial.technologies = [...(ts.commercialInfo.technologies ?? [])]
-  commercial.lieu = ts.commercialInfo.lieu ?? ''
-  commercial.responsableClient = ts.commercialInfo.responsableClient ?? ''
+  prestation.client = ts.commercialInfo.client ?? ''
+  prestation.mission = ts.commercialInfo.mission ?? ''
+  prestation.clientId = ts.commercialInfo.clientId ?? ''
+  prestation.missionId = ts.commercialInfo.missionId ?? ''
+  prestation.description = ts.commercialInfo.description ?? ''
+  prestation.technologies = [...(ts.commercialInfo.technologies ?? [])]
+  prestation.lieu = ts.commercialInfo.lieu ?? ''
+  prestation.responsableClient = ts.commercialInfo.responsableClient ?? ''
 }, { immediate: true })
 
-const canDownload = computed(() => prestationInfoComplete(commercial.client, commercial.mission))
+const canDownload = computed(() => prestationInfoComplete(prestation.client, prestation.mission))
 
 const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
@@ -557,7 +557,7 @@ const onValidateFinal = async () => {
   validateMsg.value = ''
   invoiceLink.value = ''
   try {
-    await persistCommercial()
+    await persistPrestation()
     const draft = await validateFinal()
     validateMsg.value = mapInvoiceDraft(draft)
     const invoiceId = (draft as { invoiceId?: string } | undefined)?.invoiceId
@@ -587,18 +587,18 @@ const confirmReject = async () => {
 }
 
 const onPrestationChange = (payload: PrestationInfoFields) => {
-  commercial.client = payload.client
-  commercial.mission = payload.mission
-  commercial.clientId = payload.clientId
-  commercial.missionId = payload.missionId
-  commercial.description = payload.description
-  commercial.technologies = payload.technologies
-  commercial.lieu = payload.lieu
-  commercial.responsableClient = payload.responsableClient
+  prestation.client = payload.client
+  prestation.mission = payload.mission
+  prestation.clientId = payload.clientId
+  prestation.missionId = payload.missionId
+  prestation.description = payload.description
+  prestation.technologies = payload.technologies
+  prestation.lieu = payload.lieu
+  prestation.responsableClient = payload.responsableClient
 }
 
-const persistCommercial = async () => {
-  const local = (prestationFormRef.value?.local ?? commercial) as typeof commercial
+const persistPrestation = async () => {
+  const local = (prestationFormRef.value?.local ?? prestation) as typeof prestation
   await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
     method: 'PUT',
     body: {
@@ -614,25 +614,25 @@ const persistCommercial = async () => {
   })
 }
 
-const saveCommercial = async () => {
-  savingCommercial.value = true
-  commercialMsg.value = ''
-  commercialError.value = false
+const savePrestation = async () => {
+  savingPrestation.value = true
+  prestationMsg.value = ''
+  prestationError.value = false
   try {
-    await persistCommercial()
-    commercialMsg.value = t('cra.commercial_saved')
+    await persistPrestation()
+    prestationMsg.value = t('cra.prestation_saved')
     await load()
   } catch {
-    commercialMsg.value = t('cra.commercial_save_error')
-    commercialError.value = true
+    prestationMsg.value = t('cra.prestation_save_error')
+    prestationError.value = true
   } finally {
-    savingCommercial.value = false
+    savingPrestation.value = false
   }
 }
 
 const ensurePrestationPersisted = async () => {
   if (!canEdit.value) return
-  await persistCommercial()
+  await persistPrestation()
 }
 
 const fetchPdfBlob = async () =>

@@ -12,10 +12,14 @@ import (
 )
 
 type fakeDemandRepo struct {
-	demand domain.Demand
+	demand    domain.Demand
+	lastSaved domain.Demand
 }
 
-func (r *fakeDemandRepo) Save(_ context.Context, _ domain.Demand) error { return nil }
+func (r *fakeDemandRepo) Save(_ context.Context, d domain.Demand) error {
+	r.lastSaved = d
+	return nil
+}
 
 func (r *fakeDemandRepo) Get(_ context.Context, _ kernel.TenantID, _ uuid.UUID) (domain.Demand, error) {
 	return r.demand, nil
@@ -60,7 +64,7 @@ func TestAddAnalysisPublishesNotification(t *testing.T) {
 	}
 	notifier := &captureNotifier{}
 
-	svc := NewService(repo, nil, nil, nil, WithNotifier(notifier))
+	svc := NewService(repo, nil, nil, WithNotifier(notifier))
 	if err := svc.AddAnalysis(ctx, ports.AnalysisCommand{
 		TenantID:     tenant,
 		DemandID:     demandID,

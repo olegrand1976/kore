@@ -793,7 +793,7 @@ paths:
           description: Semaine soumise
   /timesheets/{id}/commercial-info:
     put:
-      summary: Infos commerciales CRA
+      summary: Infos de prestation CRA
       security: [{ bearerAuth: [] }]
       parameters:
         - name: id
@@ -1137,6 +1137,8 @@ paths:
       responses:
         "201":
           description: Créée
+        "400":
+          description: applicationId ou subject manquant
   /billing/checkout-session:
     post:
       summary: Session Stripe Checkout

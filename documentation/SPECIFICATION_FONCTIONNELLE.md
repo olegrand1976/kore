@@ -205,7 +205,7 @@ Une **Application** peut en outre être **partagée** (rattachements N–N) avec
 | Propriétaire | Société ou client | Facturation, visibilité |
 | Technologies | Stack applicative | CV, recherche profils |
 | Mode facturation | Non / Forfait / Réel | Calcul facture TMA |
-| Budget défaut | Obligatoire si TMA | RG-BUD-01 |
+| Budget défaut | Recommandé pour suivi TMA (estimation/devis) ; facultatif à la création de demande | RG-BUD-01 |
 | UO activée | Oui/Non | Suivi demi-journées |
 | Chef utilisateur | Optionnel | Gate TMA RG-TMA-01 |
 | Équipe liée | Collaborateurs affectables | Affectation demandes |
@@ -417,7 +417,7 @@ flowchart LR
 2. Saisie demi-journée (0/0.5/1) ou journée complète
 3. Types de tâches : mission, hors prestation, absence, incident, ticket, férié
 4. Workflow CRA prévisionnel → validation hebdo → CRA définitif mensuel
-5. Infos commerciales obligatoires pour PDF (description, techno, lieu, responsable client)
+5. Infos de prestation obligatoires pour PDF (client, mission) ; description, techno, lieu, responsable client optionnels
 6. Envoi mail automatique PDF CRA (gestion client, dernier lundi du mois)
 7. Commentaires par tâche et par jour
 8. Navigation calendrier multi-semaines
@@ -432,7 +432,7 @@ flowchart LR
 
 - Modifier son CRA
 - Aperçu mensuel
-- Infos commerciales mission
+- Infos de prestation (mission SSII)
 
 #### §7.1.4 Périmètre et limites
 
@@ -848,7 +848,7 @@ Module **Plannings, tableaux de bord et reporting** : périmètre couvert par le
 | 1 | Pré-remplissage auto depuis sources métier | Système | Événement déclencheur | Lignes CRA générées |
 | 2 | Saisie/correction hebdomadaire | Collaborateur | CRA ouvert | CRA semaine sauvegardé |
 | 3 | Validation CRA prévisionnel | Collaborateur | Semaine complète | État validé semaine |
-| 4 | Complétion infos commerciales | Collaborateur | Fin de mois | Champs obligatoires remplis |
+| 4 | Complétion infos de prestation | Collaborateur | Fin de mois | Client et mission renseignés |
 | 5 | Génération PDF et envoi mail | Système | Infos validées | PDF transmis |
 | 6 | Validation manager (option globale) | Manager | CRA soumis | CRA définitif validé |
 
@@ -862,7 +862,7 @@ sequenceDiagram
   Sys->>Collab: Alerte validation CRA previsionnel
   Collab->>Collab: Verifier et corriger semaine
   Collab->>Collab: Valider CRA previsionnel
-  Collab->>Collab: Completer infos commerciales
+  Collab->>Collab: Completer infos de prestation
   Collab->>Collab: Generer PDF CRA
   Sys->>Mgr: Mail CRA PDF auto
   Note over Collab,Mgr: Phase CRA definitif
@@ -876,7 +876,7 @@ sequenceDiagram
 
 #### Flux alternatifs / exceptions
 
-- PDF sans infos commerciales : blocage (RG-CRA-02)
+- PDF sans client et mission (infos de prestation) : blocage (RG-CRA-02)
 - Conflit mission + absence même jour : correction manuelle requise
 - Refus validation manager : retour collaborateur avec notification
 - Compte expiré en cours de saisie : sauvegarde puis déconnexion
@@ -897,7 +897,7 @@ sequenceDiagram
 #### Critères d'acceptation
 
 - [ ] Le pré-remplissage ne supprime jamais une saisie existante
-- [ ] Le PDF est bloqué sans infos commerciales
+- [ ] Le PDF est bloqué sans client et mission (infos de prestation)
 - [ ] Le Gantt reflète le temps saisi
 
 ### PR-08.3 TMA — cycle de vie d'une demande
@@ -906,7 +906,7 @@ sequenceDiagram
 
 **Acteurs** : Utilisateur, Chef utilisateur, Responsable application, Développeur, Système
 
-**Préconditions** : Application paramétrée (budget défaut, équipe) ; Workflow TMA actif
+**Préconditions** : Application paramétrée (équipe) ; Workflow TMA actif ; budget défaut recommandé pour estimation/devis et consommation
 
 **Déclencheur** : Création d'un incident par un membre d'équipe applicative
 
@@ -948,7 +948,7 @@ stateDiagram-v2
 - Demande sans affectation > délai : escalade responsable
 - Refus validation chef utilisateur : demande non transmise TMA
 - Test croisé échoué : réaffectation autre testeur
-- Demande sans budget défaut : création bloquée
+- Demande sans budget défaut : création TMA possible ; estimation, devis et consommation budget indisponibles tant qu'aucun budget défaut n'est défini
 
 **Postconditions** : Demande clôturée ou en rework ; CRA alimenté ; Budget consommé
 
@@ -1296,7 +1296,7 @@ sequenceDiagram
 
 - Dépassement budget : alerte manager
 - Refus budget : retour équipe avec justification
-- Application sans budget défaut : TMA bloqué
+- Application sans budget défaut : pas de suivi estimation/devis/consommation (création TMA possible)
 
 **Postconditions** : Consommation tracée ; Budget validé ou refusé
 
@@ -1431,7 +1431,7 @@ Format **Given / When / Then** — 18 user stories testables.
 
 **Acteur** : Collaborateur
 
-- **Given** infos commerciales incomplètes
+- **Given** infos de prestation incomplètes (client ou mission manquant)
 - **When** tente export PDF
 - **Then** message d'erreur, PDF non généré
 
@@ -1570,7 +1570,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | ID | Énoncé | Domaine | Processus | User Story |
 | --- | --- | --- | --- | --- |
 | RG-CRA-01 | Le pré-remplissage CRA n'écrase ni ne supprime jamais une saisie existante. | CRA | PR-08.2 | US-CRA-01 |
-| RG-CRA-02 | L'impression PDF du CRA est impossible sans validation des infos commerciales obligatoires. | CRA | PR-08.2 | US-CRA-02 |
+| RG-CRA-02 | L'impression PDF du CRA est impossible sans client et mission (infos de prestation) ; description, techno, lieu et responsable client restent optionnels. | CRA | PR-08.2 | US-CRA-02 |
 | RG-CRA-03 | Le CRA définitif est transmis par mail le dernier lundi du mois si paramétré. | CRA | PR-08.2 | US-CRA-01 |
 | RG-CONG-01 | La validation d'absence n'impacte le CRA que pour les jours strictement postérieurs à la date du jour. | Congés | PR-08.5 | US-CONG-01 |
 | RG-CONG-02 | Une absence refusée reste visible dans le planning des refusés et peut être modifiée. | Congés | PR-08.5 | US-CONG-02 |
@@ -1583,7 +1583,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | RG-FAC-01 | Une facture virtuelle n'est pas persistée et est exclue des statistiques. | Facturation | PR-08.10 | US-FACT-01 |
 | RG-FAC-02 | Kore ne émet pas de facture électronique ; délégation obligatoire à une PDP/PA. | Facturation | PR-08.10 | US-FACT-01 |
 | RG-FAC-03 | Le statut facture est synchronisé depuis la PDP (déposée/reçue/acceptée/refusée/encaissée). | Facturation | PR-08.10 | US-FACT-02 |
-| RG-BUD-01 | Un budget par défaut est obligatoire pour activer le module TMA sur une application. | Budget | PR-08.9 | — |
+| RG-BUD-01 | Un budget par défaut est requis pour enregistrer estimation/devis et suivre la consommation TMA ; la création d'une demande incident reste possible sans budget paramétré. | Budget | PR-08.9 | — |
 | RG-BUD-02 | Le devis remplace l'estimation dans le suivi Jour/UO/Euro. | Budget | PR-08.9 | US-TMA-02 |
 | RG-SEC-01 | Mail/téléphone marqués privés ne sont visibles que des responsables. | Sécurité | PR-08.1 | US-PRIV-01 |
 | RG-SEC-02 | Un compte expiré ne peut plus se connecter. | Sécurité | PR-08.1 | US-SETUP-01 |
@@ -1605,7 +1605,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | ID | Énoncé | Processus | RG | US |
 | --- | --- | --- | --- | --- |
 | EF-CRA-01 | Pré-remplir automatiquement le CRA depuis missions, tickets, congés et jours fériés. | PR-08.2 | RG-CRA-01 | US-CRA-01 |
-| EF-CRA-02 | Bloquer l'export PDF CRA sans infos commerciales validées. | PR-08.2 | RG-CRA-02 | US-CRA-02 |
+| EF-CRA-02 | Bloquer l'export PDF CRA sans client et mission (infos de prestation). | PR-08.2 | RG-CRA-02 | US-CRA-02 |
 | EF-TMA-01 | Gérer le cycle de vie complet d'une demande TMA avec workflow configurable. | PR-08.3 | RG-TMA-01 | US-TMA-01 |
 | EF-TMA-02 | Supporter estimation, devis, analyses, tests et rework. | PR-08.3 | RG-TMA-02 | US-TMA-02 |
 | EF-SSII-01 | Créer et gérer missions multi-collaborateurs avec pré-remplissage CRA. | PR-08.7 | RG-MISS-01 | US-SSII-01 |
@@ -1771,7 +1771,7 @@ Dictionnaire de données fonctionnel — **sans schéma SQL** (hors périmètre)
 
 ### CRA
 
-**Attributs** : Semaines, tâches/jour (0/0.5/1), validation, infos commerciales, PDF
+**Attributs** : Semaines, tâches/jour (0/0.5/1), validation, infos de prestation, PDF
 **Relations** : Utilisateur → N CRA
 
 | Attribut | Type fonctionnel | Obligatoire | Règle |

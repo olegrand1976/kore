@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -136,6 +137,14 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
+		if req.ApplicationID == uuid.Nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "applicationId required")
+			return
+		}
+		if strings.TrimSpace(req.Subject) == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "subject required")
+			return
+		}
 		var dueAt *time.Time
 		if req.DueAt != nil && *req.DueAt != "" {
 			parsed, err := time.Parse(time.RFC3339, *req.DueAt)
@@ -150,17 +159,13 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			TenantID:         identity.TenantID,
 			ApplicationID:    req.ApplicationID,
 			AuthorID:         identity.UserID,
-			Subject:          req.Subject,
+			Subject:          strings.TrimSpace(req.Subject),
 			Description:      req.Description,
 			Priority:         req.Priority,
 			DueAt:            dueAt,
 			RequiresChefGate: req.RequiresChefGate,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrDefaultBudgetRequired) {
-				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
-				return
-			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}

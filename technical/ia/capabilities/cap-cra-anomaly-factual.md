@@ -11,7 +11,7 @@
 
 ## Finalité métier
 
-Signaler des **écarts factuels** sur une feuille CRA (capacité jour, trous, doublons source, incohérence commercial) pour alerte manager. Persona : consultant / manager CRA.
+Signaler des **écarts factuels** sur une feuille CRA (capacité jour, trous, doublons source, incohérence prestation client/mission) pour alerte manager. Persona : consultant / manager CRA.
 
 ## Classification IA Act
 

@@ -31,7 +31,7 @@ flowchart LR
 - **Value objects** : `Login`, `Profile`, `ActivationPeriod`, `TenantID`.
 - **Invariants** :
   - Un `Service` a un responsable (PR-08.1 étape 3) — ADMIN temporaire toléré.
-  - `Application` avec TMA : budget par défaut obligatoire (RG-BUD-01, vérifié pleinement en brique 04/05).
+  - `Application` TMA : budget par défaut recommandé ; requis pour estimation/devis/consommation (RG-BUD-01, brique 04).
   - `Login` respecte le format libre RG-ORG-01 (3–64 car., préfixe `XXX_` optionnel).
   - Manager et Assistante = même profil socle (RG-ORG-02).
 

@@ -18,7 +18,7 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
 
     switch (code) {
       case 'COMMERCIAL_INFO_REQUIRED':
-        return t('cra.errors.commercial_required')
+        return t('cra.errors.prestation_required')
       case 'DAY_CAPACITY_EXCEEDED':
         return t('cra.errors.day_capacity')
       case 'CRA_CONFLICT_ABSENCE':
@@ -33,8 +33,8 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
         break
     }
 
-    if (message.includes('commercial') || message.includes('commercial info')) {
-      return t('cra.errors.commercial_required')
+    if (message.includes('commercial info required')) {
+      return t('cra.errors.prestation_required')
     }
     if (message.includes('capacity') || message.includes('capacité')) {
       return t('cra.errors.day_capacity')

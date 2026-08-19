@@ -246,7 +246,6 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		tmaRepo,
 		tmaworkflow.NewAdapter(wfService),
 		tmacra.NewFeederAdapter(craService),
-		budgetRepo,
 		tmaapp.WithNotifier(tmanotif.NewPublisherAdapter(notifService)),
 	)
 	aiRepo := aipostgres.NewRepository(pool)

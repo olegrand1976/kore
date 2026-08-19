@@ -5,14 +5,14 @@
 ## 1. Référence fonctionnelle
 
 - Spec §7.1 (CRA / feuille de temps), §5.1 (pivot), §8 PR-08.2 (CRA prévisionnel et définitif), §8 PR-08.8 (suivi prestations mensuel).
-- Règles : RG-CRA-01, RG-CRA-02 (blocage PDF sans infos commerciales), RG-CRA-03.
+- Règles : RG-CRA-01, RG-CRA-02 (blocage PDF sans client + mission), RG-CRA-03.
 - Entités §11 : CRA / feuille de temps, Tâche, Semaine.
-- Critères d'acceptation PR-08.2 : pré-remplissage non destructif, PDF bloqué sans infos commerciales, Gantt reflète le temps saisi.
+- Critères d'acceptation PR-08.2 : pré-remplissage non destructif, PDF bloqué sans client + mission, Gantt reflète le temps saisi.
 - Fondations : [03-database.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/03-database.md), [06-testing-strategy.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/06-testing-strategy.md).
 
 ## 2. Périmètre de la brique et dépendances
 
-**Inclus** : feuille de temps hebdomadaire/mensuelle, lignes par tâche/jour, pré-remplissage depuis sources métier, validation prévisionnelle (collaborateur) puis définitive (manager), infos commerciales, génération PDF mensuel, exposition des données consolidées aux consommateurs (Budget, Facturation, Planning, Reporting).
+**Inclus** : feuille de temps hebdomadaire/mensuelle, lignes par tâche/jour, pré-remplissage depuis sources métier, validation prévisionnelle (collaborateur) puis définitive (manager), infos de prestation, génération PDF mensuel, exposition des données consolidées aux consommateurs (Budget, Facturation, Planning, Reporting).
 
 **Hors brique** : logique de calcul budget (04), facturation (09), génération des sources d'activité (TMA/SSII/Support/Congés qui *alimentent* le CRA via un port).
 
@@ -29,14 +29,14 @@ flowchart LR
 
 ## 3. Modèle de domaine
 
-- **Agrégat `Timesheet` (CRA mensuel)** : `userID`, `mois`, `semaines[]`, `statut` (Brouillon → ValidéSemaine → Définitif), `infosCommerciales`.
+- **Agrégat `Timesheet` (CRA mensuel)** : `userID`, `mois`, `semaines[]`, `statut` (Brouillon → ValidéSemaine → Définitif), infos de prestation (`CommercialInfo`).
 - **`WeekEntry`** : semaine, lignes de temps, statut de validation prévisionnelle.
 - **`TimeLine`** : `tâche/activité` (référence polymorphe vers Demande/Mission/Congé), `jour`, `durée` (VO `Duration`), `commentaire`.
-- **`CommercialInfo`** : champs obligatoires avant PDF (client, mission, etc.).
+- **`CommercialInfo`** : client et mission obligatoires avant PDF ; description, techno, lieu, responsable client optionnels.
 - **Value objects** : `Month`, `WeekNumber`, `Duration` (demi-journées/heures), `TimesheetStatus`.
 - **Invariants** :
   - **Pré-remplissage non destructif** : une ligne saisie manuellement n'est jamais écrasée par une source (critère PR-08.2, RG-CRA-01).
-  - **PDF bloqué** tant que `CommercialInfo` incomplète (RG-CRA-02).
+  - **PDF bloqué** tant que client ou mission manquant (RG-CRA-02).
   - Cohérence : total jour ne dépasse pas la capacité configurée (RG-CRA-03).
   - Conflit mission + absence (congé, arrêt) même jour -> signalement (correction manuelle). **Exception** : un jour férié pré-rempli peut être contourné (heures partielles ou activité mission le même jour).
 
@@ -101,7 +101,7 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 | GET | `/api/v1/timesheets?month=YYYY-MM` | CRA (L) | CRA du mois (créé si absent) |
 | PUT | `/api/v1/timesheets/{id}/weeks/{week}` | CRA (E) | Sauvegarder une semaine |
 | POST | `/api/v1/timesheets/{id}/weeks/{week}/submit` | CRA (E) | Valider prévisionnel |
-| PUT | `/api/v1/timesheets/{id}/commercial-info` | CRA (E) | Compléter infos commerciales |
+| PUT | `/api/v1/timesheets/{id}/commercial-info` | CRA (E) | Compléter infos de prestation |
 | POST | `/api/v1/timesheets/{id}/pdf` | CRA (E) | Générer le PDF mensuel |
 | POST | `/api/v1/timesheets/{id}/validate` | CRA (V) | Validation manager (définitif) |
 | POST | `/api/v1/timesheets/{id}/unvalidate` | Admin + CRA (E) | Dévalider un CRA définitif (retour `ValidéSemaine`) |
@@ -159,7 +159,7 @@ Points d'attention :
 
 **Domaine** (table-driven) :
 - Pré-remplissage n'écrase pas une ligne `origin=manual` (critère PR-08.2 / RG-CRA-01).
-- `GeneratePDF` refuse si `CommercialInfo` incomplète (RG-CRA-02).
+- `GeneratePDF` refuse si client ou mission manquant (RG-CRA-02).
 - Dépassement capacité jour rejeté (RG-CRA-03).
 - Conflit mission + absence (congé, arrêt) même jour -> signalé ; férié pré-rempli + mission autorisé.
 - Transitions de statut Brouillon → ValidéSemaine → Définitif ; refus modif après Définitif.
@@ -204,7 +204,7 @@ Couverture : domaine > 90 %, app > 80 %.
 
 - [x] CRA mensuel CRUD + validation prévisionnelle/définitive opérationnels.
 - [x] Pré-remplissage non destructif garanti et testé (RG-CRA-01).
-- [x] PDF bloqué sans infos commerciales (RG-CRA-02) testé.
+- [x] PDF bloqué sans client + mission (RG-CRA-02) testé.
 - [x] Port `CRAReader` exposé et consommé par Budget/Facturation/Reporting.
 - [x] Ports `CRAFeeder` (alimentation) et `CRAFutureCleaner` (purge jours futurs) disponibles pour les modules d'activité (SSII, etc.).
 - [x] Critères d'acceptation PR-08.2 couverts par des tests nommés.

@@ -99,7 +99,7 @@ L'image API inclut Chromium (`CHROME_PATH=/usr/bin/chromium`, cf. Dockerfile §3
 curl -X POST "$API/timesheets/{id}/pdf" -H "Authorization: Bearer $TOKEN" -o cra.pdf
 ```
 
-Prérequis : infos commerciales complètes (RG-CRA-02), CRA non vide. Échec typique si Chromium absent → vérifier logs `PDFRenderer`.
+Prérequis : infos de prestation complètes (client + mission, RG-CRA-02), CRA non vide. Échec typique si Chromium absent → vérifier logs `PDFRenderer`.
 
 ## 8. Definition of Done (fondation docker/devops)
 

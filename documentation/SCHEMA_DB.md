@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 07/08/2026 (mission ↔ applications N–N)
+> **Dernière mise à jour doc** : 19/08/2026 (`commercial_info` = contexte prestation CRA ; mission ↔ applications N–N)
 
 ---
 
@@ -512,7 +512,7 @@ Comptes rendus d'activité (pivot temps).
 | `user_id` | UUID | NOT NULL |
 | `month` | TEXT | NOT NULL |
 | `status` | TEXT | NOT NULL, DEFAULT `'Brouillon'` |
-| `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` — contexte **prestation** (JSON `client` / `mission` requis pour le PDF ; `description`, `technologies`, `lieu`, `responsableClient` optionnels) |
 | `validated_at` | TIMESTAMPTZ | |
 | `validated_by` | UUID | |
 | `rejected_at` | TIMESTAMPTZ | Rejet manager (Lot 4) |

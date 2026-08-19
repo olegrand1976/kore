@@ -5,7 +5,7 @@
 ## 1. Référence fonctionnelle
 
 - Spec §7.2 (module TMA), §8 PR-08.3 (cycle de vie d'une demande).
-- Règles : RG-TMA-01 (gate chef utilisateur), RG-TMA-02, RG-TMA-03, RG-BUD-01 (budget défaut requis).
+- Règles : RG-TMA-01 (gate chef utilisateur), RG-TMA-02, RG-TMA-03 ; RG-BUD-01 (budget requis pour estimation/devis/consommation, pas à la création).
 - Critères d'acceptation PR-08.3 : demande invisible TMA tant que chef utilisateur non validé ; devis prime estimation ; rework rouvre la comptabilisation.
 - Fondations : [01-architecture.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/01-architecture.md).
 
@@ -15,15 +15,15 @@
 
 **Hors brique** : moteur d'états générique (01), calcul budgétaire (04), saisie du temps (02), facturation (09).
 
-**Dépend de** : 01 Workflow, 02 CRA (`CRAFeeder`), 04 Budget (`BudgetReader`), 00. **Consommée par** : 06 Support, 07 Maintenance, 09 Facturation, 12 Reporting.
+**Dépend de** : 01 Workflow, 02 CRA (`CRAFeeder`), 00. **Consommée par** : 06 Support, 07 Maintenance, 09 Facturation, 12 Reporting.
 
 ```mermaid
 flowchart LR
   WF["01 Workflow"] --> TMA["05 TMA"]
   B02["02 CRA"] --> TMA
-  B04["04 Budget"] --> TMA
   TMA --> Fact["09 Facturation"]
   TMA --> Rep["12 Reporting"]
+  B04["04 Budget"] -.->|"estimation/devis/consommation"| TMA
 ```
 
 ## 3. Modèle de domaine
@@ -34,7 +34,7 @@ flowchart LR
 - **Value objects** : `DemandType`, `DemandState`, `XmlExportRow` (17 champs §7.2).
 - **Invariants** :
   - Si l'application définit un chef utilisateur : la demande démarre en **« En attente de création »** et reste **invisible du flux TMA** jusqu'à validation (RG-TMA-01, critère PR-08.3).
-  - Création bloquée si l'application n'a pas de budget par défaut (RG-BUD-01, via `BudgetReader.HasDefaultBudget`).
+  - La **création** d'une demande incident ne requiert **pas** de budget par défaut ; estimation, devis et consommation restent conditionnés à un budget (RG-BUD-01, brique 04).
   - Le **devis prime** sur l'estimation (cohérent brique 04).
   - **Rework** : rouvre l'état et réactive la comptabilisation de consommation (RG-TMA-02/03).
 
@@ -66,7 +66,6 @@ type DemandRepository interface {
 
 // ports consommés (fournis par d'autres briques)
 type WorkflowService interface { /* brique 01 */ }
-type BudgetReader interface { HasDefaultBudget(ctx context.Context, appID ApplicationID) (bool, error) }
 type CRAFeeder interface { ProposeLines(ctx context.Context, lines []ProposedLine) error }
 type NotificationPublisher interface { Notify(ctx context.Context, evt NotificationEvent) error }
 ```
@@ -75,7 +74,7 @@ type NotificationPublisher interface { Notify(ctx context.Context, evt Notificat
 
 - **HTTP (chi)** : `internal/modules/tma/adapters/http`.
 - **PostgreSQL (sqlc)** : schéma `tma`.
-- Gateways : consomme Workflow (01), Budget (04), CRA (02), Notifications (11).
+- Gateways : consomme Workflow (01), CRA (02), Notifications (11). Budget (04) consommé indirectement via estimation/devis sur demandes existantes.
 
 ## 6. Contrat d'API
 
@@ -90,7 +89,7 @@ type NotificationPublisher interface { Notify(ctx context.Context, evt Notificat
 | POST | `/api/v1/demands/{id}/reopen` | TMA (E) | Rework |
 | GET | `/api/v1/demands/export.xml` | TMA (L) | Export XML 17 champs |
 
-Erreurs : `422 DEFAULT_BUDGET_REQUIRED`, `409 DEMAND_NOT_VISIBLE` (gate non franchi), `409 TRANSITION_NOT_ALLOWED`.
+Erreurs : `400` validation (`applicationId`, `subject`), `409 DEMAND_NOT_VISIBLE` (gate non franchi), `409 TRANSITION_NOT_ALLOWED`.
 
 ## 7. Schéma de données (schéma `tma`)
 
@@ -110,8 +109,8 @@ Index `(tenant_id, application_id, status)` pour le Gantt/reporting.
 | SRP | Cycle de vie TMA ; état délégué au moteur (01) ; budget délégué à (04). |
 | OCP | Nouveaux artefacts/types de demande ajoutés sans modifier le cœur ; workflow paramétrable. |
 | LSP | `DemandRepository` réel/mock ; ports Workflow/Budget/CRA substituables. |
-| ISP | Consomme uniquement `BudgetReader.HasDefaultBudget` et `CRAFeeder.ProposeLines` (interfaces fines). |
-| DIP | Dépend d'abstractions Workflow/Budget/CRA/Notifications injectées. |
+| ISP | Consomme uniquement `CRAFeeder.ProposeLines` (interface fine) ; pas de port Budget à la création. |
+| DIP | Dépend d'abstractions Workflow/CRA/Notifications injectées. |
 
 ## 9. Plan de tests unitaires
 
@@ -121,7 +120,7 @@ Index `(tenant_id, application_id, status)` pour le Gantt/reporting.
 - Export XML : 17 champs présents.
 
 **Application (mocks)** :
-- `CreateDemand` appelle `BudgetReader.HasDefaultBudget` ; faux -> `DEFAULT_BUDGET_REQUIRED` (RG-BUD-01).
+- `CreateDemand` persiste une demande sans budget par défaut sur l'application.
 - `ValidateCreation` par rôle Chef utilisateur uniquement (via Workflow gate).
 - `Resolve` propose une ligne au CRA (`CRAFeeder`) ; changements d'état notifiés.
 

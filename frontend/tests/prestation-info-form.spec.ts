@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   isKnownMissionLink,
-  isManualCommercialEntry,
-  missionCommercialPatch,
+  isManualPrestationEntry,
+  missionPrestationPatch,
   prestationInfoComplete
-} from '../utils/craCommercial'
+} from '../utils/craPrestation'
 
 describe('prestationInfoComplete', () => {
   it('requires client and mission labels', () => {
@@ -31,17 +31,17 @@ describe('isKnownMissionLink', () => {
   })
 })
 
-describe('isManualCommercialEntry', () => {
+describe('isManualPrestationEntry', () => {
   it('treats empty mission id as manual entry', () => {
-    expect(isManualCommercialEntry('')).toBe(true)
-    expect(isManualCommercialEntry(undefined)).toBe(true)
-    expect(isManualCommercialEntry('mission-uuid')).toBe(false)
+    expect(isManualPrestationEntry('')).toBe(true)
+    expect(isManualPrestationEntry(undefined)).toBe(true)
+    expect(isManualPrestationEntry('mission-uuid')).toBe(false)
   })
 })
 
-describe('missionCommercialPatch', () => {
+describe('missionPrestationPatch', () => {
   it('normalises mission payload for prestation context', () => {
-    const patch = missionCommercialPatch({
+    const patch = missionPrestationPatch({
       clientName: 'ACME',
       clientId: 'client-1',
       technologies: ['Go', 'Vue'],

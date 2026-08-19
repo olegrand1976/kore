@@ -7,6 +7,6 @@ import (
 )
 
 func TestNewTMAService(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil)
 	require.NotNil(t, svc)
 }

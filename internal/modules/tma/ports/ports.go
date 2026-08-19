@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	budgetports "github.com/kore/kore/internal/modules/budget/ports"
 	"github.com/kore/kore/internal/modules/tma/domain"
 	"github.com/kore/kore/pkg/kernel"
 )
@@ -128,8 +127,6 @@ type WorkflowService interface {
 type CRAFeeder interface {
 	ProposeLines(ctx context.Context, lines []ProposedLine) error
 }
-
-type BudgetReader = budgetports.BudgetReader
 
 type NotificationPublisher interface {
 	Notify(ctx context.Context, evt NotificationEvent) error

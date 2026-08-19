@@ -5,7 +5,7 @@
 ## 1. Référence fonctionnelle
 
 - Spec §7.7 (Budget/UO), §8 PR-08.8 (suivi prestations mensuel), §8 PR-08.9 (budget/UO).
-- Règles : RG-BUD-01 (budget défaut obligatoire si TMA), RG-BUD-02.
+- Règles : RG-BUD-01 (budget défaut pour estimation/devis/consommation TMA), RG-BUD-02.
 - Critères d'acceptation : le devis remplace l'estimation dans toutes les interfaces ; suivi simultané Jour/UO/Euro.
 - Fondations : [03-database.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/03-database.md).
 
@@ -15,7 +15,7 @@
 
 **Hors brique** : émission des factures (09), saisie du temps (02), production des artefacts TMA (05).
 
-**Dépend de** : 02 CRA (port `CRAReader`), 00 (identité). **Consommée par** : 05 TMA (contrôle budget défaut), 09 Facturation (base de calcul).
+**Dépend de** : 02 CRA (port `CRAReader`), 00 (identité). **Consommée par** : 05 TMA (artefacts budget sur demandes existantes), 09 Facturation (base de calcul).
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,7 @@ flowchart LR
 - **`Quote` (devis)** : **remplace** l'estimation dans les calculs et affichages (RG-BUD, invariant fort).
 - **Value objects** : `Effort` (Jour, UO), `Money`, `ConsumptionTriple{Jour, UO, Euro}`.
 - **Invariants** :
-  - Une application en mode TMA doit avoir un budget par défaut (RG-BUD-01) — vérifié à la création de Demande (brique 05).
+  - Un budget par défaut sur l'application est requis pour **estimation, devis et consommation** TMA (RG-BUD-01) — pas pour la création de la demande incident.
   - Dès qu'un devis existe, il **prime** sur l'estimation partout (critère PR-08.9).
   - Consommation calculée simultanément en Jour, UO et Euro (RG-BUD-02).
   - Dépassement -> alerte manager (événement).
@@ -93,7 +93,7 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 | GET | `/api/v1/budgets/{id}` | Budget (L) | Détail (Jour/UO/Euro) |
 | POST | `/api/v1/budgets/{id}/approve` | Budget (V) | Valider la consommation |
 
-Erreurs : `422 DEFAULT_BUDGET_REQUIRED` (RG-BUD-01), `409 BUDGET_ALREADY_APPROVED`.
+Erreurs : `409 BUDGET_ALREADY_APPROVED`.
 
 ## 7. Schéma de données (schéma `budget`)
 
@@ -123,7 +123,7 @@ Erreurs : `422 DEFAULT_BUDGET_REQUIRED` (RG-BUD-01), `409 BUDGET_ALREADY_APPROVE
 
 **Application (mocks)** :
 - `RecomputeConsumption` agrège les `Consumption` du `CRAReader` (mock).
-- `HasDefaultBudget` renvoie faux -> la création de Demande TMA sera bloquée (contrat testé côté 05).
+- `HasDefaultBudget` expose l'état budget défaut pour les écrans org/budget (plus de gate à la création TMA).
 
 **Intégration** : persistance budgets/estimations/devis ; remplacement d'estimation par devis.
 
@@ -152,6 +152,6 @@ Cf. [ROADMAP.md](../ROADMAP.md).
 
 - [x] Budgets, estimations, devis opérationnels ; devis prime (testé).
 - [x] Consommation Jour/UO/Euro calculée depuis `CRAReader`.
-- [x] `BudgetReader.HasDefaultBudget` exposé (RG-BUD-01) pour la brique TMA.
+- [x] `BudgetReader.HasDefaultBudget` exposé pour org/budget (RG-BUD-01).
 - [x] Alerte de dépassement publiée.
 - [x] Endpoints documentés dans `api/openapi.yaml`.

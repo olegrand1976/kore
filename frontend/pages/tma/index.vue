@@ -11,7 +11,7 @@
         <AppButton variant="ghost" size="sm" @click="exportXml">
           {{ $t('tma.export') }}
         </AppButton>
-        <AppButton variant="primary" size="sm" @click="showForm = !showForm">
+        <AppButton variant="primary" size="sm" @click="toggleForm">
           {{ $t('tma.new') }}
         </AppButton>
       </template>
@@ -50,6 +50,8 @@
         :label="$t('tma.kpi_awaiting')"
       />
     </AppKpiGrid>
+
+    <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
       <ServiceRequestForm show-chef-gate :busy="creating" @submit="onCreate" />
@@ -146,12 +148,21 @@ type TmaRow = {
 const { t } = useI18n()
 const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
+const { extractFetchError } = useApiError()
 const { list, create, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
 const { uploadAll } = useRequestAttachments()
 const { canValidateTma } = usePermissions()
 
 const showForm = ref(false)
 const creating = ref(false)
+const errorMsg = ref('')
+
+const toggleForm = () => {
+  showForm.value = !showForm.value
+  if (!showForm.value) {
+    errorMsg.value = ''
+  }
+}
 
 if (route.query.create === '1') {
   showForm.value = true
@@ -246,6 +257,7 @@ const kanbanColumns = computed((): KanbanColumn[] =>
 
 const onCreate = async (payload: ServiceRequestPayload) => {
   creating.value = true
+  errorMsg.value = ''
   try {
     const created = await create({
       applicationId: payload.applicationId,
@@ -261,6 +273,8 @@ const onCreate = async (payload: ServiceRequestPayload) => {
     }
     showForm.value = false
     await refresh()
+  } catch (e) {
+    errorMsg.value = extractFetchError(e, t('tma.error_create'))
   } finally {
     creating.value = false
   }
@@ -274,6 +288,13 @@ const onCreate = async (payload: ServiceRequestPayload) => {
   margin: 0;
   color: var(--kore-text-muted);
 }
+
+.flash {
+  margin: 0 0 var(--kore-space-md);
+  font-size: var(--kore-text-small);
+}
+
+.flash--error { color: var(--kore-error); }
 
 .tma-kanban-card {
   display: flex;

@@ -1,4 +1,4 @@
-export type MissionCommercialPatch = {
+export type MissionPrestationPatch = {
   client?: string
   clientId?: string
   technologies: string[]
@@ -16,7 +16,7 @@ export type PrestationInfoFields = {
   responsableClient: string
 }
 
-export const isManualCommercialEntry = (missionId: string | undefined | null): boolean =>
+export const isManualPrestationEntry = (missionId: string | undefined | null): boolean =>
   !String(missionId ?? '').trim()
 
 export function isKnownMissionLink(
@@ -41,11 +41,11 @@ export function unwrapMissionPayload(res: unknown): Record<string, unknown> {
   return res as Record<string, unknown>
 }
 
-export function missionCommercialPatch(raw: Record<string, unknown>): MissionCommercialPatch {
+export function missionPrestationPatch(raw: Record<string, unknown>): MissionPrestationPatch {
   const clientName = String(raw.clientName ?? raw.ClientName ?? '').trim()
   const clientId = String(raw.clientId ?? raw.ClientID ?? '').trim()
   const techs = raw.technologies ?? raw.Technologies
-  const patch: MissionCommercialPatch = {
+  const patch: MissionPrestationPatch = {
     technologies: Array.isArray(techs)
       ? techs.map((item) => String(item).trim()).filter(Boolean)
       : [],
