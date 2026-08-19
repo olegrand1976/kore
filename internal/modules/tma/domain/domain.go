@@ -76,6 +76,7 @@ type Demand struct {
 	SprintID           *uuid.UUID
 	StoryPoints        *int16
 	BacklogRank        *int
+	ResolvedAt         *time.Time
 	CreatedAt          time.Time
 }
 
@@ -178,7 +179,7 @@ func (d *Demand) TakeOver(userID uuid.UUID) error {
 	return nil
 }
 
-func (d *Demand) Resolve() error {
+func (d *Demand) Resolve(at time.Time) error {
 	if !d.Visible {
 		return ErrDemandNotVisible
 	}
@@ -186,6 +187,8 @@ func (d *Demand) Resolve() error {
 		return ErrDemandAlreadyResolved
 	}
 	d.Status = DemandStatusResolved
+	t := at.UTC()
+	d.ResolvedAt = &t
 	return nil
 }
 
@@ -195,6 +198,7 @@ func (d *Demand) Reopen(reason string) error {
 	}
 	d.Status = DemandStatusRework
 	d.ConsumptionActive = true
+	d.ResolvedAt = nil
 	_ = reason
 	return nil
 }
@@ -209,6 +213,7 @@ func ToXmlExportRow(d Demand) XmlExportRow {
 		AuthorID:          d.AuthorID,
 		AssigneeID:        d.AssigneeID,
 		CreatedAt:         d.CreatedAt,
+		ResolvedAt:        d.ResolvedAt,
 		WorkflowState:     string(d.Status),
 		Visible:           d.Visible,
 		ConsumptionActive: d.ConsumptionActive,

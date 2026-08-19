@@ -16,6 +16,8 @@
       <AppCard padding="lg" class="mb">
         <dl class="meta">
           <div><dt>{{ $t('tma.col_status') }}</dt><dd><AppBadge variant="neutral">{{ status }}</AppBadge></dd></div>
+          <div v-if="agileStoryPoints != null"><dt>{{ $t('project.col_story_points') }}</dt><dd>{{ agileStoryPoints }}</dd></div>
+          <div v-if="agileEpicTitle"><dt>Epic</dt><dd>{{ agileEpicTitle }}</dd></div>
           <div v-if="workflowState"><dt>{{ $t('tma.workflow_state') }}</dt><dd>{{ workflowState }}</dd></div>
         </dl>
         <WorkflowActions
@@ -78,6 +80,11 @@ const {
   pickWorkflowId
 } = useTma()
 const { getInstance, availableActions, pickState } = useWorkflow()
+const { get: getApp, pickAppMethodologyProfile } = useApplications()
+const { listEpics, pickEpicId, pickEpicTitle } = useProject()
+
+const agileEpicTitle = ref('')
+const agileStoryPoints = ref<number | null>(null)
 
 await fetchSession()
 
@@ -121,6 +128,22 @@ const loadDetail = async () => {
     analysis.technical = ''
     analysis.risks = ''
     analysis.testScenario = ''
+  }
+  agileEpicTitle.value = ''
+  agileStoryPoints.value = d.storyPoints ?? d.StoryPoints ?? null
+  const appId = String(d.applicationId ?? d.ApplicationID ?? '')
+  const epicId = d.epicId ?? d.EpicID
+  if (appId && epicId) {
+    try {
+      const app = await getApp(appId)
+      if (isAgileProfile(pickAppMethodologyProfile(app))) {
+        const epics = await listEpics(appId)
+        const epic = epics.find((e) => pickEpicId(e) === epicId)
+        agileEpicTitle.value = epic ? pickEpicTitle(epic) : ''
+      }
+    } catch {
+      agileEpicTitle.value = ''
+    }
   }
   return d
 }

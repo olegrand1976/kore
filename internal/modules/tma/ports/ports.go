@@ -145,3 +145,7 @@ type AgileArtifactValidator interface {
 	EpicBelongsToApplication(ctx context.Context, tenant kernel.TenantID, appID, epicID uuid.UUID) (bool, error)
 	SprintBelongsToApplication(ctx context.Context, tenant kernel.TenantID, appID, sprintID uuid.UUID) (bool, error)
 }
+
+type WipChecker interface {
+	CheckWip(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID, targetStatus string, excludeDemandID *uuid.UUID) error
+}

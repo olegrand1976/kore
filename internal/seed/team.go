@@ -158,11 +158,12 @@ func (r *Runner) ensureApplication3(ctx context.Context, tenant kernel.TenantID)
 		return err
 	}
 	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
-		ID:         DemoApp3ID,
-		TenantID:   tenant,
-		Libelle:    DemoApp3Label,
-		Active:     true,
-		ServiceIDs: []uuid.UUID{DemoServiceID},
+		ID:                 DemoApp3ID,
+		TenantID:           tenant,
+		Libelle:            DemoApp3Label,
+		Active:             true,
+		MethodologyProfile: orgdomain.MethodologyAgileKanban,
+		ServiceIDs:         []uuid.UUID{DemoServiceID},
 	})
 }
 

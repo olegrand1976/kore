@@ -51,6 +51,17 @@ export type BacklogItem = {
   BacklogRank?: number | null
 }
 
+export type KanbanColumnConfig = {
+  stateCode: string
+  label?: string
+  wipLimit?: number | null
+}
+
+export type KanbanConfig = {
+  columns?: KanbanColumnConfig[]
+  Columns?: KanbanColumnConfig[]
+}
+
 export type AgileApplication = {
   id?: string
   ID?: string
@@ -151,10 +162,30 @@ export function useProject() {
     return res?.data
   }
 
+  const updateEpic = async (appId: string, epicId: string, body: { status?: string; title?: string }) => {
+    return apiFetch(`/api/project/applications/${appId}/epics/${epicId}`, { method: 'PATCH', body })
+  }
+
+  const getKanbanConfig = async (appId: string) => {
+    const res = await apiFetch<{ data?: KanbanConfig }>(`/api/project/applications/${appId}/kanban-config`)
+    return res?.data
+  }
+
+  const saveKanbanConfig = async (appId: string, columns: KanbanColumnConfig[]) => {
+    const res = await apiFetch<{ data?: KanbanConfig }>(`/api/project/applications/${appId}/kanban-config`, {
+      method: 'PUT',
+      body: { columns }
+    })
+    return res?.data
+  }
+
+  const pickKanbanColumns = (cfg: KanbanConfig | undefined | null) => cfg?.columns ?? cfg?.Columns ?? []
+
   return {
     listAgileApplications,
     listEpics,
     createEpic,
+    updateEpic,
     listSprints,
     createSprint,
     startSprint,
@@ -164,6 +195,9 @@ export function useProject() {
     reorderBacklog,
     getBurndown,
     getVelocity,
+    getKanbanConfig,
+    saveKanbanConfig,
+    pickKanbanColumns,
     pickEpicId,
     pickEpicTitle,
     pickSprintId,

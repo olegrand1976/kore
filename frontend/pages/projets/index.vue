@@ -20,6 +20,12 @@
             {{ $t('project.nav_sprints') }}
           </NuxtLink>
           <NuxtLink :to="`/projets/${app.id}/epics`" class="projets-link">{{ $t('project.nav_epics') }}</NuxtLink>
+          <NuxtLink v-if="app.profile === 'agile_kanban'" :to="`/projets/${app.id}/board`" class="projets-link">
+            {{ $t('project.nav_board') }}
+          </NuxtLink>
+          <NuxtLink v-if="app.profile === 'agile_kanban'" :to="`/projets/${app.id}/kanban-config`" class="projets-link">
+            {{ $t('project.nav_kanban_config') }}
+          </NuxtLink>
           <NuxtLink :to="`/projets/${app.id}/metrics`" class="projets-link">{{ $t('project.nav_metrics') }}</NuxtLink>
         </div>
       </AppCard>

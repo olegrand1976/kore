@@ -7,7 +7,18 @@
     </AppPageHeader>
 
     <AppCard padding="lg">
-      <AppTable :columns="columns" :rows="rows" :empty-title="$t('project.epics_empty')" row-key="id" />
+      <AppTable :columns="columns" :rows="rows" :empty-title="$t('project.epics_empty')" row-key="id">
+        <template #cell-actions="{ row }">
+          <AppButton
+            v-if="canWrite && row.rawStatus !== 'done'"
+            variant="ghost"
+            size="sm"
+            @click="finishEpic(row.id)"
+          >
+            {{ $t('project.epic_finish') }}
+          </AppButton>
+        </template>
+      </AppTable>
     </AppCard>
 
     <AppModal v-model:open="showForm" :title="$t('project.epic_new')">
@@ -30,20 +41,21 @@ const route = useRoute()
 const { t } = useI18n()
 const appId = computed(() => String(route.params.appId ?? ''))
 const { get, pickAppLabel } = useApplications()
-const { listEpics, createEpic, pickEpicId, pickEpicTitle } = useProject()
+const { listEpics, createEpic, updateEpic, pickEpicId, pickEpicTitle } = useProject()
 const { can } = usePermissions()
 
 const canWrite = computed(() => can('project', 'E'))
 
 const appLabel = ref('')
-const rows = ref<{ id: string; title: string; status: string }[]>([])
+const rows = ref<{ id: string; title: string; status: string; rawStatus: string }[]>([])
 const showForm = ref(false)
 const title = ref('')
 const description = ref('')
 
 const columns = computed(() => [
   { key: 'title', label: t('project.field_title') },
-  { key: 'status', label: t('project.col_status') }
+  { key: 'status', label: t('project.col_status') },
+  { key: 'actions', label: t('common.actions') }
 ])
 
 function epicStatusLabel(status: string) {
@@ -63,11 +75,20 @@ async function load() {
   const app = await get(appId.value)
   appLabel.value = pickAppLabel(app)
   const items = await listEpics(appId.value)
-  rows.value = items.map((e) => ({
-    id: pickEpicId(e),
-    title: pickEpicTitle(e),
-    status: epicStatusLabel(e.status ?? e.Status ?? '')
-  }))
+  rows.value = items.map((e) => {
+    const raw = e.status ?? e.Status ?? ''
+    return {
+      id: pickEpicId(e),
+      title: pickEpicTitle(e),
+      rawStatus: raw,
+      status: epicStatusLabel(raw)
+    }
+  })
+}
+
+async function finishEpic(id: string) {
+  await updateEpic(appId.value, id, { status: 'done' })
+  await load()
 }
 
 async function submit() {

@@ -80,7 +80,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Responsable de service
 
-- Validation CRA, TMA, congés et budget ; reporting / org en lecture.
+- Validation CRA, TMA, congés et budget ; **Projets agile** L/E/V (backlog, sprints, métriques) ; reporting / org en lecture.
 - Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
 - Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Pas d'accès aux paramètres admin (réservé Administrateur).
@@ -103,6 +103,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 | --- | --- |
 | `/aide` | Hub d'aide (profils courants + topics) |
 | `/aide/acces` | Matrice L/E/V + fiches profils |
+| `/aide/projets` | Projets agile (backlog, sprints, Kanban, métriques) |
 | `/signup` | Onboarding public (création org + admin, trial) — hors auth |
 | `/platform` | Console super-admin plateforme (allowlist login) |
 

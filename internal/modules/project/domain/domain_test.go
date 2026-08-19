@@ -25,6 +25,26 @@ func TestSprintStartClose(t *testing.T) {
 	}
 }
 
+func TestValidateKanbanConfig(t *testing.T) {
+	t.Parallel()
+	valid := []domain.KanbanColumn{
+		{StateCode: "ouverte", Label: "Open"},
+		{StateCode: "en_cours", Label: "Doing", WipLimit: intPtr(3)},
+	}
+	if err := domain.ValidateKanbanConfig(valid); err != nil {
+		t.Fatalf("valid config: %v", err)
+	}
+	dup := []domain.KanbanColumn{
+		{StateCode: "ouverte"},
+		{StateCode: "ouverte"},
+	}
+	if err := domain.ValidateKanbanConfig(dup); err != domain.ErrInvalidKanbanConfig {
+		t.Fatalf("expected invalid kanban config, got %v", err)
+	}
+}
+
+func intPtr(n int) *int { return &n }
+
 func TestValidateStoryPoints(t *testing.T) {
 	t.Parallel()
 	v := int16(5)

@@ -86,6 +86,20 @@
       "access": {
         "title": "Accès par profil",
         "description": "Menus, actions et matrice L/E/V pour chaque profil RBAC."
+      },
+      "project": {
+        "title": "Projets agile",
+        "description": "Backlog, sprints Scrum, board Kanban et métriques par application."
+      }
+    },
+    "project": {
+      "title": "Projets agile",
+      "intro": "Les applications en profil Scrum ou Kanban exposent le module Projets : epics, backlog ordonné, sprints (Scrum), board avec limites WIP (Kanban) et burndown basé sur la date de résolution des demandes TMA.",
+      "bullets": {
+        "backlog": "Backlog : user stories ordonnées par drag-and-drop (droits project E).",
+        "sprint": "Sprints : planification depuis le backlog, démarrage et clôture (project V).",
+        "kanban": "Kanban : colonnes configurables mappées aux statuts TMA ; la limite WIP bloque les transitions en 422.",
+        "metrics": "Métriques : vélocité des sprints clôturés et courbe burndown du sprint actif."
       }
     },
     "access": {
@@ -137,6 +151,7 @@
             "Sites / Services / Équipes : listes dédiées (création et modification) ; Structure conserve la vue arbre.",
             "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
+            "Projets agile (/projets) : backlog, sprints, epics et métriques (L/E/V).",
             "Facturation : accessible si le module est activé pour l'organisation (L/E/V).",
             "CRA définitifs → brouillons facture (Facturation → Depuis un CRA, validation CRA ou Prestations → Créer factures).",
             "Facturation : émettre une proforma par email (lien de validation client) puis transmettre PDP.",
@@ -150,6 +165,7 @@
           "summary": "Saisie opérationnelle du quotidien (CRA, demandes, congés).",
           "bullets": [
             "CRA et TMA : lecture et écriture (pas de validation).",
+            "Projets agile : consultation backlog et métriques (lecture seule).",
             "Congés : dépôt et suivi de ses demandes.",
             "Budget : consultation seule.",
             "Pilotage : Clients et Missions visibles en lecture (via droits CRA).",
@@ -161,6 +177,7 @@
           "summary": "Encadrement d'équipe : validation CRA/TMA et suivi budgétaire.",
           "bullets": [
             "CRA et TMA : lecture, écriture et validation.",
+            "Projets agile : planification sprint, backlog et clôture (L/E/V).",
             "Congés : lecture (pas de validation).",
             "Budget : lecture et écriture ; reporting en lecture.",
             "Pilotage : Clients et Missions visibles en lecture.",
@@ -173,6 +190,7 @@
           "summary": "Pilotage de service : validations étendues et budgets.",
           "bullets": [
             "CRA, TMA, congés et budget : lecture, écriture et validation.",
+            "Projets agile : pilotage backlog, sprints et vélocité (L/E/V).",
             "Reporting et organisation en lecture.",
             "Pilotage : Clients et Missions visibles en lecture.",
             "Facturation : L/E/V si le module est activé (brouillons CRA / Prestations, proforma client).",
@@ -1597,6 +1615,30 @@
     "velocity_empty": "Aucun sprint clôturé",
     "burndown_title": "Burndown",
     "burndown_planned": "Points planifiés : {points}",
+    "burndown_ideal": "Idéal",
+    "burndown_actual": "Réel",
+    "plan_sprint": "Planifier",
+    "plan_sprint_title": "Planifier le sprint",
+    "reordering": "Enregistrement de l'ordre…",
+    "reorder_error": "Impossible de réordonner le backlog.",
+    "epic_finish": "Terminer",
+    "nav_board": "Board Kanban",
+    "nav_kanban_config": "Config Kanban",
+    "kanban_config_title": "Configuration Kanban",
+    "kanban_config_error": "Impossible d'enregistrer la configuration.",
+    "kanban_col_open": "À faire",
+    "kanban_col_progress": "En cours",
+    "kanban_col_done": "Terminé",
+    "field_epic_none": "— Aucun epic —",
+    "field_epic": "Epic",
+    "kanban_col_assigned": "Affectée",
+    "kanban_col_rework": "Rework",
+    "kanban_action_error": "Action impossible sur cette carte.",
+    "kanban_config_forbidden": "Droits project (écriture) requis pour configurer le Kanban.",
+    "field_column_label": "Libellé colonne",
+    "field_state_code": "Code statut TMA",
+    "field_wip_limit": "Limite WIP",
+    "column_add": "Ajouter une colonne",
     "field_title": "Titre",
     "field_description": "Description",
     "field_name": "Nom",

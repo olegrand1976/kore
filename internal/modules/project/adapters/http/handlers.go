@@ -514,7 +514,8 @@ func writeProjectError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrApplicationNotAgile),
 		errors.Is(err, domain.ErrSprintNotPlanned),
 		errors.Is(err, domain.ErrSprintNotActive),
-		errors.Is(err, domain.ErrActiveSprintExists):
+		errors.Is(err, domain.ErrActiveSprintExists),
+		errors.Is(err, domain.ErrInvalidKanbanConfig):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())

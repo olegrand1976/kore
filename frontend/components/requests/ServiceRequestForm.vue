@@ -6,21 +6,27 @@ export type ServiceRequestPayload = {
   priority: string
   dueAt: string
   requiresChefGate?: boolean
+  epicId?: string
+  storyPoints?: number | null
   files: File[]
 }
 
 const props = withDefaults(defineProps<{
   showChefGate?: boolean
+  showAgileFields?: boolean
   submitLabel?: string
   busy?: boolean
 }>(), {
   showChefGate: false,
+  showAgileFields: false,
   busy: false
 })
 
 const emit = defineEmits<{ submit: [payload: ServiceRequestPayload] }>()
 
 const { t } = useI18n()
+const { get, pickAppMethodologyProfile } = useApplications()
+const { listEpics, pickEpicId, pickEpicTitle } = useProject()
 
 const applicationId = ref('')
 const subject = ref('')
@@ -28,7 +34,34 @@ const description = ref('')
 const priority = ref('normal')
 const dueAt = ref('')
 const requiresChefGate = ref(false)
+const epicId = ref('')
+const storyPoints = ref<number | null>(null)
 const files = ref<File[]>([])
+const appProfile = ref<'psa' | 'agile_scrum' | 'agile_kanban'>('psa')
+const epics = ref<{ id: string; title: string }[]>([])
+const terms = useMethodologyTerms(appProfile)
+
+const showAgile = computed(() => props.showAgileFields && terms.value.isAgile)
+
+watch(applicationId, async (id) => {
+  epicId.value = ''
+  storyPoints.value = null
+  epics.value = []
+  if (!id) {
+    appProfile.value = 'psa'
+    return
+  }
+  try {
+    const app = await get(id)
+    appProfile.value = pickAppMethodologyProfile(app)
+    if (terms.value.isAgile) {
+      const items = await listEpics(id)
+      epics.value = items.map((e) => ({ id: pickEpicId(e), title: pickEpicTitle(e) }))
+    }
+  } catch {
+    appProfile.value = 'psa'
+  }
+})
 
 const priorityOptions = [
   { value: 'low', labelKey: 'requests.priority_low' },
@@ -46,6 +79,8 @@ const onSubmit = () => {
     priority: priority.value,
     dueAt: dueAt.value,
     requiresChefGate: props.showChefGate ? requiresChefGate.value : undefined,
+    epicId: showAgile.value && epicId.value ? epicId.value : undefined,
+    storyPoints: showAgile.value && storyPoints.value != null ? storyPoints.value : undefined,
     files: files.value
   })
 }
@@ -95,6 +130,23 @@ const onSubmit = () => {
       />
     </div>
     <AppFileUpload id="request-files" v-model="files" :label="t('requests.form_attachments')" />
+    <div v-if="showAgile" class="service-request-form__row">
+      <div class="service-request-form__field">
+        <label for="request-epic" class="service-request-form__label">{{ t('project.field_epic') }}</label>
+        <select id="request-epic" v-model="epicId" class="service-request-form__select">
+          <option value="">{{ t('project.field_epic_none') }}</option>
+          <option v-for="epic in epics" :key="epic.id" :value="epic.id">{{ epic.title }}</option>
+        </select>
+      </div>
+      <AppInput
+        id="request-story-points"
+        v-model.number="storyPoints"
+        type="number"
+        min="0"
+        max="999"
+        :label="terms.estimation"
+      />
+    </div>
     <label v-if="showChefGate" class="service-request-form__check">
       <input v-model="requiresChefGate" type="checkbox" />
       {{ t('requests.form_chef_gate') }}

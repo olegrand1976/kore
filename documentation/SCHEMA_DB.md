@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 19/08/2026 (schéma `project`, profil méthodologique application, champs agile sur `tma.demands`)
+> **Dernière mise à jour doc** : 19/08/2026 (schéma `project`, profil méthodologique application, champs agile sur `tma.demands`, `resolved_at` burndown)
 
 ---
 
@@ -768,9 +768,10 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `sprint_id` | UUID | → `project.sprints(id)` ON DELETE SET NULL (migration `0004`) |
 | `story_points` | SMALLINT | |
 | `backlog_rank` | INTEGER | |
+| `resolved_at` | TIMESTAMPTZ | Date de résolution (burndown, migration `0005`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index** : `idx_tma_demands_tenant_app_status`, `idx_tma_demands_epic`, `idx_tma_demands_sprint`, `idx_tma_demands_backlog`
+**Index** : `idx_tma_demands_tenant_app_status`, `idx_tma_demands_epic`, `idx_tma_demands_sprint`, `idx_tma_demands_backlog`, `idx_tma_demands_sprint_resolved`
 
 ### `tma.analysis_dossiers`
 

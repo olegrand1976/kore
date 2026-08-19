@@ -1547,6 +1547,10 @@ paths:
   /applications/{applicationId}/sprints/{id}/burndown:
     get:
       summary: Burndown d'un sprint
+      description: |
+        Points restants par jour du sprint actif : `plannedPoints` moins la somme cumulée
+        des `story_points` dont `resolved_at` est renseigné (date ≤ jour courant de la série).
+        La courbe idéale est linéaire sur la durée du sprint.
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1743,6 +1747,8 @@ paths:
       responses:
         "200":
           description: Affectée
+        "422":
+          description: Limite WIP Kanban dépassée (application agile_kanban)
   /demands/{id}/take-over:
     post:
       summary: Prendre en charge une demande
@@ -1752,6 +1758,8 @@ paths:
       responses:
         "200":
           description: Prise en charge
+        "422":
+          description: Limite WIP Kanban dépassée (application agile_kanban)
   /demands/{id}/resolve:
     post:
       summary: Résoudre une demande
@@ -1770,6 +1778,8 @@ paths:
       responses:
         "200":
           description: Rouverte
+        "422":
+          description: Limite WIP Kanban dépassée (application agile_kanban)
   /demands/{id}/validate-creation:
     post:
       summary: Valider la création d'une demande

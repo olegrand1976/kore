@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/tma/domain"
@@ -29,7 +30,7 @@ func TestDemand_ValidateCreation(t *testing.T) {
 
 func TestDemand_ReopenReactivatesConsumption(t *testing.T) {
 	d := testDemand(false)
-	require.NoError(t, d.Resolve())
+	require.NoError(t, d.Resolve(time.Now().UTC()))
 	d.ConsumptionActive = false
 	require.NoError(t, d.Reopen("rework"))
 	assert.True(t, d.ConsumptionActive)

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ var (
 	ErrActiveSprintExists       = errors.New("another sprint is already active")
 	ErrInvalidStoryPoints       = errors.New("invalid story points")
 	ErrMethodologyProfileLocked = errors.New("methodology profile locked after agile artifacts exist")
+	ErrWipLimitExceeded         = errors.New("wip limit exceeded")
+	ErrInvalidKanbanConfig      = errors.New("invalid kanban configuration")
 )
 
 type EpicStatus string
@@ -163,6 +166,38 @@ func ValidateStoryPoints(v *int16) error {
 	}
 	if *v < 0 || *v > 999 {
 		return ErrInvalidStoryPoints
+	}
+	return nil
+}
+
+var validKanbanStateCodes = map[string]struct{}{
+	"ouverte":   {},
+	"affectee":  {},
+	"en_cours":  {},
+	"resolue":   {},
+	"rework":    {},
+}
+
+func ValidateKanbanConfig(columns []KanbanColumn) error {
+	if len(columns) == 0 {
+		return ErrInvalidKanbanConfig
+	}
+	seen := make(map[string]struct{}, len(columns))
+	for _, col := range columns {
+		code := strings.TrimSpace(col.StateCode)
+		if code == "" {
+			return ErrInvalidKanbanConfig
+		}
+		if _, ok := validKanbanStateCodes[code]; !ok {
+			return ErrInvalidKanbanConfig
+		}
+		if _, dup := seen[code]; dup {
+			return ErrInvalidKanbanConfig
+		}
+		seen[code] = struct{}{}
+		if col.WipLimit != nil && *col.WipLimit < 0 {
+			return ErrInvalidKanbanConfig
+		}
 	}
 	return nil
 }

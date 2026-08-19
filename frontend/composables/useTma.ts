@@ -23,6 +23,10 @@ export type TmaDemand = {
   RequiresChefGate?: boolean
   createdAt?: string
   CreatedAt?: string
+  epicId?: string | null
+  EpicID?: string | null
+  storyPoints?: number | null
+  StoryPoints?: number | null
 }
 
 export type TmaGanttItem = {
@@ -97,6 +101,8 @@ export function useTma() {
     priority?: string
     dueAt?: string
     requiresChefGate?: boolean
+    epicId?: string
+    storyPoints?: number | null
   }) => {
     const dueAt = payload.dueAt
       ? (() => {

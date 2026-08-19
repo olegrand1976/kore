@@ -17,6 +17,7 @@ type service struct {
 	notifier        ports.NotificationPublisher
 	clock           ports.Clock
 	agileValidator  ports.AgileArtifactValidator
+	wipChecker      ports.WipChecker
 }
 
 func NewService(
@@ -49,6 +50,10 @@ func WithClock(clock ports.Clock) Option {
 
 func WithAgileValidator(v ports.AgileArtifactValidator) Option {
 	return func(s *service) { s.agileValidator = v }
+}
+
+func WithWipChecker(w ports.WipChecker) Option {
+	return func(s *service) { s.wipChecker = w }
 }
 
 type realClock struct{}
@@ -122,9 +127,19 @@ func (s *service) ValidateCreation(ctx context.Context, cmd ports.ChefUtilisateu
 	return s.repo.Save(ctx, demand)
 }
 
+func (s *service) checkWip(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID, target domain.DemandStatus, demandID uuid.UUID) error {
+	if s.wipChecker == nil {
+		return nil
+	}
+	return s.wipChecker.CheckWip(ctx, tenant, appID, string(target), &demandID)
+}
+
 func (s *service) Assign(ctx context.Context, cmd ports.AssignCommand) error {
 	demand, err := s.repo.Get(ctx, cmd.TenantID, cmd.ID)
 	if err != nil {
+		return err
+	}
+	if err := s.checkWip(ctx, cmd.TenantID, demand.ApplicationID, domain.DemandStatusAssigned, cmd.ID); err != nil {
 		return err
 	}
 	if err := demand.Assign(cmd.AssigneeID); err != nil {
@@ -147,6 +162,9 @@ func (s *service) Assign(ctx context.Context, cmd ports.AssignCommand) error {
 func (s *service) TakeOver(ctx context.Context, tenant kernel.TenantID, id, userID uuid.UUID) error {
 	demand, err := s.repo.Get(ctx, tenant, id)
 	if err != nil {
+		return err
+	}
+	if err := s.checkWip(ctx, tenant, demand.ApplicationID, domain.DemandStatusInProgress, id); err != nil {
 		return err
 	}
 	if err := demand.TakeOver(userID); err != nil {
@@ -198,7 +216,7 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, id, userI
 	if err != nil {
 		return err
 	}
-	if err := demand.Resolve(); err != nil {
+	if err := demand.Resolve(s.clock.Now().UTC()); err != nil {
 		return err
 	}
 	if s.cra != nil && demand.AssigneeID != nil {
@@ -241,6 +259,9 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, id, userI
 func (s *service) Reopen(ctx context.Context, cmd ports.ReworkCommand) error {
 	demand, err := s.repo.Get(ctx, cmd.TenantID, cmd.ID)
 	if err != nil {
+		return err
+	}
+	if err := s.checkWip(ctx, cmd.TenantID, demand.ApplicationID, domain.DemandStatusRework, cmd.ID); err != nil {
 		return err
 	}
 	if err := demand.Reopen(cmd.Reason); err != nil {

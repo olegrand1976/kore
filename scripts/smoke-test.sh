@@ -91,6 +91,33 @@ test "$MGR_TOKEN" != "null"
 curl -sf "http://localhost:${API_PORT}/api/v1/demands" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/users" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 
+# Project agile (manager + app seed DemoAppID)
+DEMO_APP="00000000-0000-4000-8000-000000000013"
+curl -sf "http://localhost:${API_PORT}/api/v1/project/applications" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/epics" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/backlog?backlogOnly=true" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/velocity" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+SPRINTS=$(curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints" -H "Authorization: Bearer $MGR_TOKEN")
+ACTIVE_SPRINT=$(echo "$SPRINTS" | jq -r '[.data[]? | select((.status // .Status) == "active") | (.id // .ID)][0] // empty')
+test -n "$ACTIVE_SPRINT"
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints/${ACTIVE_SPRINT}/burndown" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+SMOKE_START=$(date -u -d "+28 days" +%Y-%m-%d 2>/dev/null || date -u -v+28d +%Y-%m-%d)
+SMOKE_END=$(date -u -d "+41 days" +%Y-%m-%d 2>/dev/null || date -u -v+41d +%Y-%m-%d)
+CREATE_SPRINT=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints" \
+  -H "Authorization: Bearer $MGR_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Smoke sprint\",\"goal\":\"CI\",\"startDate\":\"${SMOKE_START}\",\"endDate\":\"${SMOKE_END}\"}")
+NEW_SPRINT=$(echo "$CREATE_SPRINT" | jq -r '.data.id // .data.ID')
+test -n "$NEW_SPRINT"
+test "$NEW_SPRINT" != "null"
+curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints/${ACTIVE_SPRINT}/close" \
+  -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints/${NEW_SPRINT}/start" \
+  -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints/${NEW_SPRINT}/burndown" \
+  -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+
 # Facturation org : settings + liste factures (toggle seed = enabled)
 curl -sf "http://localhost:${API_PORT}/api/v1/request-settings" -H "Authorization: Bearer $TOKEN" \
   | jq -e '.data.invoicingEnabled == true or .data.InvoicingEnabled == true' >/dev/null

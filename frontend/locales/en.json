@@ -86,6 +86,20 @@
       "access": {
         "title": "Access by profile",
         "description": "Menus, actions and L/E/V matrix for each RBAC profile."
+      },
+      "project": {
+        "title": "Agile projects",
+        "description": "Backlog, Scrum sprints, Kanban board and metrics per application."
+      }
+    },
+    "project": {
+      "title": "Agile projects",
+      "intro": "Applications in Scrum or Kanban profile expose the Projects module: epics, ordered backlog, sprints (Scrum), WIP-limited board (Kanban) and burndown based on TMA demand resolution dates.",
+      "bullets": {
+        "backlog": "Backlog: user stories reordered via drag-and-drop (project write).",
+        "sprint": "Sprints: plan from backlog, start and close (project validate).",
+        "kanban": "Kanban: configurable columns mapped to TMA statuses; WIP limit returns HTTP 422.",
+        "metrics": "Metrics: closed-sprint velocity and active sprint burndown chart."
       }
     },
     "access": {
@@ -137,6 +151,7 @@
             "Sites / Services / Teams: dedicated list pages (create and edit); Structure keeps the tree view.",
             "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
+            "Agile projects (/projets): backlog, sprints, epics and metrics (R/W/V).",
             "Invoicing: available when the organisation module is enabled (R/W/V).",
             "Definitive timesheets → invoice drafts (Invoicing → From a timesheet, CRA validation or Deliverables → Create invoices).",
             "Invoicing: send a proforma by email (client validation link) then transmit to PDP.",
@@ -150,6 +165,7 @@
           "summary": "Day-to-day operational entry (timesheets, requests, leave).",
           "bullets": [
             "Timesheets and TMA: read and write (no validation).",
+            "Agile projects: backlog and metrics read-only.",
             "Leave: submit and track own requests.",
             "Budget: read only.",
             "Operations: Clients and Missions visible read-only (via timesheet rights).",
@@ -161,6 +177,7 @@
           "summary": "Team lead: validate timesheets/TMA and track budget.",
           "bullets": [
             "Timesheets and TMA: read, write and validate.",
+            "Agile projects: sprint planning, backlog and close (R/W/V).",
             "Leave: read (no validation).",
             "Budget: read and write; reporting read.",
             "Operations: Clients and Missions visible read-only.",
@@ -173,6 +190,7 @@
           "summary": "Service manager: extended validations and budgets.",
           "bullets": [
             "Timesheets, TMA, leave and budget: read, write and validate.",
+            "Agile projects: backlog, sprints and velocity (R/W/V).",
             "Reporting and organization: read.",
             "Operations: Clients and Missions visible read-only.",
             "Invoicing: R/W/V when the organisation module is enabled (CRA / Deliverables drafts, client proforma).",
@@ -2213,6 +2231,30 @@
     "velocity_empty": "No closed sprint",
     "burndown_title": "Burndown",
     "burndown_planned": "Planned points: {points}",
+    "burndown_ideal": "Ideal",
+    "burndown_actual": "Actual",
+    "plan_sprint": "Plan",
+    "plan_sprint_title": "Plan sprint",
+    "reordering": "Saving order…",
+    "reorder_error": "Unable to reorder backlog.",
+    "epic_finish": "Complete",
+    "nav_board": "Kanban board",
+    "nav_kanban_config": "Kanban config",
+    "kanban_config_title": "Kanban configuration",
+    "kanban_config_error": "Unable to save configuration.",
+    "kanban_col_open": "To do",
+    "kanban_col_progress": "In progress",
+    "kanban_col_done": "Done",
+    "field_epic_none": "— No epic —",
+    "field_epic": "Epic",
+    "kanban_col_assigned": "Assigned",
+    "kanban_col_rework": "Rework",
+    "kanban_action_error": "Unable to perform this card action.",
+    "kanban_config_forbidden": "Project write permission required to edit Kanban configuration.",
+    "field_column_label": "Column label",
+    "field_state_code": "TMA status code",
+    "field_wip_limit": "WIP limit",
+    "column_add": "Add column",
     "field_title": "Title",
     "field_description": "Description",
     "field_name": "Name",

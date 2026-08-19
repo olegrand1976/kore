@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	projectdomain "github.com/kore/kore/internal/modules/project/domain"
 	"github.com/kore/kore/internal/modules/tma/domain"
 	"github.com/kore/kore/internal/modules/tma/ports"
 	"github.com/kore/kore/internal/platform/authx"
@@ -263,11 +264,7 @@ func assignDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			ActorID:    identity.UserID,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrDemandNotVisible) {
-				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
-				return
-			}
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeTmaTransitionError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "assigned"})
@@ -291,11 +288,7 @@ func takeOverDemand(tma ports.TMAService, authorizer authx.Authorizer, channels 
 		identity, _ := authx.FromContext(r.Context())
 		err = tma.TakeOver(r.Context(), identity.TenantID, id, identity.UserID)
 		if err != nil {
-			if errors.Is(err, domain.ErrDemandNotVisible) {
-				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
-				return
-			}
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeTmaTransitionError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "taken_over"})
@@ -408,11 +401,7 @@ func reopenDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			ActorID:  identity.UserID,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrDemandNotVisible) {
-				httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
-				return
-			}
-			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			writeTmaTransitionError(w, err)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "reopened"})
@@ -421,6 +410,17 @@ func reopenDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 
 type xmlExport struct {
 	Rows []domain.XmlExportRow `xml:"row"`
+}
+
+func writeTmaTransitionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrDemandNotVisible):
+		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+	case errors.Is(err, projectdomain.ErrWipLimitExceeded):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+	}
 }
 
 func exportXML(tma ports.TMAService) http.HandlerFunc {

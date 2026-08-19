@@ -16,6 +16,7 @@ import (
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	orgports "github.com/kore/kore/internal/modules/org/ports"
+	projectports "github.com/kore/kore/internal/modules/project/ports"
 	publicports "github.com/kore/kore/internal/modules/publicsite/ports"
 	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	wfports "github.com/kore/kore/internal/modules/workflow/ports"
@@ -47,6 +48,7 @@ type Dependencies struct {
 	LeaveTypes    congesports.LeaveTypeConfigService
 	Budget        budgetports.BudgetService
 	TMA           tmaports.TMAService
+	Project       projectports.ProjectService
 	Notifications notifports.NotificationService
 	Public        publicports.PublicSiteService
 	PublicSlots   PublicSlotSeeder
@@ -126,6 +128,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	if err := r.seedExtendedTeamData(ctx, tenant, oc); err != nil {
+		return err
+	}
+	if err := r.seedProjectData(ctx, tenant, oc); err != nil {
 		return err
 	}
 
@@ -393,11 +398,12 @@ func (r *Runner) ensureApplication(ctx context.Context, tenant kernel.TenantID) 
 		return err
 	}
 	return r.deps.OrgRepo.SaveApplication(ctx, orgdomain.Application{
-		ID:         DemoAppID,
-		TenantID:   tenant,
-		Libelle:    DemoAppLabel,
-		Active:     true,
-		ServiceIDs: []uuid.UUID{DemoServiceID},
+		ID:                 DemoAppID,
+		TenantID:           tenant,
+		Libelle:            DemoAppLabel,
+		Active:             true,
+		MethodologyProfile: orgdomain.MethodologyAgileScrum,
+		ServiceIDs:         []uuid.UUID{DemoServiceID},
 	})
 }
 

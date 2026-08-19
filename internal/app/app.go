@@ -253,6 +253,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		tmacra.NewFeederAdapter(craService),
 		tmaapp.WithNotifier(tmanotif.NewPublisherAdapter(notifService)),
 		tmaapp.WithAgileValidator(tmaproject.NewArtifactValidator(pool)),
+		tmaapp.WithWipChecker(tmaproject.NewWipChecker(pool)),
 	)
 	projectRepo := projectpostgres.NewRepository(pool)
 	projectService := projectapp.NewService(projectRepo, projectorg.NewApplicationReader(orgService))
@@ -398,6 +399,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		LeaveTypes:    leaveTypeConfigService,
 		Budget:        budgetService,
 		TMA:           tmaService,
+		Project:       projectService,
 		Notifications: notifService,
 		Public:        publicService,
 		PublicSlots:   publicRepo,

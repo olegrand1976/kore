@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -295,39 +296,78 @@ func (r *Repository) GetSprintBurndown(ctx context.Context, tenant kernel.Tenant
 		return domain.BurndownSeries{}, err
 	}
 
-	var done int
-	err = r.pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(story_points), 0)
-		FROM tma.demands
-		WHERE tenant_id = $1 AND sprint_id = $2 AND status = 'resolue' AND story_points IS NOT NULL
-	`, tenant.UUID(), sprint.ID).Scan(&done)
-	if err != nil {
-		return domain.BurndownSeries{}, err
+	startDay := sprint.StartDate.UTC().Truncate(24 * time.Hour)
+	endDay := sprint.EndDate.UTC().Truncate(24 * time.Hour)
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	lastDay := endDay
+	if today.Before(lastDay) {
+		lastDay = today
+	}
+	if lastDay.Before(startDay) {
+		lastDay = startDay
 	}
 
-	remaining := planned - done
-	if remaining < 0 {
-		remaining = 0
-	}
-
-	days := int(sprint.EndDate.Sub(sprint.StartDate).Hours()/24) + 1
+	days := int(lastDay.Sub(startDay).Hours()/24) + 1
 	if days < 1 {
 		days = 1
 	}
+	totalDays := int(endDay.Sub(startDay).Hours()/24) + 1
+	if totalDays < 1 {
+		totalDays = 1
+	}
+
+	resolvedByDay := make(map[string]int)
+	rows, err := r.pool.Query(ctx, `
+		SELECT (resolved_at AT TIME ZONE 'UTC')::date AS d, COALESCE(SUM(story_points), 0)::int
+		FROM tma.demands
+		WHERE tenant_id = $1 AND sprint_id = $2
+			AND story_points IS NOT NULL AND resolved_at IS NOT NULL
+		GROUP BY d
+		ORDER BY d
+	`, tenant.UUID(), sprint.ID)
+	if err != nil {
+		return domain.BurndownSeries{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var d time.Time
+		var pts int
+		if err := rows.Scan(&d, &pts); err != nil {
+			return domain.BurndownSeries{}, err
+		}
+		resolvedByDay[d.Format("2006-01-02")] = pts
+	}
+	if err := rows.Err(); err != nil {
+		return domain.BurndownSeries{}, err
+	}
+
+	doneCumulative := 0
+	resolvedDays := make([]string, 0, len(resolvedByDay))
+	for d := range resolvedByDay {
+		resolvedDays = append(resolvedDays, d)
+	}
+	sort.Strings(resolvedDays)
+	resolvedIdx := 0
+
 	points := make([]domain.BurndownPoint, 0, days)
 	for i := 0; i < days; i++ {
-		date := sprint.StartDate.AddDate(0, 0, i)
-		ideal := planned - (planned * i / days)
-		dayRemaining := remaining
-		if days > 1 {
-			dayRemaining = planned - (planned-remaining)*i/(days-1)
+		date := startDay.AddDate(0, 0, i)
+		dayKey := date.Format("2006-01-02")
+		for resolvedIdx < len(resolvedDays) && resolvedDays[resolvedIdx] <= dayKey {
+			doneCumulative += resolvedByDay[resolvedDays[resolvedIdx]]
+			resolvedIdx++
 		}
-		if dayRemaining < 0 {
-			dayRemaining = 0
+		remaining := planned - doneCumulative
+		if remaining < 0 {
+			remaining = 0
+		}
+		ideal := planned - (planned * i / totalDays)
+		if ideal < 0 {
+			ideal = 0
 		}
 		points = append(points, domain.BurndownPoint{
 			Date:            date,
-			RemainingPoints: dayRemaining,
+			RemainingPoints: remaining,
 			IdealPoints:     ideal,
 		})
 	}
@@ -345,7 +385,7 @@ func (r *Repository) GetVelocity(ctx context.Context, tenant kernel.TenantID, ap
 				SELECT SUM(d.story_points)
 				FROM tma.demands d
 				WHERE d.tenant_id = s.tenant_id AND d.sprint_id = s.id
-					AND d.status = 'resolue' AND d.story_points IS NOT NULL
+					AND d.resolved_at IS NOT NULL AND d.story_points IS NOT NULL
 			), 0)
 		FROM project.sprints s
 		WHERE s.tenant_id = $1 AND s.application_id = $2 AND s.status = 'closed'

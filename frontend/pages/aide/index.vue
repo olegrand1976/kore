@@ -21,6 +21,16 @@
           <span class="help-hub__card-cta">{{ $t('help.open') }}</span>
         </AppCard>
       </NuxtLink>
+      <NuxtLink to="/aide/projets" class="help-hub__card">
+        <AppCard padding="lg" hoverable class="help-hub__card-inner">
+          <div class="help-hub__card-icon" aria-hidden="true">
+            <AppIcon name="view_kanban" />
+          </div>
+          <h2 class="help-hub__card-title">{{ $t('help.topics.project.title') }}</h2>
+          <p class="help-hub__card-desc">{{ $t('help.topics.project.description') }}</p>
+          <span class="help-hub__card-cta">{{ $t('help.open') }}</span>
+        </AppCard>
+      </NuxtLink>
     </div>
   </div>
 </template>

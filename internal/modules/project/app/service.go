@@ -232,6 +232,9 @@ func (s *service) SaveKanbanConfig(ctx context.Context, cmd ports.UpdateKanbanCo
 		Columns:       cmd.Columns,
 		UpdatedAt:     s.now().UTC(),
 	}
+	if err := domain.ValidateKanbanConfig(cfg.Columns); err != nil {
+		return domain.KanbanConfig{}, err
+	}
 	if err := s.repo.SaveKanbanConfig(ctx, cfg); err != nil {
 		return domain.KanbanConfig{}, err
 	}

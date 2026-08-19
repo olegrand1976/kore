@@ -54,7 +54,7 @@
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
-      <ServiceRequestForm show-chef-gate :busy="creating" @submit="onCreate" />
+      <ServiceRequestForm show-chef-gate show-agile-fields :busy="creating" @submit="onCreate" />
     </AppCard>
 
     <AppListToolbar
@@ -265,7 +265,9 @@ const onCreate = async (payload: ServiceRequestPayload) => {
       description: payload.description,
       priority: payload.priority,
       dueAt: payload.dueAt,
-      requiresChefGate: payload.requiresChefGate
+      requiresChefGate: payload.requiresChefGate,
+      epicId: payload.epicId,
+      storyPoints: payload.storyPoints
     })
     const id = pickId(created)
     if (id && payload.files.length) {
