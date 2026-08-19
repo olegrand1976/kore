@@ -49,17 +49,17 @@ type UpdateServiceCommand struct {
 }
 
 type CreateApplicationCommand struct {
-	TenantID          kernel.TenantID
-	Libelle           string
-	Proprietaire      string
-	ModeFacturation   string
-	UOActivee         bool
-	ChefUtilisateurID *uuid.UUID
-	BudgetDefautID    *uuid.UUID
-	DefaultTJMCents   int64
-	SiteIDs           []uuid.UUID
-	ServiceIDs        []uuid.UUID
-	EquipeIDs         []uuid.UUID
+	TenantID           kernel.TenantID
+	Libelle            string
+	Proprietaire       string
+	ModeFacturation    string
+	UOActivee          bool
+	ChefUtilisateurID  *uuid.UUID
+	BudgetDefautID     *uuid.UUID
+	DefaultTJMCents    int64
+	SiteIDs            []uuid.UUID
+	ServiceIDs         []uuid.UUID
+	EquipeIDs          []uuid.UUID
 	MethodologyProfile string
 }
 
@@ -75,16 +75,16 @@ type EquipeListFilter struct {
 }
 
 type UpdateApplicationCommand struct {
-	TenantID          kernel.TenantID
-	ApplicationID     uuid.UUID
-	Libelle           *string
-	Active            *bool
-	Proprietaire      *string
-	ModeFacturation   *string
-	UOActivee         *bool
-	ChefUtilisateurID **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
-	BudgetDefautID    **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
-	DefaultTJMCents   *int64
+	TenantID           kernel.TenantID
+	ApplicationID      uuid.UUID
+	Libelle            *string
+	Active             *bool
+	Proprietaire       *string
+	ModeFacturation    *string
+	UOActivee          *bool
+	ChefUtilisateurID  **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
+	BudgetDefautID     **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
+	DefaultTJMCents    *int64
 	MethodologyProfile *string
 	// Share replace: if any of SiteIDs/ServiceIDs/EquipeIDs is non-nil, all three
 	// lists are replaced together (nil among them = empty for that category).

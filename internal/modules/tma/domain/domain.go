@@ -11,10 +11,10 @@ import (
 var (
 	ErrDemandNotVisible       = errors.New("demand not visible until chef utilisateur validation")
 	ErrTransitionNotAllowed   = errors.New("transition not allowed")
-	ErrDemandAlreadyResolved    = errors.New("demand already resolved")
-	ErrAnalysisNotFound         = errors.New("analysis not found")
-	ErrEpicNotInApplication     = errors.New("epic does not belong to application")
-	ErrSprintNotInApplication   = errors.New("sprint does not belong to application")
+	ErrDemandAlreadyResolved  = errors.New("demand already resolved")
+	ErrAnalysisNotFound       = errors.New("analysis not found")
+	ErrEpicNotInApplication   = errors.New("epic does not belong to application")
+	ErrSprintNotInApplication = errors.New("sprint does not belong to application")
 )
 
 type DemandType string

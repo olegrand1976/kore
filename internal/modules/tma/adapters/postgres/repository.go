@@ -87,7 +87,6 @@ func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter po
 	if filter.EpicID != nil {
 		query += fmt.Sprintf(" AND epic_id = $%d", argPos)
 		args = append(args, *filter.EpicID)
-		argPos++
 	}
 	if filter.BacklogOnly {
 		query += " AND sprint_id IS NULL AND status NOT IN ('resolue')"

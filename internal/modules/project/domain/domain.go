@@ -39,30 +39,30 @@ const (
 )
 
 type Epic struct {
-	ID              uuid.UUID
-	TenantID        kernel.TenantID
-	ApplicationID   uuid.UUID
-	Title           string
-	Description     string
-	Status          EpicStatus
-	Priority        kernel.RequestPriority
-	TargetSprintID  *uuid.UUID
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID             uuid.UUID
+	TenantID       kernel.TenantID
+	ApplicationID  uuid.UUID
+	Title          string
+	Description    string
+	Status         EpicStatus
+	Priority       kernel.RequestPriority
+	TargetSprintID *uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Sprint struct {
-	ID              uuid.UUID
-	TenantID        kernel.TenantID
-	ApplicationID   uuid.UUID
-	Name            string
-	Goal            string
-	StartDate       time.Time
-	EndDate         time.Time
-	Status          SprintStatus
-	CapacityPoints  *int16
-	CreatedAt       time.Time
-	ClosedAt        *time.Time
+	ID             uuid.UUID
+	TenantID       kernel.TenantID
+	ApplicationID  uuid.UUID
+	Name           string
+	Goal           string
+	StartDate      time.Time
+	EndDate        time.Time
+	Status         SprintStatus
+	CapacityPoints *int16
+	CreatedAt      time.Time
+	ClosedAt       *time.Time
 }
 
 type KanbanColumn struct {
@@ -79,14 +79,14 @@ type KanbanConfig struct {
 }
 
 type BacklogItem struct {
-	DemandID     uuid.UUID
-	Subject      string
-	Status       string
-	StoryPoints  *int16
-	EpicID       *uuid.UUID
-	SprintID     *uuid.UUID
-	BacklogRank  *int
-	AssigneeID   *uuid.UUID
+	DemandID    uuid.UUID
+	Subject     string
+	Status      string
+	StoryPoints *int16
+	EpicID      *uuid.UUID
+	SprintID    *uuid.UUID
+	BacklogRank *int
+	AssigneeID  *uuid.UUID
 }
 
 type BurndownPoint struct {
@@ -96,15 +96,15 @@ type BurndownPoint struct {
 }
 
 type BurndownSeries struct {
-	SprintID        uuid.UUID       `json:"sprintId"`
-	PlannedPoints   int             `json:"plannedPoints"`
-	Points          []BurndownPoint `json:"points"`
+	SprintID      uuid.UUID       `json:"sprintId"`
+	PlannedPoints int             `json:"plannedPoints"`
+	Points        []BurndownPoint `json:"points"`
 }
 
 type VelocitySprint struct {
-	SprintID      uuid.UUID `json:"sprintId"`
-	SprintName    string    `json:"sprintName"`
-	ClosedPoints  int       `json:"closedPoints"`
+	SprintID     uuid.UUID `json:"sprintId"`
+	SprintName   string    `json:"sprintName"`
+	ClosedPoints int       `json:"closedPoints"`
 }
 
 type VelocityReport struct {
@@ -171,11 +171,11 @@ func ValidateStoryPoints(v *int16) error {
 }
 
 var validKanbanStateCodes = map[string]struct{}{
-	"ouverte":   {},
-	"affectee":  {},
-	"en_cours":  {},
-	"resolue":   {},
-	"rework":    {},
+	"ouverte":  {},
+	"affectee": {},
+	"en_cours": {},
+	"resolue":  {},
+	"rework":   {},
 }
 
 func ValidateKanbanConfig(columns []KanbanColumn) error {
