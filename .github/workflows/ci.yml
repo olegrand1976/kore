@@ -91,7 +91,13 @@ jobs:
           go run ./cmd/kore-api migrate
           go run ./cmd/kore-api seed
           DEV_SEED_ENABLED=false go run ./cmd/kore-api &
-          sleep 5
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8081/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:8081/health | grep -q ok
           bash scripts/smoke-test.sh
       - name: Stop test stack
         if: always()
