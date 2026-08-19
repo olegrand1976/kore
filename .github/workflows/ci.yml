@@ -91,7 +91,7 @@ jobs:
           go build -o /tmp/kore-api ./cmd/kore-api
           /tmp/kore-api migrate
           /tmp/kore-api seed
-          DEV_SEED_ENABLED=false /tmp/kore-api &
+          /tmp/kore-api &
           for i in $(seq 1 60); do
             if curl -sf http://localhost:8081/health >/dev/null; then
               break
