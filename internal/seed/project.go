@@ -51,31 +51,43 @@ func (r *Runner) seedProjectData(ctx context.Context, tenant kernel.TenantID, oc
 }
 
 func (r *Runner) seedScrumProjectData(ctx context.Context, tenant kernel.TenantID) error {
-	var exists bool
+	var hasActiveSprint bool
 	err := r.deps.Pool.QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM project.epics WHERE tenant_id = $1 AND application_id = $2)
-	`, tenant.UUID(), DemoAppID).Scan(&exists)
-	if err != nil || exists {
+		SELECT EXISTS(
+			SELECT 1 FROM project.sprints
+			WHERE tenant_id = $1 AND application_id = $2 AND status = 'active'
+		)
+	`, tenant.UUID(), DemoAppID).Scan(&hasActiveSprint)
+	if err != nil || hasActiveSprint {
 		return err
 	}
 
-	if _, err := r.deps.Project.CreateEpic(ctx, projectports.CreateEpicCommand{
-		TenantID:      tenant,
-		ApplicationID: DemoAppID,
-		Title:         "Portail client — stabilisation",
-		Description:   "Epic demo : parcours export PDF et performance CRA.",
-		Priority:      string(kernel.PriorityHigh),
-	}); err != nil {
+	var epicExists bool
+	err = r.deps.Pool.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM project.epics WHERE tenant_id = $1 AND application_id = $2)
+	`, tenant.UUID(), DemoAppID).Scan(&epicExists)
+	if err != nil {
 		return err
 	}
-	if _, err := r.deps.Project.CreateEpic(ctx, projectports.CreateEpicCommand{
-		TenantID:      tenant,
-		ApplicationID: DemoAppID,
-		Title:         "SSO et accès mobile",
-		Description:   "Epic demo : authentification mobile et portail client.",
-		Priority:      string(kernel.PriorityNormal),
-	}); err != nil {
-		return err
+	if !epicExists {
+		if _, err := r.deps.Project.CreateEpic(ctx, projectports.CreateEpicCommand{
+			TenantID:      tenant,
+			ApplicationID: DemoAppID,
+			Title:         "Portail client — stabilisation",
+			Description:   "Epic demo : parcours export PDF et performance CRA.",
+			Priority:      string(kernel.PriorityHigh),
+		}); err != nil {
+			return err
+		}
+		if _, err := r.deps.Project.CreateEpic(ctx, projectports.CreateEpicCommand{
+			TenantID:      tenant,
+			ApplicationID: DemoAppID,
+			Title:         "SSO et accès mobile",
+			Description:   "Epic demo : authentification mobile et portail client.",
+			Priority:      string(kernel.PriorityNormal),
+		}); err != nil {
+			return err
+		}
 	}
 
 	now := time.Now().UTC()
