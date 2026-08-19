@@ -590,11 +590,11 @@ func (r *Repository) SaveApplication(ctx context.Context, a domain.Application) 
 		_, err := tx.Exec(ctx, `
 			INSERT INTO org.applications (
 				id, tenant_id, libelle, proprietaire, mode_facturation,
-				uo_activee, chef_utilisateur_id, budget_defaut_id, active, default_tjm_cents
+				uo_activee, chef_utilisateur_id, budget_defaut_id, active, default_tjm_cents, methodology_profile
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		`, a.ID, a.TenantID.UUID(), a.Libelle, nullIfEmpty(a.Proprietaire), mode,
-			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents)
+			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.Active, a.DefaultTJMCents, string(a.MethodologyProfile))
 		if err != nil {
 			return err
 		}
@@ -611,10 +611,11 @@ func (r *Repository) UpdateApplication(ctx context.Context, a domain.Application
 		tag, err := tx.Exec(ctx, `
 			UPDATE org.applications
 			SET libelle = $3, active = $4, proprietaire = $5, mode_facturation = $6,
-			    uo_activee = $7, chef_utilisateur_id = $8, budget_defaut_id = $9, default_tjm_cents = $10
+			    uo_activee = $7, chef_utilisateur_id = $8, budget_defaut_id = $9, default_tjm_cents = $10,
+			    methodology_profile = $11
 			WHERE tenant_id = $1 AND id = $2
 		`, a.TenantID.UUID(), a.ID, a.Libelle, a.Active, nullIfEmpty(a.Proprietaire), mode,
-			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.DefaultTJMCents)
+			a.UOActivee, a.ChefUtilisateurID, a.BudgetDefautID, a.DefaultTJMCents, string(a.MethodologyProfile))
 		if err != nil {
 			return err
 		}
@@ -721,7 +722,8 @@ func (r *Repository) ListApplications(ctx context.Context, tenant kernel.TenantI
 	query := `
 		SELECT id, tenant_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
-		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0)
+		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0),
+		       COALESCE(methodology_profile, 'psa')
 		FROM org.applications
 		WHERE tenant_id = $1`
 	args := []any{tenant.UUID()}
@@ -815,7 +817,8 @@ func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID,
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, libelle,
 		       COALESCE(proprietaire, ''), COALESCE(mode_facturation, 'temps_passe'), COALESCE(uo_activee, FALSE),
-		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0)
+		       chef_utilisateur_id, budget_defaut_id, active, COALESCE(default_tjm_cents, 0),
+		       COALESCE(methodology_profile, 'psa')
 		FROM org.applications
 		WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id)
@@ -836,34 +839,40 @@ func (r *Repository) GetApplication(ctx context.Context, tenant kernel.TenantID,
 func scanApplication(row pgx.Row) (domain.Application, error) {
 	var app domain.Application
 	var tenantID uuid.UUID
-	var proprietaire, modeFacturation string
+	var proprietaire, modeFacturation, methodology string
 	if err := row.Scan(
 		&app.ID, &tenantID, &app.Libelle,
 		&proprietaire, &modeFacturation, &app.UOActivee,
 		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active, &app.DefaultTJMCents,
+		&methodology,
 	); err != nil {
 		return domain.Application{}, err
 	}
 	app.TenantID = kernel.NewTenantID(tenantID)
 	app.Proprietaire = proprietaire
 	app.ModeFacturation = modeFacturation
+	profile, _ := domain.NormalizeMethodologyProfile(methodology)
+	app.MethodologyProfile = profile
 	return app, nil
 }
 
 func scanApplicationRow(rows pgx.Rows) (domain.Application, error) {
 	var app domain.Application
 	var tenantID uuid.UUID
-	var proprietaire, modeFacturation string
+	var proprietaire, modeFacturation, methodology string
 	if err := rows.Scan(
 		&app.ID, &tenantID, &app.Libelle,
 		&proprietaire, &modeFacturation, &app.UOActivee,
 		&app.ChefUtilisateurID, &app.BudgetDefautID, &app.Active, &app.DefaultTJMCents,
+		&methodology,
 	); err != nil {
 		return domain.Application{}, err
 	}
 	app.TenantID = kernel.NewTenantID(tenantID)
 	app.Proprietaire = proprietaire
 	app.ModeFacturation = modeFacturation
+	profile, _ := domain.NormalizeMethodologyProfile(methodology)
+	app.MethodologyProfile = profile
 	return app, nil
 }
 
@@ -2222,6 +2231,20 @@ func (r *Repository) ClearTotpEnrollmentRequiredForSocieteUsers(ctx context.Cont
 		  )
 	`, tenant.UUID(), societeID)
 	return err
+}
+
+func (r *Repository) CountProjectArtifacts(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error) {
+	var n int
+	err := r.pool.QueryRow(ctx, `
+		SELECT (
+			(SELECT COUNT(*) FROM project.epics WHERE tenant_id = $1 AND application_id = $2) +
+			(SELECT COUNT(*) FROM project.sprints WHERE tenant_id = $1 AND application_id = $2) +
+			(SELECT COUNT(*) FROM project.kanban_configs WHERE tenant_id = $1 AND application_id = $2) +
+			(SELECT COUNT(*) FROM tma.demands WHERE tenant_id = $1 AND application_id = $2
+				AND (epic_id IS NOT NULL OR sprint_id IS NOT NULL OR story_points IS NOT NULL OR backlog_rank IS NOT NULL))
+		)
+	`, tenant.UUID(), applicationID).Scan(&n)
+	return n, err
 }
 
 var _ ports.OrganizationRepository = (*Repository)(nil)

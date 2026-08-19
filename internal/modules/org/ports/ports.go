@@ -60,6 +60,7 @@ type CreateApplicationCommand struct {
 	SiteIDs           []uuid.UUID
 	ServiceIDs        []uuid.UUID
 	EquipeIDs         []uuid.UUID
+	MethodologyProfile string
 }
 
 // ApplicationListFilter filters ListApplications.
@@ -84,6 +85,7 @@ type UpdateApplicationCommand struct {
 	ChefUtilisateurID **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 	BudgetDefautID    **uuid.UUID // nil=unchanged; ptr(nil)=clear; ptr(id)=set
 	DefaultTJMCents   *int64
+	MethodologyProfile *string
 	// Share replace: if any of SiteIDs/ServiceIDs/EquipeIDs is non-nil, all three
 	// lists are replaced together (nil among them = empty for that category).
 	SiteIDs    *[]uuid.UUID
@@ -225,6 +227,7 @@ type OrganizationRepository interface {
 	AssertApplicationSharesExist(ctx context.Context, tenant kernel.TenantID, siteIDs, serviceIDs, equipeIDs []uuid.UUID) error
 	// BudgetBelongsToApplication is true only for a budget of type "defaut" on that application (RG-BUD-01).
 	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
+	CountProjectArtifacts(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error)
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)

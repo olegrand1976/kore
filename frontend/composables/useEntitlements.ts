@@ -1,7 +1,7 @@
-export type ModuleCode = 'org' | 'cra' | 'conges' | 'budget' | 'tma' | 'workflow' | 'notifications' | 'billing'
+export type ModuleCode = 'org' | 'cra' | 'conges' | 'budget' | 'tma' | 'project' | 'workflow' | 'notifications' | 'billing'
 
 export const ALL_MODULES: ModuleCode[] = [
-  'org', 'cra', 'conges', 'budget', 'tma', 'workflow', 'notifications', 'billing'
+  'org', 'cra', 'conges', 'budget', 'tma', 'project', 'workflow', 'notifications', 'billing'
 ]
 
 function httpStatus(err: unknown): number | undefined {

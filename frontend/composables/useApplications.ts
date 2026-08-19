@@ -1,3 +1,5 @@
+import type { MethodologyProfile } from '~/composables/useMethodologyTerms'
+
 export type OrgApplication = {
   id?: string
   ID?: string
@@ -26,6 +28,8 @@ export type OrgApplication = {
   ServiceIDs?: string[]
   equipeIds?: string[]
   EquipeIDs?: string[]
+  methodologyProfile?: string
+  MethodologyProfile?: string
 }
 
 export type ApplicationWriteBody = {
@@ -41,6 +45,7 @@ export type ApplicationWriteBody = {
   chefUtilisateurId?: string | null
   budgetDefautId?: string | null
   active?: boolean
+  methodologyProfile?: string
 }
 
 export const MODE_FACTURATION_VALUES = ['non', 'forfait', 'temps_passe'] as const
@@ -109,6 +114,12 @@ export function pickAppChefId(app: OrgApplication | undefined | null) {
 
 export function pickAppBudgetDefautId(app: OrgApplication | undefined | null) {
   return app?.budgetDefautId ?? app?.BudgetDefautID ?? ''
+}
+
+export function pickAppMethodologyProfile(app: OrgApplication | undefined | null): MethodologyProfile {
+  const raw = app?.methodologyProfile ?? app?.MethodologyProfile ?? 'psa'
+  if (raw === 'agile_scrum' || raw === 'agile_kanban') return raw
+  return 'psa'
 }
 
 /** RG-BUD-01: default budget type is stored as "defaut" (legacy "default" accepted in UI). */
@@ -216,6 +227,7 @@ export function useApplications() {
     pickAppMode,
     pickAppChefId,
     pickAppBudgetDefautId,
+    pickAppMethodologyProfile,
     filterByApplicationId
   }
 }

@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 19/08/2026 (`commercial_info` = contexte prestation CRA ; mission ↔ applications N–N)
+> **Dernière mise à jour doc** : 19/08/2026 (schéma `project`, profil méthodologique application, champs agile sur `tma.demands`)
 
 ---
 
@@ -195,9 +195,10 @@ Index :
 | `chef_utilisateur_id` | UUID | |
 | `active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `default_tjm_cents` | BIGINT | NOT NULL, DEFAULT 0, CHECK ≥ 0 (migration `0023`) — TJM défaut application |
+| `methodology_profile` | TEXT | NOT NULL, DEFAULT `'psa'`, CHECK IN (`psa`, `agile_scrum`, `agile_kanban`) (migration `0031`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index** : `idx_org_applications_tenant_active (tenant_id, active)`
+**Index** : `idx_org_applications_tenant_active (tenant_id, active)`, `idx_org_applications_methodology (tenant_id, methodology_profile)`
 
 > Migration `0027` : suppression de `service_id` (propriétaire unique). Les rattachements passent par les tables junction ci-dessous (≥ 1 site, service ou équipe).
 
@@ -763,9 +764,13 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `visible` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `consumption_active` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `requires_chef_gate` | BOOLEAN | NOT NULL, DEFAULT FALSE |
+| `epic_id` | UUID | → `project.epics(id)` ON DELETE SET NULL (migration `0004`) |
+| `sprint_id` | UUID | → `project.sprints(id)` ON DELETE SET NULL (migration `0004`) |
+| `story_points` | SMALLINT | |
+| `backlog_rank` | INTEGER | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index** : `idx_tma_demands_tenant_app_status`
+**Index** : `idx_tma_demands_tenant_app_status`, `idx_tma_demands_epic`, `idx_tma_demands_sprint`, `idx_tma_demands_backlog`
 
 ### `tma.analysis_dossiers`
 
@@ -781,6 +786,54 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 **Contraintes** : `UNIQUE (demand_id)` — un dossier par demande
+
+---
+
+## Schéma `project`
+
+Planification agile par application (Epic, Sprint, Kanban).
+
+### `project.epics`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `application_id` | UUID | NOT NULL |
+| `title` | TEXT | NOT NULL |
+| `description` | TEXT | NOT NULL, DEFAULT `''` |
+| `status` | TEXT | NOT NULL, DEFAULT `'draft'`, CHECK IN (`draft`, `active`, `done`) |
+| `priority` | TEXT | NOT NULL, DEFAULT `'medium'` |
+| `target_sprint_id` | UUID | → `project.sprints(id)` ON DELETE SET NULL |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+### `project.sprints`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `application_id` | UUID | NOT NULL |
+| `name` | TEXT | NOT NULL |
+| `goal` | TEXT | NOT NULL, DEFAULT `''` |
+| `start_date` | DATE | NOT NULL |
+| `end_date` | DATE | NOT NULL |
+| `status` | TEXT | NOT NULL, DEFAULT `'planned'`, CHECK IN (`planned`, `active`, `closed`) |
+| `capacity_points` | SMALLINT | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `closed_at` | TIMESTAMPTZ | |
+
+Index partiel unique : `idx_project_sprints_one_active` sur `(tenant_id, application_id)` WHERE `status = 'active'` (migration `0002`).
+
+### `project.kanban_configs`
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `application_id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `columns` | JSONB | NOT NULL, DEFAULT `'[]'` |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `tma.releases`
 
@@ -1327,6 +1380,7 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `conges` | leave_requests, leave_balances, leave_type_configs | 3 |
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
 | `tma` | demands, analysis_dossiers, releases, delivery_codes | 4 |
+| `project` | epics, sprints, kanban_configs | 3 |
 | `ssii` | missions, mission_collaborators, mission_applications | 3 |
 | `support` | tickets, ticket_replies | 2 |
 | `maintenance` | work_requests | 1 |

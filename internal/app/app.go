@@ -95,8 +95,13 @@ import (
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
 	tmanotif "github.com/kore/kore/internal/modules/tma/adapters/notifications"
 	tmapostgres "github.com/kore/kore/internal/modules/tma/adapters/postgres"
+	tmaproject "github.com/kore/kore/internal/modules/tma/adapters/project"
 	tmaworkflow "github.com/kore/kore/internal/modules/tma/adapters/workflow"
 	tmaapp "github.com/kore/kore/internal/modules/tma/app"
+	projecthttp "github.com/kore/kore/internal/modules/project/adapters/http"
+	projectorg "github.com/kore/kore/internal/modules/project/adapters/org"
+	projectpostgres "github.com/kore/kore/internal/modules/project/adapters/postgres"
+	projectapp "github.com/kore/kore/internal/modules/project/app"
 	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
 	wfnotif "github.com/kore/kore/internal/modules/workflow/adapters/notifications"
 	wfpostgres "github.com/kore/kore/internal/modules/workflow/adapters/postgres"
@@ -247,7 +252,10 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		tmaworkflow.NewAdapter(wfService),
 		tmacra.NewFeederAdapter(craService),
 		tmaapp.WithNotifier(tmanotif.NewPublisherAdapter(notifService)),
+		tmaapp.WithAgileValidator(tmaproject.NewArtifactValidator(pool)),
 	)
+	projectRepo := projectpostgres.NewRepository(pool)
+	projectService := projectapp.NewService(projectRepo, projectorg.NewApplicationReader(orgService))
 	aiRepo := aipostgres.NewRepository(pool)
 	aiService := aiapp.NewService(
 		aiRepo,
@@ -336,6 +344,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		congeshttp.RegisterRoutes(r, congesService, leaveTypeConfigService, tokenIssuer, authorizer, billingService)
 		budgethttp.RegisterRoutes(r, budgetService, tokenIssuer, authorizer, billingService)
 		tmahttp.RegisterRoutes(r, tmaService, tokenIssuer, authorizer, billingService, requestSettingsService)
+		projecthttp.RegisterRoutes(r, projectService, tokenIssuer, authorizer, billingService)
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)

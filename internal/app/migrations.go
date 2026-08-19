@@ -13,6 +13,7 @@ import (
 	"github.com/kore/kore/internal/modules/maintenance"
 	"github.com/kore/kore/internal/modules/notifications"
 	"github.com/kore/kore/internal/modules/org"
+	"github.com/kore/kore/internal/modules/project"
 	"github.com/kore/kore/internal/modules/publicsite"
 	"github.com/kore/kore/internal/modules/reporting"
 	"github.com/kore/kore/internal/modules/ssii"
@@ -30,6 +31,7 @@ func AllModuleMigrations() []db.ModuleMigration {
 		notifications.Migrations(),
 		conges.Migrations(),
 		budget.Migrations(),
+		project.Migrations(),
 		tma.Migrations(),
 		ssii.Migrations(),
 		support.Migrations(),

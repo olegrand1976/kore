@@ -49,6 +49,25 @@ func listDemands(tma ports.TMAService, authorizer authx.Authorizer) http.Handler
 			}
 			filter.ApplicationID = &parsed
 		}
+		if sprintID := r.URL.Query().Get("sprintId"); sprintID != "" {
+			parsed, err := uuid.Parse(sprintID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid sprintId")
+				return
+			}
+			filter.SprintID = &parsed
+		}
+		if epicID := r.URL.Query().Get("epicId"); epicID != "" {
+			parsed, err := uuid.Parse(epicID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid epicId")
+				return
+			}
+			filter.EpicID = &parsed
+		}
+		if r.URL.Query().Get("backlogOnly") == "true" {
+			filter.BacklogOnly = true
+		}
 		items, err := tma.List(r.Context(), identity.TenantID, filter)
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
@@ -126,12 +145,14 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			return
 		}
 		var req struct {
-			ApplicationID    uuid.UUID `json:"applicationId"`
-			Subject          string    `json:"subject"`
-			Description      string    `json:"description"`
-			Priority         string    `json:"priority"`
-			DueAt            *string   `json:"dueAt"`
-			RequiresChefGate bool      `json:"requiresChefGate"`
+			ApplicationID    uuid.UUID  `json:"applicationId"`
+			Subject          string     `json:"subject"`
+			Description      string     `json:"description"`
+			Priority         string     `json:"priority"`
+			DueAt            *string    `json:"dueAt"`
+			RequiresChefGate bool       `json:"requiresChefGate"`
+			EpicID           *uuid.UUID `json:"epicId"`
+			StoryPoints      *int16     `json:"storyPoints"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -164,8 +185,16 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			Priority:         req.Priority,
 			DueAt:            dueAt,
 			RequiresChefGate: req.RequiresChefGate,
+			EpicID:           req.EpicID,
+			StoryPoints:      req.StoryPoints,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrInvalidStoryPoints) ||
+				errors.Is(err, domain.ErrEpicNotInApplication) ||
+				errors.Is(err, domain.ErrSprintNotInApplication) {
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+				return
+			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}

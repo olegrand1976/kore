@@ -112,6 +112,16 @@
                 <option v-for="u in userOptions" :key="u.value" :value="u.value">{{ u.label }}</option>
               </select>
             </label>
+            <label class="apps-form__field">
+              <span>{{ $t('applications.field_methodology') }}</span>
+              <select id="app-methodology" v-model="form.methodologyProfile" class="apps-form__input">
+                <option value="psa">{{ $t('applications.methodology_psa') }}</option>
+                <option value="agile_scrum">{{ $t('applications.methodology_scrum') }}</option>
+                <option value="agile_kanban">{{ $t('applications.methodology_kanban') }}</option>
+              </select>
+              <span class="apps-form__hint">{{ $t('applications.field_methodology_hint') }}</span>
+              <span class="apps-form__hint">{{ methodologyPreview }}</span>
+            </label>
           </section>
 
           <section
@@ -279,6 +289,7 @@
 </template>
 
 <script setup lang="ts">
+import type { MethodologyProfile } from '~/composables/useMethodologyTerms'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import {
   coerceBudgetDefautId,
@@ -309,7 +320,8 @@ const {
   pickAppEquipeIds,
   pickAppMode,
   pickAppChefId,
-  pickAppBudgetDefautId
+  pickAppBudgetDefautId,
+  pickAppMethodologyProfile
 } = useApplications()
 const { listSites, listServices, listEquipes, createEquipe, orgId, orgLabel } = useOrganisation()
 const { list: listUsers, update: updateUser, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
@@ -331,6 +343,7 @@ type AppRow = {
   budgetDefautId: string
   siteIds: string[]
   equipeIds: string[]
+  methodologyProfile: MethodologyProfile
 }
 
 const rows = ref<AppRow[]>([])
@@ -365,8 +378,17 @@ const form = reactive({
   defaultTjmEuros: 0,
   uoActivee: false,
   chefUtilisateurId: '',
-  budgetDefautId: ''
+  budgetDefautId: '',
+  methodologyProfile: 'psa' as MethodologyProfile
 })
+
+const methodologyTerms = computed(() => useMethodologyTerms(form.methodologyProfile).value)
+const methodologyPreview = computed(() =>
+  t('applications.methodology_preview', {
+    workItem: methodologyTerms.value.workItem,
+    backlog: methodologyTerms.value.backlog
+  })
+)
 
 const modeLabel = (mode: string) => {
   if (mode === 'non') return t('applications.mode_non')
@@ -624,7 +646,8 @@ const loadAll = async () => {
             (e.applicationId ?? e.ApplicationID) === id || equipeIds.includes(orgId(e))
         ).length,
         chefUtilisateurId: pickAppChefId(app),
-        budgetDefautId: pickAppBudgetDefautId(app)
+        budgetDefautId: pickAppBudgetDefautId(app),
+        methodologyProfile: pickAppMethodologyProfile(app)
       }
     })
     sanitizeFormBudgetDefaut()
@@ -653,6 +676,7 @@ const openCreate = () => {
   form.uoActivee = false
   form.chefUtilisateurId = ''
   form.budgetDefautId = ''
+  form.methodologyProfile = 'psa'
   formError.value = ''
   sharesInvalid.value = false
   newEquipeLibelle.value = ''
@@ -671,6 +695,7 @@ const openEdit = (row: AppRow) => {
   form.uoActivee = row.uoActivee
   form.chefUtilisateurId = row.chefUtilisateurId
   form.budgetDefautId = row.budgetDefautId
+  form.methodologyProfile = row.methodologyProfile
   formError.value = ''
   sharesInvalid.value = false
   newEquipeLibelle.value = ''
@@ -712,6 +737,7 @@ const submitForm = async () => {
         serviceIds: string[]
         equipeIds: string[]
         budgetDefautId?: string | null
+        methodologyProfile?: MethodologyProfile
       } = {
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
@@ -721,7 +747,8 @@ const submitForm = async () => {
         chefUtilisateurId: chef,
         siteIds: form.siteIds,
         serviceIds: form.serviceIds,
-        equipeIds: form.equipeIds
+        equipeIds: form.equipeIds,
+        methodologyProfile: form.methodologyProfile
       }
       if ((form.budgetDefautId || '') !== originalBudget) {
         body.budgetDefautId = nextBudget
@@ -738,7 +765,8 @@ const submitForm = async () => {
         modeFacturation: form.modeFacturation,
         defaultTjmCents: Math.max(0, Math.round((form.defaultTjmEuros || 0) * 100)),
         uoActivee: form.uoActivee,
-        chefUtilisateurId: chef || undefined
+        chefUtilisateurId: chef || undefined,
+        methodologyProfile: form.methodologyProfile
       })
       flash.value = t('applications.created')
     }

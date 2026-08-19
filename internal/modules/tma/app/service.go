@@ -11,11 +11,12 @@ import (
 )
 
 type service struct {
-	repo     ports.DemandRepository
-	workflow ports.WorkflowService
-	cra      ports.CRAFeeder
-	notifier ports.NotificationPublisher
-	clock    ports.Clock
+	repo            ports.DemandRepository
+	workflow        ports.WorkflowService
+	cra             ports.CRAFeeder
+	notifier        ports.NotificationPublisher
+	clock           ports.Clock
+	agileValidator  ports.AgileArtifactValidator
 }
 
 func NewService(
@@ -46,12 +47,26 @@ func WithClock(clock ports.Clock) Option {
 	return func(s *service) { s.clock = clock }
 }
 
+func WithAgileValidator(v ports.AgileArtifactValidator) Option {
+	return func(s *service) { s.agileValidator = v }
+}
+
 type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now() }
 
 func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandCommand) (domain.Demand, error) {
 	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
+	if err := domain.ValidateStoryPoints(cmd.StoryPoints); err != nil {
+		return domain.Demand{}, err
+	}
+	if cmd.EpicID != nil {
+		if err := s.validateEpic(ctx, cmd.TenantID, cmd.ApplicationID, *cmd.EpicID); err != nil {
+			return domain.Demand{}, err
+		}
+	}
+	demand.EpicID = cmd.EpicID
+	demand.StoryPoints = cmd.StoryPoints
 	if s.workflow != nil {
 		demandID := demand.ID
 		start := ports.StartWorkflowCommand{
@@ -260,4 +275,18 @@ func (s *service) ExportXML(ctx context.Context, filter ports.ExportFilter) ([]d
 		rows = append(rows, domain.ToXmlExportRow(d))
 	}
 	return rows, nil
+}
+
+func (s *service) validateEpic(ctx context.Context, tenant kernel.TenantID, appID, epicID uuid.UUID) error {
+	if s.agileValidator == nil {
+		return nil
+	}
+	ok, err := s.agileValidator.EpicBelongsToApplication(ctx, tenant, appID, epicID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return domain.ErrEpicNotInApplication
+	}
+	return nil
 }

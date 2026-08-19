@@ -9,10 +9,12 @@ import (
 )
 
 var (
-	ErrDemandNotVisible      = errors.New("demand not visible until chef utilisateur validation")
-	ErrTransitionNotAllowed  = errors.New("transition not allowed")
-	ErrDemandAlreadyResolved = errors.New("demand already resolved")
-	ErrAnalysisNotFound      = errors.New("analysis not found")
+	ErrDemandNotVisible       = errors.New("demand not visible until chef utilisateur validation")
+	ErrTransitionNotAllowed   = errors.New("transition not allowed")
+	ErrDemandAlreadyResolved    = errors.New("demand already resolved")
+	ErrAnalysisNotFound         = errors.New("analysis not found")
+	ErrEpicNotInApplication     = errors.New("epic does not belong to application")
+	ErrSprintNotInApplication   = errors.New("sprint does not belong to application")
 )
 
 type DemandType string
@@ -70,6 +72,10 @@ type Demand struct {
 	Visible            bool
 	ConsumptionActive  bool
 	RequiresChefGate   bool
+	EpicID             *uuid.UUID
+	SprintID           *uuid.UUID
+	StoryPoints        *int16
+	BacklogRank        *int
 	CreatedAt          time.Time
 }
 
@@ -102,6 +108,18 @@ type XmlExportRow struct {
 	Visible           bool
 	ConsumptionActive bool
 	Comment           string
+}
+
+var ErrInvalidStoryPoints = errors.New("invalid story points")
+
+func ValidateStoryPoints(v *int16) error {
+	if v == nil {
+		return nil
+	}
+	if *v < 0 || *v > 999 {
+		return ErrInvalidStoryPoints
+	}
+	return nil
 }
 
 func NewDemand(tenant kernel.TenantID, appID, authorID uuid.UUID, subject, description string, priority kernel.RequestPriority, dueAt *time.Time, requiresChefGate bool) Demand {

@@ -33,6 +33,7 @@ const (
 	ModuleConges        ModuleCode = "conges"
 	ModuleBudget        ModuleCode = "budget"
 	ModuleTMA           ModuleCode = "tma"
+	ModuleProject       ModuleCode = "project"
 	ModuleWorkflow      ModuleCode = "workflow"
 	ModuleNotifications ModuleCode = "notifications"
 	ModuleBilling       ModuleCode = "billing"

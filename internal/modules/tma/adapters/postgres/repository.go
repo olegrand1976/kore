@@ -25,8 +25,9 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO tma.demands (
 			id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
+			epic_id, sprint_id, story_points, backlog_rank, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 		ON CONFLICT (id) DO UPDATE SET
 			assignee_id = EXCLUDED.assignee_id,
 			status = EXCLUDED.status,
@@ -35,25 +36,36 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 			workflow_instance_id = EXCLUDED.workflow_instance_id,
 			description = EXCLUDED.description,
 			priority = EXCLUDED.priority,
-			due_at = EXCLUDED.due_at
+			due_at = EXCLUDED.due_at,
+			epic_id = EXCLUDED.epic_id,
+			sprint_id = EXCLUDED.sprint_id,
+			story_points = EXCLUDED.story_points,
+			backlog_rank = EXCLUDED.backlog_rank
 	`, d.ID, d.TenantID.UUID(), d.ApplicationID, string(d.Type), d.Subject, d.Description, string(d.Priority), d.DueAt,
-		d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate, d.CreatedAt)
+		d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate,
+		d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.CreatedAt)
 	return err
 }
 
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
 	return r.scanDemand(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
+			epic_id, sprint_id, story_points, backlog_rank, created_at
 		FROM tma.demands WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
 }
 
+func demandSelectColumns() string {
+	return `id, tenant_id, application_id, type, subject, description, priority, due_at,
+			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
+			epic_id, sprint_id, story_points, backlog_rank, created_at`
+}
+
 func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
-	query := `
-		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate, created_at
-		FROM tma.demands WHERE tenant_id = $1`
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM tma.demands WHERE tenant_id = $1`, demandSelectColumns())
 	args := []any{tenant.UUID()}
 	argPos := 2
 	if filter.ApplicationID != nil {
@@ -64,11 +76,25 @@ func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter po
 	if filter.Status != nil {
 		query += fmt.Sprintf(" AND status = $%d", argPos)
 		args = append(args, string(*filter.Status))
+		argPos++
+	}
+	if filter.SprintID != nil {
+		query += fmt.Sprintf(" AND sprint_id = $%d", argPos)
+		args = append(args, *filter.SprintID)
+		argPos++
+	}
+	if filter.EpicID != nil {
+		query += fmt.Sprintf(" AND epic_id = $%d", argPos)
+		args = append(args, *filter.EpicID)
+		argPos++
+	}
+	if filter.BacklogOnly {
+		query += " AND sprint_id IS NULL AND status NOT IN ('resolue')"
 	}
 	if filter.VisibleOnly {
 		query += " AND visible = TRUE"
 	}
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY backlog_rank NULLS LAST, created_at DESC"
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -134,7 +160,8 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	var demandType, status, priority string
 	err := row.Scan(
 		&d.ID, &tenantID, &d.ApplicationID, &demandType, &d.Subject, &d.Description, &priority, &d.DueAt,
-		&d.WorkflowInstanceID, &d.AuthorID, &d.AssigneeID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate, &d.CreatedAt,
+		&d.WorkflowInstanceID, &d.AuthorID, &d.AssigneeID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate,
+		&d.EpicID, &d.SprintID, &d.StoryPoints, &d.BacklogRank, &d.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

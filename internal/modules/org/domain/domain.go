@@ -36,6 +36,8 @@ var (
 	ErrApplicationWithoutShare   = errors.New("application requires at least one site, service or equipe share")
 	ErrInvalidApplicationShare   = errors.New("invalid application share")
 	ErrInvalidModeFacturation    = errors.New("invalid mode facturation")
+	ErrInvalidMethodologyProfile = errors.New("invalid methodology profile")
+	ErrMethodologyProfileLocked  = errors.New("methodology profile locked after agile artifacts exist")
 	ErrInvalidApplicationLibelle = errors.New("application libelle required")
 	ErrBudgetNotFound            = errors.New("budget not found for application")
 	ErrBudgetNotAllowedOnCreate  = errors.New("budgetDefautId cannot be set on create")
@@ -435,6 +437,34 @@ const (
 	DefaultModeFacturation    = ModeFacturationTempsPasse
 )
 
+type MethodologyProfile string
+
+const (
+	MethodologyPSA         MethodologyProfile = "psa"
+	MethodologyAgileScrum  MethodologyProfile = "agile_scrum"
+	MethodologyAgileKanban MethodologyProfile = "agile_kanban"
+)
+
+func DefaultMethodologyProfile() MethodologyProfile {
+	return MethodologyPSA
+}
+
+func NormalizeMethodologyProfile(raw string) (MethodologyProfile, error) {
+	if raw == "" {
+		return DefaultMethodologyProfile(), nil
+	}
+	switch MethodologyProfile(raw) {
+	case MethodologyPSA, MethodologyAgileScrum, MethodologyAgileKanban:
+		return MethodologyProfile(raw), nil
+	default:
+		return "", ErrInvalidMethodologyProfile
+	}
+}
+
+func (p MethodologyProfile) IsAgile() bool {
+	return p == MethodologyAgileScrum || p == MethodologyAgileKanban
+}
+
 func NormalizeModeFacturation(raw string) (string, error) {
 	if raw == "" {
 		return DefaultModeFacturation, nil
@@ -448,12 +478,13 @@ func NormalizeModeFacturation(raw string) (string, error) {
 }
 
 type Application struct {
-	ID                uuid.UUID       `json:"id"`
-	TenantID          kernel.TenantID `json:"tenantId"`
-	Libelle           string          `json:"libelle"`
-	Proprietaire      string          `json:"proprietaire,omitempty"`
-	ModeFacturation   string          `json:"modeFacturation,omitempty"`
-	UOActivee         bool            `json:"uoActivee"`
+	ID                 uuid.UUID          `json:"id"`
+	TenantID           kernel.TenantID    `json:"tenantId"`
+	Libelle            string             `json:"libelle"`
+	Proprietaire       string             `json:"proprietaire,omitempty"`
+	ModeFacturation    string             `json:"modeFacturation,omitempty"`
+	MethodologyProfile MethodologyProfile `json:"methodologyProfile"`
+	UOActivee          bool               `json:"uoActivee"`
 	ChefUtilisateurID *uuid.UUID      `json:"chefUtilisateurId,omitempty"`
 	BudgetDefautID    *uuid.UUID      `json:"budgetDefautId,omitempty"`
 	Active            bool            `json:"active"`

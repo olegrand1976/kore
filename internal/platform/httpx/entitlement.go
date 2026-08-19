@@ -7,6 +7,22 @@ import (
 	"github.com/kore/kore/internal/platform/authx"
 )
 
+var projectApplicationSubresources = map[string]struct{}{
+	"epics":         {},
+	"sprints":       {},
+	"backlog":       {},
+	"kanban-config": {},
+	"velocity":      {},
+}
+
+func isProjectApplicationPath(parts []string) bool {
+	if len(parts) < 3 || parts[0] != "applications" {
+		return false
+	}
+	_, ok := projectApplicationSubresources[parts[2]]
+	return ok
+}
+
 // ModuleFromPath maps API path prefixes to entitlement module codes.
 func ModuleFromPath(path string) (authx.Module, bool) {
 	path = strings.TrimPrefix(path, "/api/v1")
@@ -14,9 +30,17 @@ func ModuleFromPath(path string) (authx.Module, bool) {
 	if path == "" {
 		return "", false
 	}
-	segment := strings.SplitN(path, "/", 2)[0]
+	parts := strings.Split(path, "/")
+	segment := parts[0]
 	switch segment {
-	case "societes", "sites", "services", "applications", "users", "clients", "branding":
+	case "project":
+		return "project", true
+	case "applications":
+		if isProjectApplicationPath(parts) {
+			return "project", true
+		}
+		return "org", true
+	case "societes", "sites", "services", "users", "clients", "branding":
 		return "org", true
 	case "notification-rules", "notifications":
 		return "notifications", true

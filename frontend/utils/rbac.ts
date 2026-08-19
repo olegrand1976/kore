@@ -5,6 +5,7 @@ export type RbacModule =
   | 'conges'
   | 'budget'
   | 'tma'
+  | 'project'
   | 'workflow'
   | 'billing'
   | 'notifications'
@@ -28,6 +29,7 @@ const mvpAdmin: ProfilePerms = {
   org: readWriteValidate,
   cra: readWriteValidate,
   tma: readWriteValidate,
+  project: readWriteValidate,
   conges: readWriteValidate,
   budget: readWriteValidate,
   workflow: readWriteValidate,
@@ -68,6 +70,7 @@ export const HELP_MATRIX_MODULES: RbacModule[] = [
   'org',
   'cra',
   'tma',
+  'project',
   'conges',
   'budget',
   'reporting',
@@ -88,6 +91,7 @@ export const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
   Collaborateur: {
     cra: readWrite,
     tma: readWrite,
+    project: read,
     conges: readWrite,
     budget: read
   },
@@ -95,6 +99,7 @@ export const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
     org: read,
     cra: readWriteValidate,
     tma: readWriteValidate,
+    project: readWriteValidate,
     conges: read,
     budget: readWrite,
     reporting: read,
@@ -104,6 +109,7 @@ export const PROFILE_PERMISSIONS: Record<string, ProfilePerms> = {
     org: read,
     cra: readWriteValidate,
     tma: readWriteValidate,
+    project: readWriteValidate,
     conges: readWriteValidate,
     budget: readWriteValidate,
     reporting: read,

@@ -1440,9 +1440,146 @@ paths:
                 modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
                 uoActivee: { type: boolean }
                 chefUtilisateurId: { type: string, format: uuid, nullable: true }
+                methodologyProfile: { type: string, enum: [psa, agile_scrum, agile_kanban], default: psa }
       responses:
         "201":
           description: Application créée
+  /project/applications:
+    get:
+      summary: Liste des applications en mode agile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste
+  /applications/{applicationId}/epics:
+    get:
+      summary: Liste des epics d'une application agile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Liste
+    post:
+      summary: Créer un epic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201":
+          description: Epic créé
+  /applications/{applicationId}/backlog:
+    get:
+      summary: Backlog produit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: backlogOnly, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Backlog
+  /applications/{applicationId}/velocity:
+    get:
+      summary: Vélocité des sprints clôturés
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Rapport vélocité
+  /applications/{applicationId}/epics/{id}:
+    patch:
+      summary: Modifier un epic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Epic modifié
+  /applications/{applicationId}/sprints:
+    get:
+      summary: Liste des sprints
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Liste
+    post:
+      summary: Créer un sprint
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "201":
+          description: Sprint créé
+  /applications/{applicationId}/sprints/{id}/start:
+    post:
+      summary: Démarrer un sprint
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Sprint démarré
+  /applications/{applicationId}/sprints/{id}/close:
+    post:
+      summary: Clôturer un sprint
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Sprint clôturé
+  /applications/{applicationId}/sprints/{id}/plan:
+    post:
+      summary: Planifier des demandes dans un sprint
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Sprint planifié
+  /applications/{applicationId}/sprints/{id}/burndown:
+    get:
+      summary: Burndown d'un sprint
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Série burndown
+  /applications/{applicationId}/backlog/reorder:
+    patch:
+      summary: Réordonner le backlog
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Backlog réordonné
+  /applications/{applicationId}/kanban-config:
+    get:
+      summary: Configuration Kanban
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Configuration
+    put:
+      summary: Enregistrer la configuration Kanban
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: applicationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Configuration enregistrée
   /applications/{id}:
     get:
       summary: Détail application
@@ -1480,6 +1617,7 @@ paths:
                 equipeIds:
                   type: array
                   items: { type: string, format: uuid }
+                methodologyProfile: { type: string, enum: [psa, agile_scrum, agile_kanban] }
       responses:
         "200":
           description: Application mise à jour

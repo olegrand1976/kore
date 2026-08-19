@@ -18,6 +18,8 @@ type CreateDemandCommand struct {
 	Priority         string
 	DueAt            *time.Time
 	RequiresChefGate bool
+	EpicID           *uuid.UUID
+	StoryPoints      *int16
 }
 
 type ChefUtilisateurCommand struct {
@@ -55,6 +57,9 @@ type ExportFilter struct {
 	ApplicationID *uuid.UUID
 	Status        *domain.DemandStatus
 	VisibleOnly   bool
+	SprintID      *uuid.UUID
+	EpicID        *uuid.UUID
+	BacklogOnly   bool
 }
 
 type ProposedLine struct {
@@ -134,4 +139,9 @@ type NotificationPublisher interface {
 
 type Clock interface {
 	Now() time.Time
+}
+
+type AgileArtifactValidator interface {
+	EpicBelongsToApplication(ctx context.Context, tenant kernel.TenantID, appID, epicID uuid.UUID) (bool, error)
+	SprintBelongsToApplication(ctx context.Context, tenant kernel.TenantID, appID, sprintID uuid.UUID) (bool, error)
 }

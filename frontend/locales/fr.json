@@ -64,6 +64,7 @@
     "platform": "Plateforme",
     "profile": "Mon profil",
     "help": "Aide",
+    "projets": "Projets agile",
     "aria_app": "Navigation applicative",
     "aria_menu": "Menu",
     "section_time": "Temps",
@@ -111,6 +112,7 @@
         "org": "Org",
         "cra": "CRA",
         "tma": "TMA",
+        "project": "Proj.",
         "conges": "Congés",
         "budget": "Budget",
         "reporting": "Reporting",
@@ -1564,6 +1566,93 @@
     "checkout_error": "Impossible de démarrer le paiement, réessayez.",
     "checkout_loading": "Chargement de l'offre…"
   },
+  "project": {
+    "title": "Projets agile",
+    "subtitle": "Backlog, sprints et métriques par produit",
+    "loading": "Chargement…",
+    "empty": "Aucun produit agile",
+    "empty_hint": "Configurez une application en mode Scrum ou Kanban dans Administration → Applications.",
+    "profile_psa": "PSA",
+    "profile_scrum": "Scrum",
+    "profile_kanban": "Kanban",
+    "nav_backlog": "Backlog",
+    "nav_sprints": "Sprints",
+    "nav_epics": "Epics",
+    "nav_metrics": "Métriques",
+    "back": "Retour aux projets",
+    "back_sprints": "Retour aux sprints",
+    "backlog_empty": "Backlog vide",
+    "epics_title": "Epics",
+    "epics_empty": "Aucun epic",
+    "epic_new": "Nouvel epic",
+    "sprints_title": "Sprints",
+    "sprints_empty": "Aucun sprint",
+    "sprint_new": "Nouveau sprint",
+    "sprint_start": "Démarrer",
+    "sprint_close": "Clôturer",
+    "sprint_board": "Board",
+    "board_empty": "Aucune user story dans ce sprint",
+    "metrics_title": "Métriques",
+    "velocity_title": "Vélocité",
+    "velocity_empty": "Aucun sprint clôturé",
+    "burndown_title": "Burndown",
+    "burndown_planned": "Points planifiés : {points}",
+    "field_title": "Titre",
+    "field_description": "Description",
+    "field_name": "Nom",
+    "field_goal": "Objectif",
+    "field_start": "Début",
+    "field_end": "Fin",
+    "col_status": "Statut",
+    "col_story_points": "Story points",
+    "col_period": "Période",
+    "story_points_abbr": "SP",
+    "status": {
+      "epic_draft": "Brouillon",
+      "epic_active": "Actif",
+      "epic_done": "Terminé",
+      "sprint_planned": "Planifié",
+      "sprint_active": "En cours",
+      "sprint_closed": "Clôturé"
+    },
+    "terms": {
+      "application": {
+        "psa": "Application",
+        "scrum": "Produit",
+        "kanban": "Produit"
+      },
+      "work_item": {
+        "psa": "Demande",
+        "scrum": "User Story",
+        "kanban": "User Story"
+      },
+      "work_item_new": {
+        "psa": "Nouvelle demande",
+        "scrum": "Nouvelle User Story",
+        "kanban": "Nouvelle User Story"
+      },
+      "release": {
+        "psa": "Release",
+        "scrum": "Sprint",
+        "kanban": "—"
+      },
+      "backlog": {
+        "psa": "Portefeuille",
+        "scrum": "Product Backlog",
+        "kanban": "Backlog"
+      },
+      "estimation": {
+        "psa": "Jours / UO",
+        "scrum": "Story points",
+        "kanban": "Story points"
+      },
+      "board": {
+        "psa": "Kanban",
+        "scrum": "Sprint Board",
+        "kanban": "Kanban"
+      }
+    }
+  },
   "applications": {
     "title": "Applications",
     "subtitle": "Périmètres TMA, équipes et budgets",
@@ -1604,6 +1693,12 @@
     "field_uo": "UO activée",
     "field_chef": "Chef utilisateur",
     "field_chef_none": "Aucun",
+    "field_methodology": "Profil méthodologique",
+    "field_methodology_hint": "PSA : terminologie TMA classique. Scrum/Kanban : module Projets agile et story points.",
+    "methodology_psa": "PSA (TMA classique)",
+    "methodology_scrum": "Agile Scrum",
+    "methodology_kanban": "Agile Kanban",
+    "methodology_preview": "Terminologie : {workItem} · {backlog}",
     "mode_non": "Non facturable",
     "mode_forfait": "Forfait",
     "mode_temps_passe": "Réel (temps passé)",

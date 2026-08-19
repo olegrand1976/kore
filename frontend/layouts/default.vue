@@ -289,7 +289,7 @@ type NavItem = {
   section: NavSectionId
   adminOnly?: boolean
   platformOnly?: boolean
-  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'notifications' | 'billing' | 'ett' | 'integrations'
+  module?: 'cra' | 'conges' | 'budget' | 'tma' | 'project' | 'notifications' | 'billing' | 'ett' | 'integrations'
   rbacModule?: RbacModule
   rbacAnyOf?: RbacModule[]
   requestChannel?: 'tma' | 'support' | 'maintenance'
@@ -306,6 +306,7 @@ const allNavItems = computed<NavItem[]>(() => [
   { to: '/ett/reconciliation', icon: 'compare_arrows', label: t('nav.ett_reconciliation'), section: 'time', module: 'ett' },
   { to: '/conges', icon: 'beach_access', label: t('nav.conges'), section: 'time', module: 'conges', activePrefix: '/conges' },
   { to: '/tma', icon: 'support_agent', label: t('nav.tma'), section: 'requests', module: 'tma', requestChannel: 'tma' },
+  { to: '/projets', icon: 'view_kanban', label: t('nav.projets'), section: 'requests', module: 'project', rbacModule: 'project', activePrefix: '/projets' },
   { to: '/support', icon: 'confirmation_number', label: t('nav.support'), section: 'requests', rbacModule: 'support', requestChannel: 'support' },
   { to: '/maintenance', icon: 'build', label: t('nav.maintenance'), section: 'requests', rbacModule: 'maintenance', requestChannel: 'maintenance' },
   {

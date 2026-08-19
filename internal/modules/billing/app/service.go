@@ -339,7 +339,7 @@ func parseModulesFromMetadata(obj map[string]any) []domain.ModuleEntitlement {
 func defaultModules() []domain.ModuleEntitlement {
 	codes := []domain.ModuleCode{
 		domain.ModuleOrg, domain.ModuleCRA, domain.ModuleConges,
-		domain.ModuleBudget, domain.ModuleTMA, domain.ModuleWorkflow,
+		domain.ModuleBudget, domain.ModuleTMA, domain.ModuleProject, domain.ModuleWorkflow,
 	}
 	out := make([]domain.ModuleEntitlement, 0, len(codes))
 	for _, code := range codes {

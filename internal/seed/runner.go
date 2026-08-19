@@ -165,6 +165,7 @@ func (r *Runner) ensureTrial(ctx context.Context, tenant kernel.TenantID) error 
 		billingdomain.ModuleConges,
 		billingdomain.ModuleBudget,
 		billingdomain.ModuleTMA,
+		billingdomain.ModuleProject,
 		billingdomain.ModuleWorkflow,
 		billingdomain.ModuleNotifications,
 		billingdomain.ModuleBilling,

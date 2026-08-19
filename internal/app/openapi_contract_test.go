@@ -25,6 +25,7 @@ import (
 	ssiihttp "github.com/kore/kore/internal/modules/ssii/adapters/http"
 	supporthttp "github.com/kore/kore/internal/modules/support/adapters/http"
 	tmahttp "github.com/kore/kore/internal/modules/tma/adapters/http"
+	projecthttp "github.com/kore/kore/internal/modules/project/adapters/http"
 	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
 	"gopkg.in/yaml.v3"
 )
@@ -45,6 +46,7 @@ func buildAPIRouter() chi.Router {
 		congeshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
 		budgethttp.RegisterRoutes(r, nil, nil, nil, nil)
 		tmahttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
+		projecthttp.RegisterRoutes(r, nil, nil, nil, nil)
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
 		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)

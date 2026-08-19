@@ -35,12 +35,12 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ## Matrice MVP (profil × module)
 
-| Profil | Org | CRA | TMA | Congés | Budget | Reporting | Support | Maint. | Workflow | Billing | Notif. | Intégr. | Factur. | Admin | SSII | ETT |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Administrateur | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V | L | L/E/V | L/E/V | L/E/V | L/E | L/E | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V |
-| Collaborateur | — | L/E | L/E | L/E | L | — | — | — | — | — | — | — | — | — | — | — |
-| Chef d'équipe | L | L/E/V | L/E/V | L | L/E | L | — | — | — | — | — | — | L/E/V | — | — | — |
-| Responsable de service | L | L/E/V | L/E/V | L/E/V | L/E/V | L | — | — | — | — | — | — | L/E/V | — | — | — |
+| Profil | Org | CRA | TMA | Proj. | Congés | Budget | Reporting | Support | Maint. | Workflow | Billing | Notif. | Intégr. | Factur. | Admin | SSII | ETT |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Administrateur | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V | L | L/E/V | L/E/V | L/E/V | L/E | L/E | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V |
+| Collaborateur | — | L/E | L/E | L | L/E | L | — | — | — | — | — | — | — | — | — | — | — |
+| Chef d'équipe | L | L/E/V | L/E/V | L/E/V | L | L/E | L | — | — | — | — | — | — | L/E/V | — | — | — |
+| Responsable de service | L | L/E/V | L/E/V | L/E/V | L/E/V | L/E/V | L | — | — | — | — | — | — | L/E/V | — | — | — |
 
 ## Fiches profils (comportement UI)
 
@@ -51,7 +51,8 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
 - Pages `/admin/sites`, `/admin/services`, `/admin/equipes` : listes dédiées (création / modification) ; l'onglet Structure conserve la vue arbre.
-- Page `/admin/applications` : CRUD applications (libellé, propriétaire, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
+- Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
+- Menu **Projets agile** (`/projets`) pour les applications en mode Scrum ou Kanban.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.
 - CRA définitifs → brouillons facture :
@@ -66,13 +67,13 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 
 ### Collaborateur
 
-- CRA, TMA, congés (saisie) ; budget en lecture.
+- CRA, TMA, congés (saisie) ; **Projets agile** en lecture ; budget en lecture.
 - Menus Pilotage **Clients** / **Missions** visibles (lecture via droits CRA) ; pas de menus d'administration.
 - Compte seed : `COL_collab` / `Collab123!`
 
 ### Chef d'équipe
 
-- Validation CRA et TMA ; congés en lecture ; budget L/E ; reporting L.
+- Validation CRA et TMA ; **Projets agile** L/E/V ; congés en lecture ; budget L/E ; reporting L.
 - Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
 - Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Compte seed : `CHE_chefdev` / `Chef123!`

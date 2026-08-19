@@ -122,16 +122,21 @@ func (s *organizationService) CreateApplication(ctx context.Context, cmd ports.C
 	if cmd.DefaultTJMCents < 0 {
 		return domain.Application{}, fmt.Errorf("defaultTjmCents must be >= 0")
 	}
+	methodology, err := domain.NormalizeMethodologyProfile(cmd.MethodologyProfile)
+	if err != nil {
+		return domain.Application{}, err
+	}
 	siteIDs := domain.DedupeUUIDs(cmd.SiteIDs)
 	serviceIDs := domain.DedupeUUIDs(cmd.ServiceIDs)
 	equipeIDs := domain.DedupeUUIDs(cmd.EquipeIDs)
 	app := domain.Application{
-		ID:                uuid.New(),
-		TenantID:          cmd.TenantID,
-		Libelle:           libelle,
-		Proprietaire:      strings.TrimSpace(cmd.Proprietaire),
-		ModeFacturation:   mode,
-		UOActivee:         cmd.UOActivee,
+		ID:                 uuid.New(),
+		TenantID:           cmd.TenantID,
+		Libelle:            libelle,
+		Proprietaire:       strings.TrimSpace(cmd.Proprietaire),
+		ModeFacturation:    mode,
+		MethodologyProfile: methodology,
+		UOActivee:          cmd.UOActivee,
 		ChefUtilisateurID: cmd.ChefUtilisateurID,
 		Active:            true,
 		DefaultTJMCents:   cmd.DefaultTJMCents,
@@ -201,6 +206,22 @@ func (s *organizationService) UpdateApplication(ctx context.Context, cmd ports.U
 			return domain.Application{}, fmt.Errorf("defaultTjmCents must be >= 0")
 		}
 		app.DefaultTJMCents = *cmd.DefaultTJMCents
+	}
+	if cmd.MethodologyProfile != nil {
+		profile, err := domain.NormalizeMethodologyProfile(*cmd.MethodologyProfile)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		if profile != app.MethodologyProfile {
+			n, err := s.repo.CountProjectArtifacts(ctx, cmd.TenantID, app.ID)
+			if err != nil {
+				return domain.Application{}, err
+			}
+			if n > 0 {
+				return domain.Application{}, domain.ErrMethodologyProfileLocked
+			}
+			app.MethodologyProfile = profile
+		}
 	}
 	replaceShares := cmd.SiteIDs != nil || cmd.ServiceIDs != nil || cmd.EquipeIDs != nil
 	if replaceShares {
@@ -1103,6 +1124,7 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 		"org":           readWriteValidate,
 		"cra":           readWriteValidate,
 		"tma":           readWriteValidate,
+		"project":       readWriteValidate,
 		"conges":        readWriteValidate,
 		"budget":        readWriteValidate,
 		"workflow":      readWriteValidate,
@@ -1120,15 +1142,17 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 	return map[string]map[authx.Module]map[authx.Action]bool{
 		string(domain.ProfileAdmin): mvpAdmin,
 		string(domain.ProfileCollaborateur): {
-			"cra":    readWrite,
-			"tma":    readWrite,
-			"conges": readWrite,
+			"cra":     readWrite,
+			"tma":     readWrite,
+			"project": read,
+			"conges":  readWrite,
 			"budget": read,
 		},
 		"Chef d'équipe": {
 			"org":       read,
 			"cra":       readWriteValidate,
 			"tma":       readWriteValidate,
+			"project":   readWriteValidate,
 			"conges":    read,
 			"budget":    readWrite,
 			"reporting": read,
@@ -1138,6 +1162,7 @@ func DefaultPermissions() map[string]map[authx.Module]map[authx.Action]bool {
 			"org":       read,
 			"cra":       readWriteValidate,
 			"tma":       readWriteValidate,
+			"project":   readWriteValidate,
 			"conges":    readWriteValidate,
 			"budget":    readWriteValidate,
 			"reporting": read,

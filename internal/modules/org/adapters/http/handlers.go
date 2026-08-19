@@ -363,6 +363,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			SiteIDs           []uuid.UUID `json:"siteIds"`
 			ServiceIDs        []uuid.UUID `json:"serviceIds"`
 			EquipeIDs         []uuid.UUID `json:"equipeIds"`
+			MethodologyProfile string      `json:"methodologyProfile"`
 			// Legacy single serviceId still accepted and merged into serviceIds.
 			ServiceID uuid.UUID `json:"serviceId"`
 		}
@@ -387,9 +388,11 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			SiteIDs:           req.SiteIDs,
 			ServiceIDs:        serviceIDs,
 			EquipeIDs:         req.EquipeIDs,
+			MethodologyProfile: req.MethodologyProfile,
 		})
 		if err != nil {
-			if errors.Is(err, domain.ErrInvalidModeFacturation) {
+			if errors.Is(err, domain.ErrInvalidModeFacturation) ||
+				errors.Is(err, domain.ErrInvalidMethodologyProfile) {
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 				return
 			}
@@ -698,6 +701,14 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			cmd.DefaultTJMCents = &n
 		}
+		if v, ok := raw["methodologyProfile"]; ok {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid methodologyProfile")
+				return
+			}
+			cmd.MethodologyProfile = &s
+		}
 		sharesTouched := false
 		if v, ok := raw["siteIds"]; ok {
 			ids, err := parseUUIDSliceField(v)
@@ -742,6 +753,8 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 				return
 			}
 			if errors.Is(err, domain.ErrInvalidModeFacturation) ||
+				errors.Is(err, domain.ErrInvalidMethodologyProfile) ||
+				errors.Is(err, domain.ErrMethodologyProfileLocked) ||
 				errors.Is(err, domain.ErrUserNotFound) ||
 				errors.Is(err, domain.ErrInvalidApplicationLibelle) ||
 				errors.Is(err, domain.ErrBudgetNotFound) ||

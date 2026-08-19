@@ -6,7 +6,7 @@ DO $grants$
 DECLARE
   sch text;
   schemas text[] := ARRAY[
-    'public', 'platform', 'org', 'cra', 'conges', 'budget', 'tma', 'billing',
+    'public', 'platform', 'org', 'cra', 'conges', 'budget', 'project', 'tma', 'billing',
     'workflow', 'notifications', 'publicsite', 'ai', 'ssii', 'support',
     'maintenance', 'invoicing', 'ett', 'reporting', 'admin', 'integrations'
   ];
