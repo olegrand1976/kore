@@ -1,7 +1,8 @@
 # Guide d'accès utilisateurs (RBAC)
 
+> **Parcours produit** (écrans, navigation, onboarding) : [`GUIDE_UTILISATEUR.md`](GUIDE_UTILISATEUR.md).  
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-19 (ordre Organisation : Applications avant Équipes)  
+> **Dernière mise à jour doc** : 2026-08-20 (lien guide utilisateur)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)

@@ -66,6 +66,7 @@ Documentation synchronisée automatiquement depuis la branche \`main\`.
 | Page | Description |
 | --- | --- |
 | [SPECIFICATION_FONCTIONNELLE](Documentation/SPECIFICATION_FONCTIONNELLE) | Spécification fonctionnelle détaillée (SFD) |
+| [GUIDE_UTILISATEUR](Documentation/GUIDE_UTILISATEUR) | Guide utilisateur (parcours métier + admin) |
 | [GUIDE_ACCES_UTILISATEURS](Documentation/GUIDE_ACCES_UTILISATEURS) | Guide d'accès par profil (Aide in-app) |
 | [SCHEMA_DB](Documentation/SCHEMA_DB) | Schéma PostgreSQL actuel (tables, relations) |
 | [CHARTE_GRAPHIQUE](Documentation/CHARTE_GRAPHIQUE) | Charte visuelle UI |
