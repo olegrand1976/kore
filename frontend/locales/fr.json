@@ -1279,6 +1279,7 @@
     "empty": "Aucune demande",
     "col_title": "Titre",
     "col_status": "Statut",
+    "col_description": "Description",
     "col_priority": "Priorité",
     "new": "Nouvelle demande",
     "open": "Ouvrir",

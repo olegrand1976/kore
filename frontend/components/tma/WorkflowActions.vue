@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { syncAssigneeFromDemand, syncAssigneeFromUsers } from '~/utils/tmaAssigneeSelect'
+
 const props = defineProps<{
   status: string
   actions: string[]
@@ -24,11 +26,17 @@ const selectedAssignee = ref('')
 const hasAction = (code: string) => props.actions.includes(code)
 
 watch(
+  () => props.assigneeId,
+  (assignee) => {
+    selectedAssignee.value = syncAssigneeFromDemand(assignee, selectedAssignee.value)
+  },
+  { immediate: true }
+)
+
+watch(
   () => props.users,
   (list) => {
-    if (list?.length && !selectedAssignee.value) {
-      selectedAssignee.value = list[0].id
-    }
+    selectedAssignee.value = syncAssigneeFromUsers(selectedAssignee.value, list)
   },
   { immediate: true }
 )

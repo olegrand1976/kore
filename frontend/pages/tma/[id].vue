@@ -16,9 +16,14 @@
       <AppCard padding="lg" class="mb">
         <dl class="meta">
           <div><dt>{{ $t('tma.col_status') }}</dt><dd><AppBadge variant="neutral">{{ status }}</AppBadge></dd></div>
+          <div v-if="description">
+            <dt>{{ $t('tma.col_description') }}</dt>
+            <dd class="description">{{ description }}</dd>
+          </div>
           <div v-if="agileStoryPoints != null"><dt>{{ $t('project.col_story_points') }}</dt><dd>{{ agileStoryPoints }}</dd></div>
           <div v-if="agileEpicTitle"><dt>Epic</dt><dd>{{ agileEpicTitle }}</dd></div>
           <div v-if="workflowState"><dt>{{ $t('tma.workflow_state') }}</dt><dd>{{ workflowState }}</dd></div>
+          <div v-if="assigneeLabel"><dt>{{ $t('requests.col_assignee') }}</dt><dd>{{ assigneeLabel }}</dd></div>
         </dl>
         <WorkflowActions
           :status="status"
@@ -76,6 +81,7 @@ const {
   reopen,
   saveAnalysis,
   pickSubject,
+  pickDescription,
   pickStatus,
   pickWorkflowId
 } = useTma()
@@ -154,7 +160,7 @@ const { data: demand, pending, refresh } = await useAsyncData(
   { watch: [id] }
 )
 
-if (can('tma', 'V')) {
+if (can('tma', 'V') || can('tma', 'E')) {
   try {
     const res = await apiFetch<{ data?: Array<{ id?: string; ID?: string; login?: string; Login?: string }> }>('/api/org/users')
     const list = res?.data ?? []
@@ -168,7 +174,16 @@ if (can('tma', 'V')) {
 }
 
 const status = computed(() => pickStatus(demand.value ?? {}))
-const assigneeId = computed(() => demand.value?.assigneeId ?? demand.value?.AssigneeID)
+const description = computed(() => pickDescription(demand.value ?? {}))
+const assigneeId = computed(() => {
+  const raw = demand.value?.assigneeId ?? demand.value?.AssigneeID
+  return raw ? String(raw) : ''
+})
+const assigneeLabel = computed(() => {
+  if (!assigneeId.value) return ''
+  const match = teamUsers.value.find((u) => u.id === assigneeId.value)
+  return match?.label || assigneeId.value
+})
 const requiresChefGate = computed(() => demand.value?.requiresChefGate ?? demand.value?.RequiresChefGate ?? false)
 const pageTitle = computed(() => pickSubject(demand.value ?? {}) || t('tma.detail_title'))
 
@@ -200,9 +215,10 @@ const onSaveAnalysis = (payload: typeof analysis) =>
 <style scoped>
 .meta { display: grid; gap: var(--kore-space-md); margin: 0 0 var(--kore-space-lg); }
 .meta div { display: flex; justify-content: space-between; gap: var(--kore-space-sm); }
+.meta div:has(.description) { flex-direction: column; align-items: flex-start; }
 .meta dt { color: var(--kore-text-muted); }
+.description { white-space: pre-wrap; margin: 0.25rem 0 0; width: 100%; }
 .muted { color: var(--kore-text-muted); }
-.mb { margin-bottom: var(--kore-space-lg); }
 .mb { margin-bottom: var(--kore-space-lg); }
 .section-title { margin: 0 0 var(--kore-space-md); font-size: var(--kore-text-body); }
 .flash { margin: 0 0 var(--kore-space-md); padding: var(--kore-space-sm) var(--kore-space-md); border-radius: var(--kore-radius-md); font-size: var(--kore-text-small); }

@@ -52,6 +52,7 @@ export function useTma() {
   const { apiFetch } = useApiFetch()
   const pickId = (d: TmaDemand) => d.id ?? d.ID ?? ''
   const pickSubject = (d: TmaDemand) => d.subject ?? d.Subject ?? ''
+  const pickDescription = (d: TmaDemand) => d.description ?? d.Description ?? ''
   const pickStatus = (d: TmaDemand) => d.status ?? d.Status ?? ''
   const pickWorkflowId = (d: TmaDemand) => d.workflowInstanceId ?? d.WorkflowInstanceID ?? ''
   const pickCreatedAt = (d: TmaDemand) => d.createdAt ?? d.CreatedAt ?? ''
@@ -159,6 +160,7 @@ export function useTma() {
     exportXml,
     pickId,
     pickSubject,
+    pickDescription,
     pickStatus,
     pickWorkflowId,
     pickCreatedAt,
