@@ -187,7 +187,9 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 	week := ts.EnsureWeek(cmd.WeekNumber)
 	lines := make([]domain.TimeLine, 0, len(cmd.Lines))
 	for _, line := range cmd.Lines {
-		if line.Duration.Minutes <= 0 && strings.TrimSpace(line.Comment) == "" {
+		// Keep zero-duration lines only when they carry a non-empty comment.
+		// Negative durations are always discarded.
+		if line.Duration.Minutes < 0 || (line.Duration.Minutes == 0 && strings.TrimSpace(line.Comment) == "") {
 			continue
 		}
 		line.TenantID = cmd.TenantID

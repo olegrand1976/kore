@@ -86,14 +86,15 @@ export function useWeekRows(
   const toSaveLines = (rows: ActivityRow[]): CraLine[] =>
     rows.flatMap((r) => {
       const duration = hoursToMinutes(r.hours)
-      if (duration <= 0) return []
+      const comment = (r.comment ?? '').trim()
+      if (duration <= 0 && comment === '') return []
       return [{
         id: r.id,
         sourceType: r.sourceType,
         sourceId: r.sourceId,
         day: r.day,
         duration,
-        comment: r.comment,
+        comment: r.comment ?? '',
         origin: r.origin ?? 'manual',
         billable: r.billable,
         workRefType: r.workRefType,

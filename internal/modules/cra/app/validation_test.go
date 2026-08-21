@@ -318,3 +318,72 @@ func TestSaveWeek_AllowsDuplicateActivityTypesOnSameDay(t *testing.T) {
 		t.Fatalf("unexpected comments: %q, %q", week.Lines[0].Comment, week.Lines[1].Comment)
 	}
 }
+
+func TestSaveWeek_KeepsCommentOnlyLine(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	weekID := uuid.New()
+	day := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	source := domain.SourceRef{Type: "manual", ID: "default"}
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   userID,
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+		Weeks: []domain.WeekEntry{{
+			ID:         weekID,
+			WeekNumber: 1,
+			Lines:      nil,
+		}},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	if _, err := svc.SaveWeek(context.Background(), ports.SaveWeekCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		WeekNumber:  1,
+		Lines: []domain.TimeLine{
+			{
+				Source:   source,
+				Day:      day,
+				Duration: kernel.Duration{Minutes: 0},
+				Comment:  "  note sans heures  ",
+			},
+			{
+				Source:   source,
+				Day:      day.AddDate(0, 0, 1),
+				Duration: kernel.Duration{Minutes: 0},
+				Comment:  "   ",
+			},
+			{
+				Source:   source,
+				Day:      day.AddDate(0, 0, 2),
+				Duration: kernel.Duration{Minutes: -30},
+				Comment:  "negatif",
+			},
+			{
+				Source:   source,
+				Day:      day.AddDate(0, 0, 3),
+				Duration: kernel.Duration{Minutes: 120},
+				Comment:  "ok",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("SaveWeek: %v", err)
+	}
+
+	week, _ := repo.ts.Week(1)
+	if week == nil {
+		t.Fatal("week not found after save")
+	}
+	if len(week.Lines) != 2 {
+		t.Fatalf("expected 2 lines (comment-only + timed), got %d", len(week.Lines))
+	}
+	if week.Lines[0].Duration.Minutes != 0 || week.Lines[0].Comment != "  note sans heures  " {
+		t.Fatalf("unexpected comment-only line: minutes=%d comment=%q", week.Lines[0].Duration.Minutes, week.Lines[0].Comment)
+	}
+	if week.Lines[1].Duration.Minutes != 120 || week.Lines[1].Comment != "ok" {
+		t.Fatalf("unexpected timed line: minutes=%d comment=%q", week.Lines[1].Duration.Minutes, week.Lines[1].Comment)
+	}
+}

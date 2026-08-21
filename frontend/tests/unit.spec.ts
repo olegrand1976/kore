@@ -439,6 +439,40 @@ describe('useWeekRows toSaveLines', () => {
     expect(lines[0].comment).toBe('done')
   })
 
+  it('persists comment-only rows with zero duration', () => {
+    const week = ref({
+      weekNumber: 1,
+      lines: [],
+      submittedAt: null
+    })
+    const { toSaveLines } = useWeekRows(week, ref(1), ref('2026-07'), ref(1))
+    const lines = toSaveLines([
+      {
+        key: buildKey('manual', 'default', '2026-07-07'),
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        hours: '',
+        comment: '  note sans heures  ',
+        origin: 'manual',
+        billable: true
+      },
+      {
+        key: buildKey('manual', 'extra', '2026-07-08'),
+        sourceType: 'manual',
+        sourceId: 'extra',
+        day: '2026-07-08',
+        hours: '',
+        comment: '   ',
+        origin: 'manual',
+        billable: true
+      }
+    ])
+    expect(lines).toHaveLength(1)
+    expect(lines[0].duration).toBe(0)
+    expect(lines[0].comment).toBe('  note sans heures  ')
+  })
+
   it('persists duplicate activity types on the same day', () => {
     const week = ref({
       weekNumber: 1,
