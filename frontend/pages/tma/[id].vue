@@ -1,6 +1,6 @@
 <template>
   <div>
-    <AppPageHeader :title="pageTitle">
+    <AppPageHeader :title="pageTitle" :subtitle="pageSubtitle">
       <template #actions>
         <AppButton variant="ghost" size="sm" @click="navigateTo('/tma')">
           {{ $t('tma.back') }}
@@ -15,6 +15,10 @@
     <template v-else-if="demand">
       <AppCard padding="lg" class="mb">
         <dl class="meta">
+          <div v-if="subject">
+            <dt>{{ $t('tma.col_title') }}</dt>
+            <dd>{{ subject }}</dd>
+          </div>
           <div><dt>{{ $t('tma.col_status') }}</dt><dd><AppBadge variant="neutral">{{ status }}</AppBadge></dd></div>
           <div v-if="description">
             <dt>{{ $t('tma.col_description') }}</dt>
@@ -53,7 +57,7 @@
           :analysis="analysis"
           :disabled="busy"
           :demand-id="id"
-          :subject="pickSubject(demand ?? {})"
+          :subject="subject"
           :application-id="String(demand?.applicationId ?? demand?.ApplicationID ?? '')"
           @save="onSaveAnalysis"
         />
@@ -174,6 +178,7 @@ if (can('tma', 'V') || can('tma', 'E')) {
 }
 
 const status = computed(() => pickStatus(demand.value ?? {}))
+const subject = computed(() => pickSubject(demand.value ?? {}))
 const description = computed(() => pickDescription(demand.value ?? {}))
 const assigneeId = computed(() => {
   const raw = demand.value?.assigneeId ?? demand.value?.AssigneeID
@@ -185,7 +190,12 @@ const assigneeLabel = computed(() => {
   return match?.label || assigneeId.value
 })
 const requiresChefGate = computed(() => demand.value?.requiresChefGate ?? demand.value?.RequiresChefGate ?? false)
-const pageTitle = computed(() => pickSubject(demand.value ?? {}) || t('tma.detail_title'))
+const pageTitle = computed(() => subject.value || t('tma.detail_title'))
+const pageSubtitle = computed(() => (subject.value ? t('tma.detail_title') : undefined))
+
+useHead(() => ({
+  title: pageTitle.value
+}))
 
 const runAction = async (fn: () => Promise<unknown>) => {
   errorMsg.value = ''
