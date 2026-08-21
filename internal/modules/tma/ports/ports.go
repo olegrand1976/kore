@@ -111,6 +111,7 @@ type TMAService interface {
 	AddAnalysis(ctx context.Context, cmd AnalysisCommand) error
 	Resolve(ctx context.Context, tenant kernel.TenantID, id, userID uuid.UUID) error
 	Reopen(ctx context.Context, cmd ReworkCommand) error
+	SoftDelete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error
 	List(ctx context.Context, tenant kernel.TenantID, filter ExportFilter) ([]domain.Demand, error)
 	GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error)
 	ExportXML(ctx context.Context, filter ExportFilter) ([]domain.XmlExportRow, error)
@@ -119,6 +120,7 @@ type TMAService interface {
 type DemandRepository interface {
 	Save(ctx context.Context, d domain.Demand) error
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error)
+	SoftDelete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error
 	List(ctx context.Context, tenant kernel.TenantID, filter ExportFilter) ([]domain.Demand, error)
 	SaveAnalysis(ctx context.Context, dossier domain.AnalysisDossier) error
 	GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error)

@@ -246,7 +246,7 @@ func (r *Repository) ListBacklog(ctx context.Context, tenant kernel.TenantID, ap
 	query := `
 		SELECT id, subject, status, story_points, epic_id, sprint_id, backlog_rank, assignee_id
 		FROM tma.demands
-		WHERE tenant_id = $1 AND application_id = $2 AND visible = TRUE`
+		WHERE tenant_id = $1 AND application_id = $2 AND visible = TRUE AND deleted_at IS NULL`
 	if backlogOnly {
 		query += ` AND sprint_id IS NULL AND status NOT IN ('resolue')`
 	}
@@ -279,6 +279,7 @@ func (r *Repository) CountProjectArtifacts(ctx context.Context, tenant kernel.Te
 			(SELECT COUNT(*) FROM project.sprints WHERE tenant_id = $1 AND application_id = $2) +
 			(SELECT COUNT(*) FROM project.kanban_configs WHERE tenant_id = $1 AND application_id = $2) +
 			(SELECT COUNT(*) FROM tma.demands WHERE tenant_id = $1 AND application_id = $2
+				AND deleted_at IS NULL
 				AND (epic_id IS NOT NULL OR sprint_id IS NOT NULL OR story_points IS NOT NULL OR backlog_rank IS NOT NULL))
 		)
 	`, tenant.UUID(), appID).Scan(&n)
@@ -290,7 +291,7 @@ func (r *Repository) GetSprintBurndown(ctx context.Context, tenant kernel.Tenant
 	err := r.pool.QueryRow(ctx, `
 		SELECT COALESCE(SUM(story_points), 0)
 		FROM tma.demands
-		WHERE tenant_id = $1 AND sprint_id = $2 AND story_points IS NOT NULL
+		WHERE tenant_id = $1 AND sprint_id = $2 AND story_points IS NOT NULL AND deleted_at IS NULL
 	`, tenant.UUID(), sprint.ID).Scan(&planned)
 	if err != nil {
 		return domain.BurndownSeries{}, err
@@ -321,7 +322,7 @@ func (r *Repository) GetSprintBurndown(ctx context.Context, tenant kernel.Tenant
 		SELECT (resolved_at AT TIME ZONE 'UTC')::date AS d, COALESCE(SUM(story_points), 0)::int
 		FROM tma.demands
 		WHERE tenant_id = $1 AND sprint_id = $2
-			AND story_points IS NOT NULL AND resolved_at IS NOT NULL
+			AND story_points IS NOT NULL AND resolved_at IS NOT NULL AND deleted_at IS NULL
 		GROUP BY d
 		ORDER BY d
 	`, tenant.UUID(), sprint.ID)
@@ -385,7 +386,7 @@ func (r *Repository) GetVelocity(ctx context.Context, tenant kernel.TenantID, ap
 				SELECT SUM(d.story_points)
 				FROM tma.demands d
 				WHERE d.tenant_id = s.tenant_id AND d.sprint_id = s.id
-					AND d.resolved_at IS NOT NULL AND d.story_points IS NOT NULL
+					AND d.resolved_at IS NOT NULL AND d.story_points IS NOT NULL AND d.deleted_at IS NULL
 			), 0)
 		FROM project.sprints s
 		WHERE s.tenant_id = $1 AND s.application_id = $2 AND s.status = 'closed'

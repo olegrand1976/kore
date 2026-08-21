@@ -91,8 +91,23 @@ test "$MGR_TOKEN" != "null"
 curl -sf "http://localhost:${API_PORT}/api/v1/demands" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/users" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 
-# Project agile (manager + app seed DemoAppID)
+# TMA soft-delete: create then DELETE (masque la demande)
 DEMO_APP="00000000-0000-4000-8000-000000000013"
+CREATE_DEMAND=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/demands" \
+  -H "Authorization: Bearer $MGR_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"applicationId\":\"${DEMO_APP}\",\"subject\":\"Smoke soft-delete\",\"description\":\"ci\"}")
+SMOKE_DEMAND=$(echo "$CREATE_DEMAND" | jq -r '.data.id // .data.ID')
+test -n "$SMOKE_DEMAND"
+test "$SMOKE_DEMAND" != "null"
+curl -sf -X DELETE "http://localhost:${API_PORT}/api/v1/demands/${SMOKE_DEMAND}" \
+  -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
+# déjà soft-deleted → 404
+HTTP_DEL=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "http://localhost:${API_PORT}/api/v1/demands/${SMOKE_DEMAND}" \
+  -H "Authorization: Bearer $MGR_TOKEN")
+test "$HTTP_DEL" = "404"
+
+# Project agile (manager + app seed DemoAppID)
 curl -sf "http://localhost:${API_PORT}/api/v1/project/applications" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/epics" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/sprints" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null

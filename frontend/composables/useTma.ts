@@ -144,6 +144,9 @@ export function useTma() {
   const reopen = (id: string, reason: string) =>
     apiFetch(`/api/tma/demands/${id}/reopen`, { method: 'POST', body: { reason } })
 
+  const remove = (id: string) =>
+    apiFetch(`/api/tma/demands/${id}`, { method: 'DELETE' })
+
   const exportXml = () => window.open('/api/tma/demands/export.xml', '_blank')
 
   return {
@@ -157,6 +160,7 @@ export function useTma() {
     saveAnalysis,
     resolve,
     reopen,
+    remove,
     exportXml,
     pickId,
     pickSubject,

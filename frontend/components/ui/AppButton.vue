@@ -6,7 +6,7 @@ withDefaults(defineProps<{
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
   to?: string
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'icon'
 }>(), {
   variant: 'primary',
   type: 'button',
@@ -47,6 +47,11 @@ withDefaults(defineProps<{
 
 .app-btn--md { padding: 0.625rem 1.25rem; font-size: var(--kore-text-small); }
 .app-btn--sm { padding: 0.375rem 0.75rem; font-size: var(--kore-text-caption); }
+.app-btn--icon {
+  padding: 0.375rem;
+  min-width: 2rem;
+  min-height: 2rem;
+}
 
 .app-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 

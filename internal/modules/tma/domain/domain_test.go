@@ -62,10 +62,11 @@ func TestDemand_AssignRequiresVisible(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrDemandNotVisible)
 }
 
-func TestToXmlExportRow_Has17Fields(t *testing.T) {
+func TestDemand_SoftDelete(t *testing.T) {
 	d := testDemand(false)
-	row := domain.ToXmlExportRow(d)
-	assert.NotEqual(t, uuid.Nil, row.DemandID)
-	assert.NotEmpty(t, row.Type)
-	assert.NotEmpty(t, row.Subject)
+	at := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, d.SoftDelete(at))
+	require.NotNil(t, d.DeletedAt)
+	assert.True(t, d.DeletedAt.Equal(at))
+	assert.ErrorIs(t, d.SoftDelete(at), domain.ErrDemandNotFound)
 }

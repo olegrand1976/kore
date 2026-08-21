@@ -1721,6 +1721,23 @@ paths:
           description: Détail demande
         "404":
           description: Introuvable
+    delete:
+      summary: Soft-delete d'une demande TMA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Demande masquée (soft-delete)
+        "403":
+          description: Interdit
+        "404":
+          description: Introuvable
   /demands/{id}/analysis:
     get:
       summary: Lire l'analyse d'une demande

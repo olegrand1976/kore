@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	maintenancepostgres "github.com/kore/kore/internal/modules/maintenance/adapters/postgres"
 	maintenancedomain "github.com/kore/kore/internal/modules/maintenance/domain"
 	"github.com/kore/kore/internal/modules/org/domain"
@@ -13,6 +12,7 @@ import (
 	supportpostgres "github.com/kore/kore/internal/modules/support/adapters/postgres"
 	supportdomain "github.com/kore/kore/internal/modules/support/domain"
 	tmapostgres "github.com/kore/kore/internal/modules/tma/adapters/postgres"
+	tmadomain "github.com/kore/kore/internal/modules/tma/domain"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -34,7 +34,7 @@ func (c *attachmentResourceChecker) Exists(ctx context.Context, tenant kernel.Te
 	switch resourceType {
 	case domain.ResourceTypeTmaDemand:
 		_, err := c.tma.Get(ctx, tenant, resourceID)
-		return mapExists(err, pgx.ErrNoRows)
+		return mapExists(err, tmadomain.ErrDemandNotFound)
 	case domain.ResourceTypeSupportTicket:
 		_, err := c.support.GetTicket(ctx, tenant, resourceID)
 		return mapExists(err, supportdomain.ErrTicketNotFound)

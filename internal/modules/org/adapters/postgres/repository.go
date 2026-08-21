@@ -2245,6 +2245,7 @@ func (r *Repository) CountProjectArtifacts(ctx context.Context, tenant kernel.Te
 			(SELECT COUNT(*) FROM project.sprints WHERE tenant_id = $1 AND application_id = $2) +
 			(SELECT COUNT(*) FROM project.kanban_configs WHERE tenant_id = $1 AND application_id = $2) +
 			(SELECT COUNT(*) FROM tma.demands WHERE tenant_id = $1 AND application_id = $2
+				AND deleted_at IS NULL
 				AND (epic_id IS NOT NULL OR sprint_id IS NOT NULL OR story_points IS NOT NULL OR backlog_rank IS NOT NULL))
 		)
 	`, tenant.UUID(), applicationID).Scan(&n)

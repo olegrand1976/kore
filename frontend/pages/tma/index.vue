@@ -51,6 +51,7 @@
       />
     </AppKpiGrid>
 
+    <p v-if="flashOk" class="flash flash--ok" role="status">{{ flashOk }}</p>
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
@@ -91,9 +92,26 @@
           <AppBadge variant="neutral">{{ tmaStatusLabel(String(value)) }}</AppBadge>
         </template>
         <template #cell-actions="{ row }">
-          <AppButton variant="ghost" size="sm" @click="navigateTo(`/tma/${row.id}`)">
-            {{ $t('tma.open') }}
-          </AppButton>
+          <div class="tma-actions">
+            <AppButton
+              variant="ghost"
+              size="icon"
+              :aria-label="$t('tma.open')"
+              @click="navigateTo(`/tma/${row.id}`)"
+            >
+              <AppIcon name="visibility" />
+            </AppButton>
+            <AppButton
+              v-if="canWriteTma"
+              variant="ghost"
+              size="icon"
+              :aria-label="$t('tma.delete')"
+              :disabled="deleting"
+              @click="askDelete(row as TmaRow)"
+            >
+              <AppIcon name="delete" />
+            </AppButton>
+          </div>
         </template>
       </AppTable>
     </AppCard>
@@ -110,13 +128,51 @@
           <div class="tma-kanban-card">
             <p class="tma-kanban-card__title">{{ (item as TmaRow).title }}</p>
             <AppBadge variant="neutral">{{ tmaStatusLabel(String((item as TmaRow).status)) }}</AppBadge>
-            <AppButton variant="ghost" size="sm" @click="navigateTo(`/tma/${(item as TmaRow).id}`)">
-              {{ $t('tma.open') }}
-            </AppButton>
+            <div class="tma-actions">
+              <AppButton
+                variant="ghost"
+                size="icon"
+                :aria-label="$t('tma.open')"
+                @click="navigateTo(`/tma/${(item as TmaRow).id}`)"
+              >
+                <AppIcon name="visibility" />
+              </AppButton>
+              <AppButton
+                v-if="canWriteTma"
+                variant="ghost"
+                size="icon"
+                :aria-label="$t('tma.delete')"
+                :disabled="deleting"
+                @click="askDelete(item as TmaRow)"
+              >
+                <AppIcon name="delete" />
+              </AppButton>
+            </div>
           </div>
         </template>
       </AppKanbanBoard>
     </AppCard>
+
+    <AppModal
+      v-model:open="deleteOpen"
+      width="md"
+      title-id="tma-delete-title"
+      :aria-label="$t('tma.delete')"
+    >
+      <form class="tma-delete" @submit.prevent="confirmDelete">
+        <h2 id="tma-delete-title" class="tma-delete__title">{{ $t('tma.delete') }}</h2>
+        <p>{{ $t('tma.delete_confirm', { title: pendingDelete?.title || '' }) }}</p>
+        <p v-if="deleteError" class="tma-delete__error" role="alert">{{ deleteError }}</p>
+        <div class="tma-delete__actions">
+          <AppButton variant="ghost" size="sm" type="button" :disabled="deleting" @click="deleteOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="danger" size="sm" type="submit" :disabled="deleting">
+            {{ $t('tma.delete') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -149,13 +205,20 @@ const { t } = useI18n()
 const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { extractFetchError } = useApiError()
-const { list, create, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
+const { list, create, remove, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
 const { uploadAll } = useRequestAttachments()
-const { canValidateTma } = usePermissions()
+const { can, canValidateTma } = usePermissions()
+
+const canWriteTma = computed(() => can('tma', 'E'))
 
 const showForm = ref(false)
 const creating = ref(false)
 const errorMsg = ref('')
+const flashOk = ref('')
+const deleteOpen = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+const pendingDelete = ref<TmaRow | null>(null)
 
 const toggleForm = () => {
   showForm.value = !showForm.value
@@ -242,7 +305,7 @@ const kpi = computed(() => {
 const columns = computed(() => [
   { key: 'title', label: t('tma.col_title') },
   { key: 'status', label: t('tma.col_status') },
-  { key: 'actions', label: '' }
+  { key: 'actions', label: t('tma.col_actions') }
 ])
 
 const displayRows = computed(() => sortedItems.value)
@@ -254,6 +317,33 @@ const kanbanColumns = computed((): KanbanColumn[] =>
     tone: status === 'resolue' ? 'success' : status === 'en_attente_creation' ? 'warn' : 'blue'
   }))
 )
+
+const askDelete = (row: TmaRow) => {
+  pendingDelete.value = row
+  flashOk.value = ''
+  errorMsg.value = ''
+  deleteError.value = ''
+  deleteOpen.value = true
+}
+
+const confirmDelete = async () => {
+  const row = pendingDelete.value
+  if (!row?.id) return
+  deleting.value = true
+  deleteError.value = ''
+  flashOk.value = ''
+  try {
+    await remove(row.id)
+    deleteOpen.value = false
+    pendingDelete.value = null
+    flashOk.value = t('tma.delete_ok')
+    await refresh()
+  } catch (e) {
+    deleteError.value = extractFetchError(e, t('tma.delete_error'))
+  } finally {
+    deleting.value = false
+  }
+}
 
 const onCreate = async (payload: ServiceRequestPayload) => {
   creating.value = true
@@ -297,6 +387,13 @@ const onCreate = async (payload: ServiceRequestPayload) => {
 }
 
 .flash--error { color: var(--kore-error); }
+.flash--ok { color: var(--kore-success); }
+
+.tma-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kore-space-xs);
+}
 
 .tma-kanban-card {
   display: flex;
@@ -310,5 +407,42 @@ const onCreate = async (payload: ServiceRequestPayload) => {
   font-weight: 600;
   color: var(--kore-text);
   word-break: break-word;
+}
+
+.tma-delete {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.tma-delete__title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+  color: var(--kore-text);
+}
+
+.tma-delete p {
+  margin: 0;
+  color: var(--kore-text);
+}
+
+.tma-delete__error {
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
+}
+
+.tma-delete__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--kore-space-sm);
+}
+
+@media (max-width: 768px) {
+  .tma-delete__actions {
+    flex-direction: column;
+  }
+
+  .tma-delete__actions :deep(.app-btn) {
+    width: 100%;
+  }
 }
 </style>

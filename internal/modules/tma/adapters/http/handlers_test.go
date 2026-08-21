@@ -8,12 +8,41 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
+	"github.com/kore/kore/pkg/kernel"
 )
 
 func TestGetDemand_InvalidID(t *testing.T) {
 	h := getDemand(nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/demands/not-a-uuid", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "not-a-uuid")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d want %d", rec.Code, http.StatusBadRequest)
+	}
+	var env httpx.Envelope
+	if err := json.NewDecoder(rec.Body).Decode(&env); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if env.Error == nil || env.Error.Code != httpx.ErrCodeValidation {
+		t.Fatalf("unexpected envelope: %+v", env.Error)
+	}
+}
+
+func TestDeleteDemand_InvalidID(t *testing.T) {
+	h := deleteDemand(nil, allowAuthorizer{}, enabledChannels{})
+	ctx := authx.WithIdentity(context.Background(), authx.Identity{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		UserID:   uuid.New(),
+		Profile:  "Administrateur",
+	})
+	req := httptest.NewRequest(http.MethodDelete, "/demands/not-a-uuid", nil).WithContext(ctx)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "not-a-uuid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))

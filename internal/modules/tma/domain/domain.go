@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrDemandNotVisible       = errors.New("demand not visible until chef utilisateur validation")
+	ErrDemandNotFound         = errors.New("demand not found")
 	ErrTransitionNotAllowed   = errors.New("transition not allowed")
 	ErrDemandAlreadyResolved  = errors.New("demand already resolved")
 	ErrAnalysisNotFound       = errors.New("analysis not found")
@@ -77,6 +78,7 @@ type Demand struct {
 	StoryPoints        *int16
 	BacklogRank        *int
 	ResolvedAt         *time.Time
+	DeletedAt          *time.Time
 	CreatedAt          time.Time
 }
 
@@ -200,6 +202,16 @@ func (d *Demand) Reopen(reason string) error {
 	d.ConsumptionActive = true
 	d.ResolvedAt = nil
 	_ = reason
+	return nil
+}
+
+// SoftDelete marks the demand as deleted at the given UTC instant.
+func (d *Demand) SoftDelete(at time.Time) error {
+	if d.DeletedAt != nil {
+		return ErrDemandNotFound
+	}
+	t := at.UTC()
+	d.DeletedAt = &t
 	return nil
 }
 

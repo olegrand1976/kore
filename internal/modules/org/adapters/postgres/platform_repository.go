@@ -53,7 +53,7 @@ func (r *Repository) ListTenantsUsage(ctx context.Context) ([]ports.TenantUsageS
 				COUNT(*) AS cnt,
 				COUNT(*) FILTER (WHERE status IN ('ouverte', 'affectee', 'en_cours', 'rework')) AS open_cnt,
 				MAX(created_at) AS last_at
-			FROM tma.demands d WHERE d.tenant_id = t.id
+			FROM tma.demands d WHERE d.tenant_id = t.id AND d.deleted_at IS NULL
 		) tma ON TRUE
 		LEFT JOIN LATERAL (
 			SELECT COUNT(*) AS cnt FROM budget.budgets b WHERE b.tenant_id = t.id

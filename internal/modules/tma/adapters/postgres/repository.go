@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -53,8 +54,23 @@ func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UU
 		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
 			epic_id, sprint_id, story_points, backlog_rank, resolved_at, created_at
-		FROM tma.demands WHERE tenant_id = $1 AND id = $2
+		FROM tma.demands WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), id))
+}
+
+func (r *Repository) SoftDelete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE tma.demands
+		SET deleted_at = $3
+		WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+	`, tenant.UUID(), id, deletedAt.UTC())
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrDemandNotFound
+	}
+	return nil
 }
 
 func demandSelectColumns() string {
@@ -66,7 +82,7 @@ func demandSelectColumns() string {
 func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM tma.demands WHERE tenant_id = $1`, demandSelectColumns())
+		FROM tma.demands WHERE tenant_id = $1 AND deleted_at IS NULL`, demandSelectColumns())
 	args := []any{tenant.UUID()}
 	argPos := 2
 	if filter.ApplicationID != nil {
@@ -165,7 +181,7 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Demand{}, fmt.Errorf("demand not found: %w", err)
+			return domain.Demand{}, domain.ErrDemandNotFound
 		}
 		return domain.Demand{}, err
 	}

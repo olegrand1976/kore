@@ -65,7 +65,7 @@ func (w *WipChecker) CheckWip(ctx context.Context, tenant kernel.TenantID, appID
 
 	query := `
 		SELECT COUNT(*) FROM tma.demands
-		WHERE tenant_id = $1 AND application_id = $2 AND status = $3 AND visible = TRUE
+		WHERE tenant_id = $1 AND application_id = $2 AND status = $3 AND visible = TRUE AND deleted_at IS NULL
 	`
 	args := []any{tenant.UUID(), appID, targetStatus}
 	if excludeDemandID != nil {

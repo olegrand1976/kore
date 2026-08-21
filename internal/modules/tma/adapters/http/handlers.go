@@ -26,6 +26,7 @@ func RegisterRoutes(r chi.Router, tma ports.TMAService, tokens *authx.TokenIssue
 		pr.Get("/demands/{id}", getDemand(tma, authorizer))
 		pr.Get("/demands/{id}/analysis", getAnalysis(tma, authorizer))
 		pr.Post("/demands", createDemand(tma, authorizer, channels))
+		pr.Delete("/demands/{id}", deleteDemand(tma, authorizer, channels))
 		pr.Post("/demands/{id}/validate-creation", validateCreation(tma, authorizer, channels))
 		pr.Post("/demands/{id}/assign", assignDemand(tma, authorizer, channels))
 		pr.Post("/demands/{id}/take-over", takeOverDemand(tma, authorizer, channels))
@@ -103,6 +104,46 @@ func getDemand(tma ports.TMAService, authorizer authx.Authorizer) http.HandlerFu
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, d)
+	}
+}
+
+func deleteDemand(tma ports.TMAService, authorizer authx.Authorizer, channels kernel.RequestChannelReader) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !httpx.RequireRequestChannel(w, r, channels, kernel.RequestChannelTMA) {
+			return
+		}
+		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		d, err := tma.Get(r.Context(), identity.TenantID, id)
+		if err != nil {
+			if errors.Is(err, domain.ErrDemandNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		if !demandVisibleTo(d, authorizer, r) {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "demand not found")
+			return
+		}
+		if err := tma.SoftDelete(r.Context(), identity.TenantID, id); err != nil {
+			if errors.Is(err, domain.ErrDemandNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "deleted"})
 	}
 }
 

@@ -281,6 +281,18 @@ func (s *service) Reopen(ctx context.Context, cmd ports.ReworkCommand) error {
 	return s.repo.Save(ctx, demand)
 }
 
+func (s *service) SoftDelete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	demand, err := s.repo.Get(ctx, tenant, id)
+	if err != nil {
+		return err
+	}
+	at := s.clock.Now().UTC()
+	if err := demand.SoftDelete(at); err != nil {
+		return err
+	}
+	return s.repo.SoftDelete(ctx, tenant, id, at)
+}
+
 func (s *service) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
 	filter.TenantID = tenant
 	return s.repo.List(ctx, tenant, filter)

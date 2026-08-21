@@ -12,8 +12,10 @@ import (
 )
 
 type fakeDemandRepo struct {
-	demand    domain.Demand
-	lastSaved domain.Demand
+	demand        domain.Demand
+	lastSaved     domain.Demand
+	lastDeletedAt *time.Time
+	getErr        error
 }
 
 func (r *fakeDemandRepo) Save(_ context.Context, d domain.Demand) error {
@@ -22,11 +24,20 @@ func (r *fakeDemandRepo) Save(_ context.Context, d domain.Demand) error {
 }
 
 func (r *fakeDemandRepo) Get(_ context.Context, _ kernel.TenantID, _ uuid.UUID) (domain.Demand, error) {
+	if r.getErr != nil {
+		return domain.Demand{}, r.getErr
+	}
 	return r.demand, nil
 }
 
 func (r *fakeDemandRepo) List(_ context.Context, _ kernel.TenantID, _ ports.ExportFilter) ([]domain.Demand, error) {
 	return nil, nil
+}
+
+func (r *fakeDemandRepo) SoftDelete(_ context.Context, _ kernel.TenantID, _ uuid.UUID, deletedAt time.Time) error {
+	t := deletedAt
+	r.lastDeletedAt = &t
+	return nil
 }
 
 func (r *fakeDemandRepo) SaveAnalysis(_ context.Context, _ domain.AnalysisDossier) error { return nil }
