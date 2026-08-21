@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import type { RequestResourceKey } from '~/composables/useRequestAttachments'
 import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useRequestAttachments'
+import AppCard from '~/components/ui/AppCard.vue'
 
 const props = withDefaults(defineProps<{
   resource: RequestResourceKey
   resourceId: string
   canUpload?: boolean
+  /** Nest inside another card without wrapping AppCard. */
+  embedded?: boolean
+  title?: string
+  inputId?: string
 }>(), {
-  canUpload: true
+  canUpload: true,
+  embedded: false,
+  title: '',
+  inputId: ''
 })
 
 const { t } = useI18n()
@@ -15,6 +23,21 @@ const { extractFetchError } = useApiError()
 const { list, uploadAll, downloadUrl, pickId, pickFileName } = useRequestAttachments()
 
 const resourceType = computed(() => REQUEST_RESOURCE[props.resource])
+const heading = computed(() => props.title || t('requests.form_attachments'))
+const uploadInputId = computed(
+  () => props.inputId || `request-attachments-upload-${props.resource}-${props.resourceId || 'new'}`
+)
+const rootTag = computed(() => (props.embedded ? 'div' : AppCard))
+const rootBind = computed(() =>
+  props.embedded
+    ? {
+        class: 'request-attachments request-attachments--embedded'
+      }
+    : {
+        padding: 'lg' as const,
+        class: 'request-attachments'
+      }
+)
 
 const attachments = ref<Awaited<ReturnType<typeof list>>>([])
 const pending = ref(true)
@@ -58,8 +81,8 @@ const onUpload = async () => {
 </script>
 
 <template>
-  <AppCard padding="lg" class="request-attachments">
-    <h2 class="request-attachments__title">{{ t('requests.form_attachments') }}</h2>
+  <component :is="rootTag" v-bind="rootBind">
+    <h2 class="request-attachments__title">{{ heading }}</h2>
 
     <p v-if="pending" class="request-attachments__muted">{{ t('common.loading') }}</p>
     <p v-else-if="errorMsg" class="request-attachments__error" role="alert">{{ errorMsg }}</p>
@@ -74,7 +97,7 @@ const onUpload = async () => {
     <p v-else-if="!pending" class="request-attachments__muted">{{ t('requests.attachments_empty') }}</p>
 
     <form v-if="canUpload" class="request-attachments__upload" @submit.prevent="onUpload">
-      <AppFileUpload id="request-attachments-upload" v-model="files" :label="t('requests.attachments_add')" />
+      <AppFileUpload :id="uploadInputId" v-model="files" :label="t('requests.attachments_add')" />
       <AppButton
         variant="primary"
         size="sm"
@@ -84,7 +107,7 @@ const onUpload = async () => {
         {{ uploading ? t('common.loading') : t('requests.attachments_upload') }}
       </AppButton>
     </form>
-  </AppCard>
+  </component>
 </template>
 
 <style scoped>
@@ -92,6 +115,13 @@ const onUpload = async () => {
   display: grid;
   gap: var(--kore-space-md);
   margin-bottom: var(--kore-space-lg);
+}
+
+.request-attachments--embedded {
+  margin-bottom: 0;
+  margin-top: var(--kore-space-lg);
+  padding-top: var(--kore-space-lg);
+  border-top: 1px solid var(--kore-border);
 }
 
 .request-attachments__title {
@@ -131,12 +161,12 @@ const onUpload = async () => {
 
 .request-attachments__error {
   margin: 0;
-  color: var(--kore-status-danger);
+  color: var(--kore-error);
   font-size: var(--kore-text-small);
 }
 
 @media (max-width: 768px) {
-  .request-attachments__upload :deep(.app-button) {
+  .request-attachments__upload :deep(.app-btn) {
     width: 100%;
   }
 }

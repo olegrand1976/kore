@@ -45,13 +45,7 @@
         />
       </AppCard>
 
-      <RequestAttachmentsPanel
-        resource="tma"
-        :resource-id="id"
-        :can-upload="can('tma', 'E')"
-      />
-
-      <AppCard padding="lg">
+      <AppCard padding="lg" class="mb">
         <h2 class="section-title">{{ $t('tma.analysis_title') }}</h2>
         <AnalysisEditor
           :analysis="analysis"
@@ -60,6 +54,14 @@
           :subject="subject"
           :application-id="String(demand?.applicationId ?? demand?.ApplicationID ?? '')"
           @save="onSaveAnalysis"
+        />
+        <RequestAttachmentsPanel
+          embedded
+          resource="tma"
+          :resource-id="id"
+          :title="$t('tma.analysis_attachments')"
+          :input-id="`tma-analysis-attachments-${id}`"
+          :can-upload="can('tma', 'E')"
         />
       </AppCard>
     </template>
