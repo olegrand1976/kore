@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -186,7 +187,7 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 	week := ts.EnsureWeek(cmd.WeekNumber)
 	lines := make([]domain.TimeLine, 0, len(cmd.Lines))
 	for _, line := range cmd.Lines {
-		if line.Duration.Minutes <= 0 {
+		if line.Duration.Minutes <= 0 && strings.TrimSpace(line.Comment) == "" {
 			continue
 		}
 		line.TenantID = cmd.TenantID
