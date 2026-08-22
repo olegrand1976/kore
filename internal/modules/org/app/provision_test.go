@@ -10,6 +10,7 @@ import (
 	"github.com/kore/kore/internal/modules/org/app"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
+	"github.com/kore/kore/internal/seed"
 	"github.com/kore/kore/pkg/kernel"
 	"github.com/stretchr/testify/require"
 )
@@ -99,7 +100,7 @@ func TestProvisionTenant_HappyPath(t *testing.T) {
 		Pays:          "MA",
 		AdminLogin:    "ADM_acme",
 		AdminEmail:    "admin@acme.test",
-		AdminPassword: "Admin123!",
+		AdminPassword: seed.AdminPassword,
 		Seats:         25,
 	})
 	require.NoError(t, err)
@@ -126,7 +127,7 @@ func TestProvisionTenant_LoginConflict(t *testing.T) {
 		Pays:          "FR",
 		AdminLogin:    "ADM_taken",
 		AdminEmail:    "a@b.co",
-		AdminPassword: "Admin123!",
+		AdminPassword: seed.AdminPassword,
 	})
 	require.ErrorIs(t, err, domain.ErrLoginAlreadyExists)
 }
@@ -140,7 +141,7 @@ func TestProvisionTenant_InvalidPays(t *testing.T) {
 		Pays:          "DE",
 		AdminLogin:    "ADM_new",
 		AdminEmail:    "a@b.co",
-		AdminPassword: "Admin123!",
+		AdminPassword: seed.AdminPassword,
 	})
 	require.ErrorIs(t, err, domain.ErrInvalidPays)
 }
@@ -154,7 +155,7 @@ func TestProvisionTenant_InvalidEmail(t *testing.T) {
 		Pays:          "FR",
 		AdminLogin:    "ADM_new",
 		AdminEmail:    "a@",
-		AdminPassword: "Admin123!",
+		AdminPassword: seed.AdminPassword,
 	})
 	require.ErrorIs(t, err, domain.ErrInvalidEmail)
 }
@@ -169,7 +170,7 @@ func TestProvisionTenant_TrialFailureRollsBack(t *testing.T) {
 		Pays:          "FR",
 		AdminLogin:    "ADM_new",
 		AdminEmail:    "admin@acme.test",
-		AdminPassword: "Admin123!",
+		AdminPassword: seed.AdminPassword,
 	})
 	require.Error(t, err)
 	require.Len(t, org.rolledBack, 1)
