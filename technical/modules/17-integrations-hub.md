@@ -187,7 +187,7 @@ Webhook entrant Taiga → lien `external_links` ↔ demande TMA Kore. Sync sorta
 | `kore-taiga-webhook-secret` | Header `X-Taiga-Webhook-Secret` (obligatoire — sans version valide : webhook **503**) |
 | `kore-taiga-base-url` | URL instance Taiga (ex. `https://taiga.example.com`) |
 | `kore-taiga-project-slug` | Slug projet pour construire les permaliens |
-| `kore-taiga-default-tenant-id` | UUID tenant Kore si Taiga n'envoie pas `X-Kore-Tenant-ID` |
+| `kore-taiga-default-tenant-id` | UUID tenant Kore si Taiga n'envoie pas `X-Kore-Tenant-ID` (staging seed : tenant **demo** `…0001`) |
 
 Les trois derniers peuvent aussi être définis via `.env.gcp` (`TAIGA_*`) ou variables d'environnement au deploy.
 

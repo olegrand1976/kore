@@ -14,28 +14,48 @@ BODY_FILE="$(mktemp)"
 trap 'rm -f "$BODY_FILE"' EXIT
 
 API_BASE="${BASE_URL%/}/api/v1"
+SMOKE_TOKEN=""
+
+jwt_tenant_id() {
+  local token="$1"
+  python3 -c "import base64,json,sys; t=sys.argv[1].split('.')[1]; t+='='*(-len(t)%4); print(json.loads(base64.urlsafe_b64decode(t)).get('tenant_id',''))" "$token"
+}
 
 resolve_demand_id() {
-  if [[ -n "$DEMAND_ID" ]]; then
-    return 0
-  fi
   local login="${SMOKE_LOGIN:-ADM_admin}"
   local password="${SMOKE_PASSWORD:-Admin123!}"
   local login_resp token demands
 
-  echo "→ Résolution demand_id via API (première demande TMA)…"
+  if [[ -n "$DEMAND_ID" && -n "${SMOKE_TOKEN:-}" ]]; then
+    return 0
+  fi
+
+  echo "→ Auth API (${login})…"
   if ! login_resp=$(curl -sS -f -X POST "${API_BASE}/auth/login" \
     -H "Content-Type: application/json" \
     -d "{\"login\":\"${login}\",\"password\":\"${password}\"}" 2>/dev/null); then
-    echo "ERREUR: login impossible — passez DEMAND_UUID en 2e argument" >&2
-    exit 1
+    if [[ -z "$DEMAND_ID" ]]; then
+      echo "ERREUR: login impossible — passez DEMAND_UUID en 2e argument" >&2
+      exit 1
+    fi
+    return 0
   fi
-  token=$(echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or {}; print(d.get('accessToken') or d.get('AccessToken') or '')")
-  if [[ -z "$token" ]]; then
+  SMOKE_TOKEN=$(echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or {}; print(d.get('accessToken') or d.get('AccessToken') or '')")
+  if [[ -z "$SMOKE_TOKEN" ]]; then
     echo "ERREUR: token absent" >&2
     exit 1
   fi
-  if ! demands=$(curl -sS -f -H "Authorization: Bearer ${token}" "${API_BASE}/demands?page_size=1" 2>/dev/null); then
+  TENANT="$(jwt_tenant_id "$SMOKE_TOKEN")"
+  if [[ -z "$TENANT" ]]; then
+    TENANT="${TAIGA_DEFAULT_TENANT_ID:-00000000-0000-4000-8000-000000000001}"
+  fi
+
+  if [[ -n "$DEMAND_ID" ]]; then
+    return 0
+  fi
+
+  echo "→ Résolution demand_id (première demande TMA, tenant ${TENANT})…"
+  if ! demands=$(curl -sS -f -H "Authorization: Bearer ${SMOKE_TOKEN}" "${API_BASE}/demands?page_size=1" 2>/dev/null); then
     echo "ERREUR: GET /demands impossible" >&2
     exit 1
   fi
@@ -59,7 +79,7 @@ if [[ -z "$SECRET" ]]; then
   fi
 fi
 
-TENANT="${TAIGA_DEFAULT_TENANT_ID:-00000000-0000-4000-8000-0000000000a1}"
+TENANT="${TENANT:-${TAIGA_DEFAULT_TENANT_ID:-00000000-0000-4000-8000-000000000001}}"
 WEBHOOK_URL="${API_BASE}/integrations/taiga/webhook"
 SMOKE_STORY_ID="${TAIGA_SMOKE_STORY_ID:-$((9000 + RANDOM % 9000))}"
 
@@ -70,9 +90,9 @@ payload=$(cat <<EOF
   "data": {
     "id": ${SMOKE_STORY_ID},
     "ref": 42,
-    "project": { "slug": "kore-demo" },
+    "project": { "slug": "kore-tma" },
     "external_reference": ["kore", "${DEMAND_ID}"],
-    "permalink": "https://taiga.example/project/kore-demo/us/42"
+    "permalink": "https://taiga.ll-it-sc.be/project/kore-tma/us/42"
   }
 }
 EOF
@@ -99,15 +119,17 @@ verify_link_get() {
   local password="${SMOKE_PASSWORD:-Admin123!}"
   local login_resp token get_code
 
-  echo "→ POST ${API_BASE}/auth/login (${login})"
-  if ! login_resp=$(curl -sS -f -X POST "${API_BASE}/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"login\":\"${login}\",\"password\":\"${password}\"}" 2>/dev/null); then
-    echo "→ GET lien ignoré (login impossible — définir SMOKE_LOGIN/SMOKE_PASSWORD)" >&2
-    return 0
+  token="${SMOKE_TOKEN:-}"
+  if [[ -z "$token" ]]; then
+    echo "→ POST ${API_BASE}/auth/login (${login})"
+    if ! login_resp=$(curl -sS -f -X POST "${API_BASE}/auth/login" \
+      -H "Content-Type: application/json" \
+      -d "{\"login\":\"${login}\",\"password\":\"${password}\"}" 2>/dev/null); then
+      echo "→ GET lien ignoré (login impossible — définir SMOKE_LOGIN/SMOKE_PASSWORD)" >&2
+      return 0
+    fi
+    token=$(echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or {}; print(d.get('accessToken') or d.get('AccessToken') or '')")
   fi
-
-  token=$(echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or {}; print(d.get('accessToken') or d.get('AccessToken') or '')")
   if [[ -z "$token" ]]; then
     echo "→ GET lien ignoré (token absent dans la réponse login)" >&2
     return 0
