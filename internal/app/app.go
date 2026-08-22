@@ -45,6 +45,7 @@ import (
 	ettapp "github.com/kore/kore/internal/modules/ett/app"
 	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
 	integrationspostgres "github.com/kore/kore/internal/modules/integrations/adapters/postgres"
+	integrationstma "github.com/kore/kore/internal/modules/integrations/adapters/tma"
 	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	integrationsdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
@@ -279,7 +280,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	taigaIntegrationService := integrationsapp.NewTaigaService(integrationsRepo, integrationsapp.TaigaConfig{
 		BaseURL:     cfg.TaigaBaseURL,
 		ProjectSlug: cfg.TaigaProjectSlug,
-	})
+	}, integrationstma.NewDemandGate(tmaService))
 	adminService := adminapp.NewService(adminRepo)
 	reportingLeaveReader := reportingconges.NewLeaveReader(congesService)
 	reportingService := reportingapp.NewService(
@@ -353,7 +354,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
-		integrationshttp.RegisterTaigaRoutes(r, taigaIntegrationService, tokenIssuer, authorizer, billingService, cfg.TaigaWebhookSecret, cfg.TaigaDefaultTenantID)
+		integrationshttp.RegisterTaigaRoutes(r, taigaIntegrationService, tokenIssuer, authorizer, billingService, appCache, keyBuilder, cfg.TaigaWebhookSecret, cfg.TaigaDefaultTenantID)
 		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService, requestSettingsService, cfg.PDPWebhookSecret, cfg.PublicBaseURL, appCache, keyBuilder)
 		adminhttp.RegisterRoutes(r, adminService, tokenIssuer, authorizer, billingService)
 		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)

@@ -17,6 +17,8 @@ var (
 	ErrInvalidTaigaUserID   = errors.New("invalid taiga user id")
 	ErrInvalidKoreUserID    = errors.New("invalid kore user id")
 	ErrInvalidMatchMethod   = errors.New("invalid match method")
+	ErrInvalidKoreDemandID  = errors.New("invalid kore demand id")
+	ErrKoreDemandNotFound   = errors.New("kore demand not found")
 )
 
 type ConnectionType string

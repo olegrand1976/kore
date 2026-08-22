@@ -74,6 +74,11 @@ type TaigaRepository interface {
 	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
 }
 
+// TaigaDemandGate checks Kore TMA demand existence for inbound webhooks.
+type TaigaDemandGate interface {
+	KoreDemandExists(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (bool, error)
+}
+
 type IntegrationRepository interface {
 	SaveConnection(ctx context.Context, c domain.IntegrationConnection) error
 	GetConnection(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.IntegrationConnection, error)

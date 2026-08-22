@@ -11,15 +11,16 @@ import (
 	"github.com/kore/kore/internal/modules/integrations/app"
 	"github.com/kore/kore/internal/modules/integrations/domain"
 	"github.com/kore/kore/internal/platform/authx"
+	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/internal/platform/httpx"
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, webhookSecret, defaultTenantID string) {
+func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, appCache cache.Cache, keys cache.KeyBuilder, webhookSecret, defaultTenantID string) {
 	if taiga == nil {
 		return
 	}
-	r.Post("/integrations/taiga/webhook", taigaWebhook(taiga, webhookSecret, defaultTenantID))
+	r.With(taigaWebhookRateLimit(appCache, keys)).Post("/integrations/taiga/webhook", taigaWebhook(taiga, webhookSecret, defaultTenantID))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/integrations/taiga/links/by-demand/{id}", findTaigaLinkByDemand(taiga, authorizer))
@@ -33,13 +34,13 @@ func taigaWebhook(taiga *app.TaigaService, webhookSecret, defaultTenantID string
 			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga webhook not configured")
 			return
 		}
-		if r.Header.Get("X-Taiga-Webhook-Secret") != webhookSecret {
-			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid webhook secret")
-			return
-		}
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if !verifyTaigaWebhookAuth(r, body, webhookSecret) {
+			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid webhook secret")
 			return
 		}
 		tenantRaw := r.Header.Get("X-Kore-Tenant-ID")
@@ -56,7 +57,12 @@ func taigaWebhook(taiga *app.TaigaService, webhookSecret, defaultTenantID string
 			return
 		}
 		if err := taiga.HandleWebhook(r.Context(), kernel.NewTenantID(tenantID), body); err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			switch {
+			case errors.Is(err, domain.ErrInvalidKoreDemandID), errors.Is(err, domain.ErrKoreDemandNotFound):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			default:
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			}
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]string{"status": "ok"})

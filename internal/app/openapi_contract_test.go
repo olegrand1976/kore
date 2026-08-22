@@ -51,7 +51,7 @@ func buildAPIRouter() chi.Router {
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
 		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
-		integrationshttp.RegisterTaigaRoutes(r, integrationsapp.NewTaigaService(nil, integrationsapp.TaigaConfig{}), nil, nil, nil, "contract-test-secret", "")
+		integrationshttp.RegisterTaigaRoutes(r, integrationsapp.NewTaigaService(nil, integrationsapp.TaigaConfig{}, nil), nil, nil, nil, nil, nil, "contract-test-secret", "")
 		invoicinghttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopInvoicingEnabledReader(), "", "http://localhost:3001", nil, nil)
 		adminhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		reportinghttp.RegisterRoutes(r, nil, nil, nil, nil)

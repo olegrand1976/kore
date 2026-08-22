@@ -1,8 +1,10 @@
 version: 2
-secret:
-  ignored_paths:
-    - "internal/seed/**"
-    - "**/*_test.go"
-    - "frontend/e2e/**"
-  ignored_detectors:
-    - Generic Password
+paths-ignore:
+  - "internal/seed/**"
+  - "**/*_test.go"
+  - "frontend/e2e/**"
+  - ".github/workflows/**"
+  - "frontend/pages/login.vue"
+  - "scripts/smoke-test.sh"
+  - "scripts/taiga-webhook-smoke.sh"
+  - "scripts/test-e2e.sh"

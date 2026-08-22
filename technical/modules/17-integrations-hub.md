@@ -204,8 +204,12 @@ echo -n 'mon-projet' | gcloud secrets versions add kore-taiga-project-slug --dat
 ### Webhook Taiga
 
 - **URL** : `https://kore.ll-it-sc.be/api/v1/integrations/taiga/webhook`
-- **Header** : `X-Taiga-Webhook-Secret: <secret>`
+- **Auth** : header `X-Taiga-Webhook-Secret` (smoke / relais) **ou** signature native `X-TAIGA-WEBHOOK-SIGNATURE` (HMAC-SHA1 du corps brut)
 - **Header optionnel** : `X-Kore-Tenant-ID: <uuid-tenant>`
+- **Rate-limit** : 60 req/min/IP (Redis)
+- **Validation** : la demande TMA Kore doit exister (`422` sinon)
+
+Script ops complet : `TAIGA_BASE_URL=... TAIGA_PROJECT_SLUG=... ./scripts/taiga-ops-complete.sh`
 
 ### Liaison manuelle (phase 2)
 

@@ -13,10 +13,41 @@ DEMAND_ID="${2:-}"
 BODY_FILE="$(mktemp)"
 trap 'rm -f "$BODY_FILE"' EXIT
 
-if [[ -z "$DEMAND_ID" ]]; then
-  DEMAND_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
-  echo "→ demand_id généré (fictif) : ${DEMAND_ID}"
-fi
+API_BASE="${BASE_URL%/}/api/v1"
+
+resolve_demand_id() {
+  if [[ -n "$DEMAND_ID" ]]; then
+    return 0
+  fi
+  local login="${SMOKE_LOGIN:-ADM_admin}"
+  local password="${SMOKE_PASSWORD:-Admin123!}"
+  local login_resp token demands
+
+  echo "→ Résolution demand_id via API (première demande TMA)…"
+  if ! login_resp=$(curl -sS -f -X POST "${API_BASE}/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"login\":\"${login}\",\"password\":\"${password}\"}" 2>/dev/null); then
+    echo "ERREUR: login impossible — passez DEMAND_UUID en 2e argument" >&2
+    exit 1
+  fi
+  token=$(echo "$login_resp" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or {}; print(d.get('accessToken') or d.get('AccessToken') or '')")
+  if [[ -z "$token" ]]; then
+    echo "ERREUR: token absent" >&2
+    exit 1
+  fi
+  if ! demands=$(curl -sS -f -H "Authorization: Bearer ${token}" "${API_BASE}/demands?page_size=1" 2>/dev/null); then
+    echo "ERREUR: GET /demands impossible" >&2
+    exit 1
+  fi
+  DEMAND_ID=$(echo "$demands" | python3 -c "import json,sys; d=json.load(sys.stdin).get('data') or []; print((d[0].get('id') or d[0].get('ID') or '') if d else '')")
+  if [[ -z "$DEMAND_ID" ]]; then
+    echo "ERREUR: aucune demande TMA — créez-en une ou passez DEMAND_UUID" >&2
+    exit 1
+  fi
+  echo "→ demand_id : ${DEMAND_ID}"
+}
+
+resolve_demand_id
 
 SECRET="${TAIGA_WEBHOOK_SECRET:-}"
 if [[ -z "$SECRET" ]]; then
@@ -29,7 +60,6 @@ if [[ -z "$SECRET" ]]; then
 fi
 
 TENANT="${TAIGA_DEFAULT_TENANT_ID:-00000000-0000-4000-8000-0000000000a1}"
-API_BASE="${BASE_URL%/}/api/v1"
 WEBHOOK_URL="${API_BASE}/integrations/taiga/webhook"
 SMOKE_STORY_ID="${TAIGA_SMOKE_STORY_ID:-$((9000 + RANDOM % 9000))}"
 

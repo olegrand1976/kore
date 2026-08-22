@@ -15,12 +15,13 @@ import (
 )
 
 type TaigaService struct {
-	repo ports.TaigaRepository
-	cfg  TaigaConfig
+	repo    ports.TaigaRepository
+	cfg     TaigaConfig
+	demands ports.TaigaDemandGate
 }
 
-func NewTaigaService(repo ports.TaigaRepository, cfg TaigaConfig) *TaigaService {
-	return &TaigaService{repo: repo, cfg: cfg}
+func NewTaigaService(repo ports.TaigaRepository, cfg TaigaConfig, demands ports.TaigaDemandGate) *TaigaService {
+	return &TaigaService{repo: repo, cfg: cfg, demands: demands}
 }
 
 type UpsertUserMappingCommand struct {
@@ -92,9 +93,19 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 	if fmt.Sprint(extSlice[0]) != "kore" {
 		return nil
 	}
-	koreID, err := uuid.Parse(fmt.Sprint(extSlice[1]))
+	koreIDRaw := fmt.Sprint(extSlice[1])
+	koreID, err := uuid.Parse(koreIDRaw)
 	if err != nil {
-		return nil
+		return fmt.Errorf("%w: %q", domain.ErrInvalidKoreDemandID, koreIDRaw)
+	}
+	if s.demands != nil {
+		exists, err := s.demands.KoreDemandExists(ctx, tenant, koreID)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return domain.ErrKoreDemandNotFound
+		}
 	}
 	entityType := payload.Type
 	if entityType == "" {

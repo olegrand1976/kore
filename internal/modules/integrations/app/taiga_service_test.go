@@ -36,7 +36,7 @@ func (f *taigaRepoFake) UpsertUserMapping(_ context.Context, mapping domain.User
 }
 
 func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
-	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{})
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 
 	_, err := svc.UpsertUserMapping(context.Background(), UpsertUserMappingCommand{
@@ -57,7 +57,7 @@ func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
 
 func TestUpsertUserMapping_HappyPath(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo, TaigaConfig{})
+	svc := NewTaigaService(repo, TaigaConfig{}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 	koreUser := uuid.New()
 
@@ -79,7 +79,7 @@ func TestHandleWebhook_CreatesExternalLinkWithURL(t *testing.T) {
 	svc := NewTaigaService(repo, TaigaConfig{
 		BaseURL:     "https://tree.taiga.io",
 		ProjectSlug: "kore-demo",
-	})
+	}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 	demandID := uuid.New()
 
@@ -103,7 +103,7 @@ func TestHandleWebhook_CreatesExternalLinkWithURL(t *testing.T) {
 
 func TestHandleWebhook_UsesPermalinkFromPayload(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo, TaigaConfig{})
+	svc := NewTaigaService(repo, TaigaConfig{}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 	demandID := uuid.New()
 
@@ -136,7 +136,7 @@ func TestResolveTaigaExternalURL_ProjectSlugInPayload(t *testing.T) {
 
 func TestHandleWebhook_CreatesExternalLink(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo, TaigaConfig{})
+	svc := NewTaigaService(repo, TaigaConfig{}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 	demandID := uuid.New()
 
@@ -161,7 +161,7 @@ func TestHandleWebhook_CreatesExternalLink(t *testing.T) {
 
 func TestHandleWebhook_IgnoresUnrelatedPayload(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo, TaigaConfig{})
+	svc := NewTaigaService(repo, TaigaConfig{}, nil)
 	tenant := kernel.NewTenantID(uuid.New())
 
 	body := []byte(`{"action":"create","type":"userstory","data":{"id":1}}`)
@@ -171,7 +171,46 @@ func TestHandleWebhook_IgnoresUnrelatedPayload(t *testing.T) {
 }
 
 func TestHandleWebhook_InvalidJSON(t *testing.T) {
-	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{})
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, nil)
 	err := svc.HandleWebhook(context.Background(), kernel.NewTenantID(uuid.New()), []byte("{"))
 	require.Error(t, err)
+}
+
+type stubTaigaDemandGate struct {
+	exists bool
+}
+
+func (g stubTaigaDemandGate) KoreDemandExists(context.Context, kernel.TenantID, uuid.UUID) (bool, error) {
+	return g.exists, nil
+}
+
+func TestHandleWebhook_InvalidKoreDemandID(t *testing.T) {
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, nil)
+	body, err := json.Marshal(map[string]any{
+		"action": "create",
+		"type":   "userstory",
+		"data": map[string]any{
+			"id":                 1,
+			"external_reference": []any{"kore", "not-a-uuid"},
+		},
+	})
+	require.NoError(t, err)
+	err = svc.HandleWebhook(context.Background(), kernel.NewTenantID(uuid.New()), body)
+	require.ErrorIs(t, err, domain.ErrInvalidKoreDemandID)
+}
+
+func TestHandleWebhook_KoreDemandNotFound(t *testing.T) {
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, stubTaigaDemandGate{exists: false})
+	demandID := uuid.New()
+	body, err := json.Marshal(map[string]any{
+		"action": "create",
+		"type":   "userstory",
+		"data": map[string]any{
+			"id":                 1,
+			"external_reference": []any{"kore", demandID.String()},
+		},
+	})
+	require.NoError(t, err)
+	err = svc.HandleWebhook(context.Background(), kernel.NewTenantID(uuid.New()), body)
+	require.ErrorIs(t, err, domain.ErrKoreDemandNotFound)
 }
