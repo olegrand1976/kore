@@ -53,6 +53,8 @@ type Config struct {
 	PublicSignupEnabled    bool
 	TaigaWebhookSecret     string
 	TaigaDefaultTenantID   string
+	TaigaBaseURL           string
+	TaigaProjectSlug       string
 }
 
 func Load() (Config, error) {
@@ -101,6 +103,8 @@ func Load() (Config, error) {
 		PublicSignupEnabled:    envBool("PUBLIC_SIGNUP_ENABLED", true),
 		TaigaWebhookSecret:     envOr("TAIGA_WEBHOOK_SECRET", ""),
 		TaigaDefaultTenantID:   envOr("TAIGA_DEFAULT_TENANT_ID", ""),
+		TaigaBaseURL:           envOr("TAIGA_BASE_URL", ""),
+		TaigaProjectSlug:       envOr("TAIGA_PROJECT_SLUG", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

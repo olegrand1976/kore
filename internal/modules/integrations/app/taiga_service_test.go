@@ -36,7 +36,7 @@ func (f *taigaRepoFake) UpsertUserMapping(_ context.Context, mapping domain.User
 }
 
 func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
-	svc := NewTaigaService(&taigaRepoFake{})
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{})
 	tenant := kernel.NewTenantID(uuid.New())
 
 	_, err := svc.UpsertUserMapping(context.Background(), UpsertUserMappingCommand{
@@ -57,7 +57,7 @@ func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
 
 func TestUpsertUserMapping_HappyPath(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo)
+	svc := NewTaigaService(repo, TaigaConfig{})
 	tenant := kernel.NewTenantID(uuid.New())
 	koreUser := uuid.New()
 
@@ -74,9 +74,69 @@ func TestUpsertUserMapping_HappyPath(t *testing.T) {
 	require.Len(t, repo.mappings, 1)
 }
 
+func TestHandleWebhook_CreatesExternalLinkWithURL(t *testing.T) {
+	repo := &taigaRepoFake{}
+	svc := NewTaigaService(repo, TaigaConfig{
+		BaseURL:     "https://tree.taiga.io",
+		ProjectSlug: "kore-demo",
+	})
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+
+	body, err := json.Marshal(map[string]any{
+		"action": "create",
+		"type":   "userstory",
+		"data": map[string]any{
+			"id":                 123,
+			"ref":                7,
+			"project":            5,
+			"external_reference": []any{"kore", demandID.String()},
+		},
+	})
+	require.NoError(t, err)
+
+	err = svc.HandleWebhook(context.Background(), tenant, body)
+	require.NoError(t, err)
+	require.Len(t, repo.links, 1)
+	require.Equal(t, "https://tree.taiga.io/project/kore-demo/us/7", repo.links[0].ExternalURL)
+}
+
+func TestHandleWebhook_UsesPermalinkFromPayload(t *testing.T) {
+	repo := &taigaRepoFake{}
+	svc := NewTaigaService(repo, TaigaConfig{})
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+
+	body, err := json.Marshal(map[string]any{
+		"action": "create",
+		"type":   "userstory",
+		"data": map[string]any{
+			"id":                 123,
+			"ref":                7,
+			"permalink":          "https://taiga.example/project/acme/us/7",
+			"external_reference": []any{"kore", demandID.String()},
+		},
+	})
+	require.NoError(t, err)
+
+	err = svc.HandleWebhook(context.Background(), tenant, body)
+	require.NoError(t, err)
+	require.Equal(t, "https://taiga.example/project/acme/us/7", repo.links[0].ExternalURL)
+}
+
+func TestResolveTaigaExternalURL_ProjectSlugInPayload(t *testing.T) {
+	data := map[string]any{
+		"project": map[string]any{"slug": "from-payload"},
+		"ref":     3,
+	}
+	ref := 3
+	got := resolveTaigaExternalURL(data, TaigaConfig{BaseURL: "https://tree.taiga.io"}, &ref)
+	require.Equal(t, "https://tree.taiga.io/project/from-payload/us/3", got)
+}
+
 func TestHandleWebhook_CreatesExternalLink(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo)
+	svc := NewTaigaService(repo, TaigaConfig{})
 	tenant := kernel.NewTenantID(uuid.New())
 	demandID := uuid.New()
 
@@ -101,7 +161,7 @@ func TestHandleWebhook_CreatesExternalLink(t *testing.T) {
 
 func TestHandleWebhook_IgnoresUnrelatedPayload(t *testing.T) {
 	repo := &taigaRepoFake{}
-	svc := NewTaigaService(repo)
+	svc := NewTaigaService(repo, TaigaConfig{})
 	tenant := kernel.NewTenantID(uuid.New())
 
 	body := []byte(`{"action":"create","type":"userstory","data":{"id":1}}`)
@@ -111,7 +171,7 @@ func TestHandleWebhook_IgnoresUnrelatedPayload(t *testing.T) {
 }
 
 func TestHandleWebhook_InvalidJSON(t *testing.T) {
-	svc := NewTaigaService(&taigaRepoFake{})
+	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{})
 	err := svc.HandleWebhook(context.Background(), kernel.NewTenantID(uuid.New()), []byte("{"))
 	require.Error(t, err)
 }

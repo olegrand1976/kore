@@ -36,7 +36,7 @@ func (a moduleAuthorizer) Can(_ context.Context, mod authx.Module, act authx.Act
 }
 
 func TestTaigaWebhook_NotConfigured(t *testing.T) {
-	svc := app.NewTaigaService(stubTaigaRepo{})
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{})
 	h := taigaWebhook(svc, "", "")
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader([]byte(`{}`)))
 	rec := httptest.NewRecorder()
@@ -47,7 +47,7 @@ func TestTaigaWebhook_NotConfigured(t *testing.T) {
 }
 
 func TestTaigaWebhook_InvalidSecret(t *testing.T) {
-	svc := app.NewTaigaService(stubTaigaRepo{})
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{})
 	h := taigaWebhook(svc, "expected-secret", uuid.New().String())
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("X-Taiga-Webhook-Secret", "wrong")
@@ -60,7 +60,7 @@ func TestTaigaWebhook_InvalidSecret(t *testing.T) {
 
 func TestTaigaWebhook_OK(t *testing.T) {
 	tenantID := uuid.New()
-	svc := app.NewTaigaService(stubTaigaRepo{})
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{})
 	h := taigaWebhook(svc, "expected-secret", tenantID.String())
 	body := []byte(`{"action":"create","type":"userstory","data":{"id":1}}`)
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader(body))
@@ -73,7 +73,7 @@ func TestTaigaWebhook_OK(t *testing.T) {
 }
 
 func TestFindTaigaLinkByDemand_ForbiddenWithoutTmaRead(t *testing.T) {
-	svc := app.NewTaigaService(stubTaigaRepo{})
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{})
 	h := findTaigaLinkByDemand(svc, moduleAuthorizer{})
 	ctx := authx.WithIdentity(context.Background(), authx.Identity{
 		TenantID: kernel.NewTenantID(uuid.New()),
@@ -89,7 +89,7 @@ func TestFindTaigaLinkByDemand_ForbiddenWithoutTmaRead(t *testing.T) {
 }
 
 func TestFindTaigaLinkByDemand_NotFound(t *testing.T) {
-	svc := app.NewTaigaService(stubTaigaRepo{})
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{})
 	authz := moduleAuthorizer{
 		"tma": {authx.ActionRead: true},
 	}

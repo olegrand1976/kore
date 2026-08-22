@@ -16,10 +16,11 @@ import (
 
 type TaigaService struct {
 	repo ports.TaigaRepository
+	cfg  TaigaConfig
 }
 
-func NewTaigaService(repo ports.TaigaRepository) *TaigaService {
-	return &TaigaService{repo: repo}
+func NewTaigaService(repo ports.TaigaRepository, cfg TaigaConfig) *TaigaService {
+	return &TaigaService{repo: repo, cfg: cfg}
 }
 
 type UpsertUserMappingCommand struct {
@@ -102,6 +103,7 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 	entityID := fmt.Sprint(data["id"])
 	projectID := intFromAny(data["project"])
 	ref := intFromAny(data["ref"])
+	externalURL := resolveTaigaExternalURL(data, s.cfg, ref)
 	now := time.Now().UTC()
 	link := domain.ExternalLink{
 		TenantID:          tenant,
@@ -110,6 +112,7 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 		ExternalID:        entityID,
 		ExternalProjectID: projectID,
 		ExternalRef:       ref,
+		ExternalURL:       externalURL,
 		KoreEntityType:    "demand",
 		KoreEntityID:      koreID,
 		Metadata:          map[string]any{"action": payload.Action},

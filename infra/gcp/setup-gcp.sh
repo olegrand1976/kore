@@ -154,9 +154,17 @@ for stripe_secret in kore-stripe-secret-key kore-stripe-webhook-secret kore-stri
   fi
 done
 
+ensure_secret "kore-taiga-webhook-secret"
+if ! gcloud secrets versions list kore-taiga-webhook-secret --project="$GCP_PROJECT_ID" --limit=1 --format='value(name)' 2>/dev/null | grep -q .; then
+  add_secret_version "kore-taiga-webhook-secret" "taiga_webhook_placeholder"
+  echo "→ kore-taiga-webhook-secret placeholder — remplacez avant d'activer le webhook Taiga"
+else
+  echo "  kore-taiga-webhook-secret existe"
+fi
+
 COMPUTE_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
 for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key kore-totp-encryption-key kore-redis-url \
-  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key; do
+  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key kore-taiga-webhook-secret; do
   if gcloud secrets describe "$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
     gcloud secrets add-iam-policy-binding "$secret" \
       --project="$GCP_PROJECT_ID" \

@@ -276,7 +276,10 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	}
 	integrationsService := integrationsapp.NewService(integrationsRepo, integrationOpts...)
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
-	taigaIntegrationService := integrationsapp.NewTaigaService(integrationsRepo)
+	taigaIntegrationService := integrationsapp.NewTaigaService(integrationsRepo, integrationsapp.TaigaConfig{
+		BaseURL:     cfg.TaigaBaseURL,
+		ProjectSlug: cfg.TaigaProjectSlug,
+	})
 	adminService := adminapp.NewService(adminRepo)
 	reportingLeaveReader := reportingconges.NewLeaveReader(congesService)
 	reportingService := reportingapp.NewService(
