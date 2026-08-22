@@ -263,7 +263,7 @@ func (s *applicationOrgService) ListApplications(context.Context, kernel.TenantI
 
 func TestCreateApplication_created(t *testing.T) {
 	svc := &applicationOrgService{}
-	handler := createApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	handler := createApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, nil)
 	serviceID := uuid.New()
 	siteID := uuid.New()
 	chefID := uuid.New()
