@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	integrationdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	integrationports "github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
@@ -359,6 +360,56 @@ func TestUpdateApplication_linksTaigaProject(t *testing.T) {
 	}
 	if bridge.linkedAppID != appID || bridge.linkedProjectID != 42 {
 		t.Fatalf("bridge link = app %s project %d", bridge.linkedAppID, bridge.linkedProjectID)
+	}
+	if svc.updated == nil || svc.updated.Proprietaire == nil || *svc.updated.Proprietaire != "Société Y" {
+		t.Fatalf("updated = %+v", svc.updated)
+	}
+}
+
+func TestUpdateApplication_taigaLinkFailureSkipsUpdate(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
+	bridge := &stubTaigaApplicationBridge{err: integrationdomain.ErrTaigaApplicationAlreadyLinked}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, bridge)
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"proprietaire":   "Société Y",
+		"taigaProjectId": 42,
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422, body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.updated != nil {
+		t.Fatalf("expected no org update when taiga link fails, got %+v", svc.updated)
+	}
+}
+
+func TestUpdateApplication_taigaProjectIdOnly(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
+	bridge := &stubTaigaApplicationBridge{}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, bridge)
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"taigaProjectId": 7,
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+	if bridge.linkedProjectID != 7 {
+		t.Fatalf("bridge project = %d", bridge.linkedProjectID)
 	}
 }
 

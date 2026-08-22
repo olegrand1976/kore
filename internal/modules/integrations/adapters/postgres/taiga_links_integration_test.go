@@ -172,6 +172,40 @@ func TestTaigaLinks_ApplicationProjectLinkRejectsDuplicate(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrTaigaProjectLinked)
 }
 
+func TestTaigaLinks_ApplicationProjectLinkRejectsSameApplication(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	now := time.Now().UTC()
+	pid1 := 7
+	pid2 := 8
+
+	first := domain.ExternalLink{
+		TenantID:          tenant,
+		Provider:          "taiga",
+		ExternalType:      "project",
+		ExternalID:        "7",
+		ExternalProjectID: &pid1,
+		ExternalURL:       "https://taiga.example.com/project/a",
+		KoreEntityType:    "application",
+		KoreEntityID:      appID,
+		LastSyncAt:        &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	require.NoError(t, repo.InsertApplicationProjectLink(ctx, first))
+
+	second := first
+	second.ExternalID = "8"
+	second.ExternalProjectID = &pid2
+	second.ExternalURL = "https://taiga.example.com/project/b"
+	second.ID = uuid.Nil
+	err := repo.InsertApplicationProjectLink(ctx, second)
+	require.ErrorIs(t, err, domain.ErrTaigaApplicationAlreadyLinked)
+}
+
 func intPtr(n int) *int {
 	return &n
 }

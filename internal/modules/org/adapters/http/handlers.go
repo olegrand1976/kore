@@ -399,7 +399,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 				MethodologyProfile: req.MethodologyProfile,
 			}, *req.TaigaProjectID)
 			if err != nil {
-				writeCreateApplicationError(w, err)
+				writeApplicationTaigaError(w, err)
 				return
 			}
 			app, err := org.GetApplication(r.Context(), identity.TenantID, a.ID)
@@ -446,7 +446,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 	}
 }
 
-func writeCreateApplicationError(w http.ResponseWriter, err error) {
+func writeApplicationTaigaError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidModeFacturation),
 		errors.Is(err, domain.ErrInvalidMethodologyProfile),
@@ -793,13 +793,6 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			cmd.EquipeIDs = &ids
 			sharesTouched = true
 		}
-		if cmd.Libelle == nil && cmd.Active == nil && cmd.Proprietaire == nil &&
-			cmd.ModeFacturation == nil && cmd.UOActivee == nil &&
-			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil &&
-			cmd.DefaultTJMCents == nil && !sharesTouched {
-			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
-			return
-		}
 		var taigaProjectID *int
 		if v, ok := raw["taigaProjectId"]; ok {
 			var n int
@@ -809,8 +802,28 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			taigaProjectID = &n
 		}
+		taigaTouched := taigaProjectID != nil
+		if cmd.Libelle == nil && cmd.Active == nil && cmd.Proprietaire == nil &&
+			cmd.ModeFacturation == nil && cmd.UOActivee == nil &&
+			cmd.ChefUtilisateurID == nil && cmd.BudgetDefautID == nil &&
+			cmd.DefaultTJMCents == nil && cmd.MethodologyProfile == nil &&
+			!sharesTouched && !taigaTouched {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
+			return
+		}
 		identity, _ := authx.FromContext(r.Context())
 		cmd.TenantID = identity.TenantID
+		// Liaison Taiga avant la mise à jour org : si la liaison échoue, aucun champ n'est modifié.
+		if taigaProjectID != nil && *taigaProjectID > 0 {
+			if taigaBridge == nil {
+				httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga not configured")
+				return
+			}
+			if err := taigaBridge.LinkExistingApplication(r.Context(), identity.TenantID, appID, *taigaProjectID); err != nil {
+				writeApplicationTaigaError(w, err)
+				return
+			}
+		}
 		item, err := org.UpdateApplication(r.Context(), cmd)
 		if err != nil {
 			if errors.Is(err, domain.ErrApplicationNotFound) {
@@ -830,16 +843,6 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
-		}
-		if taigaProjectID != nil && *taigaProjectID > 0 {
-			if taigaBridge == nil {
-				httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga not configured")
-				return
-			}
-			if err := taigaBridge.LinkExistingApplication(r.Context(), identity.TenantID, appID, *taigaProjectID); err != nil {
-				writeCreateApplicationError(w, err)
-				return
-			}
 		}
 		httpx.WriteData(w, http.StatusOK, item)
 	}

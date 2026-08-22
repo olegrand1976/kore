@@ -729,7 +729,10 @@ const taigaLinkDisplayName = computed(() => {
   return link.externalId ?? link.ExternalID ?? ''
 })
 
+let taigaLinkLoadGeneration = 0
+
 const loadTaigaLinkForEdit = async (applicationId: string) => {
+  const generation = ++taigaLinkLoadGeneration
   taigaLinkLoading.value = true
   existingTaigaLink.value = null
   selectedTaigaProjectId.value = ''
@@ -737,14 +740,17 @@ const loadTaigaLinkForEdit = async (applicationId: string) => {
     const res = await apiFetch<{ data?: TaigaApplicationLink }>(
       `/api/integrations/taiga/links/by-application/${applicationId}`
     )
+    if (generation !== taigaLinkLoadGeneration) return
     existingTaigaLink.value = res?.data ?? null
   } catch (err) {
+    if (generation !== taigaLinkLoadGeneration) return
     if ((err as { statusCode?: number })?.statusCode === 404) {
       existingTaigaLink.value = null
       if (taigaAvailable.value) {
         try {
           await loadTaigaProjects()
         } catch (loadErr) {
+          if (generation !== taigaLinkLoadGeneration) return
           formError.value = extractFetchError(loadErr)
         }
       }
@@ -756,7 +762,9 @@ const loadTaigaLinkForEdit = async (applicationId: string) => {
     }
     formError.value = extractFetchError(err)
   } finally {
-    taigaLinkLoading.value = false
+    if (generation === taigaLinkLoadGeneration) {
+      taigaLinkLoading.value = false
+    }
   }
 }
 
@@ -1086,7 +1094,7 @@ const openEdit = async (row: AppRow) => {
   editingId.value = row.id
   selectedTaigaProjectId.value = ''
   existingTaigaLink.value = null
-  taigaLinkLoading.value = false
+  taigaLinkLoading.value = taigaAvailable.value
   form.siteIds = [...row.siteIds]
   form.serviceIds = [...row.serviceIds]
   form.equipeIds = [...row.equipeIds]
@@ -1105,10 +1113,13 @@ const openEdit = async (row: AppRow) => {
   sanitizeFormBudgetDefaut()
   if (taigaAvailable.value) {
     await loadTaigaLinkForEdit(row.id)
+  } else {
+    taigaLinkLoading.value = false
   }
 }
 
 const closeForm = () => {
+  taigaLinkLoadGeneration++
   showForm.value = false
   editingId.value = ''
   existingTaigaLink.value = null

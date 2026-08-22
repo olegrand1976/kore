@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kore/kore/internal/modules/integrations/domain"
 	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
@@ -88,12 +89,25 @@ func (r *Repository) InsertApplicationProjectLink(ctx context.Context, link doma
 		link.ExternalProjectID, link.ExternalRef, link.ExternalURL,
 		link.KoreEntityType, link.KoreEntityID, meta, link.LastSyncAt, link.CreatedAt, now)
 	if err != nil {
-		return err
+		return mapApplicationProjectLinkError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.ErrTaigaProjectLinked
 	}
 	return nil
+}
+
+func mapApplicationProjectLinkError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "external_links_kore_entity_unique":
+			return domain.ErrTaigaApplicationAlreadyLinked
+		case "external_links_tenant_id_provider_external_type_external_id_key":
+			return domain.ErrTaigaProjectLinked
+		}
+	}
+	return err
 }
 
 func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error) {
