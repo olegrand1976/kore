@@ -2,7 +2,7 @@
 
 > **Parcours produit** (écrans, navigation, onboarding) : [`GUIDE_UTILISATEUR.md`](GUIDE_UTILISATEUR.md).  
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-20 (lien guide utilisateur)  
+> **Dernière mise à jour doc** : 2026-08-22 (panneau Taiga fiche TMA, aide `/aide/tma`)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -54,6 +54,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Pages `/admin/sites`, `/admin/services`, `/admin/equipes` : listes dédiées (création / modification) ; l'onglet Structure conserve la vue arbre.
 - Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
 - Menu **Projets agile** (`/projets`) pour les applications en mode Scrum ou Kanban.
+- Fiche demande TMA (`/tma/{id}`) : panneau **Lien Taiga** (lecture TMA) si une user story Taiga est liée via webhook.
 - Validation complète CRA / TMA / congés / budget.
 - Facturation métier : L/E/V si le module org est activé.
 - CRA définitifs → brouillons facture :
@@ -69,12 +70,14 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 ### Collaborateur
 
 - CRA, TMA, congés (saisie) ; **Projets agile** en lecture ; budget en lecture.
+- Fiche TMA : panneau **Lien Taiga** en lecture (story liée ou message « non liée »).
 - Menus Pilotage **Clients** / **Missions** visibles (lecture via droits CRA) ; pas de menus d'administration.
 - Compte seed : `COL_collab` / `Collab123!`
 
 ### Chef d'équipe
 
 - Validation CRA et TMA ; **Projets agile** L/E/V ; congés en lecture ; budget L/E ; reporting L.
+- Fiche TMA : panneau **Lien Taiga** (lecture TMA).
 - Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
 - Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Compte seed : `CHE_chefdev` / `Chef123!`
@@ -82,6 +85,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 ### Responsable de service
 
 - Validation CRA, TMA, congés et budget ; **Projets agile** L/E/V (backlog, sprints, métriques) ; reporting / org en lecture.
+- Fiche TMA : panneau **Lien Taiga** (lecture TMA).
 - Menus Pilotage **Clients** / **Missions** visibles (lecture org / CRA).
 - Facturation métier : L/E/V si le module org est activé (wizard **Depuis un CRA**, Prestations, proforma client, transmission PDP).
 - Pas d'accès aux paramètres admin (réservé Administrateur).
@@ -105,6 +109,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 | `/aide` | Hub d'aide (profils courants + topics) |
 | `/aide/acces` | Matrice L/E/V + fiches profils |
 | `/aide/projets` | Projets agile (backlog, sprints, Kanban, métriques) |
+| `/aide/tma` | TMA — panneau Lien Taiga sur fiche demande |
 | `/signup` | Onboarding public (création org + admin, trial) — hors auth |
 | `/platform` | Console super-admin plateforme (allowlist login) |
 

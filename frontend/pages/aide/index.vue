@@ -31,6 +31,16 @@
           <span class="help-hub__card-cta">{{ $t('help.open') }}</span>
         </AppCard>
       </NuxtLink>
+      <NuxtLink to="/aide/tma" class="help-hub__card">
+        <AppCard padding="lg" hoverable class="help-hub__card-inner">
+          <div class="help-hub__card-icon" aria-hidden="true">
+            <AppIcon name="support_agent" />
+          </div>
+          <h2 class="help-hub__card-title">{{ $t('help.topics.tma.title') }}</h2>
+          <p class="help-hub__card-desc">{{ $t('help.topics.tma.description') }}</p>
+          <span class="help-hub__card-cta">{{ $t('help.open') }}</span>
+        </AppCard>
+      </NuxtLink>
     </div>
   </div>
 </template>

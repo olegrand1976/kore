@@ -90,6 +90,10 @@
       "project": {
         "title": "Agile projects",
         "description": "Backlog, Scrum sprints, Kanban board and metrics per application."
+      },
+      "tma": {
+        "title": "TMA and Taiga link",
+        "description": "Taiga panel on the demand detail page, TMA read access and user story linking."
       }
     },
     "project": {
@@ -101,6 +105,20 @@
         "kanban": "Kanban: configurable columns mapped to TMA statuses; WIP limit returns HTTP 422.",
         "metrics": "Metrics: closed-sprint velocity and active sprint burndown chart."
       }
+    },
+    "tma": {
+      "title": "TMA and Taiga link",
+      "intro": "Each TMA demand detail page shows a panel with the linked Taiga user story (phase 2 — inbound webhook).",
+      "panel_title": "“Taiga link” panel",
+      "panel_body": "Visible for any profile with TMA read access (Collaborator, Team lead, Service manager, Administrator).",
+      "bullets": {
+        "visible": "When no story is linked: “No linked Taiga user story”.",
+        "linked": "When linked: user story number, last sync date and “Open in Taiga”.",
+        "open": "The link opens in a new tab (Taiga URL or permalink from the webhook)."
+      },
+      "link_title": "How a demand gets linked",
+      "link_body": "Taiga sends a Kore webhook when a user story carries external reference [\"kore\", \"<demand-uuid>\"]. Kore then stores the bidirectional link.",
+      "link_note": "Automatic user story creation from Kore (outbound sync) is planned for phase 3. Until then, linking is configured in Taiga."
     },
     "access": {
       "title": "Access by profile",
@@ -152,6 +170,7 @@
             "Applications: create / edit / deactivate, link teams and review related budgets.",
             "Timesheets, TMA, leave, budget: read, write and validate.",
             "Agile projects (/projets): backlog, sprints, epics and metrics (R/W/V).",
+            "TMA demand detail: Taiga link panel (TMA read) when a user story is linked.",
             "Invoicing: available when the organisation module is enabled (R/W/V).",
             "Definitive timesheets → invoice drafts (Invoicing → From a timesheet, CRA validation or Deliverables → Create invoices).",
             "Invoicing: send a proforma by email (client validation link) then transmit to PDP.",
@@ -165,6 +184,7 @@
           "summary": "Day-to-day operational entry (timesheets, requests, leave).",
           "bullets": [
             "Timesheets and TMA: read and write (no validation).",
+            "TMA demand detail: Taiga link panel (read-only).",
             "Agile projects: backlog and metrics read-only.",
             "Leave: submit and track own requests.",
             "Budget: read only.",
@@ -177,6 +197,7 @@
           "summary": "Team lead: validate timesheets/TMA and track budget.",
           "bullets": [
             "Timesheets and TMA: read, write and validate.",
+            "TMA demand detail: Taiga link panel (TMA read).",
             "Agile projects: sprint planning, backlog and close (R/W/V).",
             "Leave: read (no validation).",
             "Budget: read and write; reporting read.",
@@ -190,6 +211,7 @@
           "summary": "Service manager: extended validations and budgets.",
           "bullets": [
             "Timesheets, TMA, leave and budget: read, write and validate.",
+            "TMA demand detail: Taiga link panel (TMA read).",
             "Agile projects: backlog, sprints and velocity (R/W/V).",
             "Reporting and organization: read.",
             "Operations: Clients and Missions visible read-only.",

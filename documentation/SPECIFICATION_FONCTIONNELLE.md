@@ -563,6 +563,21 @@ Module **Enregistrement légal du temps (ETT) — conformité UE** : périmètre
 
 Module **Module TMA** : périmètre couvert par les sources legacy. Évolutions Kore (API, mobile, intégrations) : cf. §15 et §17.
 
+#### §7.2.5 Intégration Taiga (phase 2 — inbound)
+
+**Objectif** : afficher sur la fiche demande TMA le lien vers la user story Taiga associée, sans double saisie côté Kore pour la référence externe.
+
+**Flux** :
+
+1. Côté Taiga, la user story porte une référence externe `["kore", "<uuid-demande-kore>"]`.
+2. Taiga notifie Kore via webhook `POST /api/v1/integrations/taiga/webhook` (secret obligatoire).
+3. Kore upsert `integrations.external_links` (provider `taiga`, entité Kore `demand`).
+4. L'utilisateur avec droit **TMA lecture** voit le panneau « Lien Taiga » sur `/tma/{id}` (numéro story, URL, dernière synchro).
+
+**Hors périmètre phase 2** : création/mise à jour automatique de user story depuis Kore (sync sortant, phase 3), UI admin des mappings utilisateurs Kore ↔ Taiga.
+
+**Configuration** : variables `TAIGA_WEBHOOK_SECRET`, `TAIGA_BASE_URL`, `TAIGA_PROJECT_SLUG`, `TAIGA_DEFAULT_TENANT_ID` — cf. `technical/modules/17-integrations-hub.md` §13.
+
 ### §7.3 Module SSII / Missions
 
 **Sources** : `bhive gestion des ssii.pdf, mission.pdf, module ssii.pptx`
