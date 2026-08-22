@@ -92,6 +92,9 @@ kore_api_secrets() {
   if kore_has_secret_version "kore-pennylane-api-token"; then
     secrets+=",PENNYLANE_API_TOKEN=kore-pennylane-api-token:latest"
   fi
+  if kore_has_secret_version "kore-taiga-webhook-secret"; then
+    secrets+=",TAIGA_WEBHOOK_SECRET=kore-taiga-webhook-secret:latest"
+  fi
   if kore_has_secret_version "kore-fcm-service-account"; then
     secrets+=",GOOGLE_APPLICATION_CREDENTIALS=kore-fcm-service-account:latest"
   fi

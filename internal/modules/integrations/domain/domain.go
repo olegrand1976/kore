@@ -9,10 +9,14 @@ import (
 )
 
 var (
-	ErrConnectionNotFound = errors.New("integration connection not found")
-	ErrApiKeyNotFound     = errors.New("api key not found")
-	ErrConnectionInactive = errors.New("integration connection inactive")
-	ErrWebhookNotFound    = errors.New("webhook subscription not found")
+	ErrConnectionNotFound   = errors.New("integration connection not found")
+	ErrApiKeyNotFound       = errors.New("api key not found")
+	ErrConnectionInactive   = errors.New("integration connection inactive")
+	ErrWebhookNotFound      = errors.New("webhook subscription not found")
+	ErrExternalLinkNotFound = errors.New("external link not found")
+	ErrInvalidTaigaUserID   = errors.New("invalid taiga user id")
+	ErrInvalidKoreUserID    = errors.New("invalid kore user id")
+	ErrInvalidMatchMethod   = errors.New("invalid match method")
 )
 
 type ConnectionType string

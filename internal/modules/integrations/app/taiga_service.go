@@ -4,21 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kore/kore/internal/modules/integrations/adapters/postgres"
 	"github.com/kore/kore/internal/modules/integrations/domain"
+	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
 type TaigaService struct {
-	repo *postgres.Repository
+	repo ports.TaigaRepository
 }
 
-func NewTaigaService(repo *postgres.Repository) *TaigaService {
+func NewTaigaService(repo ports.TaigaRepository) *TaigaService {
 	return &TaigaService{repo: repo}
 }
 
@@ -30,6 +30,19 @@ type UpsertUserMappingCommand struct {
 	MatchMethod   string
 }
 
+func (cmd UpsertUserMappingCommand) Validate() error {
+	if cmd.TaigaUserID <= 0 {
+		return domain.ErrInvalidTaigaUserID
+	}
+	if cmd.KoreUserID == uuid.Nil {
+		return domain.ErrInvalidKoreUserID
+	}
+	if strings.TrimSpace(cmd.MatchMethod) == "" {
+		return domain.ErrInvalidMatchMethod
+	}
+	return nil
+}
+
 type TaigaWebhookPayload struct {
 	Action string         `json:"action"`
 	Type   string         `json:"type"`
@@ -37,6 +50,9 @@ type TaigaWebhookPayload struct {
 }
 
 func (s *TaigaService) UpsertUserMapping(ctx context.Context, cmd UpsertUserMappingCommand) (domain.UserMapping, error) {
+	if err := cmd.Validate(); err != nil {
+		return domain.UserMapping{}, err
+	}
 	now := time.Now().UTC()
 	mapping := domain.UserMapping{
 		TenantID:         cmd.TenantID,
@@ -102,10 +118,6 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 		UpdatedAt:         now,
 	}
 	return s.repo.UpsertExternalLink(ctx, link)
-}
-
-func (s *TaigaService) WebhookSecret() string {
-	return os.Getenv("TAIGA_WEBHOOK_SECRET")
 }
 
 func intFromAny(v any) *int {

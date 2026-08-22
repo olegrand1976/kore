@@ -15,6 +15,7 @@ import (
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
 	etthttp "github.com/kore/kore/internal/modules/ett/adapters/http"
 	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
+	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
 	maintenancehttp "github.com/kore/kore/internal/modules/maintenance/adapters/http"
 	notifhttp "github.com/kore/kore/internal/modules/notifications/adapters/http"
@@ -50,6 +51,7 @@ func buildAPIRouter() chi.Router {
 		billinghttp.RegisterRoutes(r, nil, nil, nil, "", nil)
 		publichttp.RegisterRoutes(r, nil, nil, nil)
 		integrationshttp.RegisterRoutes(r, nil, nil, nil, nil, nil)
+		integrationshttp.RegisterTaigaRoutes(r, integrationsapp.NewTaigaService(nil), nil, nil, nil, "contract-test-secret", "")
 		invoicinghttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopInvoicingEnabledReader(), "", "http://localhost:3001", nil, nil)
 		adminhttp.RegisterRoutes(r, nil, nil, nil, nil)
 		reportinghttp.RegisterRoutes(r, nil, nil, nil, nil)

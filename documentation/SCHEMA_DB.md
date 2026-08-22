@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 21/08/2026 (soft-delete `tma.demands.deleted_at`)
+> **Dernière mise à jour doc** : 22/08/2026 (tables Taiga `external_links`, `user_mappings`)
 
 ---
 
@@ -1369,6 +1369,47 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `finished_at` | TIMESTAMPTZ | |
 | `error_message` | TEXT | NOT NULL, DEFAULT `''` |
 
+### `integrations.external_links`
+
+Liens bidirectionnels Kore ↔ outils externes (Taiga).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `provider` | TEXT | NOT NULL, DEFAULT `'taiga'` |
+| `external_type` | TEXT | NOT NULL |
+| `external_id` | TEXT | NOT NULL |
+| `external_project_id` | INT | |
+| `external_ref` | INT | |
+| `external_url` | TEXT | NOT NULL, DEFAULT `''` |
+| `kore_entity_type` | TEXT | NOT NULL, DEFAULT `'demand'` |
+| `kore_entity_id` | UUID | NOT NULL |
+| `metadata` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `last_sync_at` | TIMESTAMPTZ | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+Index : `(tenant_id, kore_entity_type, kore_entity_id)`. Unique : `(tenant_id, provider, external_type, external_id)`.
+
+### `integrations.user_mappings`
+
+Correspondance utilisateurs Kore ↔ Taiga.
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `provider` | TEXT | NOT NULL, DEFAULT `'taiga'` |
+| `external_user_id` | TEXT | NOT NULL |
+| `external_username` | TEXT | NOT NULL, DEFAULT `''` |
+| `kore_user_id` | UUID | NOT NULL |
+| `match_method` | TEXT | NOT NULL, DEFAULT `'email'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+Index : `(tenant_id, provider)`. Unique : `(tenant_id, provider, external_user_id)` et `(tenant_id, provider, kore_user_id)`.
+
 ---
 
 ## Inventaire des tables (résumé)
@@ -1390,11 +1431,11 @@ Hub d'intégrations (connexions, clés API, webhooks).
 | `ett` | work_time_records, audit_journal, country_work_rules | 3 |
 | `reporting` | report_definitions, dashboard_snapshots | 2 |
 | `admin` | parameter_sets, templates, phone_directory | 3 |
-| `integrations` | connections, api_keys, webhook_subscriptions, sync_jobs | 4 |
+| `integrations` | connections, api_keys, webhook_subscriptions, sync_jobs, external_links, user_mappings | 6 |
 | `ai` | ai_capabilities, tenant_ai_settings, ai_request_log | 3 |
 | `billing` | subscriptions, module_entitlements, webhook_events | 3 |
 | `publicsite` | leads, commercial_availabilities, booking_slots, appointments | 4 |
-| **Total** | | **75** |
+| **Total** | | **77** |
 
 ---
 

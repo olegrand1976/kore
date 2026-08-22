@@ -51,6 +51,8 @@ type Config struct {
 	OIDCAzureClientSecret  string
 	PublicBaseURL          string // absolute frontend origin for magic links (proforma, etc.)
 	PublicSignupEnabled    bool
+	TaigaWebhookSecret     string
+	TaigaDefaultTenantID   string
 }
 
 func Load() (Config, error) {
@@ -97,6 +99,8 @@ func Load() (Config, error) {
 		OIDCAzureClientSecret:  envOr("OIDC_AZURE_CLIENT_SECRET", ""),
 		PublicBaseURL:          envOr("PUBLIC_BASE_URL", "http://localhost:3001"),
 		PublicSignupEnabled:    envBool("PUBLIC_SIGNUP_ENABLED", true),
+		TaigaWebhookSecret:     envOr("TAIGA_WEBHOOK_SECRET", ""),
+		TaigaDefaultTenantID:   envOr("TAIGA_DEFAULT_TENANT_ID", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

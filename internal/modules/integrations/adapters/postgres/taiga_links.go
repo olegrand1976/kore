@@ -9,8 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/kore/kore/internal/modules/integrations/domain"
+	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
+
+var _ ports.TaigaRepository = (*Repository)(nil)
 
 func (r *Repository) UpsertExternalLink(ctx context.Context, link domain.ExternalLink) error {
 	meta, err := json.Marshal(link.Metadata)
@@ -84,7 +87,7 @@ func (r *Repository) scanExternalLink(row pgx.Row) (domain.ExternalLink, error) 
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ExternalLink{}, pgx.ErrNoRows
+			return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
 		}
 		return domain.ExternalLink{}, err
 	}

@@ -68,6 +68,12 @@ type ApiKeyService interface {
 	ListKeys(ctx context.Context, tenant kernel.TenantID) ([]domain.ApiKey, error)
 }
 
+type TaigaRepository interface {
+	UpsertExternalLink(ctx context.Context, link domain.ExternalLink) error
+	FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error)
+	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
+}
+
 type IntegrationRepository interface {
 	SaveConnection(ctx context.Context, c domain.IntegrationConnection) error
 	GetConnection(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.IntegrationConnection, error)

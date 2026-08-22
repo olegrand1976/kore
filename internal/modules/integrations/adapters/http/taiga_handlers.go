@@ -2,23 +2,24 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/integrations/app"
+	"github.com/kore/kore/internal/modules/integrations/domain"
 	"github.com/kore/kore/internal/platform/authx"
 	"github.com/kore/kore/internal/platform/httpx"
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader) {
+func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, webhookSecret, defaultTenantID string) {
 	if taiga == nil {
 		return
 	}
-	r.Post("/integrations/taiga/webhook", taigaWebhook(taiga))
+	r.Post("/integrations/taiga/webhook", taigaWebhook(taiga, webhookSecret, defaultTenantID))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/integrations/taiga/links/by-demand/{id}", findTaigaLinkByDemand(taiga, authorizer))
@@ -26,13 +27,13 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 	})
 }
 
-func taigaWebhook(taiga *app.TaigaService) http.HandlerFunc {
+func taigaWebhook(taiga *app.TaigaService, webhookSecret, defaultTenantID string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		secret := taiga.WebhookSecret()
-		if secret == "" {
-			secret = os.Getenv("TAIGA_KORE_WEBHOOK_SECRET")
+		if webhookSecret == "" {
+			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga webhook not configured")
+			return
 		}
-		if secret != "" && r.Header.Get("X-Taiga-Webhook-Secret") != secret {
+		if r.Header.Get("X-Taiga-Webhook-Secret") != webhookSecret {
 			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid webhook secret")
 			return
 		}
@@ -43,11 +44,15 @@ func taigaWebhook(taiga *app.TaigaService) http.HandlerFunc {
 		}
 		tenantRaw := r.Header.Get("X-Kore-Tenant-ID")
 		if tenantRaw == "" {
-			tenantRaw = os.Getenv("TAIGA_DEFAULT_TENANT_ID")
+			tenantRaw = defaultTenantID
+		}
+		if tenantRaw == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "missing tenant")
+			return
 		}
 		tenantID, err := uuid.Parse(tenantRaw)
 		if err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "missing tenant")
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid tenant")
 			return
 		}
 		if err := taiga.HandleWebhook(r.Context(), kernel.NewTenantID(tenantID), body); err != nil {
@@ -60,7 +65,7 @@ func taigaWebhook(taiga *app.TaigaService) http.HandlerFunc {
 
 func findTaigaLinkByDemand(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !authorizer.Can(r.Context(), "integrations", authx.ActionRead) {
+		if !authorizer.Can(r.Context(), "tma", authx.ActionRead) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
@@ -71,8 +76,12 @@ func findTaigaLinkByDemand(taiga *app.TaigaService, authorizer authx.Authorizer)
 		}
 		identity, _ := authx.FromContext(r.Context())
 		link, err := taiga.FindByKoreDemand(r.Context(), identity.TenantID, demandID)
-		if err != nil {
+		if errors.Is(err, domain.ErrExternalLinkNotFound) {
 			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "link not found")
+			return
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, link)
@@ -103,6 +112,12 @@ func upsertTaigaUserMapping(taiga *app.TaigaService, authorizer authx.Authorizer
 			KoreUserID:    req.KoreUserID,
 			MatchMethod:   req.MatchMethod,
 		})
+		if errors.Is(err, domain.ErrInvalidTaigaUserID) ||
+			errors.Is(err, domain.ErrInvalidKoreUserID) ||
+			errors.Is(err, domain.ErrInvalidMatchMethod) {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
 		if err != nil {
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
