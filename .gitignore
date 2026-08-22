@@ -15,6 +15,7 @@ coverage.html
 .env.iodc
 
 # Node / Nuxt
+node_modules/
 frontend/node_modules/
 frontend/.nuxt/
 frontend/.output/

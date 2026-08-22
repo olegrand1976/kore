@@ -40,7 +40,7 @@ func (a moduleAuthorizer) Can(_ context.Context, mod authx.Module, act authx.Act
 
 func TestTaigaWebhook_NotConfigured(t *testing.T) {
 	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{}, nil)
-	h := taigaWebhook(svc, "", "")
+	h := taigaWebhook(svc, nil, nil, "", uuid.New().String(), app.TaigaKoreMapping{})
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader([]byte(`{}`)))
 	rec := httptest.NewRecorder()
 	h(rec, req)
@@ -51,7 +51,7 @@ func TestTaigaWebhook_NotConfigured(t *testing.T) {
 
 func TestTaigaWebhook_InvalidSecret(t *testing.T) {
 	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{}, nil)
-	h := taigaWebhook(svc, "expected-secret", uuid.New().String())
+	h := taigaWebhook(svc, nil, nil, "expected-secret", uuid.New().String(), app.TaigaKoreMapping{})
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("X-Taiga-Webhook-Secret", "wrong")
 	rec := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestTaigaWebhook_InvalidSecret(t *testing.T) {
 func TestTaigaWebhook_OK_NativeSignature(t *testing.T) {
 	tenantID := uuid.New()
 	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{}, nil)
-	h := taigaWebhook(svc, "expected-secret", tenantID.String())
+	h := taigaWebhook(svc, nil, nil, "expected-secret", tenantID.String(), app.TaigaKoreMapping{})
 	body := []byte(`{"action":"create","type":"userstory","data":{"id":1}}`)
 	mac := hmac.New(sha1.New, []byte("expected-secret"))
 	mac.Write(body)
@@ -81,8 +81,27 @@ func TestTaigaWebhook_OK_NativeSignature(t *testing.T) {
 func TestTaigaWebhook_OK(t *testing.T) {
 	tenantID := uuid.New()
 	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{}, nil)
-	h := taigaWebhook(svc, "expected-secret", tenantID.String())
+	h := taigaWebhook(svc, nil, nil, "expected-secret", tenantID.String(), app.TaigaKoreMapping{})
 	body := []byte(`{"action":"create","type":"userstory","data":{"id":1}}`)
+	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Taiga-Webhook-Secret", "expected-secret")
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+}
+
+func TestTaigaWebhook_TenantFromMapping(t *testing.T) {
+	defaultTenant := uuid.New().String()
+	mappedTenant := uuid.New().String()
+	svc := app.NewTaigaService(stubTaigaRepo{}, app.TaigaConfig{}, nil)
+	h := taigaWebhook(svc, nil, nil, "expected-secret", defaultTenant, app.TaigaKoreMapping{
+		Projects: map[string]app.TaigaProjectMapping{
+			"1": {KoreTenantID: mappedTenant},
+		},
+	})
+	body := []byte(`{"action":"create","type":"userstory","data":{"id":1,"project":1}}`)
 	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/webhook", bytes.NewReader(body))
 	req.Header.Set("X-Taiga-Webhook-Secret", "expected-secret")
 	rec := httptest.NewRecorder()

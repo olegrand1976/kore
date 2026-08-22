@@ -1390,7 +1390,7 @@ Liens bidirectionnels Kore ↔ outils externes (Taiga).
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-Index : `(tenant_id, kore_entity_type, kore_entity_id)`. Unique : `(tenant_id, provider, external_type, external_id)`.
+Index : `(tenant_id, kore_entity_type, kore_entity_id)`. Unique : `(tenant_id, provider, external_type, external_id)` et `(tenant_id, kore_entity_type, kore_entity_id)`.
 
 ### `integrations.user_mappings`
 

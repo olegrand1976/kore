@@ -187,7 +187,8 @@ Webhook entrant Taiga → lien `external_links` ↔ demande TMA Kore. Sync sorta
 | `kore-taiga-webhook-secret` | Header `X-Taiga-Webhook-Secret` (obligatoire — sans version valide : webhook **503**) |
 | `kore-taiga-base-url` | URL instance Taiga (ex. `https://taiga.example.com`) |
 | `kore-taiga-project-slug` | Slug projet pour construire les permaliens |
-| `kore-taiga-default-tenant-id` | UUID tenant Kore si Taiga n'envoie pas `X-Kore-Tenant-ID` (staging seed : tenant **demo** `…0001`) |
+| `kore-taiga-default-tenant-id` | UUID tenant Kore si Taiga n'envoie pas `X-Kore-Tenant-ID` (fallback) |
+| `taiga-kore-mapping` | JSON `{ "projects": { "<id>": { "kore_tenant_id": "<uuid>" } } }` |
 
 Les trois derniers peuvent aussi être définis via `.env.gcp` (`TAIGA_*`) ou variables d'environnement au deploy.
 
@@ -206,7 +207,7 @@ echo -n 'mon-projet' | gcloud secrets versions add kore-taiga-project-slug --dat
 - **URL** : `https://kore.ll-it-sc.be/api/v1/integrations/taiga/webhook`
 - **Auth** : header `X-Taiga-Webhook-Secret` (smoke / relais) **ou** signature native `X-TAIGA-WEBHOOK-SIGNATURE` (HMAC-SHA1 du corps brut)
 - **Header optionnel** : `X-Kore-Tenant-ID: <uuid-tenant>`
-- **Rate-limit** : 60 req/min/IP (Redis)
+- **Rate-limit** : 60 req/min/IP (Redis), **après** validation du secret/signature
 - **Validation** : la demande TMA Kore doit exister (`422` sinon)
 
 Script ops complet : `TAIGA_BASE_URL=... TAIGA_PROJECT_SLUG=... ./scripts/taiga-ops-complete.sh`

@@ -308,6 +308,11 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	supportService := supportapp.NewService(supportRepo, supportcra.NewFeederAdapter(craService), nil)
 	maintenanceService := maintenanceapp.NewService(maintenanceRepo, maintenancecra.NewFeederAdapter(craService))
 
+	taigaProjectMapping, err := integrationsapp.ParseTaigaKoreMapping(cfg.TaigaKoreMapping)
+	if err != nil {
+		return nil, err
+	}
+
 	authorizer := authx.NewRBACAuthorizer(orgapp.DefaultPermissions())
 	deps := httpx.Dependencies{
 		Logger:            log,
@@ -354,7 +359,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		aihttp.RegisterRoutes(r, aiService, tokenIssuer, authorizer, billingService)
 		billinghttp.RegisterRoutes(r, billingService, tokenIssuer, authorizer, cfg.StripeWebhookSecret, billingService)
 		integrationshttp.RegisterRoutes(r, integrationsService, integrationsKeyService, tokenIssuer, authorizer, billingService)
-		integrationshttp.RegisterTaigaRoutes(r, taigaIntegrationService, tokenIssuer, authorizer, billingService, appCache, keyBuilder, cfg.TaigaWebhookSecret, cfg.TaigaDefaultTenantID)
+		integrationshttp.RegisterTaigaRoutes(r, taigaIntegrationService, tokenIssuer, authorizer, billingService, appCache, keyBuilder, cfg.TaigaWebhookSecret, cfg.TaigaDefaultTenantID, taigaProjectMapping)
 		invoicinghttp.RegisterRoutes(r, invoicingService, tokenIssuer, authorizer, billingService, requestSettingsService, cfg.PDPWebhookSecret, cfg.PublicBaseURL, appCache, keyBuilder)
 		adminhttp.RegisterRoutes(r, adminService, tokenIssuer, authorizer, billingService)
 		reportinghttp.RegisterRoutes(r, reportingService, tokenIssuer, authorizer, billingService)

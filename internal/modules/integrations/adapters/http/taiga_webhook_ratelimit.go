@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
@@ -15,30 +16,23 @@ const (
 	taigaWebhookRateLimitMax    = 60
 )
 
-func taigaWebhookRateLimit(appCache cache.Cache, keys cache.KeyBuilder) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if appCache == nil || keys == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			ip := taigaWebhookClientIP(r)
-			key := keys.PublicKey("integrations", "ratelimit", "taiga-webhook", ip)
-			var count int
-			found, err := appCache.Get(r.Context(), key, &count)
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			if found && count >= taigaWebhookRateLimitMax {
-				httpx.WriteError(w, http.StatusTooManyRequests, httpx.ErrCodeTooManyRequests, "too many requests")
-				return
-			}
-			count++
-			_ = appCache.Set(r.Context(), key, count, taigaWebhookRateLimitWindow)
-			next.ServeHTTP(w, r)
-		})
+func allowTaigaWebhookRequest(ctx context.Context, appCache cache.Cache, keys cache.KeyBuilder, r *http.Request) bool {
+	if appCache == nil || keys == nil {
+		return true
 	}
+	ip := taigaWebhookClientIP(r)
+	key := keys.PublicKey("integrations", "ratelimit", "taiga-webhook", ip)
+	var count int
+	found, err := appCache.Get(ctx, key, &count)
+	if err != nil {
+		return true
+	}
+	if found && count >= taigaWebhookRateLimitMax {
+		return false
+	}
+	count++
+	_ = appCache.Set(ctx, key, count, taigaWebhookRateLimitWindow)
+	return true
 }
 
 func taigaWebhookClientIP(r *http.Request) string {
@@ -53,4 +47,8 @@ func taigaWebhookClientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+func writeTaigaWebhookRateLimited(w http.ResponseWriter) {
+	httpx.WriteError(w, http.StatusTooManyRequests, httpx.ErrCodeTooManyRequests, "too many requests")
 }

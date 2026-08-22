@@ -47,12 +47,16 @@ kore_env_or_secret() {
 
 kore_write_api_env_file() {
   local path="$1"
-  local redis_addr
-  local taiga_base taiga_slug taiga_tenant
+  local redis_addr taiga_base taiga_slug taiga_tenant taiga_mapping taiga_mapping_yaml
   redis_addr="$(kore_resolve_redis_addr)"
   taiga_base="$(kore_env_or_secret TAIGA_BASE_URL kore-taiga-base-url)"
   taiga_slug="$(kore_env_or_secret TAIGA_PROJECT_SLUG kore-taiga-project-slug)"
   taiga_tenant="$(kore_env_or_secret TAIGA_DEFAULT_TENANT_ID kore-taiga-default-tenant-id)"
+  taiga_mapping="$(kore_env_or_secret TAIGA_KORE_MAPPING taiga-kore-mapping)"
+  taiga_mapping_yaml='""'
+  if [[ -n "$taiga_mapping" ]]; then
+    taiga_mapping_yaml="$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<<"$taiga_mapping")"
+  fi
   cat >"$path" <<EOF
 HTTP_ADDR: ":8080"
 LOG_LEVEL: "info"
@@ -79,6 +83,7 @@ UPLOADS_DIR: "/data/uploads"
 TAIGA_BASE_URL: "${taiga_base}"
 TAIGA_PROJECT_SLUG: "${taiga_slug}"
 TAIGA_DEFAULT_TENANT_ID: "${taiga_tenant}"
+TAIGA_KORE_MAPPING: ${taiga_mapping_yaml}
 EOF
 }
 

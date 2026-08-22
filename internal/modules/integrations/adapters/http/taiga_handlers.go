@@ -16,11 +16,11 @@ import (
 	"github.com/kore/kore/pkg/kernel"
 )
 
-func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, appCache cache.Cache, keys cache.KeyBuilder, webhookSecret, defaultTenantID string) {
+func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.TokenIssuer, authorizer authx.Authorizer, entitlements authx.EntitlementReader, appCache cache.Cache, keys cache.KeyBuilder, webhookSecret, defaultTenantID string, projectMapping app.TaigaKoreMapping) {
 	if taiga == nil {
 		return
 	}
-	r.With(taigaWebhookRateLimit(appCache, keys)).Post("/integrations/taiga/webhook", taigaWebhook(taiga, webhookSecret, defaultTenantID))
+	r.Post("/integrations/taiga/webhook", taigaWebhook(taiga, appCache, keys, webhookSecret, defaultTenantID, projectMapping))
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/integrations/taiga/links/by-demand/{id}", findTaigaLinkByDemand(taiga, authorizer))
@@ -28,7 +28,7 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 	})
 }
 
-func taigaWebhook(taiga *app.TaigaService, webhookSecret, defaultTenantID string) http.HandlerFunc {
+func taigaWebhook(taiga *app.TaigaService, appCache cache.Cache, keys cache.KeyBuilder, webhookSecret, defaultTenantID string, projectMapping app.TaigaKoreMapping) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if webhookSecret == "" {
 			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga webhook not configured")
@@ -43,10 +43,12 @@ func taigaWebhook(taiga *app.TaigaService, webhookSecret, defaultTenantID string
 			httpx.WriteError(w, http.StatusUnauthorized, httpx.ErrCodeUnauthorized, "invalid webhook secret")
 			return
 		}
-		tenantRaw := r.Header.Get("X-Kore-Tenant-ID")
-		if tenantRaw == "" {
-			tenantRaw = defaultTenantID
+		if !allowTaigaWebhookRequest(r.Context(), appCache, keys, r) {
+			writeTaigaWebhookRateLimited(w)
+			return
 		}
+		payloadData := app.ExtractTaigaWebhookData(body)
+		tenantRaw := app.ResolveTaigaWebhookTenant(r.Header.Get("X-Kore-Tenant-ID"), defaultTenantID, projectMapping, payloadData)
 		if tenantRaw == "" {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "missing tenant")
 			return

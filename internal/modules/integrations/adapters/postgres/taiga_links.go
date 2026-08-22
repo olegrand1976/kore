@@ -24,25 +24,43 @@ func (r *Repository) UpsertExternalLink(ctx context.Context, link domain.Externa
 	if link.ID == uuid.Nil {
 		link.ID = uuid.New()
 	}
-	_, err = r.pool.Exec(ctx, `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	_, err = tx.Exec(ctx, `
+		DELETE FROM integrations.external_links
+		WHERE tenant_id = $1 AND provider = $2 AND external_type = $3 AND external_id = $4
+			AND NOT (kore_entity_type = $5 AND kore_entity_id = $6)
+	`, link.TenantID.UUID(), link.Provider, link.ExternalType, link.ExternalID,
+		link.KoreEntityType, link.KoreEntityID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
 		INSERT INTO integrations.external_links (
 			id, tenant_id, provider, external_type, external_id,
 			external_project_id, external_ref, external_url,
 			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-		ON CONFLICT (tenant_id, provider, external_type, external_id) DO UPDATE SET
+		ON CONFLICT (tenant_id, kore_entity_type, kore_entity_id) DO UPDATE SET
+			external_id = EXCLUDED.external_id,
 			external_project_id = EXCLUDED.external_project_id,
 			external_ref = EXCLUDED.external_ref,
 			external_url = EXCLUDED.external_url,
-			kore_entity_type = EXCLUDED.kore_entity_type,
-			kore_entity_id = EXCLUDED.kore_entity_id,
 			metadata = EXCLUDED.metadata,
 			last_sync_at = EXCLUDED.last_sync_at,
 			updated_at = EXCLUDED.updated_at
 	`, link.ID, link.TenantID.UUID(), link.Provider, link.ExternalType, link.ExternalID,
 		link.ExternalProjectID, link.ExternalRef, link.ExternalURL,
 		link.KoreEntityType, link.KoreEntityID, meta, link.LastSyncAt, link.CreatedAt, now)
-	return err
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error) {
@@ -52,7 +70,6 @@ func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.T
 			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
 		FROM integrations.external_links
 		WHERE tenant_id = $1 AND kore_entity_type = $2 AND kore_entity_id = $3
-		ORDER BY updated_at DESC
 		LIMIT 1
 	`, tenant.UUID(), koreEntityType, koreEntityID))
 }

@@ -1884,7 +1884,10 @@ paths:
       summary: Webhook entrant Taiga
       responses:
         "200": { description: OK }
+        "400": { description: Corps ou tenant invalide }
         "401": { description: Secret webhook invalide }
+        "422": { description: Demande TMA Kore introuvable }
+        "429": { description: Trop de requêtes }
         "503": { description: Webhook non configuré }
   /integrations/taiga/links/by-demand/{id}:
     get:

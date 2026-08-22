@@ -16,6 +16,26 @@ PATH_PREFIX="/api/v1/*"
 
 gcloud config set project "$GCP_PROJECT_ID" >/dev/null
 
+remove_wildcard_host_rules() {
+  local wildcards
+  wildcards="$(gcloud compute url-maps describe "$URL_MAP" --global --project="$GCP_PROJECT_ID" \
+    --format=json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for rule in data.get('hostRules', []):
+    if '*' in rule.get('hosts', []):
+        print(rule.get('pathMatcher', ''))
+")"
+  if [[ -z "$wildcards" ]]; then
+    return 0
+  fi
+  echo "→ Suppression règle hôte wildcard (*) → ${wildcards//$'\n'/, }"
+  gcloud compute url-maps remove-host-rule "$URL_MAP" \
+    --global --project="$GCP_PROJECT_ID" \
+    --host='*' 2>/dev/null \
+    || echo "  (wildcard * déjà absent)"
+}
+
 echo "=== Kore API LB route — ${CUSTOM_DOMAIN}${PATH_PREFIX} ==="
 
 echo "→ NEG serverless (${API_NEG})"
@@ -52,6 +72,7 @@ else
     --path-matcher-name="$SPLIT_MATCHER" \
     --default-service="$FRONTEND_BACKEND" \
     --path-rules="${PATH_PREFIX}=${API_BACKEND}"
+  remove_wildcard_host_rules
 fi
 
 CURRENT_MATCHER="$(gcloud compute url-maps describe "$URL_MAP" --global --project="$GCP_PROJECT_ID" \
@@ -71,11 +92,8 @@ else
   if [[ -n "$CURRENT_MATCHER" ]]; then
     gcloud compute url-maps remove-host-rule "$URL_MAP" \
       --global --project="$GCP_PROJECT_ID" \
-      --host="$CUSTOM_DOMAIN" \
-      --delete-orphaned-path-matcher 2>/dev/null \
-      || gcloud compute url-maps remove-host-rule "$URL_MAP" \
-        --global --project="$GCP_PROJECT_ID" \
-        --host="$CUSTOM_DOMAIN"
+      --host="$CUSTOM_DOMAIN" 2>/dev/null \
+      || true
   fi
   gcloud compute url-maps add-host-rule "$URL_MAP" \
     --global --project="$GCP_PROJECT_ID" \
@@ -83,10 +101,7 @@ else
     --path-matcher-name="$SPLIT_MATCHER"
 fi
 
-if gcloud compute url-maps describe "$URL_MAP" --global --project="$GCP_PROJECT_ID" \
-  --format='json(hostRules)' | grep -q '"*"'; then
-  echo "AVERTISSEMENT: règle hôte wildcard (*) détectée — à supprimer manuellement" >&2
-fi
+remove_wildcard_host_rules
 
 echo "→ Accès public Cloud Run (${API_SERVICE})"
 gcloud run services add-iam-policy-binding "$API_SERVICE" \

@@ -47,6 +47,43 @@ func TestTaigaLinks_RoundTrip(t *testing.T) {
 	require.Equal(t, 7, *got.ExternalRef)
 }
 
+func TestTaigaLinks_UpsertSameDemandReplacesExternalID(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+	now := time.Now().UTC()
+
+	first := domain.ExternalLink{
+		TenantID:       tenant,
+		Provider:       "taiga",
+		ExternalType:   "userstory",
+		ExternalID:     "smoke-old",
+		ExternalRef:    intPtr(42),
+		KoreEntityType: "demand",
+		KoreEntityID:   demandID,
+		Metadata:       map[string]any{"action": "create"},
+		LastSyncAt:     &now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	require.NoError(t, repo.UpsertExternalLink(ctx, first))
+
+	second := first
+	second.ExternalID = "1"
+	ref := 1
+	second.ExternalRef = &ref
+	second.Metadata = map[string]any{"action": "change"}
+	require.NoError(t, repo.UpsertExternalLink(ctx, second))
+
+	got, err := repo.FindExternalLinkByKore(ctx, tenant, "demand", demandID)
+	require.NoError(t, err)
+	require.Equal(t, "1", got.ExternalID)
+	require.NotNil(t, got.ExternalRef)
+	require.Equal(t, 1, *got.ExternalRef)
+}
+
 func TestTaigaUserMappings_UniqueExternalUser(t *testing.T) {
 	pool := dbtest.NewPostgres(t)
 	repo := postgres.NewRepository(pool)
