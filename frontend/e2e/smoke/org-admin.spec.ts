@@ -152,4 +152,17 @@ test.describe('org admin', () => {
     await row.getByRole('button', { name: /désactiver|deactivate/i }).click()
     await expect(row.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
   })
+
+  test('applications admin exposes Taiga import and edit modal', async ({ page }) => {
+    await page.goto('/admin/applications')
+    await expect(page.getByRole('button', { name: /importer depuis taiga|import from taiga/i })).toBeVisible({
+      timeout: 20_000
+    })
+
+    const editBtn = page.locator('tbody tr').first().getByRole('button', { name: /modifier|edit/i })
+    await editBtn.click()
+    await expect(
+      page.getByRole('heading', { name: /modifier l'application|edit application/i })
+    ).toBeVisible({ timeout: 20_000 })
+  })
 })

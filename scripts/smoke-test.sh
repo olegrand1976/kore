@@ -107,6 +107,16 @@ HTTP_DEL=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "http://localhost:${
   -H "Authorization: Bearer $MGR_TOKEN")
 test "$HTTP_DEL" = "404"
 
+# Taiga integrations (503 si non configuré en local ; 404 si pas de lien application)
+TAIGA_UNLINKED_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+  "http://localhost:${API_PORT}/api/v1/integrations/taiga/projects/unlinked" \
+  -H "Authorization: Bearer $TOKEN")
+test "$TAIGA_UNLINKED_CODE" = "200" -o "$TAIGA_UNLINKED_CODE" = "503"
+TAIGA_LINK_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+  "http://localhost:${API_PORT}/api/v1/integrations/taiga/links/by-application/${DEMO_APP}" \
+  -H "Authorization: Bearer $TOKEN")
+test "$TAIGA_LINK_CODE" = "404" -o "$TAIGA_LINK_CODE" = "200" -o "$TAIGA_LINK_CODE" = "503"
+
 # Project agile (manager + app seed DemoAppID)
 curl -sf "http://localhost:${API_PORT}/api/v1/project/applications" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications/${DEMO_APP}/epics" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null
