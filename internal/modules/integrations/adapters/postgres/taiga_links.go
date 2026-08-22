@@ -52,6 +52,7 @@ func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.T
 			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
 		FROM integrations.external_links
 		WHERE tenant_id = $1 AND kore_entity_type = $2 AND kore_entity_id = $3
+		ORDER BY updated_at DESC
 		LIMIT 1
 	`, tenant.UUID(), koreEntityType, koreEntityID))
 }
