@@ -22,6 +22,7 @@ const (
 	ConnectionTypePDP        ConnectionType = "pdp"
 	ConnectionTypeHRIS       ConnectionType = "hris"
 	ConnectionTypeCalendar   ConnectionType = "calendar"
+	ConnectionTypeTaiga      ConnectionType = "taiga"
 )
 
 type ConnectionStatus string
@@ -103,4 +104,33 @@ func NewApiKey(tenant kernel.TenantID, name, prefix, hash string) ApiKey {
 
 func (k ApiKey) IsRevoked() bool {
 	return k.RevokedAt != nil
+}
+
+type ExternalLink struct {
+	ID                uuid.UUID
+	TenantID          kernel.TenantID
+	Provider          string
+	ExternalType      string
+	ExternalID        string
+	ExternalProjectID *int
+	ExternalRef       *int
+	ExternalURL       string
+	KoreEntityType    string
+	KoreEntityID      uuid.UUID
+	Metadata          map[string]any
+	LastSyncAt        *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type UserMapping struct {
+	ID               uuid.UUID
+	TenantID         kernel.TenantID
+	Provider         string
+	ExternalUserID   string
+	ExternalUsername string
+	KoreUserID       uuid.UUID
+	MatchMethod      string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
