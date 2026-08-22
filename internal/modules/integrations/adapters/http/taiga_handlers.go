@@ -24,6 +24,9 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/integrations/taiga/links/by-demand/{id}", findTaigaLinkByDemand(taiga, authorizer))
+		pr.Get("/integrations/taiga/links/by-application/{id}", findTaigaLinkByApplication(taiga, authorizer))
+		pr.Get("/integrations/taiga/projects/unlinked", listUnlinkedTaigaProjects(taiga, authorizer))
+		pr.Post("/integrations/taiga/applications/import", importTaigaApplications(taiga, authorizer))
 		pr.Post("/integrations/taiga/user-mappings", upsertTaigaUserMapping(taiga, authorizer))
 	})
 }
@@ -131,5 +134,98 @@ func upsertTaigaUserMapping(taiga *app.TaigaService, authorizer authx.Authorizer
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, mapping)
+	}
+}
+
+func listUnlinkedTaigaProjects(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		projects, err := taiga.ListUnlinkedProjects(r.Context(), identity.TenantID)
+		if errors.Is(err, domain.ErrTaigaNotConfigured) || errors.Is(err, domain.ErrTaigaUnavailable) {
+			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, projects)
+	}
+}
+
+func findTaigaLinkByApplication(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		applicationID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		link, err := taiga.FindByKoreApplication(r.Context(), identity.TenantID, applicationID)
+		if errors.Is(err, domain.ErrExternalLinkNotFound) {
+			httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, "link not found")
+			return
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, link)
+	}
+}
+
+func importTaigaApplications(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			Projects           []app.ImportApplicationProject `json:"projects"`
+			Proprietaire       string                         `json:"proprietaire"`
+			ModeFacturation    string                         `json:"modeFacturation"`
+			UOActivee          bool                           `json:"uoActivee"`
+			ChefUtilisateurID  *uuid.UUID                     `json:"chefUtilisateurId"`
+			DefaultTJMCents    int64                          `json:"defaultTjmCents"`
+			SiteIDs            []uuid.UUID                    `json:"siteIds"`
+			ServiceIDs         []uuid.UUID                    `json:"serviceIds"`
+			EquipeIDs          []uuid.UUID                    `json:"equipeIds"`
+			MethodologyProfile string                         `json:"methodologyProfile"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		result, err := taiga.ImportApplications(r.Context(), app.ImportApplicationsCommand{
+			TenantID:           identity.TenantID,
+			Projects:           req.Projects,
+			Proprietaire:       req.Proprietaire,
+			ModeFacturation:    req.ModeFacturation,
+			UOActivee:          req.UOActivee,
+			ChefUtilisateurID:  req.ChefUtilisateurID,
+			DefaultTJMCents:    req.DefaultTJMCents,
+			SiteIDs:            req.SiteIDs,
+			ServiceIDs:         req.ServiceIDs,
+			EquipeIDs:          req.EquipeIDs,
+			MethodologyProfile: req.MethodologyProfile,
+		})
+		if errors.Is(err, domain.ErrTaigaNotConfigured) || errors.Is(err, domain.ErrTaigaUnavailable) {
+			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, result)
 	}
 }

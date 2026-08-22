@@ -1802,7 +1802,21 @@
     "activated": "Application activée",
     "deactivated": "Application désactivée",
     "equipe_created": "Équipe créée",
-    "open_in_admin": "Ouvrir"
+    "open_in_admin": "Ouvrir",
+    "taiga_unavailable": "Import Taiga indisponible (service non configuré).",
+    "taiga_source_title": "Source de création",
+    "taiga_source_manual": "Manuel",
+    "taiga_source_taiga": "Depuis Taiga",
+    "taiga_project_label": "Projet Taiga",
+    "taiga_project_none": "Sélectionner un projet…",
+    "taiga_project_required": "Sélectionnez un projet Taiga.",
+    "taiga_no_projects": "Aucun projet Taiga importable.",
+    "taiga_import_title": "Importer depuis Taiga",
+    "taiga_import_projects": "Projets à importer",
+    "taiga_import_submit": "Importer",
+    "taiga_import_validation": "Sélectionnez au moins un projet et un rattachement org.",
+    "taiga_import_done": "{count} application(s) créée(s) depuis Taiga.",
+    "taiga_import_partial": "{created} créée(s), {errors} erreur(s)."
   },
   "users": {
     "title": "Utilisateurs",

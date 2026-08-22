@@ -70,7 +70,9 @@ type ApiKeyService interface {
 
 type TaigaRepository interface {
 	UpsertExternalLink(ctx context.Context, link domain.ExternalLink) error
+	InsertApplicationProjectLink(ctx context.Context, link domain.ExternalLink) error
 	FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error)
+	ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error)
 	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
 }
 

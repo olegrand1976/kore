@@ -19,6 +19,10 @@ var (
 	ErrInvalidMatchMethod   = errors.New("invalid match method")
 	ErrInvalidKoreDemandID  = errors.New("invalid kore demand id")
 	ErrKoreDemandNotFound   = errors.New("kore demand not found")
+	ErrTaigaNotConfigured   = errors.New("taiga not configured")
+	ErrTaigaUnavailable     = errors.New("taiga unavailable")
+	ErrTaigaProjectNotFound = errors.New("taiga project not found")
+	ErrTaigaProjectLinked   = errors.New("taiga project already linked")
 )
 
 type ConnectionType string

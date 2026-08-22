@@ -56,6 +56,8 @@ type Config struct {
 	TaigaBaseURL           string
 	TaigaProjectSlug       string
 	TaigaKoreMapping       string
+	TaigaServiceUsername   string
+	TaigaServicePassword   string
 }
 
 func Load() (Config, error) {
@@ -107,6 +109,8 @@ func Load() (Config, error) {
 		TaigaBaseURL:           envOr("TAIGA_BASE_URL", ""),
 		TaigaProjectSlug:       envOr("TAIGA_PROJECT_SLUG", ""),
 		TaigaKoreMapping:       envOr("TAIGA_KORE_MAPPING", ""),
+		TaigaServiceUsername:   envOr("TAIGA_SERVICE_USERNAME", ""),
+		TaigaServicePassword:   envOr("TAIGA_SERVICE_PASSWORD", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

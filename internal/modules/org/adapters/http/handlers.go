@@ -11,6 +11,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	integrationdomain "github.com/kore/kore/internal/modules/integrations/domain"
+	integrationports "github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/internal/modules/org/app"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
@@ -33,6 +35,7 @@ func RegisterRoutes(
 	entitlements authx.EntitlementReader,
 	leaveBootstrap ports.LeaveTypeBootstrapper,
 	requestSettings ports.RequestSettingsService,
+	taigaBridge TaigaApplicationBridge,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/2fa/verify", verify2FAHandler(users))
@@ -57,7 +60,7 @@ func RegisterRoutes(
 		pr.Post("/services", createService(org, authorizer))
 		pr.Get("/services", listServices(org, authorizer))
 		pr.Put("/services/{id}", updateService(org, authorizer))
-		pr.Post("/applications", createApplication(org, authorizer))
+		pr.Post("/applications", createApplication(org, authorizer, taigaBridge))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
 		pr.Put("/applications/{id}", updateApplication(org, authorizer))
@@ -346,7 +349,7 @@ func updateService(org ports.OrganizationService, authorizer authx.Authorizer) h
 	}
 }
 
-func createApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+func createApplication(org ports.OrganizationService, authorizer authx.Authorizer, taigaBridge TaigaApplicationBridge) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
@@ -364,6 +367,7 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			ServiceIDs         []uuid.UUID `json:"serviceIds"`
 			EquipeIDs          []uuid.UUID `json:"equipeIds"`
 			MethodologyProfile string      `json:"methodologyProfile"`
+			TaigaProjectID     *int        `json:"taigaProjectId"`
 			// Legacy single serviceId still accepted and merged into serviceIds.
 			ServiceID uuid.UUID `json:"serviceId"`
 		}
@@ -376,6 +380,36 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			serviceIDs = append(serviceIDs, req.ServiceID)
 		}
 		identity, _ := authx.FromContext(r.Context())
+		if req.TaigaProjectID != nil && *req.TaigaProjectID > 0 {
+			if taigaBridge == nil {
+				httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga not configured")
+				return
+			}
+			a, err := taigaBridge.CreateApplicationWithTaiga(r.Context(), integrationports.CreateApplicationInput{
+				TenantID:           identity.TenantID,
+				Libelle:            req.Libelle,
+				Proprietaire:       req.Proprietaire,
+				ModeFacturation:    req.ModeFacturation,
+				UOActivee:          req.UOActivee,
+				ChefUtilisateurID:  req.ChefUtilisateurID,
+				DefaultTJMCents:    req.DefaultTJMCents,
+				SiteIDs:            req.SiteIDs,
+				ServiceIDs:         serviceIDs,
+				EquipeIDs:          req.EquipeIDs,
+				MethodologyProfile: req.MethodologyProfile,
+			}, *req.TaigaProjectID)
+			if err != nil {
+				writeCreateApplicationError(w, err)
+				return
+			}
+			app, err := org.GetApplication(r.Context(), identity.TenantID, a.ID)
+			if err != nil {
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+				return
+			}
+			httpx.WriteData(w, http.StatusCreated, app)
+			return
+		}
 		a, err := org.CreateApplication(r.Context(), ports.CreateApplicationCommand{
 			TenantID:           identity.TenantID,
 			Libelle:            req.Libelle,
@@ -409,6 +443,27 @@ func createApplication(org ports.OrganizationService, authorizer authx.Authorize
 			return
 		}
 		httpx.WriteData(w, http.StatusCreated, a)
+	}
+}
+
+func writeCreateApplicationError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrInvalidModeFacturation),
+		errors.Is(err, domain.ErrInvalidMethodologyProfile),
+		errors.Is(err, domain.ErrUserNotFound),
+		errors.Is(err, domain.ErrInvalidApplicationLibelle),
+		errors.Is(err, domain.ErrBudgetNotFound),
+		errors.Is(err, domain.ErrBudgetNotAllowedOnCreate),
+		errors.Is(err, domain.ErrApplicationWithoutShare),
+		errors.Is(err, domain.ErrInvalidApplicationShare),
+		errors.Is(err, integrationdomain.ErrTaigaProjectNotFound),
+		errors.Is(err, integrationdomain.ErrTaigaProjectLinked):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, integrationdomain.ErrTaigaNotConfigured),
+		errors.Is(err, integrationdomain.ErrTaigaUnavailable):
+		httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, err.Error())
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}
 }
 

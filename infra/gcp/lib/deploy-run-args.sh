@@ -47,12 +47,14 @@ kore_env_or_secret() {
 
 kore_write_api_env_file() {
   local path="$1"
-  local redis_addr taiga_base taiga_slug taiga_tenant taiga_mapping taiga_mapping_yaml
+  local redis_addr taiga_base taiga_slug taiga_tenant taiga_mapping taiga_user taiga_pass taiga_mapping_yaml
   redis_addr="$(kore_resolve_redis_addr)"
   taiga_base="$(kore_env_or_secret TAIGA_BASE_URL kore-taiga-base-url)"
   taiga_slug="$(kore_env_or_secret TAIGA_PROJECT_SLUG kore-taiga-project-slug)"
   taiga_tenant="$(kore_env_or_secret TAIGA_DEFAULT_TENANT_ID kore-taiga-default-tenant-id)"
   taiga_mapping="$(kore_env_or_secret TAIGA_KORE_MAPPING taiga-kore-mapping)"
+  taiga_user="$(kore_env_or_secret TAIGA_SERVICE_USERNAME kore-taiga-service-username)"
+  taiga_pass="$(kore_env_or_secret TAIGA_SERVICE_PASSWORD kore-taiga-service-password)"
   taiga_mapping_yaml='""'
   if [[ -n "$taiga_mapping" ]]; then
     taiga_mapping_yaml="$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<<"$taiga_mapping")"
@@ -84,6 +86,8 @@ TAIGA_BASE_URL: "${taiga_base}"
 TAIGA_PROJECT_SLUG: "${taiga_slug}"
 TAIGA_DEFAULT_TENANT_ID: "${taiga_tenant}"
 TAIGA_KORE_MAPPING: ${taiga_mapping_yaml}
+TAIGA_SERVICE_USERNAME: "${taiga_user}"
+TAIGA_SERVICE_PASSWORD: "${taiga_pass}"
 EOF
 }
 
@@ -126,6 +130,9 @@ kore_api_secrets() {
   fi
   if kore_has_secret_version "kore-taiga-webhook-secret"; then
     secrets+=",TAIGA_WEBHOOK_SECRET=kore-taiga-webhook-secret:latest"
+  fi
+  if kore_has_secret_version "kore-taiga-service-password"; then
+    secrets+=",TAIGA_SERVICE_PASSWORD=kore-taiga-service-password:latest"
   fi
   if kore_has_secret_version "kore-fcm-service-account"; then
     secrets+=",GOOGLE_APPLICATION_CREDENTIALS=kore-fcm-service-account:latest"

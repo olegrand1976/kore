@@ -229,3 +229,21 @@ Puis déclencher un événement Taiga (création ou mise à jour). Le panneau **
 3. Fiche TMA → panneau « Lien Taiga » avec numéro de story et lien cliquable.
 
 Scripts dépôt : `./scripts/taiga-setup-gcp.sh` (bootstrap secrets + IAM), `./scripts/taiga-webhook-smoke.sh` (POST webhook test).
+
+### Import applications (sortant Taiga → Kore)
+
+Administrateur (`org:E`) — page **Administration → Applications** :
+
+1. **Création unitaire** : mode « Depuis Taiga » → sélection d'un projet non lié → `POST /applications` avec `taigaProjectId`.
+2. **Import en masse** : bouton « Importer depuis Taiga » → multi-sélection → `POST /integrations/taiga/applications/import`.
+
+Liaison persistée dans `integrations.external_links` (`kore_entity_type=application`, `external_type=project`). Unicité : 1 application Kore ↔ 1 projet Taiga par tenant (migration `0003`).
+
+Secrets additionnels pour lister les projets Taiga :
+
+| Secret / variable | Rôle |
+| --- | --- |
+| `kore-taiga-service-username` / `TAIGA_SERVICE_USERNAME` | Compte service Taiga (lecture projets) |
+| `kore-taiga-service-password` / `TAIGA_SERVICE_PASSWORD` | Mot de passe du compte service |
+
+API : `GET /integrations/taiga/projects/unlinked`, `GET /integrations/taiga/links/by-application/{id}`.

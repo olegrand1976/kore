@@ -63,6 +63,39 @@ func (r *Repository) UpsertExternalLink(ctx context.Context, link domain.Externa
 	return tx.Commit(ctx)
 }
 
+// InsertApplicationProjectLink atomically links one Kore application to one Taiga project per tenant.
+// Returns ErrTaigaProjectLinked when the Taiga project is already linked (including concurrent imports).
+func (r *Repository) InsertApplicationProjectLink(ctx context.Context, link domain.ExternalLink) error {
+	meta, err := json.Marshal(link.Metadata)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	if link.ID == uuid.Nil {
+		link.ID = uuid.New()
+	}
+	if link.CreatedAt.IsZero() {
+		link.CreatedAt = now
+	}
+	tag, err := r.pool.Exec(ctx, `
+		INSERT INTO integrations.external_links (
+			id, tenant_id, provider, external_type, external_id,
+			external_project_id, external_ref, external_url,
+			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+		ON CONFLICT (tenant_id, provider, external_type, external_id) DO NOTHING
+	`, link.ID, link.TenantID.UUID(), link.Provider, link.ExternalType, link.ExternalID,
+		link.ExternalProjectID, link.ExternalRef, link.ExternalURL,
+		link.KoreEntityType, link.KoreEntityID, meta, link.LastSyncAt, link.CreatedAt, now)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrTaigaProjectLinked
+	}
+	return nil
+}
+
 func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error) {
 	return r.scanExternalLink(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, provider, external_type, external_id,
@@ -72,6 +105,27 @@ func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.T
 		WHERE tenant_id = $1 AND kore_entity_type = $2 AND kore_entity_id = $3
 		LIMIT 1
 	`, tenant.UUID(), koreEntityType, koreEntityID))
+}
+
+func (r *Repository) ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT external_id
+		FROM integrations.external_links
+		WHERE tenant_id = $1 AND provider = 'taiga' AND external_type = 'project'
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func (r *Repository) UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error {

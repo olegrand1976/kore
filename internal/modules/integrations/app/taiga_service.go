@@ -18,10 +18,12 @@ type TaigaService struct {
 	repo    ports.TaigaRepository
 	cfg     TaigaConfig
 	demands ports.TaigaDemandGate
+	gateway ports.TaigaGateway
+	apps    ports.ApplicationCreator
 }
 
-func NewTaigaService(repo ports.TaigaRepository, cfg TaigaConfig, demands ports.TaigaDemandGate) *TaigaService {
-	return &TaigaService{repo: repo, cfg: cfg, demands: demands}
+func NewTaigaService(repo ports.TaigaRepository, cfg TaigaConfig, demands ports.TaigaDemandGate, gateway ports.TaigaGateway, apps ports.ApplicationCreator) *TaigaService {
+	return &TaigaService{repo: repo, cfg: cfg, demands: demands, gateway: gateway, apps: apps}
 }
 
 type UpsertUserMappingCommand struct {

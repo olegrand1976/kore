@@ -2,6 +2,15 @@
   <div>
     <AppPageHeader :title="$t('applications.title')" :subtitle="$t('applications.subtitle')">
       <template #actions>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          type="button"
+          :disabled="!taigaAvailable"
+          @click="openTaigaImport"
+        >
+          <AppIcon name="cloud_download" /> {{ $t('applications.taiga_import_title') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" type="button" @click="openCreate">
           <AppIcon name="add" /> {{ $t('applications.create_title') }}
         </AppButton>
@@ -92,6 +101,43 @@
         </h2>
 
         <div class="apps-form__body">
+          <section
+            v-if="!editingId && taigaAvailable"
+            class="apps-form__section"
+            aria-labelledby="apps-section-source"
+          >
+            <h3 id="apps-section-source">{{ $t('applications.taiga_source_title') }}</h3>
+            <fieldset class="apps-form__radiogroup">
+              <legend class="apps-form__sr-only">{{ $t('applications.taiga_source_title') }}</legend>
+              <label class="apps-form__radio">
+                <input v-model="createMode" type="radio" value="manual" />
+                <span>{{ $t('applications.taiga_source_manual') }}</span>
+              </label>
+              <label class="apps-form__radio">
+                <input v-model="createMode" type="radio" value="taiga" />
+                <span>{{ $t('applications.taiga_source_taiga') }}</span>
+              </label>
+            </fieldset>
+            <label v-if="createMode === 'taiga'" class="apps-form__field">
+              <span>{{ $t('applications.taiga_project_label') }}</span>
+              <select
+                id="app-taiga-project"
+                v-model="selectedTaigaProjectId"
+                class="apps-form__input"
+                :disabled="taigaProjectsLoading"
+              >
+                <option value="">{{ $t('applications.taiga_project_none') }}</option>
+                <option v-for="p in taigaProjects" :key="p.id" :value="String(p.id)">
+                  {{ p.name }} ({{ p.slug }})
+                </option>
+              </select>
+              <span v-if="taigaProjectsLoading" class="apps-form__hint">{{ $t('applications.loading') }}</span>
+              <span v-else-if="!taigaProjects.length" class="apps-form__hint">
+                {{ $t('applications.taiga_no_projects') }}
+              </span>
+            </label>
+          </section>
+
           <section class="apps-form__section" aria-labelledby="apps-section-identity">
             <h3 id="apps-section-identity">{{ $t('applications.section_identity') }}</h3>
             <AppInput
@@ -285,6 +331,104 @@
         </div>
       </form>
     </AppModal>
+
+    <AppModal
+      v-model:open="showTaigaImport"
+      width="lg"
+      title-id="apps-taiga-import-title"
+    >
+      <form class="apps-form" novalidate @submit.prevent="submitTaigaImport">
+        <h2 id="apps-taiga-import-title" class="apps-form__title">
+          {{ $t('applications.taiga_import_title') }}
+        </h2>
+        <div class="apps-form__body">
+          <section class="apps-form__section" aria-labelledby="apps-taiga-import-projects">
+            <h3 id="apps-taiga-import-projects">{{ $t('applications.taiga_import_projects') }}</h3>
+            <p v-if="taigaProjectsLoading" class="apps-form__hint">{{ $t('applications.loading') }}</p>
+            <p v-else-if="!taigaProjects.length" class="apps-form__hint">
+              {{ $t('applications.taiga_no_projects') }}
+            </p>
+            <fieldset v-else class="apps-form__checkgroup apps-form__checklist--scroll">
+              <legend class="apps-form__sr-only">{{ $t('applications.taiga_import_projects') }}</legend>
+              <div class="apps-form__checklist">
+                <label v-for="p in taigaProjects" :key="p.id" class="apps-form__check">
+                  <input v-model="taigaImportSelected" type="checkbox" :value="p.id" />
+                  <span>{{ p.name }} ({{ p.slug }})</span>
+                </label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section
+            class="apps-form__section"
+            :class="{ 'apps-form__section--invalid': taigaImportSharesInvalid }"
+            aria-labelledby="apps-taiga-import-shares"
+          >
+            <h3 id="apps-taiga-import-shares">{{ $t('applications.section_shares') }}</h3>
+            <p class="apps-form__hint">{{ $t('applications.shares_hint') }}</p>
+            <p class="apps-form__shares-summary" aria-live="polite">{{ taigaImportSharesSummary }}</p>
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_sites') }}</legend>
+              <div v-if="siteOptions.length" class="apps-form__checklist">
+                <label v-for="s in siteOptions" :key="s.value" class="apps-form__check">
+                  <input v-model="taigaImportForm.siteIds" type="checkbox" :value="s.value" />
+                  <span>{{ s.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_services') }}</legend>
+              <div v-if="serviceOptions.length" class="apps-form__checklist">
+                <label v-for="s in serviceOptions" :key="s.value" class="apps-form__check">
+                  <input v-model="taigaImportForm.serviceIds" type="checkbox" :value="s.value" />
+                  <span>{{ s.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="apps-form__checkgroup">
+              <legend>{{ $t('applications.field_share_equipes') }}</legend>
+              <div v-if="equipeShareOptions.length" class="apps-form__checklist">
+                <label v-for="e in equipeShareOptions" :key="e.value" class="apps-form__check">
+                  <input v-model="taigaImportForm.equipeIds" type="checkbox" :value="e.value" />
+                  <span>{{ e.label }}</span>
+                </label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="apps-form__section" aria-labelledby="apps-taiga-import-billing">
+            <h3 id="apps-taiga-import-billing">{{ $t('applications.section_billing') }}</h3>
+            <label class="apps-form__field">
+              <span>{{ $t('applications.field_mode') }}</span>
+              <select v-model="taigaImportForm.modeFacturation" class="apps-form__input">
+                <option value="temps_passe">{{ $t('applications.mode_temps_passe') }}</option>
+                <option value="forfait">{{ $t('applications.mode_forfait') }}</option>
+                <option value="non">{{ $t('applications.mode_non') }}</option>
+              </select>
+            </label>
+            <label class="apps-form__field">
+              <span>{{ $t('applications.field_methodology') }}</span>
+              <select v-model="taigaImportForm.methodologyProfile" class="apps-form__input">
+                <option value="psa">{{ $t('applications.methodology_psa') }}</option>
+                <option value="agile_scrum">{{ $t('applications.methodology_scrum') }}</option>
+                <option value="agile_kanban">{{ $t('applications.methodology_kanban') }}</option>
+              </select>
+            </label>
+          </section>
+        </div>
+        <div class="apps-form__footer">
+          <p v-if="taigaImportError" class="apps-form__error" role="alert">{{ taigaImportError }}</p>
+          <div class="apps-form__actions">
+            <AppButton variant="ghost" type="button" @click="closeTaigaImport">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="primary" type="submit" :disabled="taigaImportSaving">
+              {{ taigaImportSaving ? $t('common.saving') : $t('applications.taiga_import_submit') }}
+            </AppButton>
+          </div>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -305,6 +449,7 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 const { t } = useI18n()
 const route = useRoute()
 const { extractFetchError } = useApiError()
+const { apiFetch } = useApiFetch()
 const {
   list,
   create,
@@ -360,6 +505,29 @@ const actionBusyId = ref('')
 const membershipBusyId = ref('')
 const membershipEquipeId = ref('')
 const newEquipeLibelle = ref('')
+
+type CreateMode = 'manual' | 'taiga'
+const createMode = ref<CreateMode>('manual')
+const taigaAvailable = ref(true)
+const taigaProjects = ref<{ id: number; name: string; slug: string }[]>([])
+const taigaProjectsLoading = ref(false)
+const selectedTaigaProjectId = ref('')
+const showTaigaImport = ref(false)
+const taigaImportSelected = ref<number[]>([])
+const taigaImportSaving = ref(false)
+const taigaImportError = ref('')
+const taigaImportSharesInvalid = ref(false)
+const taigaImportForm = reactive({
+  siteIds: [] as string[],
+  serviceIds: [] as string[],
+  equipeIds: [] as string[],
+  modeFacturation: 'temps_passe',
+  methodologyProfile: 'psa' as MethodologyProfile,
+  proprietaire: '',
+  defaultTjmEuros: 0,
+  uoActivee: false,
+  chefUtilisateurId: ''
+})
 
 const serviceOptions = ref<{ value: string; label: string }[]>([])
 const siteOptions = ref<{ value: string; label: string }[]>([])
@@ -480,6 +648,130 @@ const displayRows = computed(() => sortedItems.value)
 const formSharesSummary = computed(() =>
   sharesLabel(form.siteIds.length, form.serviceIds.length, form.equipeIds.length)
 )
+
+const taigaImportSharesSummary = computed(() =>
+  sharesLabel(
+    taigaImportForm.siteIds.length,
+    taigaImportForm.serviceIds.length,
+    taigaImportForm.equipeIds.length
+  )
+)
+
+const loadTaigaProjects = async () => {
+  taigaProjectsLoading.value = true
+  try {
+    const res = await apiFetch<{ data?: { id: number; name: string; slug: string }[] }>(
+      '/api/integrations/taiga/projects/unlinked'
+    )
+    taigaProjects.value = res?.data ?? []
+    taigaAvailable.value = true
+  } catch (err) {
+    if ((err as { statusCode?: number })?.statusCode === 503) {
+      taigaAvailable.value = false
+      taigaProjects.value = []
+      return
+    }
+    throw err
+  } finally {
+    taigaProjectsLoading.value = false
+  }
+}
+
+watch(createMode, async (mode) => {
+  if (mode === 'taiga' && !taigaProjects.value.length && taigaAvailable.value) {
+    try {
+      await loadTaigaProjects()
+    } catch (err) {
+      formError.value = extractFetchError(err)
+    }
+  }
+})
+
+watch(selectedTaigaProjectId, (id) => {
+  if (!id || form.libelle.trim()) return
+  const project = taigaProjects.value.find((p) => String(p.id) === id)
+  if (project) form.libelle = project.name
+})
+
+const openTaigaImport = async () => {
+  taigaImportError.value = ''
+  taigaImportSharesInvalid.value = false
+  taigaImportSelected.value = []
+  taigaImportForm.siteIds = []
+  taigaImportForm.serviceIds = []
+  taigaImportForm.equipeIds = []
+  taigaImportForm.modeFacturation = form.modeFacturation
+  taigaImportForm.methodologyProfile = form.methodologyProfile
+  taigaImportForm.proprietaire = form.proprietaire
+  taigaImportForm.defaultTjmEuros = form.defaultTjmEuros
+  taigaImportForm.uoActivee = form.uoActivee
+  taigaImportForm.chefUtilisateurId = form.chefUtilisateurId
+  showTaigaImport.value = true
+  try {
+    await loadTaigaProjects()
+  } catch (err) {
+    taigaImportError.value = extractFetchError(err)
+  }
+}
+
+const closeTaigaImport = () => {
+  showTaigaImport.value = false
+  taigaImportError.value = ''
+  taigaImportSharesInvalid.value = false
+}
+
+const submitTaigaImport = async () => {
+  taigaImportError.value = ''
+  const hasShare =
+    taigaImportForm.siteIds.length > 0 ||
+    taigaImportForm.serviceIds.length > 0 ||
+    taigaImportForm.equipeIds.length > 0
+  taigaImportSharesInvalid.value = !hasShare
+  if (!taigaImportSelected.value.length || !hasShare) {
+    taigaImportError.value = t('applications.taiga_import_validation')
+    return
+  }
+  taigaImportSaving.value = true
+  try {
+    const res = await apiFetch<{
+      data?: {
+        created?: { applicationId: string; libelle: string; taigaProjectId: number }[]
+        errors?: { taigaProjectId: number; message: string }[]
+      }
+    }>('/api/integrations/taiga/applications/import', {
+      method: 'POST',
+      body: {
+        projects: taigaImportSelected.value.map((id) => {
+          const project = taigaProjects.value.find((p) => p.id === id)
+          return { taigaProjectId: id, libelle: project?.name ?? '' }
+        }),
+        proprietaire: taigaImportForm.proprietaire.trim(),
+        modeFacturation: taigaImportForm.modeFacturation,
+        defaultTjmCents: Math.max(0, Math.round((taigaImportForm.defaultTjmEuros || 0) * 100)),
+        uoActivee: taigaImportForm.uoActivee,
+        chefUtilisateurId: taigaImportForm.chefUtilisateurId || undefined,
+        siteIds: taigaImportForm.siteIds,
+        serviceIds: taigaImportForm.serviceIds,
+        equipeIds: taigaImportForm.equipeIds,
+        methodologyProfile: taigaImportForm.methodologyProfile
+      }
+    })
+    const created = res?.data?.created?.length ?? 0
+    const errors = res?.data?.errors?.length ?? 0
+    flash.value =
+      errors > 0
+        ? t('applications.taiga_import_partial', { created, errors })
+        : t('applications.taiga_import_done', { count: created })
+    flashError.value = errors > 0 && created === 0
+    closeTaigaImport()
+    await loadAll()
+    await loadTaigaProjects()
+  } catch (err) {
+    taigaImportError.value = extractFetchError(err)
+  } finally {
+    taigaImportSaving.value = false
+  }
+}
 
 const defaultTjmModel = computed({
   get: () => String(form.defaultTjmEuros || 0),
@@ -666,6 +958,8 @@ const loadAll = async () => {
 
 const openCreate = () => {
   editingId.value = ''
+  createMode.value = 'manual'
+  selectedTaigaProjectId.value = ''
   form.siteIds = []
   form.serviceIds = []
   form.equipeIds = []
@@ -715,6 +1009,10 @@ const submitForm = async () => {
   const hasShare =
     form.siteIds.length > 0 || form.serviceIds.length > 0 || form.equipeIds.length > 0
   sharesInvalid.value = !hasShare
+  if (!editingId.value && createMode.value === 'taiga' && !selectedTaigaProjectId.value) {
+    formError.value = t('applications.taiga_project_required')
+    return
+  }
   if (!form.libelle.trim() || !hasShare) {
     formError.value = t('applications.validation_required')
     return
@@ -756,7 +1054,7 @@ const submitForm = async () => {
       await update(editingId.value, body)
       flash.value = t('applications.updated')
     } else {
-      await create({
+      const body: Record<string, unknown> = {
         siteIds: form.siteIds,
         serviceIds: form.serviceIds,
         equipeIds: form.equipeIds,
@@ -767,7 +1065,11 @@ const submitForm = async () => {
         uoActivee: form.uoActivee,
         chefUtilisateurId: chef || undefined,
         methodologyProfile: form.methodologyProfile
-      })
+      }
+      if (createMode.value === 'taiga' && selectedTaigaProjectId.value) {
+        body.taigaProjectId = Number(selectedTaigaProjectId.value)
+      }
+      await create(body as Parameters<typeof create>[0])
       flash.value = t('applications.created')
     }
     flashError.value = false
@@ -977,6 +1279,35 @@ onMounted(async () => {
   border: 1px solid var(--kore-border);
   border-radius: var(--kore-radius-md);
   background: var(--kore-bg-subtle);
+}
+.apps-form__checklist--scroll .apps-form__checklist {
+  max-height: 14rem;
+}
+.apps-form__radiogroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-md);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.apps-form__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kore-space-xs);
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
+}
+.apps-form__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .apps-form__check {
   display: flex;

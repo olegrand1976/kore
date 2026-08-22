@@ -109,6 +109,69 @@ func TestTaigaUserMappings_UniqueExternalUser(t *testing.T) {
 	require.NoError(t, repo.UpsertUserMapping(ctx, m2))
 }
 
+func TestTaigaLinks_ApplicationProjectRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	now := time.Now().UTC()
+	pid := 7
+
+	link := domain.ExternalLink{
+		TenantID:          tenant,
+		Provider:          "taiga",
+		ExternalType:      "project",
+		ExternalID:        "7",
+		ExternalProjectID: &pid,
+		ExternalURL:       "https://taiga.example.com/project/kore-tma",
+		KoreEntityType:    "application",
+		KoreEntityID:      appID,
+		LastSyncAt:        &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	require.NoError(t, repo.InsertApplicationProjectLink(ctx, link))
+
+	got, err := repo.FindExternalLinkByKore(ctx, tenant, "application", appID)
+	require.NoError(t, err)
+	require.Equal(t, "7", got.ExternalID)
+
+	linked, err := repo.ListLinkedTaigaProjectIDs(ctx, tenant)
+	require.NoError(t, err)
+	require.Contains(t, linked, "7")
+}
+
+func TestTaigaLinks_ApplicationProjectLinkRejectsDuplicate(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	now := time.Now().UTC()
+	pid := 7
+
+	first := domain.ExternalLink{
+		TenantID:          tenant,
+		Provider:          "taiga",
+		ExternalType:      "project",
+		ExternalID:        "7",
+		ExternalProjectID: &pid,
+		ExternalURL:       "https://taiga.example.com/project/kore-tma",
+		KoreEntityType:    "application",
+		KoreEntityID:      uuid.New(),
+		LastSyncAt:        &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	require.NoError(t, repo.InsertApplicationProjectLink(ctx, first))
+
+	second := first
+	second.KoreEntityID = uuid.New()
+	second.ID = uuid.Nil
+	err := repo.InsertApplicationProjectLink(ctx, second)
+	require.ErrorIs(t, err, domain.ErrTaigaProjectLinked)
+}
+
 func intPtr(n int) *int {
 	return &n
 }

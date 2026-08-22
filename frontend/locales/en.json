@@ -2390,6 +2390,20 @@
     "activated": "Application activated",
     "deactivated": "Application deactivated",
     "equipe_created": "Team created",
-    "open_in_admin": "Open"
+    "open_in_admin": "Open",
+    "taiga_unavailable": "Taiga import unavailable (service not configured).",
+    "taiga_source_title": "Creation source",
+    "taiga_source_manual": "Manual",
+    "taiga_source_taiga": "From Taiga",
+    "taiga_project_label": "Taiga project",
+    "taiga_project_none": "Select a project…",
+    "taiga_project_required": "Select a Taiga project.",
+    "taiga_no_projects": "No importable Taiga projects.",
+    "taiga_import_title": "Import from Taiga",
+    "taiga_import_projects": "Projects to import",
+    "taiga_import_submit": "Import",
+    "taiga_import_validation": "Select at least one project and an org share.",
+    "taiga_import_done": "{count} application(s) created from Taiga.",
+    "taiga_import_partial": "{created} created, {errors} error(s)."
   }
 }

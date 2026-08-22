@@ -52,7 +52,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
 - Pages `/admin/sites`, `/admin/services`, `/admin/equipes` : listes dédiées (création / modification) ; l'onglet Structure conserve la vue arbre.
-- Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft.
+- Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft ; **import depuis Taiga** (création unitaire ou en masse, projets non liés).
 - Menu **Projets agile** (`/projets`) pour les applications en mode Scrum ou Kanban.
 - Fiche demande TMA (`/tma/{id}`) : panneau **Lien Taiga** (lecture TMA) si une user story Taiga est liée via webhook.
 - Validation complète CRA / TMA / congés / budget.

@@ -44,8 +44,11 @@ import (
 	ettpostgres "github.com/kore/kore/internal/modules/ett/adapters/postgres"
 	ettapp "github.com/kore/kore/internal/modules/ett/app"
 	integrationshttp "github.com/kore/kore/internal/modules/integrations/adapters/http"
+	integrationorg "github.com/kore/kore/internal/modules/integrations/adapters/org"
 	integrationspostgres "github.com/kore/kore/internal/modules/integrations/adapters/postgres"
+	integrationstaiga "github.com/kore/kore/internal/modules/integrations/adapters/taiga"
 	integrationstma "github.com/kore/kore/internal/modules/integrations/adapters/tma"
+	integrationports "github.com/kore/kore/internal/modules/integrations/ports"
 	integrationsapp "github.com/kore/kore/internal/modules/integrations/app"
 	integrationsdomain "github.com/kore/kore/internal/modules/integrations/domain"
 	invoicinghttp "github.com/kore/kore/internal/modules/invoicing/adapters/http"
@@ -277,10 +280,23 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	}
 	integrationsService := integrationsapp.NewService(integrationsRepo, integrationOpts...)
 	integrationsKeyService := integrationsapp.NewApiKeyService(integrationsRepo)
+	var taigaGateway integrationports.TaigaGateway
+	if integrationstaiga.Enabled(integrationstaiga.Config{
+		BaseURL:  cfg.TaigaBaseURL,
+		Username: cfg.TaigaServiceUsername,
+		Password: cfg.TaigaServicePassword,
+	}) {
+		taigaGateway = integrationstaiga.NewClient(integrationstaiga.Config{
+			BaseURL:  cfg.TaigaBaseURL,
+			Username: cfg.TaigaServiceUsername,
+			Password: cfg.TaigaServicePassword,
+		})
+	}
+	taigaAppCreator := integrationorg.NewApplicationCreator(orgService)
 	taigaIntegrationService := integrationsapp.NewTaigaService(integrationsRepo, integrationsapp.TaigaConfig{
 		BaseURL:     cfg.TaigaBaseURL,
 		ProjectSlug: cfg.TaigaProjectSlug,
-	}, integrationstma.NewDemandGate(tmaService))
+	}, integrationstma.NewDemandGate(tmaService), taigaGateway, taigaAppCreator)
 	adminService := adminapp.NewService(adminRepo)
 	reportingLeaveReader := reportingconges.NewLeaveReader(congesService)
 	reportingService := reportingapp.NewService(
@@ -345,7 +361,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	router.Route("/api/v1", func(r chi.Router) {
 		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
 		idpService := orgapp.NewIdentityProviderService(orgRepo)
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService, taigaIntegrationService)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		orghttp.RegisterPublicSignupRoutes(r, platformService, appCache, keyBuilder, cfg.PublicSignupEnabled)

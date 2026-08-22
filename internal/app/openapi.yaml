@@ -1441,6 +1441,7 @@ paths:
                 uoActivee: { type: boolean }
                 chefUtilisateurId: { type: string, format: uuid, nullable: true }
                 methodologyProfile: { type: string, enum: [psa, agile_scrum, agile_kanban], default: psa }
+                taigaProjectId: { type: integer, description: "Projet Taiga à lier (création depuis Taiga)" }
       responses:
         "201":
           description: Application créée
@@ -1897,6 +1898,60 @@ paths:
       responses:
         "200": { description: OK }
         "404": { description: Lien introuvable }
+  /integrations/taiga/links/by-application/{id}:
+    get:
+      summary: Lien Taiga associé à une application Kore
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Lien introuvable }
+  /integrations/taiga/projects/unlinked:
+    get:
+      summary: Projets Taiga importables (non liés)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Liste des projets }
+        "503": { description: Taiga non configuré ou indisponible }
+  /integrations/taiga/applications/import:
+    post:
+      summary: Import en masse d'applications depuis Taiga
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projects]
+              properties:
+                projects:
+                  type: array
+                  items:
+                    type: object
+                    required: [taigaProjectId]
+                    properties:
+                      taigaProjectId: { type: integer }
+                      libelle: { type: string }
+                proprietaire: { type: string }
+                modeFacturation: { type: string, enum: [non, forfait, temps_passe] }
+                uoActivee: { type: boolean }
+                chefUtilisateurId: { type: string, format: uuid, nullable: true }
+                defaultTjmCents: { type: integer }
+                siteIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                serviceIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                equipeIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                methodologyProfile: { type: string, enum: [psa, agile_scrum, agile_kanban] }
+      responses:
+        "200": { description: Résultat partiel ou complet }
+        "422": { description: Validation }
+        "503": { description: Taiga non configuré ou indisponible }
   /integrations/taiga/user-mappings:
     post:
       summary: Créer ou mettre à jour un mapping utilisateur Taiga
