@@ -175,3 +175,50 @@ Peut être regroupé sous [13-admin-parametrage.md](13-admin-parametrage.md) §a
 - [ ] Connecteur SIRH (sync absences → module 03).
 - [ ] Connecteur calendrier (Google ou M365).
 - [ ] Au moins 2 providers compta.
+
+## 13. Connecteur Taiga (phase 2 — inbound)
+
+Webhook entrant Taiga → lien `external_links` ↔ demande TMA Kore. Sync sortant (création user story) : phase 3.
+
+### Configuration GCP
+
+| Secret / variable | Rôle |
+| --- | --- |
+| `kore-taiga-webhook-secret` | Header `X-Taiga-Webhook-Secret` (obligatoire — sans version valide : webhook **503**) |
+| `kore-taiga-base-url` | URL instance Taiga (ex. `https://taiga.example.com`) |
+| `kore-taiga-project-slug` | Slug projet pour construire les permaliens |
+| `kore-taiga-default-tenant-id` | UUID tenant Kore si Taiga n'envoie pas `X-Kore-Tenant-ID` |
+
+Les trois derniers peuvent aussi être définis via `.env.gcp` (`TAIGA_*`) ou variables d'environnement au deploy.
+
+```bash
+# Secret webhook (remplacer le placeholder)
+echo -n 'secret-fort' | gcloud secrets versions add kore-taiga-webhook-secret \
+  --project=premedica-prod-2025 --data-file=-
+
+# URLs Taiga (optionnel mais recommandé)
+echo -n 'https://taiga.example.com' | gcloud secrets versions add kore-taiga-base-url --data-file=-
+echo -n 'mon-projet' | gcloud secrets versions add kore-taiga-project-slug --data-file=-
+```
+
+### Webhook Taiga
+
+- **URL** : `https://kore.ll-it-sc.be/api/v1/integrations/taiga/webhook`
+- **Header** : `X-Taiga-Webhook-Secret: <secret>`
+- **Header optionnel** : `X-Kore-Tenant-ID: <uuid-tenant>`
+
+### Liaison manuelle (phase 2)
+
+Sur chaque user story Taiga, renseigner `external_reference` :
+
+```json
+["kore", "<uuid-demande-tma-kore>"]
+```
+
+Puis déclencher un événement Taiga (création ou mise à jour). Le panneau **Lien Taiga** sur la fiche demande TMA (`tma:L`) affiche la référence et l'URL.
+
+### Validation staging
+
+1. Secret webhook réel déployé (redeploy API après mise à jour secret).
+2. User story test avec `external_reference` pointant vers une demande seed.
+3. Fiche TMA → panneau « Lien Taiga » avec numéro de story et lien cliquable.

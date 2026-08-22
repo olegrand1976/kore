@@ -22,6 +22,17 @@ describe('TaigaLinkPanel', () => {
     expect(panelSrc).toContain('tma.taiga_not_linked')
     expect(panelSrc).toContain('tma.taiga_ref')
   })
+
+  it('reloads when demandId changes', () => {
+    expect(panelSrc).toContain('watch(')
+    expect(panelSrc).toContain('props.demandId')
+    expect(panelSrc).toContain('immediate: true')
+  })
+
+  it('shows linked state when ref or url is present', () => {
+    expect(panelSrc).toContain('hasLink')
+    expect(panelSrc).toContain('externalUrl.value')
+  })
 })
 
 describe('TMA detail Taiga panel', () => {

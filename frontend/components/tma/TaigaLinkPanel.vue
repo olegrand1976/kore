@@ -32,10 +32,14 @@ const lastSyncLabel = computed(() => {
   return t('tma.taiga_last_sync', { date: d.toLocaleString() })
 })
 
-onMounted(async () => {
+const hasLink = computed(() => externalRef.value != null || externalUrl.value !== '')
+
+async function loadLink(demandId: string) {
+  loaded.value = false
+  link.value = null
   try {
     const res = await apiFetch<{ data?: TaigaLink }>(
-      `/api/integrations/taiga/links/by-demand/${props.demandId}`
+      `/api/integrations/taiga/links/by-demand/${demandId}`
     )
     link.value = res?.data ?? null
   } catch {
@@ -43,14 +47,26 @@ onMounted(async () => {
   } finally {
     loaded.value = true
   }
-})
+}
+
+watch(
+  () => props.demandId,
+  (demandId) => {
+    if (demandId) {
+      void loadLink(demandId)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <AppCard v-if="loaded" padding="lg" class="taiga-panel mb">
     <h2 class="taiga-panel__title">{{ $t('tma.taiga_title') }}</h2>
-    <template v-if="externalRef != null">
-      <p class="taiga-panel__ref">{{ $t('tma.taiga_ref', { ref: externalRef }) }}</p>
+    <template v-if="hasLink">
+      <p v-if="externalRef != null" class="taiga-panel__ref">
+        {{ $t('tma.taiga_ref', { ref: externalRef }) }}
+      </p>
       <p v-if="lastSyncLabel" class="taiga-panel__sync muted">{{ lastSyncLabel }}</p>
       <a
         v-if="externalUrl"

@@ -162,9 +162,15 @@ else
   echo "  kore-taiga-webhook-secret existe"
 fi
 
+for taiga_cfg in kore-taiga-base-url kore-taiga-project-slug kore-taiga-default-tenant-id; do
+  ensure_secret "$taiga_cfg"
+  echo "  ${taiga_cfg} (optionnel — ajoutez une version pour activer les URLs Taiga en prod)"
+done
+
 COMPUTE_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
 for secret in kore-database-url kore-migrate-database-url kore-jwt-signing-key kore-totp-encryption-key kore-redis-url \
-  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key kore-taiga-webhook-secret; do
+  kore-stripe-secret-key kore-stripe-webhook-secret kore-stripe-publishable-key kore-gemini-api-key kore-taiga-webhook-secret \
+  kore-taiga-base-url kore-taiga-project-slug kore-taiga-default-tenant-id; do
   if gcloud secrets describe "$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
     gcloud secrets add-iam-policy-binding "$secret" \
       --project="$GCP_PROJECT_ID" \

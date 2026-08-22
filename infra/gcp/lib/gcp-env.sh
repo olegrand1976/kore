@@ -33,6 +33,11 @@ PROJECT_NUMBER="${PROJECT_NUMBER:-237481297060}"
 GEMINI_API_KEY_SECRET="${GEMINI_API_KEY_SECRET:-kore-gemini-api-key}"
 GCP_WORKLOAD_IDENTITY_PROVIDER="${GCP_WORKLOAD_IDENTITY_PROVIDER:-projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL_ID}/providers/${WIF_PROVIDER_ID}}"
 
+# Taiga (optionnel — surcharge via .env.gcp ou secrets GCP kore-taiga-*)
+TAIGA_BASE_URL="${TAIGA_BASE_URL:-}"
+TAIGA_PROJECT_SLUG="${TAIGA_PROJECT_SLUG:-}"
+TAIGA_DEFAULT_TENANT_ID="${TAIGA_DEFAULT_TENANT_ID:-}"
+
 INFRA_ROOT="${INFRA_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)/infra}"
 
 connector_path() {

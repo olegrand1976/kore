@@ -25,10 +25,34 @@ kore_resolve_redis_addr() {
   printf '%s:6379' "${vm_host:-localhost}"
 }
 
+kore_has_secret_version() {
+  local secret="$1"
+  gcloud secrets versions access latest \
+    --secret="$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1
+}
+
+kore_env_or_secret() {
+  local env_name="$1"
+  local secret_name="$2"
+  local val="${!env_name:-}"
+  if [[ -n "$val" ]]; then
+    printf '%s' "$val"
+    return 0
+  fi
+  if kore_has_secret_version "$secret_name"; then
+    gcloud secrets versions access latest \
+      --secret="$secret_name" --project="$GCP_PROJECT_ID" 2>/dev/null || true
+  fi
+}
+
 kore_write_api_env_file() {
   local path="$1"
   local redis_addr
+  local taiga_base taiga_slug taiga_tenant
   redis_addr="$(kore_resolve_redis_addr)"
+  taiga_base="$(kore_env_or_secret TAIGA_BASE_URL kore-taiga-base-url)"
+  taiga_slug="$(kore_env_or_secret TAIGA_PROJECT_SLUG kore-taiga-project-slug)"
+  taiga_tenant="$(kore_env_or_secret TAIGA_DEFAULT_TENANT_ID kore-taiga-default-tenant-id)"
   cat >"$path" <<EOF
 HTTP_ADDR: ":8080"
 LOG_LEVEL: "info"
@@ -52,6 +76,9 @@ FCM_PROJECT_ID: "${GCP_PROJECT_ID}"
 PDP_PROVIDER: "stub"
 PLATFORM_ADMIN_LOGINS: "ADM_admin,ADM_olivier"
 UPLOADS_DIR: "/data/uploads"
+TAIGA_BASE_URL: "${taiga_base}"
+TAIGA_PROJECT_SLUG: "${taiga_slug}"
+TAIGA_DEFAULT_TENANT_ID: "${taiga_tenant}"
 EOF
 }
 
@@ -125,10 +152,4 @@ kore_bootstrap_llit_secrets() {
 
 kore_seed_secrets() {
   printf '%s' "$(kore_api_secrets)"
-}
-
-kore_has_secret_version() {
-  local secret="$1"
-  gcloud secrets versions access latest \
-    --secret="$secret" --project="$GCP_PROJECT_ID" >/dev/null 2>&1
 }

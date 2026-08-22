@@ -39,3 +39,7 @@ Thumbs.db
 # Docker volumes
 deploy/data/
 /uploads/
+
+# Graphify (artefacts locaux)
+graphify-out/
+**/graphify-out/
