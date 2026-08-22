@@ -236,6 +236,7 @@ Administrateur (`org:E`) — page **Administration → Applications** :
 
 1. **Création unitaire** : mode « Depuis Taiga » → sélection d'un projet non lié → `POST /applications` avec `taigaProjectId`.
 2. **Import en masse** : bouton « Importer depuis Taiga » → multi-sélection → `POST /integrations/taiga/applications/import`.
+3. **Édition** : modale d'édition d'une application existante → si non liée, sélection d'un projet Taiga → `PUT /applications/{id}` avec `taigaProjectId` ; si déjà liée, affichage lecture seule (`GET /integrations/taiga/links/by-application/{id}`).
 
 Liaison persistée dans `integrations.external_links` (`kore_entity_type=application`, `external_type=project`). Unicité : 1 application Kore ↔ 1 projet Taiga par tenant (migration `0003`).
 

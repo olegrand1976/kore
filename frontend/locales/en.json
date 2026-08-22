@@ -2404,6 +2404,10 @@
     "taiga_import_submit": "Import",
     "taiga_import_validation": "Select at least one project and an org share.",
     "taiga_import_done": "{count} application(s) created from Taiga.",
-    "taiga_import_partial": "{created} created, {errors} error(s)."
+    "taiga_import_partial": "{created} created, {errors} error(s).",
+    "taiga_link_title": "Taiga link",
+    "taiga_link_open": "Open in Taiga",
+    "taiga_link_readonly": "This application is already linked to a Taiga project (read-only).",
+    "taiga_link_on_save": "The project will be linked when you save."
   }
 }

@@ -136,3 +136,46 @@ func TestImportApplications_DuplicateProjectRejected(t *testing.T) {
 	require.Len(t, result.Errors, 1)
 	require.Contains(t, result.Errors[0].Message, domain.ErrTaigaProjectLinked.Error())
 }
+
+func TestLinkExistingApplication_LinksProject(t *testing.T) {
+	repo := &taigaRepoFake{}
+	appID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	svc := NewTaigaService(repo, TaigaConfig{BaseURL: "https://taiga.example.com"}, nil, stubTaigaGateway{projects: []ports.TaigaProject{
+		{ID: 3, Name: "Legacy", Slug: "legacy"},
+	}}, nil)
+
+	err := svc.LinkExistingApplication(context.Background(), tenant, appID, 3)
+	require.NoError(t, err)
+	require.Len(t, repo.links, 1)
+	require.Equal(t, appID, repo.links[0].KoreEntityID)
+	require.Equal(t, "3", repo.links[0].ExternalID)
+}
+
+func TestLinkExistingApplication_AlreadyLinked(t *testing.T) {
+	repo := &taigaRepoFake{}
+	appID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	repo.links = []domain.ExternalLink{{
+		Provider:       "taiga",
+		ExternalType:   "project",
+		ExternalID:     "1",
+		KoreEntityType: "application",
+		KoreEntityID:   appID,
+		TenantID:       tenant,
+	}}
+	svc := NewTaigaService(repo, TaigaConfig{}, nil, stubTaigaGateway{projects: []ports.TaigaProject{
+		{ID: 2, Name: "Other", Slug: "other"},
+	}}, nil)
+
+	err := svc.LinkExistingApplication(context.Background(), tenant, appID, 2)
+	require.ErrorIs(t, err, domain.ErrTaigaApplicationAlreadyLinked)
+}
+
+func TestLinkExistingApplication_ProjectNotFound(t *testing.T) {
+	repo := &taigaRepoFake{}
+	svc := NewTaigaService(repo, TaigaConfig{}, nil, stubTaigaGateway{projects: []ports.TaigaProject{}}, nil)
+
+	err := svc.LinkExistingApplication(context.Background(), kernel.NewTenantID(uuid.New()), uuid.New(), 99)
+	require.ErrorIs(t, err, domain.ErrTaigaProjectNotFound)
+}

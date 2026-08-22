@@ -1816,7 +1816,11 @@
     "taiga_import_submit": "Importer",
     "taiga_import_validation": "Sélectionnez au moins un projet et un rattachement org.",
     "taiga_import_done": "{count} application(s) créée(s) depuis Taiga.",
-    "taiga_import_partial": "{created} créée(s), {errors} erreur(s)."
+    "taiga_import_partial": "{created} créée(s), {errors} erreur(s).",
+    "taiga_link_title": "Lien Taiga",
+    "taiga_link_open": "Ouvrir dans Taiga",
+    "taiga_link_readonly": "Cette application est déjà liée à un projet Taiga (lecture seule).",
+    "taiga_link_on_save": "Le projet sera lié à l'enregistrement."
   },
   "users": {
     "title": "Utilisateurs",

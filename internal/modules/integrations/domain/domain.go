@@ -22,7 +22,8 @@ var (
 	ErrTaigaNotConfigured   = errors.New("taiga not configured")
 	ErrTaigaUnavailable     = errors.New("taiga unavailable")
 	ErrTaigaProjectNotFound = errors.New("taiga project not found")
-	ErrTaigaProjectLinked   = errors.New("taiga project already linked")
+	ErrTaigaProjectLinked         = errors.New("taiga project already linked")
+	ErrTaigaApplicationAlreadyLinked = errors.New("taiga application already linked")
 )
 
 type ConnectionType string

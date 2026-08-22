@@ -63,7 +63,7 @@ func RegisterRoutes(
 		pr.Post("/applications", createApplication(org, authorizer, taigaBridge))
 		pr.Get("/applications", listApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
-		pr.Put("/applications/{id}", updateApplication(org, authorizer))
+		pr.Put("/applications/{id}", updateApplication(org, authorizer, taigaBridge))
 		pr.Patch("/applications/{id}/deactivate", deactivateApplication(org, authorizer))
 		pr.Patch("/applications/{id}/activate", activateApplication(org, authorizer))
 		pr.Post("/equipes", createEquipe(org, authorizer))
@@ -457,7 +457,8 @@ func writeCreateApplicationError(w http.ResponseWriter, err error) {
 		errors.Is(err, domain.ErrApplicationWithoutShare),
 		errors.Is(err, domain.ErrInvalidApplicationShare),
 		errors.Is(err, integrationdomain.ErrTaigaProjectNotFound),
-		errors.Is(err, integrationdomain.ErrTaigaProjectLinked):
+		errors.Is(err, integrationdomain.ErrTaigaProjectLinked),
+		errors.Is(err, integrationdomain.ErrTaigaApplicationAlreadyLinked):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, integrationdomain.ErrTaigaNotConfigured),
 		errors.Is(err, integrationdomain.ErrTaigaUnavailable):
@@ -675,7 +676,7 @@ func getApplication(org ports.OrganizationService, authorizer authx.Authorizer) 
 	}
 }
 
-func updateApplication(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+func updateApplication(org ports.OrganizationService, authorizer authx.Authorizer, taigaBridge TaigaApplicationBridge) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
@@ -799,6 +800,15 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "at least one field required")
 			return
 		}
+		var taigaProjectID *int
+		if v, ok := raw["taigaProjectId"]; ok {
+			var n int
+			if err := json.Unmarshal(v, &n); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid taigaProjectId")
+				return
+			}
+			taigaProjectID = &n
+		}
 		identity, _ := authx.FromContext(r.Context())
 		cmd.TenantID = identity.TenantID
 		item, err := org.UpdateApplication(r.Context(), cmd)
@@ -820,6 +830,16 @@ func updateApplication(org ports.OrganizationService, authorizer authx.Authorize
 			}
 			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 			return
+		}
+		if taigaProjectID != nil && *taigaProjectID > 0 {
+			if taigaBridge == nil {
+				httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, "taiga not configured")
+				return
+			}
+			if err := taigaBridge.LinkExistingApplication(r.Context(), identity.TenantID, appID, *taigaProjectID); err != nil {
+				writeCreateApplicationError(w, err)
+				return
+			}
 		}
 		httpx.WriteData(w, http.StatusOK, item)
 	}

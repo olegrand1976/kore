@@ -138,6 +138,49 @@
             </label>
           </section>
 
+          <section
+            v-if="editingId && taigaAvailable"
+            class="apps-form__section"
+            aria-labelledby="apps-section-taiga-link"
+          >
+            <h3 id="apps-section-taiga-link">{{ $t('applications.taiga_link_title') }}</h3>
+            <p v-if="taigaLinkLoading" class="apps-form__hint">{{ $t('applications.loading') }}</p>
+            <template v-else-if="existingTaigaLink">
+              <p class="apps-form__hint">{{ taigaLinkDisplayName }}</p>
+              <a
+                v-if="taigaLinkExternalUrl"
+                class="apps-form__link"
+                :href="taigaLinkExternalUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ $t('applications.taiga_link_open') }}
+              </a>
+              <p class="apps-form__hint">{{ $t('applications.taiga_link_readonly') }}</p>
+            </template>
+            <template v-else>
+              <label class="apps-form__field">
+                <span>{{ $t('applications.taiga_project_label') }}</span>
+                <select
+                  id="app-taiga-project-edit"
+                  v-model="selectedTaigaProjectId"
+                  class="apps-form__input"
+                  :disabled="taigaProjectsLoading"
+                >
+                  <option value="">{{ $t('applications.taiga_project_none') }}</option>
+                  <option v-for="p in taigaProjects" :key="p.id" :value="String(p.id)">
+                    {{ p.name }} ({{ p.slug }})
+                  </option>
+                </select>
+                <span v-if="taigaProjectsLoading" class="apps-form__hint">{{ $t('applications.loading') }}</span>
+                <span v-else-if="!taigaProjects.length" class="apps-form__hint">
+                  {{ $t('applications.taiga_no_projects') }}
+                </span>
+                <span v-else class="apps-form__hint">{{ $t('applications.taiga_link_on_save') }}</span>
+              </label>
+            </template>
+          </section>
+
           <section class="apps-form__section" aria-labelledby="apps-section-identity">
             <h3 id="apps-section-identity">{{ $t('applications.section_identity') }}</h3>
             <AppInput
@@ -507,11 +550,23 @@ const membershipEquipeId = ref('')
 const newEquipeLibelle = ref('')
 
 type CreateMode = 'manual' | 'taiga'
+
+type TaigaApplicationLink = {
+  externalId?: string
+  ExternalID?: string
+  externalUrl?: string
+  ExternalURL?: string
+  metadata?: Record<string, unknown>
+  Metadata?: Record<string, unknown>
+}
+
 const createMode = ref<CreateMode>('manual')
 const taigaAvailable = ref(true)
 const taigaProjects = ref<{ id: number; name: string; slug: string }[]>([])
 const taigaProjectsLoading = ref(false)
 const selectedTaigaProjectId = ref('')
+const existingTaigaLink = ref<TaigaApplicationLink | null>(null)
+const taigaLinkLoading = ref(false)
 const showTaigaImport = ref(false)
 const taigaImportSelected = ref<number[]>([])
 const taigaImportSaving = ref(false)
@@ -656,6 +711,54 @@ const taigaImportSharesSummary = computed(() =>
     taigaImportForm.equipeIds.length
   )
 )
+
+const taigaLinkExternalUrl = computed(() => {
+  const raw = existingTaigaLink.value?.externalUrl ?? existingTaigaLink.value?.ExternalURL ?? ''
+  return typeof raw === 'string' ? raw.trim() : ''
+})
+
+const taigaLinkDisplayName = computed(() => {
+  const link = existingTaigaLink.value
+  if (!link) return ''
+  const meta = (link.metadata ?? link.Metadata ?? {}) as Record<string, string>
+  const name = meta.name?.trim()
+  const slug = meta.slug?.trim()
+  if (name && slug) return `${name} (${slug})`
+  if (name) return name
+  if (slug) return slug
+  return link.externalId ?? link.ExternalID ?? ''
+})
+
+const loadTaigaLinkForEdit = async (applicationId: string) => {
+  taigaLinkLoading.value = true
+  existingTaigaLink.value = null
+  selectedTaigaProjectId.value = ''
+  try {
+    const res = await apiFetch<{ data?: TaigaApplicationLink }>(
+      `/api/integrations/taiga/links/by-application/${applicationId}`
+    )
+    existingTaigaLink.value = res?.data ?? null
+  } catch (err) {
+    if ((err as { statusCode?: number })?.statusCode === 404) {
+      existingTaigaLink.value = null
+      if (taigaAvailable.value) {
+        try {
+          await loadTaigaProjects()
+        } catch (loadErr) {
+          formError.value = extractFetchError(loadErr)
+        }
+      }
+      return
+    }
+    if ((err as { statusCode?: number })?.statusCode === 503) {
+      taigaAvailable.value = false
+      return
+    }
+    formError.value = extractFetchError(err)
+  } finally {
+    taigaLinkLoading.value = false
+  }
+}
 
 const loadTaigaProjects = async () => {
   taigaProjectsLoading.value = true
@@ -960,6 +1063,8 @@ const openCreate = () => {
   editingId.value = ''
   createMode.value = 'manual'
   selectedTaigaProjectId.value = ''
+  existingTaigaLink.value = null
+  taigaLinkLoading.value = false
   form.siteIds = []
   form.serviceIds = []
   form.equipeIds = []
@@ -977,8 +1082,11 @@ const openCreate = () => {
   showForm.value = true
 }
 
-const openEdit = (row: AppRow) => {
+const openEdit = async (row: AppRow) => {
   editingId.value = row.id
+  selectedTaigaProjectId.value = ''
+  existingTaigaLink.value = null
+  taigaLinkLoading.value = false
   form.siteIds = [...row.siteIds]
   form.serviceIds = [...row.serviceIds]
   form.equipeIds = [...row.equipeIds]
@@ -995,11 +1103,16 @@ const openEdit = (row: AppRow) => {
   newEquipeLibelle.value = ''
   showForm.value = true
   sanitizeFormBudgetDefaut()
+  if (taigaAvailable.value) {
+    await loadTaigaLinkForEdit(row.id)
+  }
 }
 
 const closeForm = () => {
   showForm.value = false
   editingId.value = ''
+  existingTaigaLink.value = null
+  taigaLinkLoading.value = false
   formError.value = ''
   sharesInvalid.value = false
 }
@@ -1036,6 +1149,7 @@ const submitForm = async () => {
         equipeIds: string[]
         budgetDefautId?: string | null
         methodologyProfile?: MethodologyProfile
+        taigaProjectId?: number
       } = {
         libelle: form.libelle.trim(),
         proprietaire: form.proprietaire.trim(),
@@ -1050,6 +1164,9 @@ const submitForm = async () => {
       }
       if ((form.budgetDefautId || '') !== originalBudget) {
         body.budgetDefautId = nextBudget
+      }
+      if (!existingTaigaLink.value && selectedTaigaProjectId.value) {
+        body.taigaProjectId = Number(selectedTaigaProjectId.value)
       }
       await update(editingId.value, body)
       flash.value = t('applications.updated')

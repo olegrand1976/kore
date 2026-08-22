@@ -576,7 +576,7 @@ Module **Module TMA** : périmètre couvert par les sources legacy. Évolutions 
 
 **Hors périmètre phase 2** : création/mise à jour automatique de user story depuis Kore (sync sortant, phase 3), UI admin des mappings utilisateurs Kore ↔ Taiga.
 
-**Import applications (sortant Taiga → Kore, Administrateur `org:E`)** : depuis `/admin/applications`, création unitaire avec `taigaProjectId` ou import en masse (`GET /integrations/taiga/projects/unlinked`, `POST /integrations/taiga/applications/import`). Liaison `integrations.external_links` (`kore_entity_type=application`, `external_type=project`).
+**Import applications (sortant Taiga → Kore, Administrateur `org:E`)** : depuis `/admin/applications`, création unitaire avec `taigaProjectId` ou import en masse (`GET /integrations/taiga/projects/unlinked`, `POST /integrations/taiga/applications/import`). **Édition** : liaison d'une application existante non liée via `PUT /applications/{id}` avec `taigaProjectId` optionnel (lecture seule si déjà liée). Liaison `integrations.external_links` (`kore_entity_type=application`, `external_type=project`).
 
 **Configuration** : variables `TAIGA_WEBHOOK_SECRET`, `TAIGA_BASE_URL`, `TAIGA_PROJECT_SLUG`, `TAIGA_DEFAULT_TENANT_ID`, `TAIGA_SERVICE_USERNAME`, `TAIGA_SERVICE_PASSWORD` — cf. `technical/modules/17-integrations-hub.md` §13.
 

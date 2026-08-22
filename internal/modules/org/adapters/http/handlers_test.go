@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	integrationports "github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
@@ -261,6 +262,25 @@ func (s *applicationOrgService) ListApplications(context.Context, kernel.TenantI
 	return s.listed, s.err
 }
 
+type stubTaigaApplicationBridge struct {
+	linkedAppID     uuid.UUID
+	linkedProjectID int
+	err             error
+}
+
+func (s *stubTaigaApplicationBridge) CreateApplicationWithTaiga(context.Context, integrationports.CreateApplicationInput, int) (integrationports.ApplicationSummary, error) {
+	return integrationports.ApplicationSummary{}, nil
+}
+
+func (s *stubTaigaApplicationBridge) LinkExistingApplication(_ context.Context, _ kernel.TenantID, applicationID uuid.UUID, taigaProjectID int) error {
+	if s.err != nil {
+		return s.err
+	}
+	s.linkedAppID = applicationID
+	s.linkedProjectID = taigaProjectID
+	return nil
+}
+
 func TestCreateApplication_created(t *testing.T) {
 	svc := &applicationOrgService{}
 	handler := createApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, nil)
@@ -299,7 +319,7 @@ func TestCreateApplication_created(t *testing.T) {
 func TestUpdateApplication_proprietaireOnly(t *testing.T) {
 	appID := uuid.New()
 	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
-	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, nil)
 
 	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
 		"proprietaire": "Société Y",
@@ -318,10 +338,34 @@ func TestUpdateApplication_proprietaireOnly(t *testing.T) {
 	}
 }
 
+func TestUpdateApplication_linksTaigaProject(t *testing.T) {
+	appID := uuid.New()
+	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
+	bridge := &stubTaigaApplicationBridge{}
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, bridge)
+
+	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
+		"proprietaire":   "Société Y",
+		"taigaProjectId": 42,
+	})
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, &chi.Context{
+		URLParams: chi.RouteParams{Keys: []string{"id"}, Values: []string{appID.String()}},
+	}))
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rec.Code, rec.Body.String())
+	}
+	if bridge.linkedAppID != appID || bridge.linkedProjectID != 42 {
+		t.Fatalf("bridge link = app %s project %d", bridge.linkedAppID, bridge.linkedProjectID)
+	}
+}
+
 func TestUpdateApplication_clearBudgetDefautHTTP(t *testing.T) {
 	appID := uuid.New()
 	svc := &applicationOrgService{app: domain.Application{ID: appID, Libelle: "App", Active: true}}
-	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, nil)
 
 	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
 		"budgetDefautId": nil,
@@ -346,7 +390,7 @@ func TestUpdateApplication_clearBudgetDefautHTTP(t *testing.T) {
 func TestUpdateApplication_notFoundHTTP(t *testing.T) {
 	appID := uuid.New()
 	svc := &applicationOrgService{err: domain.ErrApplicationNotFound}
-	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+	handler := updateApplication(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true}, nil)
 
 	req := requestWithIdentity(t, http.MethodPut, "/applications/"+appID.String(), map[string]any{
 		"libelle": "X",

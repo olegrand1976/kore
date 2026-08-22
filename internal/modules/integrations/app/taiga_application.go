@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -74,6 +75,24 @@ func (s *TaigaService) ListUnlinkedProjects(ctx context.Context, tenant kernel.T
 
 func (s *TaigaService) FindByKoreApplication(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (domain.ExternalLink, error) {
 	return s.repo.FindExternalLinkByKore(ctx, tenant, "application", applicationID)
+}
+
+func (s *TaigaService) LinkExistingApplication(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID, taigaProjectID int) error {
+	if taigaProjectID <= 0 {
+		return domain.ErrTaigaProjectNotFound
+	}
+	_, err := s.FindByKoreApplication(ctx, tenant, applicationID)
+	if err == nil {
+		return domain.ErrTaigaApplicationAlreadyLinked
+	}
+	if !errors.Is(err, domain.ErrExternalLinkNotFound) {
+		return err
+	}
+	project, err := s.findTaigaProject(ctx, taigaProjectID)
+	if err != nil {
+		return err
+	}
+	return s.LinkApplicationToProject(ctx, tenant, applicationID, taigaProjectID, project)
 }
 
 func (s *TaigaService) LinkApplicationToProject(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID, taigaProjectID int, project ports.TaigaProject) error {
