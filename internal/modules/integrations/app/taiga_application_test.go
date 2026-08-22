@@ -26,7 +26,6 @@ func (g stubTaigaGateway) ListProjects(context.Context) ([]ports.TaigaProject, e
 
 type stubApplicationCreator struct {
 	created []ports.CreateApplicationInput
-	failID  int
 }
 
 func (s *stubApplicationCreator) CreateApplication(_ context.Context, cmd ports.CreateApplicationInput) (ports.ApplicationSummary, error) {
