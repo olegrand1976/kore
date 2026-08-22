@@ -1,0 +1,5 @@
+version: 2
+paths-ignore:
+  - "internal/seed/**"
+  - "**/*_test.go"
+  - "frontend/e2e/**"

@@ -23,11 +23,11 @@ func NewTaigaService(repo *postgres.Repository) *TaigaService {
 }
 
 type UpsertUserMappingCommand struct {
-	TenantID        kernel.TenantID
-	TaigaUserID     int
-	TaigaUsername   string
-	KoreUserID      uuid.UUID
-	MatchMethod     string
+	TenantID      kernel.TenantID
+	TaigaUserID   int
+	TaigaUsername string
+	KoreUserID    uuid.UUID
+	MatchMethod   string
 }
 
 type TaigaWebhookPayload struct {
