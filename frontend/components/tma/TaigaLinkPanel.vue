@@ -34,18 +34,25 @@ const lastSyncLabel = computed(() => {
 
 const hasLink = computed(() => externalRef.value != null || externalUrl.value !== '')
 
+let loadGeneration = 0
+
 async function loadLink(demandId: string) {
+  const generation = ++loadGeneration
   loaded.value = false
   link.value = null
   try {
     const res = await apiFetch<{ data?: TaigaLink }>(
       `/api/integrations/taiga/links/by-demand/${demandId}`
     )
+    if (generation !== loadGeneration) return
     link.value = res?.data ?? null
   } catch {
+    if (generation !== loadGeneration) return
     link.value = null
   } finally {
-    loaded.value = true
+    if (generation === loadGeneration) {
+      loaded.value = true
+    }
   }
 }
 

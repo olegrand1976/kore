@@ -27,6 +27,7 @@ describe('TaigaLinkPanel', () => {
     expect(panelSrc).toContain('watch(')
     expect(panelSrc).toContain('props.demandId')
     expect(panelSrc).toContain('immediate: true')
+    expect(panelSrc).toContain('loadGeneration')
   })
 
   it('shows linked state when ref or url is present', () => {
