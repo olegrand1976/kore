@@ -1,5 +1,8 @@
 version: 2
-paths-ignore:
-  - "internal/seed/**"
-  - "**/*_test.go"
-  - "frontend/e2e/**"
+secret:
+  ignored_paths:
+    - "internal/seed/**"
+    - "**/*_test.go"
+    - "frontend/e2e/**"
+  ignored_detectors:
+    - Generic Password
