@@ -222,3 +222,5 @@ Puis déclencher un événement Taiga (création ou mise à jour). Le panneau **
 1. Secret webhook réel déployé (redeploy API après mise à jour secret).
 2. User story test avec `external_reference` pointant vers une demande seed.
 3. Fiche TMA → panneau « Lien Taiga » avec numéro de story et lien cliquable.
+
+Scripts dépôt : `./scripts/taiga-setup-gcp.sh` (bootstrap secrets + IAM), `./scripts/taiga-webhook-smoke.sh` (POST webhook test).

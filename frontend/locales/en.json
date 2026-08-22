@@ -117,7 +117,7 @@
         "open": "The link opens in a new tab (Taiga URL or permalink from the webhook)."
       },
       "link_title": "How a demand gets linked",
-      "link_body": "Taiga sends a Kore webhook when a user story carries external reference [\"kore\", \"<demand-uuid>\"]. Kore then stores the bidirectional link.",
+      "link_body": "Taiga sends a Kore webhook when a user story carries external reference [\"kore\", \"kore-demand-uuid\"]. Kore then stores the bidirectional link.",
       "link_note": "Automatic user story creation from Kore (outbound sync) is planned for phase 3. Until then, linking is configured in Taiga."
     },
     "access": {

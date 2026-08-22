@@ -117,7 +117,7 @@
         "open": "Le lien s'ouvre dans un nouvel onglet (URL Taiga ou permalien reçu par webhook)."
       },
       "link_title": "Comment une demande est liée",
-      "link_body": "Taiga envoie un webhook Kore lorsqu'une user story porte la référence externe [\"kore\", \"<uuid-demande>\"]. Kore enregistre alors le lien bidirectionnel.",
+      "link_body": "Taiga envoie un webhook Kore lorsqu'une user story porte la référence externe [\"kore\", \"uuid-demande-kore\"]. Kore enregistre alors le lien bidirectionnel.",
       "link_note": "La création automatique de user story depuis Kore (sync sortant) est prévue en phase 3. En attendant, la liaison se configure côté Taiga."
     },
     "access": {
