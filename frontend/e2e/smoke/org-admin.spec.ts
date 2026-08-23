@@ -145,9 +145,8 @@ test.describe('org admin', () => {
 
     await page.locator('#app-libelle').fill(appName)
     await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
-    await expect(page.getByText(appName)).toBeVisible({ timeout: 20_000 })
-
     const row = page.locator('tbody tr', { hasText: appName }).first()
+    await expect(row).toBeVisible({ timeout: 20_000 })
     page.once('dialog', (dialog) => dialog.accept())
     await row.getByRole('button', { name: /désactiver|deactivate/i }).click()
     await expect(row.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
