@@ -293,9 +293,7 @@ func (s *Service) SuggestCraPrefill(ctx context.Context, cmd ports.CraPrefillCom
 
 func (s *Service) ListCraAnomalies(ctx context.Context, cmd ports.CraAnomaliesCommand) ([]ports.CraAnomaly, error) {
 	const capCode = "cra.anomalies"
-	if err := s.ensureAI(ctx, cmd.TenantID, capCode); err != nil {
-		return nil, err
-	}
+	// Rule-based capability (no LLM) — available even when tenant AI opt-in is off.
 	ts, err := s.cra.GetTimesheetByID(ctx, cmd.TenantID, cmd.TimesheetID)
 	if err != nil {
 		return nil, err

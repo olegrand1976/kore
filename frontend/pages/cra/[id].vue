@@ -235,6 +235,7 @@ import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
 import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craPrestation'
+import { normalizeAnomalyMessages } from '~/utils/craAnomalies'
 
 definePageMeta({ layout: 'default' })
 
@@ -344,9 +345,8 @@ const { suggestCraPrefill, fetchCraAnomalies } = useAi()
 const loadAnomalies = async () => {
   anomaliesLoading.value = true
   try {
-    const res = await fetchCraAnomalies(id.value) as { data?: { anomalies?: string[] }; anomalies?: string[] }
-    const list = res?.data?.anomalies ?? res?.anomalies ?? []
-    anomalies.value = Array.isArray(list) ? list.map(String) : []
+    const res = await fetchCraAnomalies(id.value)
+    anomalies.value = normalizeAnomalyMessages(res)
   } catch {
     anomalies.value = []
   } finally {

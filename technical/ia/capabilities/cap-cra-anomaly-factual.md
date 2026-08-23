@@ -28,7 +28,7 @@ Signaler des **écarts factuels** sur une feuille CRA (capacité jour, trous, do
 ## Entrées / sorties
 
 **Entrée** : `timesheetId`  
-**Sortie** : `{ anomalies: [{ code, severity, day?, message }], requestId }`
+**Sortie** : `{ data: [{ code, message, day? }] }` (enveloppe API standard ; pas de LLM)
 
 ## Ancrage code
 
