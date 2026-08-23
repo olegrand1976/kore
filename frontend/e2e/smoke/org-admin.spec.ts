@@ -194,8 +194,8 @@ test.describe('org admin', () => {
     await mergeModal.getByRole('radio', { name: new RegExp(appReference) }).check()
     await mergeModal.getByRole('button', { name: /^fusionner$|^merge$/i }).click()
 
-    await expect(absorbedRow.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
-    await expect(referenceRow.getByText(/active/i)).toBeVisible({ timeout: 20_000 })
+    await expect(absorbedRow.getByText(/^inactive$/i)).toBeVisible({ timeout: 20_000 })
+    await expect(referenceRow.getByText(/^active$/i)).toBeVisible({ timeout: 20_000 })
   })
 
   test('applications admin exposes Taiga import and edit modal', async ({ page }) => {
