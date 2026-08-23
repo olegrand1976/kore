@@ -62,6 +62,7 @@ func RegisterRoutes(
 		pr.Put("/services/{id}", updateService(org, authorizer))
 		pr.Post("/applications", createApplication(org, authorizer, taigaBridge))
 		pr.Get("/applications", listApplications(org, authorizer))
+		pr.Post("/applications/merge", mergeApplications(org, authorizer))
 		pr.Get("/applications/{id}", getApplication(org, authorizer))
 		pr.Put("/applications/{id}", updateApplication(org, authorizer, taigaBridge))
 		pr.Patch("/applications/{id}/deactivate", deactivateApplication(org, authorizer))
@@ -505,6 +506,53 @@ func listApplications(org ports.OrganizationService, authorizer authx.Authorizer
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, items)
+	}
+}
+
+func mergeApplications(org ports.OrganizationService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		var req struct {
+			SourceApplicationID uuid.UUID `json:"sourceApplicationId"`
+			TargetApplicationID uuid.UUID `json:"targetApplicationId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if req.SourceApplicationID == uuid.Nil || req.TargetApplicationID == uuid.Nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid application ids")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		app, err := org.MergeApplications(r.Context(), ports.MergeApplicationsCommand{
+			TenantID:            identity.TenantID,
+			SourceApplicationID: req.SourceApplicationID,
+			TargetApplicationID: req.TargetApplicationID,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, domain.ErrApplicationNotFound):
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeBothTaigaLinked):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeBothTaiga, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeActiveSprintConflict):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeActiveSprint, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeMethodologyConflict):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeMethodology, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeDuplicateDefaultBudget):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeDefaultBudget, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeInvalid):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			default:
+				httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			}
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, app)
 	}
 }
 

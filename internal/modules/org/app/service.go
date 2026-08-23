@@ -20,11 +20,12 @@ import (
 )
 
 type organizationService struct {
-	repo ports.OrganizationRepository
+	repo            ports.OrganizationRepository
+	taigaLinkReader ports.TaigaLinkReader
 }
 
-func NewOrganizationService(repo ports.OrganizationRepository) ports.OrganizationService {
-	return &organizationService{repo: repo}
+func NewOrganizationService(repo ports.OrganizationRepository, taigaLinkReader ports.TaigaLinkReader) ports.OrganizationService {
+	return &organizationService{repo: repo, taigaLinkReader: taigaLinkReader}
 }
 
 func (s *organizationService) CreateSociete(ctx context.Context, cmd ports.CreateSocieteCommand) (domain.Societe, error) {
@@ -281,6 +282,61 @@ func (s *organizationService) SetApplicationActive(ctx context.Context, cmd port
 		ApplicationID: cmd.ApplicationID,
 		Active:        &cmd.Active,
 	})
+}
+
+func (s *organizationService) MergeApplications(ctx context.Context, cmd ports.MergeApplicationsCommand) (domain.Application, error) {
+	absorbedID := cmd.SourceApplicationID
+	referenceID := cmd.TargetApplicationID
+	if absorbedID == referenceID {
+		return domain.Application{}, domain.ErrApplicationsMergeInvalid
+	}
+
+	if s.taigaLinkReader != nil {
+		absorbedTaiga, err := s.taigaLinkReader.IsApplicationTaigaLinked(ctx, cmd.TenantID, absorbedID)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		referenceTaiga, err := s.taigaLinkReader.IsApplicationTaigaLinked(ctx, cmd.TenantID, referenceID)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		if absorbedTaiga && referenceTaiga {
+			return domain.Application{}, domain.ErrApplicationsMergeBothTaigaLinked
+		}
+		if absorbedTaiga && !referenceTaiga {
+			absorbedID, referenceID = referenceID, absorbedID
+		}
+	}
+
+	absorbedApp, err := s.repo.GetApplication(ctx, cmd.TenantID, absorbedID)
+	if err != nil {
+		if errors.Is(err, domain.ErrApplicationNotFound) {
+			return domain.Application{}, domain.ErrApplicationsMergeInvalid
+		}
+		return domain.Application{}, err
+	}
+	referenceApp, err := s.repo.GetApplication(ctx, cmd.TenantID, referenceID)
+	if err != nil {
+		if errors.Is(err, domain.ErrApplicationNotFound) {
+			return domain.Application{}, domain.ErrApplicationsMergeInvalid
+		}
+		return domain.Application{}, err
+	}
+	if absorbedApp.MethodologyProfile != referenceApp.MethodologyProfile {
+		nAbs, err := s.repo.CountProjectArtifacts(ctx, cmd.TenantID, absorbedID)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		nRef, err := s.repo.CountProjectArtifacts(ctx, cmd.TenantID, referenceID)
+		if err != nil {
+			return domain.Application{}, err
+		}
+		if nAbs > 0 || nRef > 0 {
+			return domain.Application{}, domain.ErrApplicationsMergeMethodologyConflict
+		}
+	}
+
+	return s.repo.MergeApplications(ctx, cmd.TenantID, absorbedID, referenceID)
 }
 
 func (s *organizationService) CreateEquipe(ctx context.Context, cmd ports.CreateEquipeCommand) (domain.Equipe, error) {

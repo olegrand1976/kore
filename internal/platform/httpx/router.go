@@ -30,7 +30,11 @@ const (
 	ErrCodeCommercialInfoRequired ErrorCode = "COMMERCIAL_INFO_REQUIRED"
 	ErrCodeDayCapacityExceeded    ErrorCode = "DAY_CAPACITY_EXCEEDED"
 	ErrCodeCRAConflictAbsence     ErrorCode = "CRA_CONFLICT_ABSENCE"
-	ErrCodeWeekIncomplete         ErrorCode = "WEEK_INCOMPLETE"
+	ErrCodeWeekIncomplete                 ErrorCode = "WEEK_INCOMPLETE"
+	ErrCodeApplicationsMergeBothTaiga     ErrorCode = "APPLICATIONS_MERGE_BOTH_TAIGA"
+	ErrCodeApplicationsMergeActiveSprint  ErrorCode = "APPLICATIONS_MERGE_ACTIVE_SPRINT"
+	ErrCodeApplicationsMergeMethodology   ErrorCode = "APPLICATIONS_MERGE_METHODOLOGY"
+	ErrCodeApplicationsMergeDefaultBudget ErrorCode = "APPLICATIONS_MERGE_DEFAULT_BUDGET"
 )
 
 type APIError struct {

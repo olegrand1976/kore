@@ -70,7 +70,7 @@ func TestUpdateSocieteBranding_PersistsLogoContent(t *testing.T) {
 			RaisonSociale: "Avant",
 		},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0x00, 0x01}
 	got, err := svc.UpdateSocieteBranding(context.Background(), ports.UpdateSocieteBrandingCommand{
@@ -106,7 +106,7 @@ func TestUpdateSocieteBranding_PersistsLogoContent(t *testing.T) {
 }
 
 func TestGetTenantLogo_NotFound(t *testing.T) {
-	svc := NewOrganizationService(&brandingRepo{})
+	svc := NewOrganizationService(&brandingRepo{}, nil)
 	_, _, err := svc.GetTenantLogo(context.Background(), kernel.NewTenantID(uuid.New()))
 	require.ErrorIs(t, err, domain.ErrLogoNotFound)
 }
@@ -122,7 +122,7 @@ func TestUpdateSocieteBranding_AcceptsNewCountries(t *testing.T) {
 			Pays:          "FR",
 		},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	for _, country := range []string{"MA", "TN", "MG", "CA"} {
 		got, err := svc.UpdateSocieteBranding(context.Background(), ports.UpdateSocieteBrandingCommand{

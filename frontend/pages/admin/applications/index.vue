@@ -6,6 +6,15 @@
           variant="secondary"
           size="sm"
           type="button"
+          :disabled="!mergeSelectionReady"
+          @click="openMerge"
+        >
+          <AppIcon name="merge" /> {{ $t('applications.merge_action') }}
+        </AppButton>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          type="button"
           :disabled="!taigaAvailable"
           @click="openTaigaImport"
         >
@@ -47,6 +56,16 @@
         @update:sort-dir="setSortDir"
         @reset="resetFilters"
       />
+      <AppButton
+        class="apps-merge-mobile"
+        variant="secondary"
+        size="sm"
+        type="button"
+        :disabled="!mergeSelectionReady"
+        @click="openMerge"
+      >
+        <AppIcon name="merge" /> {{ $t('applications.merge_action') }}
+      </AppButton>
       <AppCard padding="lg">
         <AppTable
           :columns="columns"
@@ -54,6 +73,23 @@
           :empty-title="hasActiveFilters ? $t('common.list.no_results') : $t('applications.empty')"
           row-key="id"
         >
+          <template #cell-select="{ row }">
+            <label class="apps-select">
+              <input
+                type="checkbox"
+                :checked="selectedMergeIds.includes(row.id as string)"
+                :disabled="!canSelectForMerge(row.id as string)"
+                @change="toggleMergeSelect(row.id as string)"
+              />
+              <span class="apps-form__sr-only">{{ row.libelle }}</span>
+            </label>
+          </template>
+          <template #cell-libelle="{ row }">
+            <div class="apps-libelle">
+              <span>{{ row.libelle }}</span>
+              <AppBadge v-if="row.taigaLinked" variant="gold">{{ $t('applications.taiga_badge') }}</AppBadge>
+            </div>
+          </template>
           <template #cell-active="{ value }">
             <AppBadge :variant="value ? 'success' : 'warning'">
               {{ value ? $t('applications.active') : $t('applications.inactive') }}
@@ -472,6 +508,66 @@
         </div>
       </form>
     </AppModal>
+
+    <AppModal
+      v-model:open="showMerge"
+      width="lg"
+      title-id="apps-merge-title"
+    >
+      <form class="apps-form" novalidate @submit.prevent="submitMerge">
+        <h2 id="apps-merge-title" class="apps-form__title">
+          {{ $t('applications.merge_title') }}
+        </h2>
+        <div class="apps-form__body">
+          <p
+            v-if="mergeMethodologyMismatch"
+            class="apps-merge-warning"
+            role="status"
+          >
+            {{ $t('applications.merge_methodology_warning') }}
+          </p>
+          <p v-if="mergeReferenceLocked" class="apps-form__hint">
+            {{ $t('applications.merge_reference_taiga_locked') }}
+          </p>
+          <section class="apps-form__section" aria-labelledby="apps-merge-reference">
+            <h3 id="apps-merge-reference">{{ $t('applications.merge_reference_label') }}</h3>
+            <fieldset class="apps-form__radiogroup">
+              <legend class="apps-form__sr-only">{{ $t('applications.merge_reference_label') }}</legend>
+              <label
+                v-for="row in mergeSelectedRows"
+                :key="row.id"
+                class="apps-form__radio"
+              >
+                <input
+                  v-model="mergeReferenceId"
+                  type="radio"
+                  :value="row.id"
+                  :disabled="mergeReferenceLocked"
+                />
+                <span>
+                  {{ row.libelle }}
+                  <AppBadge v-if="row.taigaLinked" variant="gold" class="apps-merge-badge">
+                    {{ $t('applications.taiga_badge') }}
+                  </AppBadge>
+                </span>
+              </label>
+            </fieldset>
+          </section>
+          <p class="apps-form__hint">{{ $t('applications.merge_confirm') }}</p>
+        </div>
+        <div class="apps-form__footer">
+          <p v-if="mergeError" class="apps-form__error" role="alert">{{ mergeError }}</p>
+          <div class="apps-form__actions">
+            <AppButton variant="ghost" type="button" @click="closeMerge">
+              {{ $t('common.cancel') }}
+            </AppButton>
+            <AppButton variant="primary" type="submit" :disabled="mergeSaving">
+              {{ mergeSaving ? $t('common.saving') : $t('applications.merge_action') }}
+            </AppButton>
+          </div>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -483,6 +579,14 @@ import {
   defaultBudgetsForApplication,
   isDefaultBudgetType
 } from '~/composables/useApplications'
+import {
+  defaultMergeReferenceId,
+  canMergeApplications,
+  hasMergeMethodologyMismatch,
+  isMergeReferenceLocked,
+  mergeAbsorbedId,
+  type MergeApplicationRow
+} from '~/utils/applicationMerge'
 import type { OrgEquipe } from '~/composables/useOrganisation'
 import type { BudgetItem } from '~/composables/useBudget'
 import type { OrgUserSummary } from '~/composables/useUsers'
@@ -491,7 +595,7 @@ definePageMeta({ layout: 'default', middleware: 'admin' })
 
 const { t } = useI18n()
 const route = useRoute()
-const { extractFetchError } = useApiError()
+const { extractFetchError, extractFetchErrorCode } = useApiError()
 const { apiFetch } = useApiFetch()
 const {
   list,
@@ -499,6 +603,7 @@ const {
   update,
   deactivate,
   activate,
+  merge,
   pickAppId,
   pickAppLabel,
   pickAppClient,
@@ -532,6 +637,7 @@ type AppRow = {
   siteIds: string[]
   equipeIds: string[]
   methodologyProfile: MethodologyProfile
+  taigaLinked: boolean
 }
 
 const rows = ref<AppRow[]>([])
@@ -583,6 +689,12 @@ const taigaImportForm = reactive({
   uoActivee: false,
   chefUtilisateurId: ''
 })
+const taigaLinkedIds = ref<Set<string>>(new Set())
+const selectedMergeIds = ref<string[]>([])
+const showMerge = ref(false)
+const mergeReferenceId = ref('')
+const mergeSaving = ref(false)
+const mergeError = ref('')
 
 const serviceOptions = ref<{ value: string; label: string }[]>([])
 const siteOptions = ref<{ value: string; label: string }[]>([])
@@ -623,6 +735,7 @@ const sharesLabel = (sites: number, services: number, equipesCount: number) =>
   t('applications.shares_summary', { sites, services, equipes: equipesCount })
 
 const columns = computed(() => [
+  { key: 'select', label: t('applications.col_select') },
   { key: 'libelle', label: t('applications.col_libelle') },
   { key: 'sharesLabel', label: t('applications.col_shares') },
   { key: 'proprietaire', label: t('applications.col_proprietaire') },
@@ -699,6 +812,94 @@ const {
 })
 
 const displayRows = computed(() => sortedItems.value)
+
+const mergeSelectedRows = computed((): MergeApplicationRow[] =>
+  rows.value
+    .filter((row) => selectedMergeIds.value.includes(row.id))
+    .map((row) => ({
+      id: row.id,
+      libelle: row.libelle,
+      methodologyProfile: row.methodologyProfile,
+      taigaLinked: row.taigaLinked
+    }))
+)
+
+const mergeReferenceLocked = computed(() => isMergeReferenceLocked(mergeSelectedRows.value))
+
+const mergeSelectionReady = computed(() => canMergeApplications(mergeSelectedRows.value))
+
+const mergeMethodologyMismatch = computed(() =>
+  hasMergeMethodologyMismatch(mergeSelectedRows.value, mergeReferenceId.value)
+)
+
+const canSelectForMerge = (id: string) =>
+  selectedMergeIds.value.includes(id) || selectedMergeIds.value.length < 2
+
+const toggleMergeSelect = (id: string) => {
+  if (selectedMergeIds.value.includes(id)) {
+    selectedMergeIds.value = selectedMergeIds.value.filter((item) => item !== id)
+    return
+  }
+  if (selectedMergeIds.value.length >= 2) return
+  selectedMergeIds.value = [...selectedMergeIds.value, id]
+}
+
+const openMerge = () => {
+  mergeError.value = ''
+  if (mergeSelectedRows.value.length !== 2) {
+    mergeError.value = t('applications.merge_select_two')
+    return
+  }
+  if (!canMergeApplications(mergeSelectedRows.value)) {
+    mergeError.value = t('applications.merge_error_both_taiga')
+    return
+  }
+  mergeReferenceId.value = defaultMergeReferenceId(mergeSelectedRows.value)
+  showMerge.value = true
+}
+
+const closeMerge = () => {
+  showMerge.value = false
+  mergeError.value = ''
+}
+
+const submitMerge = async () => {
+  mergeError.value = ''
+  const selected = mergeSelectedRows.value
+  if (selected.length !== 2 || !mergeReferenceId.value) {
+    mergeError.value = t('applications.merge_select_two')
+    return
+  }
+  const absorbedId = mergeAbsorbedId(selected, mergeReferenceId.value)
+  if (!absorbedId) {
+    mergeError.value = t('applications.merge_select_two')
+    return
+  }
+  mergeSaving.value = true
+  try {
+    await merge(absorbedId, mergeReferenceId.value)
+    flash.value = t('applications.merge_success')
+    flashError.value = false
+    selectedMergeIds.value = []
+    closeMerge()
+    await loadAll()
+  } catch (err) {
+    const code = extractFetchErrorCode(err)
+    if (code === 'APPLICATIONS_MERGE_BOTH_TAIGA') {
+      mergeError.value = t('applications.merge_error_both_taiga')
+    } else if (code === 'APPLICATIONS_MERGE_ACTIVE_SPRINT') {
+      mergeError.value = t('applications.merge_error_active_sprint')
+    } else if (code === 'APPLICATIONS_MERGE_METHODOLOGY') {
+      mergeError.value = t('applications.merge_error_methodology')
+    } else if (code === 'APPLICATIONS_MERGE_DEFAULT_BUDGET') {
+      mergeError.value = t('applications.merge_error_default_budget')
+    } else {
+      mergeError.value = extractFetchError(err)
+    }
+  } finally {
+    mergeSaving.value = false
+  }
+}
 
 const formSharesSummary = computed(() =>
   sharesLabel(form.siteIds.length, form.serviceIds.length, form.equipeIds.length)
@@ -1025,6 +1226,14 @@ const loadAll = async () => {
     equipes.value = equipeList
     users.value = userList
     budgets.value = budgetList
+    try {
+      const taigaRes = await apiFetch<{ data?: { applicationIds?: string[] } }>(
+        '/api/integrations/taiga/links/applications'
+      )
+      taigaLinkedIds.value = new Set(taigaRes?.data?.applicationIds ?? [])
+    } catch {
+      taigaLinkedIds.value = new Set()
+    }
     rows.value = appList.map((app) => {
       const id = pickAppId(app)
       const serviceIds = pickAppServiceIds(app)
@@ -1050,7 +1259,8 @@ const loadAll = async () => {
         ).length,
         chefUtilisateurId: pickAppChefId(app),
         budgetDefautId: pickAppBudgetDefautId(app),
-        methodologyProfile: pickAppMethodologyProfile(app)
+        methodologyProfile: pickAppMethodologyProfile(app),
+        taigaLinked: taigaLinkedIds.value.has(id)
       }
     })
     sanitizeFormBudgetDefaut()
@@ -1294,6 +1504,33 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: var(--kore-space-xs);
 }
+.apps-libelle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kore-space-xs);
+}
+.apps-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.apps-merge-mobile {
+  display: none;
+  width: 100%;
+  margin-bottom: var(--kore-space-md);
+}
+.apps-merge-warning {
+  margin: 0;
+  padding: var(--kore-space-sm) var(--kore-space-md);
+  border-radius: var(--kore-radius-md);
+  background: color-mix(in srgb, var(--kore-warning) 18%, transparent);
+  color: var(--kore-text);
+  font-size: var(--kore-text-small);
+}
+.apps-merge-badge {
+  margin-left: var(--kore-space-xs);
+}
 .apps-form {
   display: flex;
   flex-direction: column;
@@ -1480,6 +1717,9 @@ onMounted(async () => {
   margin: 0;
 }
 @media (max-width: 768px) {
+  .apps-merge-mobile {
+    display: flex;
+  }
   .apps-form__inline {
     grid-template-columns: 1fr;
   }

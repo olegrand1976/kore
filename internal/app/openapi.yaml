@@ -1445,6 +1445,27 @@ paths:
       responses:
         "201":
           description: Application créée
+  /applications/merge:
+    post:
+      summary: Fusionner deux applications (référence conservée)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceApplicationId, targetApplicationId]
+              properties:
+                sourceApplicationId: { type: string, format: uuid, description: Application absorbée }
+                targetApplicationId: { type: string, format: uuid, description: Application de référence conservée }
+      responses:
+        "200":
+          description: Application de référence mise à jour
+        "404":
+          description: Application introuvable
+        "422":
+          description: Règle métier (double Taiga, sprints actifs, ids invalides)
   /project/applications:
     get:
       summary: Liste des applications en mode agile
@@ -1907,6 +1928,13 @@ paths:
       responses:
         "200": { description: OK }
         "404": { description: Lien introuvable }
+  /integrations/taiga/links/applications:
+    get:
+      summary: IDs des applications Kore liées à Taiga
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Liste des applicationIds liées
   /integrations/taiga/projects/unlinked:
     get:
       summary: Projets Taiga importables (non liés)

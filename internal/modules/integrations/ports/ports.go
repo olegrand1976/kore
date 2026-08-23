@@ -73,6 +73,7 @@ type TaigaRepository interface {
 	InsertApplicationProjectLink(ctx context.Context, link domain.ExternalLink) error
 	FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error)
 	ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error)
+	ListLinkedApplicationIDs(ctx context.Context, tenant kernel.TenantID) ([]uuid.UUID, error)
 	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
 	ListUserMappings(ctx context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error)
 }

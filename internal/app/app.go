@@ -68,6 +68,7 @@ import (
 	notifapp "github.com/kore/kore/internal/modules/notifications/app"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
 	orgbilling "github.com/kore/kore/internal/modules/org/adapters/billing"
+	orgintegrations "github.com/kore/kore/internal/modules/org/adapters/integrations"
 	orghttp "github.com/kore/kore/internal/modules/org/adapters/http"
 	orgpostgres "github.com/kore/kore/internal/modules/org/adapters/postgres"
 	orgapp "github.com/kore/kore/internal/modules/org/app"
@@ -199,7 +200,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		return nil, err
 	}
 
-	orgService := orgapp.NewOrganizationService(orgRepo)
+	orgService := orgapp.NewOrganizationService(orgRepo, orgintegrations.NewTaigaLinkReader(integrationsRepo))
 	attachmentChecker := NewAttachmentResourceChecker(tmaRepo, supportRepo, maintenanceRepo)
 	attachmentService := orgapp.NewAttachmentService(attachmentRepo, attachmentChecker)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)

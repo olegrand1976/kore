@@ -263,6 +263,13 @@ func (s *applicationOrgService) ListApplications(context.Context, kernel.TenantI
 	return s.listed, s.err
 }
 
+func (s *applicationOrgService) MergeApplications(_ context.Context, cmd ports.MergeApplicationsCommand) (domain.Application, error) {
+	if s.err != nil {
+		return domain.Application{}, s.err
+	}
+	return domain.Application{ID: cmd.TargetApplicationID}, nil
+}
+
 type stubTaigaApplicationBridge struct {
 	linkedAppID     uuid.UUID
 	linkedProjectID int
@@ -474,6 +481,24 @@ func TestDeactivateApplication_ok(t *testing.T) {
 	}
 	if svc.active == nil || svc.active.Active {
 		t.Fatalf("active cmd = %+v", svc.active)
+	}
+}
+
+func TestMergeApplications_ok(t *testing.T) {
+	sourceID := uuid.New()
+	targetID := uuid.New()
+	svc := &applicationOrgService{}
+	handler := mergeApplications(svc, stubAuthorizer{module: "org", action: authx.ActionWrite, allow: true})
+
+	req := requestWithIdentity(t, http.MethodPost, "/applications/merge", map[string]string{
+		"sourceApplicationId": sourceID.String(),
+		"targetApplicationId": targetID.String(),
+	})
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 

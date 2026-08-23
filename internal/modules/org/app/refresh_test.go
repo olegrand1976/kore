@@ -79,6 +79,9 @@ func (r refreshUserRepo) BudgetBelongsToApplication(context.Context, kernel.Tena
 func (r refreshUserRepo) CountProjectArtifacts(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
 	return 0, nil
 }
+func (r refreshUserRepo) MergeApplications(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (domain.Application, error) {
+	return domain.Application{}, domain.ErrApplicationNotFound
+}
 func (r refreshUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {
 	return r.user, r.err

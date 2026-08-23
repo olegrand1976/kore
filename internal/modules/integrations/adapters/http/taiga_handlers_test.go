@@ -34,6 +34,9 @@ func (stubTaigaRepo) UpsertUserMapping(context.Context, domain.UserMapping) erro
 func (stubTaigaRepo) ListLinkedTaigaProjectIDs(context.Context, kernel.TenantID) ([]string, error) {
 	return nil, nil
 }
+func (stubTaigaRepo) ListLinkedApplicationIDs(context.Context, kernel.TenantID) ([]uuid.UUID, error) {
+	return nil, nil
+}
 func (stubTaigaRepo) ListUserMappings(context.Context, kernel.TenantID, string) ([]domain.UserMapping, error) {
 	return nil, nil
 }
@@ -197,6 +200,46 @@ func TestFindTaigaLinkByApplication_ForbiddenWithoutOrgRead(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusForbidden)
 	}
+}
+
+func TestListTaigaLinkedApplications_OK(t *testing.T) {
+	appID := uuid.New()
+	repo := &linkedAppsRepo{applicationIDs: []uuid.UUID{appID}}
+	svc := app.NewTaigaService(repo, app.TaigaConfig{}, nil, nil, nil)
+	h := listTaigaLinkedApplications(svc, moduleAuthorizer{
+		"org": {authx.ActionRead: true},
+	})
+	ctx := authx.WithIdentity(context.Background(), authx.Identity{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		UserID:   uuid.New(),
+		Profile:  "Administrateur",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/integrations/taiga/links/applications", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d want %d", rec.Code, http.StatusOK)
+	}
+	var payload struct {
+		Data struct {
+			ApplicationIDs []uuid.UUID `json:"applicationIds"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(payload.Data.ApplicationIDs) != 1 || payload.Data.ApplicationIDs[0] != appID {
+		t.Fatalf("applicationIds = %v", payload.Data.ApplicationIDs)
+	}
+}
+
+type linkedAppsRepo struct {
+	stubTaigaRepo
+	applicationIDs []uuid.UUID
+}
+
+func (r *linkedAppsRepo) ListLinkedApplicationIDs(context.Context, kernel.TenantID) ([]uuid.UUID, error) {
+	return r.applicationIDs, nil
 }
 
 func TestListTaigaUserMappings_OK(t *testing.T) {

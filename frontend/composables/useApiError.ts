@@ -30,6 +30,17 @@ export function extractFetchError(err: unknown, fallback = 'Une erreur est surve
   return fallback
 }
 
+export function extractFetchErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === 'object') {
+    const e = err as { data?: ApiErrorBody }
+    const error = e.data?.error
+    if (error && typeof error === 'object' && typeof error.code === 'string') {
+      return error.code
+    }
+  }
+  return undefined
+}
+
 export function useApiError() {
   return { extractFetchError }
 }

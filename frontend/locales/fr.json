@@ -1841,7 +1841,21 @@
     "taiga_link_title": "Lien Taiga",
     "taiga_link_open": "Ouvrir dans Taiga",
     "taiga_link_readonly": "Cette application est déjà liée à un projet Taiga (lecture seule).",
-    "taiga_link_on_save": "Le projet sera lié à l'enregistrement."
+    "taiga_link_on_save": "Le projet sera lié à l'enregistrement.",
+    "taiga_badge": "Taiga",
+    "merge_action": "Fusionner",
+    "merge_title": "Fusionner deux applications",
+    "merge_reference_label": "Application de référence (conservée)",
+    "merge_reference_taiga_locked": "L'application importée depuis Taiga est conservée comme référence.",
+    "merge_methodology_warning": "Les profils méthodologie diffèrent : le profil de l'application de référence sera conservé.",
+    "merge_confirm": "L'autre application sera intégrée puis désactivée. Les rattachements seront fusionnés.",
+    "merge_success": "Applications fusionnées.",
+    "merge_select_two": "Sélectionnez deux applications à fusionner.",
+    "merge_error_both_taiga": "Impossible de fusionner deux applications liées à Taiga.",
+    "merge_error_active_sprint": "Impossible de fusionner : deux sprints actifs sur les applications.",
+    "merge_error_methodology": "Profils méthodologie différents avec artefacts agile : fusion impossible.",
+    "merge_error_default_budget": "Impossible de fusionner : chaque application a déjà un budget défaut.",
+    "col_select": "Sélection"
   },
   "users": {
     "title": "Utilisateurs",

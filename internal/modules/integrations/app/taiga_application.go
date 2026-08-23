@@ -77,6 +77,10 @@ func (s *TaigaService) FindByKoreApplication(ctx context.Context, tenant kernel.
 	return s.repo.FindExternalLinkByKore(ctx, tenant, "application", applicationID)
 }
 
+func (s *TaigaService) ListLinkedApplicationIDs(ctx context.Context, tenant kernel.TenantID) ([]uuid.UUID, error) {
+	return s.repo.ListLinkedApplicationIDs(ctx, tenant)
+}
+
 func (s *TaigaService) LinkExistingApplication(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID, taigaProjectID int) error {
 	if taigaProjectID <= 0 {
 		return domain.ErrTaigaProjectNotFound

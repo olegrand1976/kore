@@ -2429,6 +2429,20 @@
     "taiga_link_title": "Taiga link",
     "taiga_link_open": "Open in Taiga",
     "taiga_link_readonly": "This application is already linked to a Taiga project (read-only).",
-    "taiga_link_on_save": "The project will be linked when you save."
+    "taiga_link_on_save": "The project will be linked when you save.",
+    "taiga_badge": "Taiga",
+    "merge_action": "Merge",
+    "merge_title": "Merge two applications",
+    "merge_reference_label": "Reference application (kept)",
+    "merge_reference_taiga_locked": "The application imported from Taiga is kept as the reference.",
+    "merge_methodology_warning": "Methodology profiles differ: the reference application's profile will be kept.",
+    "merge_confirm": "The other application will be merged in and deactivated. Attachments will be combined.",
+    "merge_success": "Applications merged.",
+    "merge_select_two": "Select two applications to merge.",
+    "merge_error_both_taiga": "Cannot merge two Taiga-linked applications.",
+    "merge_error_active_sprint": "Cannot merge: two active sprints on the applications.",
+    "merge_error_methodology": "Different methodology profiles with agile artifacts: merge blocked.",
+    "merge_error_default_budget": "Cannot merge: each application already has a default budget.",
+    "col_select": "Select"
   }
 }

@@ -143,6 +143,30 @@ func (r *Repository) ListLinkedTaigaProjectIDs(ctx context.Context, tenant kerne
 	return ids, rows.Err()
 }
 
+func (r *Repository) ListLinkedApplicationIDs(ctx context.Context, tenant kernel.TenantID) ([]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT kore_entity_id
+		FROM integrations.external_links
+		WHERE tenant_id = $1 AND provider = 'taiga' AND kore_entity_type = 'application'
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, rows.Err()
+}
+
 func (r *Repository) UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error {
 	now := time.Now().UTC()
 	if mapping.ID == uuid.Nil {

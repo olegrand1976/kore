@@ -81,6 +81,9 @@ func (r *totpUserRepo) BudgetBelongsToApplication(context.Context, kernel.Tenant
 func (r *totpUserRepo) CountProjectArtifacts(context.Context, kernel.TenantID, uuid.UUID) (int, error) {
 	return 0, nil
 }
+func (r *totpUserRepo) MergeApplications(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (domain.Application, error) {
+	return domain.Application{}, domain.ErrApplicationNotFound
+}
 func (r *totpUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r *totpUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {
 	return r.user, nil

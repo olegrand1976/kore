@@ -64,6 +64,16 @@ func (f *taigaRepoFake) ListLinkedTaigaProjectIDs(_ context.Context, _ kernel.Te
 	return ids, nil
 }
 
+func (f *taigaRepoFake) ListLinkedApplicationIDs(_ context.Context, _ kernel.TenantID) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0)
+	for _, link := range f.links {
+		if link.KoreEntityType == "application" && link.Provider == "taiga" {
+			ids = append(ids, link.KoreEntityID)
+		}
+	}
+	return ids, nil
+}
+
 func (f *taigaRepoFake) ListUserMappings(_ context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error) {
 	var out []domain.UserMapping
 	for _, m := range f.mappings {

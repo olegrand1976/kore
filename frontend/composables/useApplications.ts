@@ -198,6 +198,13 @@ export function useApplications() {
     return apiFetch(`/api/org/applications/${id}/activate`, { method: 'PATCH' })
   }
 
+  const merge = async (sourceApplicationId: string, targetApplicationId: string) => {
+    return apiFetch<{ data?: OrgApplication }>('/api/org/applications/merge', {
+      method: 'POST',
+      body: { sourceApplicationId, targetApplicationId }
+    })
+  }
+
   const appById = (apps: OrgApplication[]) => {
     const map = new Map<string, OrgApplication>()
     for (const app of apps) {
@@ -214,6 +221,7 @@ export function useApplications() {
     update,
     deactivate,
     activate,
+    merge,
     appById,
     pickAppId,
     pickAppLabel,

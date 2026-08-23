@@ -162,7 +162,7 @@ func TestCreateEquipe_persistsWithApplication(t *testing.T) {
 			responsable: {ID: responsable, TenantID: tenant, Login: "chef"},
 		},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	equipe, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
 		TenantID:      tenant,
@@ -195,7 +195,7 @@ func TestCreateEquipe_persistsWithApplication(t *testing.T) {
 
 func TestCreateEquipe_rejectsMissingApplication(t *testing.T) {
 	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	_, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
@@ -210,7 +210,7 @@ func TestCreateEquipe_rejectsMissingApplication(t *testing.T) {
 }
 
 func TestCreateEquipe_rejectsEmptyLibelle(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
 		TenantID:      kernel.NewTenantID(uuid.New()),
 		ApplicationID: uuid.New(),
@@ -224,7 +224,7 @@ func TestCreateEquipe_rejectsEmptyLibelle(t *testing.T) {
 func TestCreateEquipe_rejectsUnknownResponsable(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	repo := &structureRepo{users: map[uuid.UUID]domain.User{}}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	unknown := uuid.New()
 	_, err := svc.CreateEquipe(context.Background(), ports.CreateEquipeCommand{
 		TenantID:      tenant,
@@ -242,7 +242,7 @@ func TestCreateEquipe_rejectsUnknownResponsable(t *testing.T) {
 
 func TestCreateService_defaultsTypeToInterne(t *testing.T) {
 	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	_, err := svc.CreateService(context.Background(), ports.CreateServiceCommand{
 		TenantID:      kernel.NewTenantID(uuid.New()),
@@ -266,7 +266,7 @@ func TestCreateService_defaultsTypeToInterne(t *testing.T) {
 
 func TestCreateService_rejectsMissingResponsible(t *testing.T) {
 	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	_, err := svc.CreateService(context.Background(), ports.CreateServiceCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
@@ -284,7 +284,7 @@ func TestCreateService_rejectsMissingResponsible(t *testing.T) {
 func TestUpdateSite_renames(t *testing.T) {
 	siteID := uuid.New()
 	repo := &structureRepo{sites: []domain.SiteSummary{{ID: siteID, Libelle: "Old"}}}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	got, err := svc.UpdateSite(context.Background(), ports.UpdateSiteCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
 		SiteID:   siteID,
@@ -299,7 +299,7 @@ func TestUpdateSite_renames(t *testing.T) {
 }
 
 func TestUpdateSite_rejectsEmptyLibelle(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.UpdateSite(context.Background(), ports.UpdateSiteCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
 		SiteID:   uuid.New(),
@@ -313,7 +313,7 @@ func TestUpdateSite_rejectsEmptyLibelle(t *testing.T) {
 func TestUpdateService_renames(t *testing.T) {
 	svcID := uuid.New()
 	repo := &structureRepo{savedService: &domain.Service{ID: svcID, Libelle: "Old", SiteID: uuid.New()}}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	got, err := svc.UpdateService(context.Background(), ports.UpdateServiceCommand{
 		TenantID:  kernel.NewTenantID(uuid.New()),
 		ServiceID: svcID,
@@ -328,7 +328,7 @@ func TestUpdateService_renames(t *testing.T) {
 }
 
 func TestUpdateService_notFound(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.UpdateService(context.Background(), ports.UpdateServiceCommand{
 		TenantID:  kernel.NewTenantID(uuid.New()),
 		ServiceID: uuid.New(),
@@ -355,7 +355,7 @@ func TestUpdateEquipe_renamesAndSetsResponsable(t *testing.T) {
 			responsable: {ID: responsable, TenantID: tenant, Login: "chef"},
 		},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	got, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
 		TenantID:      tenant,
 		EquipeID:      equipeID,
@@ -388,7 +388,7 @@ func TestUpdateEquipe_clearsResponsable(t *testing.T) {
 			ResponsableID: &responsable,
 		}},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	got, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
 		TenantID:      tenant,
 		EquipeID:      equipeID,
@@ -404,7 +404,7 @@ func TestUpdateEquipe_clearsResponsable(t *testing.T) {
 }
 
 func TestUpdateEquipe_rejectsEmptyLibelle(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
 		EquipeID: uuid.New(),
@@ -416,7 +416,7 @@ func TestUpdateEquipe_rejectsEmptyLibelle(t *testing.T) {
 }
 
 func TestUpdateEquipe_notFound(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
 		EquipeID: uuid.New(),
@@ -434,7 +434,7 @@ func TestUpdateEquipe_rejectsUnknownResponsable(t *testing.T) {
 		equipes: []domain.Equipe{{ID: equipeID, TenantID: tenant, Libelle: "Dev"}},
 		users:   map[uuid.UUID]domain.User{},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	unknown := uuid.New()
 	_, err := svc.UpdateEquipe(context.Background(), ports.UpdateEquipeCommand{
 		TenantID:      tenant,
@@ -449,7 +449,7 @@ func TestUpdateEquipe_rejectsUnknownResponsable(t *testing.T) {
 
 func TestListSites_delegatesToRepository(t *testing.T) {
 	want := []domain.SiteSummary{{ID: uuid.New(), Libelle: "Paris HQ"}}
-	svc := NewOrganizationService(&structureRepo{sites: want})
+	svc := NewOrganizationService(&structureRepo{sites: want}, nil)
 
 	got, err := svc.ListSites(context.Background(), kernel.NewTenantID(uuid.New()))
 	if err != nil {
@@ -724,7 +724,7 @@ func TestUpdateUser_keepsEquipeWhenFieldAbsent(t *testing.T) {
 
 func TestCreateApplication_setsActive(t *testing.T) {
 	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:   kernel.NewTenantID(uuid.New()),
@@ -752,7 +752,7 @@ func TestCreateApplication_persistsRichFields(t *testing.T) {
 	repo.users = map[uuid.UUID]domain.User{
 		chefID: {ID: chefID, TenantID: tenant, Login: "CHEF_user", Active: true},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:          tenant,
@@ -776,7 +776,7 @@ func TestCreateApplication_persistsRichFields(t *testing.T) {
 
 func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
 	budgetID := uuid.New()
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:       kernel.NewTenantID(uuid.New()),
 		ServiceIDs:     []uuid.UUID{uuid.New()},
@@ -789,7 +789,7 @@ func TestCreateApplication_rejectsBudgetOnCreate(t *testing.T) {
 }
 
 func TestCreateApplication_rejectsEmptyLibelle(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:   kernel.NewTenantID(uuid.New()),
 		ServiceIDs: []uuid.UUID{uuid.New()},
@@ -801,7 +801,7 @@ func TestCreateApplication_rejectsEmptyLibelle(t *testing.T) {
 }
 
 func TestCreateApplication_rejectsInvalidMode(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:        kernel.NewTenantID(uuid.New()),
 		ServiceIDs:      []uuid.UUID{uuid.New()},
@@ -815,7 +815,7 @@ func TestCreateApplication_rejectsInvalidMode(t *testing.T) {
 
 func TestCreateApplication_rejectsUnknownChef(t *testing.T) {
 	chefID := uuid.New()
-	svc := NewOrganizationService(&structureRepo{users: map[uuid.UUID]domain.User{}})
+	svc := NewOrganizationService(&structureRepo{users: map[uuid.UUID]domain.User{}}, nil)
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:          kernel.NewTenantID(uuid.New()),
 		ServiceIDs:        []uuid.UUID{uuid.New()},
@@ -839,7 +839,7 @@ func TestUpdateApplication_renamesAndDeactivates(t *testing.T) {
 			Active:     true,
 		},
 	}}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	libelle := "New"
 	active := false
@@ -888,7 +888,7 @@ func TestUpdateApplication_richFields(t *testing.T) {
 	repo.users = map[uuid.UUID]domain.User{
 		chefID: {ID: chefID, TenantID: tenant, Login: "CHEF_user", Active: true},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 
 	prop := "Société X"
 	mode := domain.ModeFacturationNon
@@ -937,7 +937,7 @@ func TestUpdateApplication_budgetDefaut(t *testing.T) {
 		// Simulates EXISTS (... AND type = 'defaut')
 		budgetOK: map[uuid.UUID]bool{budgetID: true},
 	}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	budgetPtr := &budgetID
 	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
 		TenantID:       tenant,
@@ -978,7 +978,7 @@ func TestUpdateApplication_budgetDefaut(t *testing.T) {
 }
 
 func TestUpdateApplication_notFound(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	libelle := "x"
 	_, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
 		TenantID:      kernel.NewTenantID(uuid.New()),
@@ -991,7 +991,7 @@ func TestUpdateApplication_notFound(t *testing.T) {
 }
 
 func TestCreateApplication_rejectsWithoutShare(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID: kernel.NewTenantID(uuid.New()),
 		Libelle:  "Orpheline",
@@ -1005,7 +1005,7 @@ func TestCreateApplication_multiShares(t *testing.T) {
 	svcID1, svcID2 := uuid.New(), uuid.New()
 	siteID := uuid.New()
 	repo := &structureRepo{}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	app, err := svc.CreateApplication(context.Background(), ports.CreateApplicationCommand{
 		TenantID:   kernel.NewTenantID(uuid.New()),
 		Libelle:    "Shared",
@@ -1035,7 +1035,7 @@ func TestUpdateApplication_replaceShares(t *testing.T) {
 			EquipeIDs:  []uuid.UUID{equipeID},
 		},
 	}}
-	svc := NewOrganizationService(repo)
+	svc := NewOrganizationService(repo, nil)
 	services := []uuid.UUID{newSvc}
 	got, err := svc.UpdateApplication(context.Background(), ports.UpdateApplicationCommand{
 		TenantID:      tenant,
@@ -1071,7 +1071,7 @@ func TestUpdateApplication_replaceShares(t *testing.T) {
 }
 
 func TestSetApplicationActive_notFound(t *testing.T) {
-	svc := NewOrganizationService(&structureRepo{})
+	svc := NewOrganizationService(&structureRepo{}, nil)
 	_, err := svc.SetApplicationActive(context.Background(), ports.SetApplicationActiveCommand{
 		TenantID:      kernel.NewTenantID(uuid.New()),
 		ApplicationID: uuid.New(),

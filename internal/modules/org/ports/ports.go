@@ -99,6 +99,18 @@ type SetApplicationActiveCommand struct {
 	Active        bool
 }
 
+// MergeApplicationsCommand merges sourceApplicationId into targetApplicationId (reference kept).
+type MergeApplicationsCommand struct {
+	TenantID              kernel.TenantID
+	SourceApplicationID   uuid.UUID
+	TargetApplicationID   uuid.UUID
+}
+
+// TaigaLinkReader reports whether a Kore application is linked to Taiga.
+type TaigaLinkReader interface {
+	IsApplicationTaigaLinked(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (bool, error)
+}
+
 type CreateEquipeCommand struct {
 	TenantID      kernel.TenantID
 	ApplicationID uuid.UUID
@@ -228,6 +240,7 @@ type OrganizationRepository interface {
 	// BudgetBelongsToApplication is true only for a budget of type "defaut" on that application (RG-BUD-01).
 	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
 	CountProjectArtifacts(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error)
+	MergeApplications(ctx context.Context, tenant kernel.TenantID, absorbedApplicationID, referenceApplicationID uuid.UUID) (domain.Application, error)
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)
@@ -348,6 +361,7 @@ type OrganizationService interface {
 	UpdateService(ctx context.Context, cmd UpdateServiceCommand) (domain.ServiceSummary, error)
 	CreateApplication(ctx context.Context, cmd CreateApplicationCommand) (domain.Application, error)
 	UpdateApplication(ctx context.Context, cmd UpdateApplicationCommand) (domain.Application, error)
+	MergeApplications(ctx context.Context, cmd MergeApplicationsCommand) (domain.Application, error)
 	SetApplicationActive(ctx context.Context, cmd SetApplicationActiveCommand) (domain.Application, error)
 	CreateEquipe(ctx context.Context, cmd CreateEquipeCommand) (domain.Equipe, error)
 	UpdateEquipe(ctx context.Context, cmd UpdateEquipeCommand) (domain.Equipe, error)

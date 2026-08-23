@@ -25,6 +25,7 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Get("/integrations/taiga/links/by-demand/{id}", findTaigaLinkByDemand(taiga, authorizer))
 		pr.Get("/integrations/taiga/links/by-application/{id}", findTaigaLinkByApplication(taiga, authorizer))
+		pr.Get("/integrations/taiga/links/applications", listTaigaLinkedApplications(taiga, authorizer))
 		pr.Get("/integrations/taiga/projects/unlinked", listUnlinkedTaigaProjects(taiga, authorizer))
 		pr.Post("/integrations/taiga/applications/import", importTaigaApplications(taiga, authorizer))
 		pr.Get("/integrations/taiga/user-mappings", listTaigaUserMappings(taiga, authorizer))
@@ -200,6 +201,22 @@ func findTaigaLinkByApplication(taiga *app.TaigaService, authorizer authx.Author
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, link)
+	}
+}
+
+func listTaigaLinkedApplications(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "org", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		ids, err := taiga.ListLinkedApplicationIDs(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, map[string][]uuid.UUID{"applicationIds": ids})
 	}
 }
 
