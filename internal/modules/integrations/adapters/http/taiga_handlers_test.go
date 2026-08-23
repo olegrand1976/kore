@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +32,9 @@ func (stubTaigaRepo) FindExternalLinkByKore(context.Context, kernel.TenantID, st
 }
 func (stubTaigaRepo) UpsertUserMapping(context.Context, domain.UserMapping) error { return nil }
 func (stubTaigaRepo) ListLinkedTaigaProjectIDs(context.Context, kernel.TenantID) ([]string, error) {
+	return nil, nil
+}
+func (stubTaigaRepo) ListUserMappings(context.Context, kernel.TenantID, string) ([]domain.UserMapping, error) {
 	return nil, nil
 }
 
@@ -193,4 +197,102 @@ func TestFindTaigaLinkByApplication_ForbiddenWithoutOrgRead(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusForbidden)
 	}
+}
+
+func TestListTaigaUserMappings_OK(t *testing.T) {
+	repo := &listMappingsRepo{}
+	tenant := kernel.NewTenantID(uuid.New())
+	koreUser := uuid.New()
+	repo.mappings = []domain.UserMapping{{
+		TenantID:         tenant,
+		Provider:         "taiga",
+		ExternalUserID:   "42",
+		ExternalUsername: "alice",
+		KoreUserID:       koreUser,
+		MatchMethod:      "email",
+	}}
+	svc := app.NewTaigaService(repo, app.TaigaConfig{}, nil, nil, nil)
+	h := listTaigaUserMappings(svc, moduleAuthorizer{
+		"integrations": {authx.ActionRead: true},
+	})
+	ctx := authx.WithIdentity(context.Background(), authx.Identity{
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Profile:  "Administrateur",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/integrations/taiga/user-mappings", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var env struct {
+		Data []domain.UserMapping `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatal(err)
+	}
+	if len(env.Data) != 1 || env.Data[0].ExternalUsername != "alice" {
+		t.Fatalf("data: %+v", env.Data)
+	}
+}
+
+func TestListTaigaUserMappings_Forbidden(t *testing.T) {
+	svc := app.NewTaigaService(&stubTaigaRepo{}, app.TaigaConfig{}, nil, nil, nil)
+	h := listTaigaUserMappings(svc, moduleAuthorizer{})
+	ctx := authx.WithIdentity(context.Background(), authx.Identity{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		UserID:   uuid.New(),
+		Profile:  "Collaborateur",
+	})
+	req := httptest.NewRequest(http.MethodGet, "/integrations/taiga/user-mappings", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+func TestUpsertTaigaUserMapping_Conflict(t *testing.T) {
+	repo := &conflictMappingRepo{}
+	svc := app.NewTaigaService(repo, app.TaigaConfig{}, nil, nil, nil)
+	h := upsertTaigaUserMapping(svc, moduleAuthorizer{
+		"integrations": {authx.ActionWrite: true},
+	})
+	ctx := authx.WithIdentity(context.Background(), authx.Identity{
+		TenantID: kernel.NewTenantID(uuid.New()),
+		UserID:   uuid.New(),
+		Profile:  "Administrateur",
+	})
+	body := `{"taigaUserId":42,"taigaUsername":"alice","koreUserId":"` + uuid.New().String() + `","matchMethod":"email"}`
+	req := httptest.NewRequest(http.MethodPost, "/integrations/taiga/user-mappings", strings.NewReader(body)).WithContext(ctx)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status: got %d want %d body=%s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+}
+
+type conflictMappingRepo struct {
+	stubTaigaRepo
+}
+
+func (conflictMappingRepo) UpsertUserMapping(context.Context, domain.UserMapping) error {
+	return domain.ErrTaigaKoreUserAlreadyMapped
+}
+
+type listMappingsRepo struct {
+	stubTaigaRepo
+	mappings []domain.UserMapping
+}
+
+func (r *listMappingsRepo) ListUserMappings(_ context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error) {
+	var out []domain.UserMapping
+	for _, m := range r.mappings {
+		if m.TenantID == tenant && m.Provider == provider {
+			out = append(out, m)
+		}
+	}
+	return out, nil
 }

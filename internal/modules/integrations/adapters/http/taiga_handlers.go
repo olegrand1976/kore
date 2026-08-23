@@ -27,6 +27,7 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 		pr.Get("/integrations/taiga/links/by-application/{id}", findTaigaLinkByApplication(taiga, authorizer))
 		pr.Get("/integrations/taiga/projects/unlinked", listUnlinkedTaigaProjects(taiga, authorizer))
 		pr.Post("/integrations/taiga/applications/import", importTaigaApplications(taiga, authorizer))
+		pr.Get("/integrations/taiga/user-mappings", listTaigaUserMappings(taiga, authorizer))
 		pr.Post("/integrations/taiga/user-mappings", upsertTaigaUserMapping(taiga, authorizer))
 	})
 }
@@ -99,6 +100,22 @@ func findTaigaLinkByDemand(taiga *app.TaigaService, authorizer authx.Authorizer)
 	}
 }
 
+func listTaigaUserMappings(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionRead) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		mappings, err := taiga.ListUserMappings(r.Context(), identity.TenantID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, mappings)
+	}
+}
+
 func upsertTaigaUserMapping(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "integrations", authx.ActionWrite) {
@@ -127,6 +144,10 @@ func upsertTaigaUserMapping(taiga *app.TaigaService, authorizer authx.Authorizer
 			errors.Is(err, domain.ErrInvalidKoreUserID) ||
 			errors.Is(err, domain.ErrInvalidMatchMethod) {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		if errors.Is(err, domain.ErrTaigaKoreUserAlreadyMapped) {
+			httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
 			return
 		}
 		if err != nil {

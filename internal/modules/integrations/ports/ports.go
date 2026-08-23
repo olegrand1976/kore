@@ -74,6 +74,7 @@ type TaigaRepository interface {
 	FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error)
 	ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error)
 	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
+	ListUserMappings(ctx context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error)
 }
 
 // TaigaDemandGate checks Kore TMA demand existence for inbound webhooks.

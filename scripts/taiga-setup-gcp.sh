@@ -93,9 +93,33 @@ if [[ -n "${TAIGA_PROJECT_SLUG:-}" ]]; then
   add_version_force kore-taiga-project-slug "$TAIGA_PROJECT_SLUG"
 fi
 
+# Compte service API (lecture projets Taiga) — réutilise les secrets MCP si présents
+copy_service_secret() {
+  local target="$1"
+  local source="$2"
+  if has_version "$target"; then
+    echo "  ${target} : version existante"
+    return 0
+  fi
+  if has_version "$source"; then
+    local value
+    value="$(gcloud secrets versions access latest --secret="$source" --project="$GCP_PROJECT_ID")"
+    add_version_force "$target" "$value"
+    echo "  ${target} : copié depuis ${source}"
+    return 0
+  fi
+  ensure_secret "$target"
+  echo "  ${target} : secret créé — ajoutez une version manuellement"
+}
+
+echo ""
+echo "=== Compte service Taiga (API Kore) ==="
+copy_service_secret kore-taiga-service-username taiga-mcp-taiga-username
+copy_service_secret kore-taiga-service-password taiga-mcp-taiga-password
+
 SA_EMAIL="${SERVICE_ACCOUNT}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 COMPUTE_SA="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
-for secret in kore-taiga-webhook-secret kore-taiga-base-url kore-taiga-project-slug kore-taiga-default-tenant-id; do
+for secret in kore-taiga-webhook-secret kore-taiga-base-url kore-taiga-project-slug kore-taiga-default-tenant-id kore-taiga-service-username kore-taiga-service-password; do
   gcloud secrets add-iam-policy-binding "$secret" \
     --project="$GCP_PROJECT_ID" \
     --member="serviceAccount:${SA_EMAIL}" \

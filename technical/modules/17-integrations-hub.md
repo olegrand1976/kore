@@ -248,3 +248,5 @@ Secrets additionnels pour lister les projets Taiga :
 | `kore-taiga-service-password` / `TAIGA_SERVICE_PASSWORD` | Mot de passe du compte service |
 
 API : `GET /integrations/taiga/projects/unlinked`, `GET /integrations/taiga/links/by-application/{id}`.
+
+**Campagne de test 4 niveaux (staging)** : [`documentation/TEST_TAIGA_4_NIVEAUX.md`](../../documentation/TEST_TAIGA_4_NIVEAUX.md) — utilisateurs, applications, tâches/backlog, incidents/issues.

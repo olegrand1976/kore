@@ -109,6 +109,40 @@ func TestTaigaUserMappings_UniqueExternalUser(t *testing.T) {
 	require.NoError(t, repo.UpsertUserMapping(ctx, m2))
 }
 
+func TestTaigaUserMappings_KoreUserUniqueConflict(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	now := time.Now().UTC()
+	koreUser := uuid.New()
+
+	m1 := domain.UserMapping{
+		TenantID:         tenant,
+		Provider:         "taiga",
+		ExternalUserID:   "99",
+		ExternalUsername: "alice",
+		KoreUserID:       koreUser,
+		MatchMethod:      domain.UserMatchMethodEmail,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	require.NoError(t, repo.UpsertUserMapping(ctx, m1))
+
+	m2 := domain.UserMapping{
+		TenantID:         tenant,
+		Provider:         "taiga",
+		ExternalUserID:   "100",
+		ExternalUsername: "bob",
+		KoreUserID:       koreUser,
+		MatchMethod:      domain.UserMatchMethodManual,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	err := repo.UpsertUserMapping(ctx, m2)
+	require.ErrorIs(t, err, domain.ErrTaigaKoreUserAlreadyMapped)
+}
+
 func TestTaigaLinks_ApplicationProjectRoundTrip(t *testing.T) {
 	pool := dbtest.NewPostgres(t)
 	repo := postgres.NewRepository(pool)
@@ -204,6 +238,44 @@ func TestTaigaLinks_ApplicationProjectLinkRejectsSameApplication(t *testing.T) {
 	second.ID = uuid.Nil
 	err := repo.InsertApplicationProjectLink(ctx, second)
 	require.ErrorIs(t, err, domain.ErrTaigaApplicationAlreadyLinked)
+}
+
+func TestTaigaLinks_UpsertUpdatesExternalType(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+	now := time.Now().UTC()
+
+	issue := domain.ExternalLink{
+		TenantID:       tenant,
+		Provider:       "taiga",
+		ExternalType:   "issue",
+		ExternalID:     "88001",
+		ExternalRef:    intPtr(15),
+		KoreEntityType: "demand",
+		KoreEntityID:   demandID,
+		LastSyncAt:     &now,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+	require.NoError(t, repo.UpsertExternalLink(ctx, issue))
+
+	task := issue
+	task.ExternalType = "task"
+	task.ExternalID = "77001"
+	ref := 9
+	task.ExternalRef = &ref
+	task.Metadata = map[string]any{"action": "change"}
+	require.NoError(t, repo.UpsertExternalLink(ctx, task))
+
+	got, err := repo.FindExternalLinkByKore(ctx, tenant, "demand", demandID)
+	require.NoError(t, err)
+	require.Equal(t, "task", got.ExternalType)
+	require.Equal(t, "77001", got.ExternalID)
+	require.NotNil(t, got.ExternalRef)
+	require.Equal(t, 9, *got.ExternalRef)
 }
 
 func intPtr(n int) *int {

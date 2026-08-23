@@ -48,6 +48,7 @@ func (r *Repository) UpsertExternalLink(ctx context.Context, link domain.Externa
 			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		ON CONFLICT (tenant_id, kore_entity_type, kore_entity_id) DO UPDATE SET
+			external_type = EXCLUDED.external_type,
 			external_id = EXCLUDED.external_id,
 			external_project_id = EXCLUDED.external_project_id,
 			external_ref = EXCLUDED.external_ref,
@@ -159,7 +160,61 @@ func (r *Repository) UpsertUserMapping(ctx context.Context, mapping domain.UserM
 			updated_at = EXCLUDED.updated_at
 	`, mapping.ID, mapping.TenantID.UUID(), mapping.Provider, mapping.ExternalUserID,
 		mapping.ExternalUsername, mapping.KoreUserID, mapping.MatchMethod, mapping.CreatedAt, now)
+	return mapUserMappingError(err)
+}
+
+func mapUserMappingError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "user_mappings_tenant_id_provider_kore_user_id_key":
+			return domain.ErrTaigaKoreUserAlreadyMapped
+		}
+	}
 	return err
+}
+
+func (r *Repository) ListUserMappings(ctx context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, provider, external_user_id, external_username,
+			kore_user_id, match_method, created_at, updated_at
+		FROM integrations.user_mappings
+		WHERE tenant_id = $1 AND provider = $2
+		ORDER BY external_username, external_user_id
+	`, tenant.UUID(), provider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.UserMapping
+	for rows.Next() {
+		m, err := scanUserMapping(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	if out == nil {
+		out = []domain.UserMapping{}
+	}
+	return out, rows.Err()
+}
+
+func scanUserMapping(row pgx.Row) (domain.UserMapping, error) {
+	var m domain.UserMapping
+	var tenantID uuid.UUID
+	err := row.Scan(
+		&m.ID, &tenantID, &m.Provider, &m.ExternalUserID, &m.ExternalUsername,
+		&m.KoreUserID, &m.MatchMethod, &m.CreatedAt, &m.UpdatedAt,
+	)
+	if err != nil {
+		return domain.UserMapping{}, err
+	}
+	m.TenantID = kernel.NewTenantID(tenantID)
+	return m, nil
 }
 
 func (r *Repository) scanExternalLink(row pgx.Row) (domain.ExternalLink, error) {

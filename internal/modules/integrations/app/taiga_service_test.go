@@ -64,6 +64,16 @@ func (f *taigaRepoFake) ListLinkedTaigaProjectIDs(_ context.Context, _ kernel.Te
 	return ids, nil
 }
 
+func (f *taigaRepoFake) ListUserMappings(_ context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error) {
+	var out []domain.UserMapping
+	for _, m := range f.mappings {
+		if m.TenantID == tenant && m.Provider == provider {
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
 func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
 	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, nil, nil, nil)
 	tenant := kernel.NewTenantID(uuid.New())
@@ -80,6 +90,11 @@ func TestUpsertUserMapping_ValidatesInput(t *testing.T) {
 
 	_, err = svc.UpsertUserMapping(context.Background(), UpsertUserMappingCommand{
 		TenantID: tenant, TaigaUserID: 42, KoreUserID: uuid.New(), MatchMethod: " ",
+	})
+	require.ErrorIs(t, err, domain.ErrInvalidMatchMethod)
+
+	_, err = svc.UpsertUserMapping(context.Background(), UpsertUserMappingCommand{
+		TenantID: tenant, TaigaUserID: 42, KoreUserID: uuid.New(), MatchMethod: "foo",
 	})
 	require.ErrorIs(t, err, domain.ErrInvalidMatchMethod)
 }
@@ -101,6 +116,22 @@ func TestUpsertUserMapping_HappyPath(t *testing.T) {
 	require.Equal(t, "taiga", got.Provider)
 	require.Equal(t, "99", got.ExternalUserID)
 	require.Len(t, repo.mappings, 1)
+}
+
+func TestListUserMappings_ReturnsTenantMappings(t *testing.T) {
+	repo := &taigaRepoFake{}
+	tenant := kernel.NewTenantID(uuid.New())
+	other := kernel.NewTenantID(uuid.New())
+	repo.mappings = []domain.UserMapping{
+		{TenantID: tenant, Provider: "taiga", ExternalUserID: "1", ExternalUsername: "alice", KoreUserID: uuid.New(), MatchMethod: "email"},
+		{TenantID: other, Provider: "taiga", ExternalUserID: "2", ExternalUsername: "bob", KoreUserID: uuid.New(), MatchMethod: "email"},
+	}
+	svc := NewTaigaService(repo, TaigaConfig{}, nil, nil, nil)
+
+	got, err := svc.ListUserMappings(context.Background(), tenant)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "alice", got[0].ExternalUsername)
 }
 
 func TestHandleWebhook_CreatesExternalLinkWithURL(t *testing.T) {

@@ -1954,12 +1954,35 @@ paths:
         "422": { description: Validation }
         "503": { description: Taiga non configuré ou indisponible }
   /integrations/taiga/user-mappings:
+    get:
+      summary: Lister les mappings utilisateur Taiga du tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        externalUserId: { type: string }
+                        externalUsername: { type: string }
+                        koreUserId: { type: string, format: uuid }
+                        matchMethod: { type: string }
+        "403": { description: Interdit }
     post:
       summary: Créer ou mettre à jour un mapping utilisateur Taiga
       security: [{ bearerAuth: [] }]
       responses:
         "201": { description: Créé }
         "400": { description: Données invalides }
+        "409": { description: Utilisateur Kore déjà mappé }
   /invoices:
     get:
       summary: Liste factures

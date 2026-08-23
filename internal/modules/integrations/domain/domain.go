@@ -24,6 +24,12 @@ var (
 	ErrTaigaProjectNotFound          = errors.New("taiga project not found")
 	ErrTaigaProjectLinked            = errors.New("taiga project already linked")
 	ErrTaigaApplicationAlreadyLinked = errors.New("taiga application already linked")
+	ErrTaigaKoreUserAlreadyMapped    = errors.New("kore user already mapped to taiga")
+)
+
+const (
+	UserMatchMethodEmail  = "email"
+	UserMatchMethodManual = "manual"
 )
 
 type ConnectionType string
@@ -135,13 +141,13 @@ type ExternalLink struct {
 }
 
 type UserMapping struct {
-	ID               uuid.UUID
-	TenantID         kernel.TenantID
-	Provider         string
-	ExternalUserID   string
-	ExternalUsername string
-	KoreUserID       uuid.UUID
-	MatchMethod      string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID               uuid.UUID       `json:"id"`
+	TenantID         kernel.TenantID `json:"tenantId"`
+	Provider         string          `json:"provider"`
+	ExternalUserID   string          `json:"externalUserId"`
+	ExternalUsername string          `json:"externalUsername"`
+	KoreUserID       uuid.UUID       `json:"koreUserId"`
+	MatchMethod      string          `json:"matchMethod"`
+	CreatedAt        time.Time       `json:"createdAt"`
+	UpdatedAt        time.Time       `json:"updatedAt"`
 }

@@ -134,6 +134,9 @@ kore_api_secrets() {
   if kore_has_secret_version "kore-taiga-service-password"; then
     secrets+=",TAIGA_SERVICE_PASSWORD=kore-taiga-service-password:latest"
   fi
+  if kore_has_secret_version "kore-taiga-service-username"; then
+    secrets+=",TAIGA_SERVICE_USERNAME=kore-taiga-service-username:latest"
+  fi
   if kore_has_secret_version "kore-fcm-service-account"; then
     secrets+=",GOOGLE_APPLICATION_CREDENTIALS=kore-fcm-service-account:latest"
   fi

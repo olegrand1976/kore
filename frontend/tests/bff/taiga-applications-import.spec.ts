@@ -14,7 +14,16 @@ const importSrc = readFileSync(
   join(__dirname, '../../server/api/integrations/taiga/applications/import.post.ts'),
   'utf8'
 )
+const userMappingsGetSrc = readFileSync(
+  join(__dirname, '../../server/api/integrations/taiga/user-mappings.get.ts'),
+  'utf8'
+)
+const userMappingsPostSrc = readFileSync(
+  join(__dirname, '../../server/api/integrations/taiga/user-mappings.post.ts'),
+  'utf8'
+)
 const appsPageSrc = readFileSync(join(__dirname, '../../pages/admin/applications/index.vue'), 'utf8')
+const integrationsPageSrc = readFileSync(join(__dirname, '../../pages/admin/integrations/index.vue'), 'utf8')
 
 describe('BFF Taiga application import', () => {
   it('proxies GET unlinked projects with auth headers', () => {
@@ -43,5 +52,22 @@ describe('BFF Taiga application import', () => {
     expect(appsPageSrc).toContain('applications.taiga_link_title')
     expect(appsPageSrc).toContain('/api/integrations/taiga/links/by-application/')
     expect(appsPageSrc).toContain('existingTaigaLink')
+  })
+
+  it('proxies GET user mappings with auth headers', () => {
+    expect(userMappingsGetSrc).toContain('apiAuthHeaders(event)')
+    expect(userMappingsGetSrc).toContain('/api/v1/integrations/taiga/user-mappings')
+  })
+
+  it('proxies POST user mappings with auth headers', () => {
+    expect(userMappingsPostSrc).toContain('apiAuthHeaders(event)')
+    expect(userMappingsPostSrc).toContain('/api/v1/integrations/taiga/user-mappings')
+    expect(userMappingsPostSrc).toMatch(/method:\s*['"]POST['"]/)
+  })
+
+  it('exposes Taiga user mappings UI on admin integrations page', () => {
+    expect(integrationsPageSrc).toContain('integrations.taiga_mappings_title')
+    expect(integrationsPageSrc).toContain('/api/integrations/taiga/user-mappings')
+    expect(integrationsPageSrc).toContain('/api/org/users')
   })
 })

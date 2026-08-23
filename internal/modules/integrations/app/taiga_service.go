@@ -41,10 +41,12 @@ func (cmd UpsertUserMappingCommand) Validate() error {
 	if cmd.KoreUserID == uuid.Nil {
 		return domain.ErrInvalidKoreUserID
 	}
-	if strings.TrimSpace(cmd.MatchMethod) == "" {
+	switch strings.TrimSpace(cmd.MatchMethod) {
+	case domain.UserMatchMethodEmail, domain.UserMatchMethodManual:
+		return nil
+	default:
 		return domain.ErrInvalidMatchMethod
 	}
-	return nil
 }
 
 type TaigaWebhookPayload struct {
@@ -72,6 +74,10 @@ func (s *TaigaService) UpsertUserMapping(ctx context.Context, cmd UpsertUserMapp
 		return domain.UserMapping{}, err
 	}
 	return mapping, nil
+}
+
+func (s *TaigaService) ListUserMappings(ctx context.Context, tenant kernel.TenantID) ([]domain.UserMapping, error) {
+	return s.repo.ListUserMappings(ctx, tenant, "taiga")
 }
 
 func (s *TaigaService) FindByKoreDemand(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.ExternalLink, error) {
