@@ -92,7 +92,7 @@ MERGE_REPEAT_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://local
   -H 'Content-Type: application/json' \
   -d "{\"sourceApplicationId\":\"${MERGE_ABSORBED_ID}\",\"targetApplicationId\":\"${MERGE_REF_ID}\"}")
 test "$MERGE_REPEAT_CODE" = "422"
-APPS_AFTER_MERGE=$(curl -sf "http://localhost:${API_PORT}/api/v1/applications" -H "Authorization: Bearer $TOKEN")
+APPS_AFTER_MERGE=$(curl -sf "http://localhost:${API_PORT}/api/v1/applications?active=all" -H "Authorization: Bearer $TOKEN")
 ABSORBED_ACTIVE=$(echo "$APPS_AFTER_MERGE" | jq -r --arg id "$MERGE_ABSORBED_ID" '.data[]? | select((.id // .ID) == $id) | (.active // .Active)')
 test "$ABSORBED_ACTIVE" = "false"
 

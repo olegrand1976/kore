@@ -188,7 +188,7 @@ test.describe('org admin', () => {
     await expect(page.getByRole('heading', { name: /fusionner deux applications|merge two applications/i })).toBeVisible({
       timeout: 20_000
     })
-    await page.getByLabel(new RegExp(appReference)).check()
+    await page.getByRole('radio', { name: new RegExp(appReference) }).check()
     await page.getByRole('button', { name: /^fusionner$|^merge$/i }).last().click()
 
     await expect(absorbedRow.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
