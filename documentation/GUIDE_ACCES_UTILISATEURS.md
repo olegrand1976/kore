@@ -2,7 +2,7 @@
 
 > **Parcours produit** (écrans, navigation, onboarding) : [`GUIDE_UTILISATEUR.md`](GUIDE_UTILISATEUR.md).  
 > **In-app** : section **Aide → Accès par profil** (`/aide`, `/aide/acces`).  
-> **Dernière mise à jour doc** : 2026-08-23 (mappings utilisateurs Taiga sur `/admin/integrations`)  
+> **Dernière mise à jour doc** : 2026-08-23 (fusion applications admin + mappings Taiga)  
 > **Sources de vérité code** :
 > - `internal/modules/org/app/service.go` → `DefaultPermissions()`
 > - `frontend/utils/rbac.ts` → `PROFILE_PERMISSIONS` (miroir)
@@ -52,7 +52,7 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Pilotage → **Missions** (`/missions`) : liste et création SSII (admin / droits ssii) ; staffing collaborateurs sur la fiche.
 - Organisation → Modules : toggle **facturation client** (`invoicing_enabled`) — indépendant de l'abonnement SaaS Stripe ; le menu Facturation n'apparaît que si activé.
 - Pages `/admin/sites`, `/admin/services`, `/admin/equipes` : listes dédiées (création / modification) ; l'onglet Structure conserve la vue arbre.
-- Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft ; **import depuis Taiga** (création unitaire ou en masse, projets non liés).
+- Page `/admin/applications` : CRUD applications (libellé, propriétaire, **profil méthodologique** PSA/Scrum/Kanban, mode facturation, UO, chef utilisateur), équipes liées, vue users/budgets ; désactivation soft ; **fusion de deux applications** (sélection dans la liste, référence conservée, garde-fous Taiga / méthodologie agile / budgets défaut) ; **import depuis Taiga** (création unitaire ou en masse, projets non liés).
 - Page `/admin/integrations` : connexions compta (FEC), clés API ouvertes, journal de sync ; **mappings utilisateurs Taiga ↔ Kore** (lecture/écriture module Intégrations).
 - Menu **Projets agile** (`/projets`) pour les applications en mode Scrum ou Kanban.
 - Fiche demande TMA (`/tma/{id}`) : panneau **Lien Taiga** (lecture TMA) si une user story Taiga est liée via webhook.

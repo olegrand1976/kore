@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -322,6 +323,9 @@ func (s *organizationService) MergeApplications(ctx context.Context, cmd ports.M
 		}
 		return domain.Application{}, err
 	}
+	if !absorbedApp.Active || !referenceApp.Active {
+		return domain.Application{}, domain.ErrApplicationsMergeInactiveApplication
+	}
 	if absorbedApp.MethodologyProfile != referenceApp.MethodologyProfile {
 		nAbs, err := s.repo.CountProjectArtifacts(ctx, cmd.TenantID, absorbedID)
 		if err != nil {
@@ -336,7 +340,28 @@ func (s *organizationService) MergeApplications(ctx context.Context, cmd ports.M
 		}
 	}
 
-	return s.repo.MergeApplications(ctx, cmd.TenantID, absorbedID, referenceID)
+	app, err := s.repo.MergeApplications(ctx, cmd.TenantID, absorbedID, referenceID)
+	if err != nil {
+		if errors.Is(err, domain.ErrApplicationNotFound) {
+			return domain.Application{}, domain.ErrApplicationsMergeInvalid
+		}
+		return domain.Application{}, err
+	}
+	if cmd.ActorUserID != uuid.Nil {
+		if err := s.repo.RecordAdminAuditEvent(ctx, cmd.TenantID, cmd.ActorUserID, "applications.merge", map[string]interface{}{
+			"absorbedApplicationId":  absorbedID.String(),
+			"referenceApplicationId": referenceID.String(),
+			"absorbedLibelle":        absorbedApp.Libelle,
+			"referenceLibelle":       referenceApp.Libelle,
+		}); err != nil {
+			slog.Warn("org admin audit event failed",
+				"action", "applications.merge",
+				"tenantId", cmd.TenantID.String(),
+				"error", err,
+			)
+		}
+	}
+	return app, nil
 }
 
 func (s *organizationService) CreateEquipe(ctx context.Context, cmd ports.CreateEquipeCommand) (domain.Equipe, error) {

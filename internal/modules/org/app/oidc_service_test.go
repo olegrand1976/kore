@@ -84,6 +84,9 @@ func (s *oidcRepoStub) CountProjectArtifacts(context.Context, kernel.TenantID, u
 func (s *oidcRepoStub) MergeApplications(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrApplicationNotFound
 }
+func (s *oidcRepoStub) RecordAdminAuditEvent(context.Context, kernel.TenantID, uuid.UUID, string, map[string]interface{}) error {
+	return nil
+}
 func (s *oidcRepoStub) SaveUser(_ context.Context, u domain.User) error {
 	if s.users == nil {
 		s.users = map[uuid.UUID]domain.User{}

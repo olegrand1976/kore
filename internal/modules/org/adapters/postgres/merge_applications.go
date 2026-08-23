@@ -36,6 +36,9 @@ func (r *Repository) MergeApplications(
 			}
 			return err
 		}
+		if !absorbed.Active || !reference.Active {
+			return domain.ErrApplicationsMergeInactiveApplication
+		}
 
 		if err := assertNoActiveSprintConflict(ctx, tx, tenantUUID, absorbedApplicationID, referenceApplicationID); err != nil {
 			return err
@@ -158,14 +161,30 @@ func (r *Repository) MergeApplications(
 		if budgetDefautID == nil && absorbed.BudgetDefautID != nil {
 			budgetDefautID = absorbed.BudgetDefautID
 		}
+		modeFacturation := reference.ModeFacturation
+		if modeFacturation == "" && absorbed.ModeFacturation != "" {
+			modeFacturation = absorbed.ModeFacturation
+		}
+		if modeFacturation == "" {
+			modeFacturation = domain.DefaultModeFacturation
+		}
+		uoActivee := reference.UOActivee || absorbed.UOActivee
+		defaultTJMCents := reference.DefaultTJMCents
+		if defaultTJMCents == 0 && absorbed.DefaultTJMCents > 0 {
+			defaultTJMCents = absorbed.DefaultTJMCents
+		}
 
 		tag, err := tx.Exec(ctx, `
 			UPDATE org.applications
 			SET proprietaire = $3,
 			    chef_utilisateur_id = $4,
-			    budget_defaut_id = $5
+			    budget_defaut_id = $5,
+			    mode_facturation = $6,
+			    uo_activee = $7,
+			    default_tjm_cents = $8
 			WHERE tenant_id = $1 AND id = $2
-		`, tenantUUID, referenceApplicationID, nullIfEmpty(proprietaire), chefID, budgetDefautID)
+		`, tenantUUID, referenceApplicationID, nullIfEmpty(proprietaire), chefID, budgetDefautID,
+			modeFacturation, uoActivee, defaultTJMCents)
 		if err != nil {
 			return err
 		}

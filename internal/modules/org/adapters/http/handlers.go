@@ -530,13 +530,12 @@ func mergeApplications(org ports.OrganizationService, authorizer authx.Authorize
 		identity, _ := authx.FromContext(r.Context())
 		app, err := org.MergeApplications(r.Context(), ports.MergeApplicationsCommand{
 			TenantID:            identity.TenantID,
+			ActorUserID:         identity.UserID,
 			SourceApplicationID: req.SourceApplicationID,
 			TargetApplicationID: req.TargetApplicationID,
 		})
 		if err != nil {
 			switch {
-			case errors.Is(err, domain.ErrApplicationNotFound):
-				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 			case errors.Is(err, domain.ErrApplicationsMergeBothTaigaLinked):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeBothTaiga, err.Error())
 			case errors.Is(err, domain.ErrApplicationsMergeActiveSprintConflict):
@@ -545,6 +544,8 @@ func mergeApplications(org ports.OrganizationService, authorizer authx.Authorize
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeMethodology, err.Error())
 			case errors.Is(err, domain.ErrApplicationsMergeDuplicateDefaultBudget):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeDefaultBudget, err.Error())
+			case errors.Is(err, domain.ErrApplicationsMergeInactiveApplication):
+				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeApplicationsMergeInactive, err.Error())
 			case errors.Is(err, domain.ErrApplicationsMergeInvalid):
 				httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 			default:

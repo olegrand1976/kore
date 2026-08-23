@@ -131,3 +131,20 @@ func TestMergeApplications_rejectsTwoActiveSprints(t *testing.T) {
 	_, err := repo.MergeApplications(ctx, tenant, absorbedID, refID)
 	require.ErrorIs(t, err, domain.ErrApplicationsMergeActiveSprintConflict)
 }
+
+func TestMergeApplications_rejectsInactiveAbsorbed(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+	tenant := kernel.NewTenantID(uuid.New())
+	_, serviceID, refID := seedStructure(t, repo, tenant)
+	absorbedID := seedSecondApplication(t, repo, pool, tenant, serviceID, "Inactive absorbed")
+	_, err := pool.Exec(ctx, `
+		UPDATE org.applications SET active = FALSE
+		WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), absorbedID)
+	require.NoError(t, err)
+
+	_, err = repo.MergeApplications(ctx, tenant, absorbedID, refID)
+	require.ErrorIs(t, err, domain.ErrApplicationsMergeInactiveApplication)
+}

@@ -406,6 +406,21 @@ Singleton des paramètres plateforme (admin multi-tenant), notamment le modèle 
 
 Seed : une ligne `(id=1, …)` via `0005` ; la migration `0017` fixe le DEFAULT à `gemini-3.6-flash` et met à jour la valeur uniquement si elle est encore `gemini-3.5-flash` **et** `updated_by IS NULL` (jamais personnalisée).
 
+### `org.admin_audit_events` (migration `0032`)
+
+Journal append-only des actions admin destructives (ex. fusion d’applications).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL → `org.tenants(id)` ON DELETE CASCADE |
+| `actor_user_id` | UUID | NOT NULL |
+| `action` | TEXT | NOT NULL (ex. `applications.merge`) |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index** : `idx_org_admin_audit_tenant_created (tenant_id, created_at DESC)`
+
 ### `org.authx_permissions`
 
 Matrice RBAC statique (pas de `tenant_id`).
@@ -1416,7 +1431,7 @@ Index : `(tenant_id, provider)`. Unique : `(tenant_id, provider, external_user_i
 
 | Schéma | Tables | Nb |
 | --- | --- | --- |
-| `org` | tenants, access_tokens, societes, sites, services, applications, application_sites, application_services, application_equipes, equipes, users, user_profiles, user_equipes, user_totp_backup_codes, identity_providers, user_identities, clients, tenant_request_settings, request_attachments, authx_permissions, platform_settings | 21 |
+| `org` | tenants, access_tokens, societes, sites, services, applications, application_sites, application_services, application_equipes, equipes, users, user_profiles, user_equipes, user_totp_backup_codes, identity_providers, user_identities, clients, tenant_request_settings, request_attachments, authx_permissions, platform_settings, admin_audit_events | 22 |
 | `workflow` | definitions, states, transitions, instances, transition_logs | 5 |
 | `cra` | timesheets, week_entries, time_lines | 3 |
 | `notifications` | rules, messages, device_tokens | 3 |

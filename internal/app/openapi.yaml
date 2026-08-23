@@ -1465,7 +1465,11 @@ paths:
         "404":
           description: Application introuvable
         "422":
-          description: Règle métier (double Taiga, sprints actifs, ids invalides)
+          description: Règle métier (fusion invalide, double Taiga, sprints actifs, méthodologie, budgets défaut)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationsMergeError'
   /project/applications:
     get:
       summary: Liste des applications en mode agile
@@ -2533,6 +2537,23 @@ components:
                 - DAY_CAPACITY_EXCEEDED
                 - CRA_CONFLICT_ABSENCE
                 - WEEK_INCOMPLETE
+            message:
+              type: string
+    ApplicationsMergeError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION
+                - APPLICATIONS_MERGE_BOTH_TAIGA
+                - APPLICATIONS_MERGE_ACTIVE_SPRINT
+                - APPLICATIONS_MERGE_METHODOLOGY
+                - APPLICATIONS_MERGE_DEFAULT_BUDGET
+                - APPLICATIONS_MERGE_INACTIVE
             message:
               type: string
     GanttView:

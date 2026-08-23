@@ -26,6 +26,8 @@ type mergeRepoStub struct {
 	mergeErr        error
 	apps            map[uuid.UUID]domain.Application
 	artifactCounts  map[uuid.UUID]int
+	auditAction     string
+	auditPayload    map[string]interface{}
 }
 
 func (r *mergeRepoStub) GetApplication(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Application, error) {
@@ -49,6 +51,12 @@ func (r *mergeRepoStub) MergeApplications(_ context.Context, _ kernel.TenantID, 
 	r.mergedAbsorbed = absorbedID
 	r.mergedReference = referenceID
 	return domain.Application{ID: referenceID}, nil
+}
+
+func (r *mergeRepoStub) RecordAdminAuditEvent(_ context.Context, _ kernel.TenantID, _ uuid.UUID, action string, payload map[string]interface{}) error {
+	r.auditAction = action
+	r.auditPayload = payload
+	return nil
 }
 
 func TestMergeApplications_rejectsBothTaigaLinked(t *testing.T) {
@@ -102,8 +110,8 @@ func TestMergeApplications_rejectsMethodologyConflictWithArtifacts(t *testing.T)
 	scrumID := uuid.New()
 	repo := &mergeRepoStub{
 		apps: map[uuid.UUID]domain.Application{
-			psaID:   {ID: psaID, MethodologyProfile: domain.MethodologyPSA},
-			scrumID: {ID: scrumID, MethodologyProfile: domain.MethodologyAgileScrum},
+			psaID:   {ID: psaID, Active: true, MethodologyProfile: domain.MethodologyPSA},
+			scrumID: {ID: scrumID, Active: true, MethodologyProfile: domain.MethodologyAgileScrum},
 		},
 		artifactCounts: map[uuid.UUID]int{scrumID: 1},
 	}
@@ -116,5 +124,57 @@ func TestMergeApplications_rejectsMethodologyConflictWithArtifacts(t *testing.T)
 	})
 	if !errors.Is(err, domain.ErrApplicationsMergeMethodologyConflict) {
 		t.Fatalf("err = %v, want %v", err, domain.ErrApplicationsMergeMethodologyConflict)
+	}
+}
+
+func TestMergeApplications_rejectsInactiveApplication(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	absorbedID := uuid.New()
+	referenceID := uuid.New()
+	repo := &mergeRepoStub{
+		apps: map[uuid.UUID]domain.Application{
+			absorbedID:  {ID: absorbedID, Active: false, Libelle: "Inactive"},
+			referenceID: {ID: referenceID, Active: true, Libelle: "Reference"},
+		},
+	}
+	svc := NewOrganizationService(repo, nil)
+
+	_, err := svc.MergeApplications(context.Background(), ports.MergeApplicationsCommand{
+		TenantID:            tenant,
+		SourceApplicationID: absorbedID,
+		TargetApplicationID: referenceID,
+	})
+	if !errors.Is(err, domain.ErrApplicationsMergeInactiveApplication) {
+		t.Fatalf("err = %v, want %v", err, domain.ErrApplicationsMergeInactiveApplication)
+	}
+}
+
+func TestMergeApplications_recordsAuditEvent(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	actorID := uuid.New()
+	absorbedID := uuid.New()
+	referenceID := uuid.New()
+	repo := &mergeRepoStub{
+		apps: map[uuid.UUID]domain.Application{
+			absorbedID:  {ID: absorbedID, Active: true, Libelle: "Absorbed"},
+			referenceID: {ID: referenceID, Active: true, Libelle: "Reference"},
+		},
+	}
+	svc := NewOrganizationService(repo, nil)
+
+	_, err := svc.MergeApplications(context.Background(), ports.MergeApplicationsCommand{
+		TenantID:            tenant,
+		ActorUserID:         actorID,
+		SourceApplicationID: absorbedID,
+		TargetApplicationID: referenceID,
+	})
+	if err != nil {
+		t.Fatalf("MergeApplications: %v", err)
+	}
+	if repo.auditAction != "applications.merge" {
+		t.Fatalf("audit action = %q", repo.auditAction)
+	}
+	if repo.auditPayload["absorbedApplicationId"] != absorbedID.String() {
+		t.Fatalf("audit payload absorbed = %v", repo.auditPayload)
 	}
 }

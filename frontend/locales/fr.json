@@ -168,7 +168,7 @@
             "Pilotage : Clients (liste / création) et Missions SSII (liste / création / staffing).",
             "Organisation → Modules : activer / désactiver la facturation client (hors abonnement SaaS).",
             "Sites / Services / Équipes : listes dédiées (création et modification) ; Structure conserve la vue arbre.",
-            "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés.",
+            "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés ; fusionner deux applications (référence conservée, badge Taiga, garde-fous double Taiga, sprints actifs, méthodologie agile et budgets défaut).",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
             "Projets agile (/projets) : backlog, sprints, epics et métriques (L/E/V).",
             "Fiche TMA : panneau Lien Taiga (lecture TMA) si user story liée.",
@@ -1847,7 +1847,7 @@
     "merge_title": "Fusionner deux applications",
     "merge_reference_label": "Application de référence (conservée)",
     "merge_reference_taiga_locked": "L'application importée depuis Taiga est conservée comme référence.",
-    "merge_methodology_warning": "Les profils méthodologie diffèrent : le profil de l'application de référence sera conservé.",
+    "merge_methodology_warning": "Les profils méthodologie diffèrent : le profil de l'application de référence sera conservé. La fusion est refusée si des epics, sprints ou éléments de backlog agile existent.",
     "merge_confirm": "L'autre application sera intégrée puis désactivée. Les rattachements seront fusionnés.",
     "merge_success": "Applications fusionnées.",
     "merge_select_two": "Sélectionnez deux applications à fusionner.",
@@ -1855,6 +1855,7 @@
     "merge_error_active_sprint": "Impossible de fusionner : deux sprints actifs sur les applications.",
     "merge_error_methodology": "Profils méthodologie différents avec artefacts agile : fusion impossible.",
     "merge_error_default_budget": "Impossible de fusionner : chaque application a déjà un budget défaut.",
+    "merge_error_inactive": "Impossible de fusionner une application inactive (fusion déjà effectuée ou application désactivée).",
     "col_select": "Sélection"
   },
   "users": {

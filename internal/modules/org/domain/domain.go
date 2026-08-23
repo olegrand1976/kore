@@ -38,6 +38,7 @@ var (
 	ErrApplicationsMergeActiveSprintConflict   = errors.New("cannot merge applications with two active sprints")
 	ErrApplicationsMergeMethodologyConflict    = errors.New("cannot merge applications with different methodology profiles when agile artifacts exist")
 	ErrApplicationsMergeDuplicateDefaultBudget = errors.New("cannot merge applications with two default budgets")
+	ErrApplicationsMergeInactiveApplication    = errors.New("cannot merge inactive application")
 	ErrApplicationWithoutShare                 = errors.New("application requires at least one site, service or equipe share")
 	ErrInvalidApplicationShare                 = errors.New("invalid application share")
 	ErrInvalidModeFacturation                  = errors.New("invalid mode facturation")

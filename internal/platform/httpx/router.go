@@ -35,6 +35,7 @@ const (
 	ErrCodeApplicationsMergeActiveSprint  ErrorCode = "APPLICATIONS_MERGE_ACTIVE_SPRINT"
 	ErrCodeApplicationsMergeMethodology   ErrorCode = "APPLICATIONS_MERGE_METHODOLOGY"
 	ErrCodeApplicationsMergeDefaultBudget ErrorCode = "APPLICATIONS_MERGE_DEFAULT_BUDGET"
+	ErrCodeApplicationsMergeInactive      ErrorCode = "APPLICATIONS_MERGE_INACTIVE"
 )
 
 type APIError struct {

@@ -152,6 +152,49 @@ test.describe('org admin', () => {
     await expect(row.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
   })
 
+  test('applications admin can merge two applications', async ({ page }) => {
+    const stamp = Date.now()
+    const appAbsorbed = `E2E Merge Absorbed ${stamp}`
+    const appReference = `E2E Merge Ref ${stamp}`
+
+    const createApp = async (libelle: string) => {
+      await page.getByRole('button', { name: /nouvelle application|new application/i }).first().click()
+      await expect(
+        page.getByRole('heading', { name: /nouvelle application|new application/i })
+      ).toBeVisible()
+      const shareCheckbox = page.locator('.apps-form__checklist input[type="checkbox"]').first()
+      await expect(shareCheckbox).toBeVisible()
+      await shareCheckbox.check()
+      await page.locator('#app-libelle').fill(libelle)
+      await page.getByRole('button', { name: /^enregistrer$|^save$/i }).click()
+      const row = page.locator('tbody tr', { hasText: libelle }).first()
+      await expect(row).toBeVisible({ timeout: 20_000 })
+    }
+
+    await page.goto('/admin/applications')
+    await expect(page.getByRole('heading', { name: /applications/i })).toBeVisible({
+      timeout: 20_000
+    })
+
+    await createApp(appAbsorbed)
+    await createApp(appReference)
+
+    const absorbedRow = page.locator('tbody tr', { hasText: appAbsorbed }).first()
+    const referenceRow = page.locator('tbody tr', { hasText: appReference }).first()
+    await absorbedRow.locator('input[type="checkbox"]').check()
+    await referenceRow.locator('input[type="checkbox"]').check()
+
+    await page.getByRole('button', { name: /^fusionner$|^merge$/i }).first().click()
+    await expect(page.getByRole('heading', { name: /fusionner deux applications|merge two applications/i })).toBeVisible({
+      timeout: 20_000
+    })
+    await page.getByLabel(new RegExp(appReference)).check()
+    await page.getByRole('button', { name: /^fusionner$|^merge$/i }).last().click()
+
+    await expect(absorbedRow.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
+    await expect(referenceRow.getByText(/active/i)).toBeVisible({ timeout: 20_000 })
+  })
+
   test('applications admin exposes Taiga import and edit modal', async ({ page }) => {
     await page.goto('/admin/applications')
     await expect(page.getByRole('button', { name: /importer depuis taiga|import from taiga/i })).toBeVisible({

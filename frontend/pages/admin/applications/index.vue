@@ -78,7 +78,7 @@
               <input
                 type="checkbox"
                 :checked="selectedMergeIds.includes(row.id as string)"
-                :disabled="!canSelectForMerge(row.id as string)"
+                :disabled="!canSelectForMerge(row.id as string, Boolean(row.active))"
                 @change="toggleMergeSelect(row.id as string)"
               />
               <span class="apps-form__sr-only">{{ row.libelle }}</span>
@@ -832,8 +832,8 @@ const mergeMethodologyMismatch = computed(() =>
   hasMergeMethodologyMismatch(mergeSelectedRows.value, mergeReferenceId.value)
 )
 
-const canSelectForMerge = (id: string) =>
-  selectedMergeIds.value.includes(id) || selectedMergeIds.value.length < 2
+const canSelectForMerge = (id: string, active = true) =>
+  active && (selectedMergeIds.value.includes(id) || selectedMergeIds.value.length < 2)
 
 const toggleMergeSelect = (id: string) => {
   if (selectedMergeIds.value.includes(id)) {
@@ -893,6 +893,8 @@ const submitMerge = async () => {
       mergeError.value = t('applications.merge_error_methodology')
     } else if (code === 'APPLICATIONS_MERGE_DEFAULT_BUDGET') {
       mergeError.value = t('applications.merge_error_default_budget')
+    } else if (code === 'APPLICATIONS_MERGE_INACTIVE') {
+      mergeError.value = t('applications.merge_error_inactive')
     } else {
       mergeError.value = extractFetchError(err)
     }

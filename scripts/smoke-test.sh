@@ -62,6 +62,40 @@ curl -sf -X POST "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks
 # Budget (admin)
 curl -sf "http://localhost:${API_PORT}/api/v1/budgets" -H "Authorization: Bearer $TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications" -H "Authorization: Bearer $TOKEN" >/dev/null
+
+# Application merge: create two apps on seed site, merge, verify absorbed inactive
+SITES=$(curl -sf "http://localhost:${API_PORT}/api/v1/sites" -H "Authorization: Bearer $TOKEN")
+SITE_ID=$(echo "$SITES" | jq -r '.data[0].id // .data[0].ID')
+test -n "$SITE_ID"
+test "$SITE_ID" != "null"
+MERGE_STAMP=$(date +%s)
+MERGE_ABSORBED=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"libelle\":\"Smoke Merge Absorbed ${MERGE_STAMP}\",\"siteIds\":[\"${SITE_ID}\"]}")
+MERGE_REF=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"libelle\":\"Smoke Merge Ref ${MERGE_STAMP}\",\"siteIds\":[\"${SITE_ID}\"]}")
+MERGE_ABSORBED_ID=$(echo "$MERGE_ABSORBED" | jq -r '.data.id // .data.ID')
+MERGE_REF_ID=$(echo "$MERGE_REF" | jq -r '.data.id // .data.ID')
+test -n "$MERGE_ABSORBED_ID"
+test "$MERGE_ABSORBED_ID" != "null"
+test -n "$MERGE_REF_ID"
+test "$MERGE_REF_ID" != "null"
+curl -sf -X POST "http://localhost:${API_PORT}/api/v1/applications/merge" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"sourceApplicationId\":\"${MERGE_ABSORBED_ID}\",\"targetApplicationId\":\"${MERGE_REF_ID}\"}" >/dev/null
+MERGE_REPEAT_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:${API_PORT}/api/v1/applications/merge" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"sourceApplicationId\":\"${MERGE_ABSORBED_ID}\",\"targetApplicationId\":\"${MERGE_REF_ID}\"}")
+test "$MERGE_REPEAT_CODE" = "422"
+APPS_AFTER_MERGE=$(curl -sf "http://localhost:${API_PORT}/api/v1/applications" -H "Authorization: Bearer $TOKEN")
+ABSORBED_ACTIVE=$(echo "$APPS_AFTER_MERGE" | jq -r --arg id "$MERGE_ABSORBED_ID" '.data[]? | select((.id // .ID) == $id) | (.active // .Active)')
+test "$ABSORBED_ACTIVE" = "false"
+
 curl -sf "http://localhost:${API_PORT}/api/v1/missions" -H "Authorization: Bearer $TOKEN" >/dev/null
 
 # Billing checkout (stripe-mock)

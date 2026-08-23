@@ -102,6 +102,7 @@ type SetApplicationActiveCommand struct {
 // MergeApplicationsCommand merges sourceApplicationId into targetApplicationId (reference kept).
 type MergeApplicationsCommand struct {
 	TenantID            kernel.TenantID
+	ActorUserID         uuid.UUID
 	SourceApplicationID uuid.UUID
 	TargetApplicationID uuid.UUID
 }
@@ -241,6 +242,7 @@ type OrganizationRepository interface {
 	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
 	CountProjectArtifacts(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error)
 	MergeApplications(ctx context.Context, tenant kernel.TenantID, absorbedApplicationID, referenceApplicationID uuid.UUID) (domain.Application, error)
+	RecordAdminAuditEvent(ctx context.Context, tenant kernel.TenantID, actorUserID uuid.UUID, action string, payload map[string]interface{}) error
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)

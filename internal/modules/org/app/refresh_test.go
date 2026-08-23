@@ -82,6 +82,9 @@ func (r refreshUserRepo) CountProjectArtifacts(context.Context, kernel.TenantID,
 func (r refreshUserRepo) MergeApplications(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrApplicationNotFound
 }
+func (r refreshUserRepo) RecordAdminAuditEvent(context.Context, kernel.TenantID, uuid.UUID, string, map[string]interface{}) error {
+	return nil
+}
 func (r refreshUserRepo) SaveUser(context.Context, domain.User) error { return nil }
 func (r refreshUserRepo) FindUserByID(context.Context, kernel.TenantID, uuid.UUID) (domain.User, error) {
 	return r.user, r.err
