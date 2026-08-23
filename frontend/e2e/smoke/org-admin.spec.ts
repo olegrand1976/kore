@@ -188,8 +188,11 @@ test.describe('org admin', () => {
     await expect(page.getByRole('heading', { name: /fusionner deux applications|merge two applications/i })).toBeVisible({
       timeout: 20_000
     })
-    await page.getByRole('radio', { name: new RegExp(appReference) }).check()
-    await page.getByRole('button', { name: /^fusionner$|^merge$/i }).last().click()
+    const mergeModal = page.getByRole('dialog', {
+      name: /fusionner deux applications|merge two applications/i
+    })
+    await mergeModal.getByRole('radio', { name: new RegExp(appReference) }).check()
+    await mergeModal.getByRole('button', { name: /^fusionner$|^merge$/i }).click()
 
     await expect(absorbedRow.getByText(/inactive/i)).toBeVisible({ timeout: 20_000 })
     await expect(referenceRow.getByText(/active/i)).toBeVisible({ timeout: 20_000 })
