@@ -101,9 +101,9 @@ type SetApplicationActiveCommand struct {
 
 // MergeApplicationsCommand merges sourceApplicationId into targetApplicationId (reference kept).
 type MergeApplicationsCommand struct {
-	TenantID              kernel.TenantID
-	SourceApplicationID   uuid.UUID
-	TargetApplicationID   uuid.UUID
+	TenantID            kernel.TenantID
+	SourceApplicationID uuid.UUID
+	TargetApplicationID uuid.UUID
 }
 
 // TaigaLinkReader reports whether a Kore application is linked to Taiga.
