@@ -59,7 +59,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]ports.TaigaProject, error)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiBase+"/projects?member=me", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiBase+"/projects", nil)
 	if err != nil {
 		return nil, err
 	}
