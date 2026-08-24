@@ -54,6 +54,10 @@ export function useTma() {
   const pickSubject = (d: TmaDemand) => d.subject ?? d.Subject ?? ''
   const pickDescription = (d: TmaDemand) => d.description ?? d.Description ?? ''
   const pickStatus = (d: TmaDemand) => d.status ?? d.Status ?? ''
+  const pickPriority = (d: TmaDemand) => d.priority ?? d.Priority ?? 'normal'
+  const pickDueAt = (d: TmaDemand) => d.dueAt ?? d.DueAt ?? ''
+  const pickApplicationId = (d: TmaDemand) => d.applicationId ?? d.ApplicationID ?? ''
+  const pickAssigneeId = (d: TmaDemand) => d.assigneeId ?? d.AssigneeID ?? ''
   const pickWorkflowId = (d: TmaDemand) => d.workflowInstanceId ?? d.WorkflowInstanceID ?? ''
   const pickCreatedAt = (d: TmaDemand) => d.createdAt ?? d.CreatedAt ?? ''
 
@@ -166,6 +170,10 @@ export function useTma() {
     pickSubject,
     pickDescription,
     pickStatus,
+    pickPriority,
+    pickDueAt,
+    pickApplicationId,
+    pickAssigneeId,
     pickWorkflowId,
     pickCreatedAt,
     toGanttItem,

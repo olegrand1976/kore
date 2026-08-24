@@ -1325,6 +1325,7 @@
     "col_description": "Description",
     "col_priority": "Priority",
     "col_actions": "Actions",
+    "search_placeholder": "Title, application, assignee…",
     "new": "New request",
     "open": "Open",
     "delete": "Delete",

@@ -88,6 +88,9 @@
 
     <AppCard v-else-if="view === 'table'" padding="none">
       <AppTable :columns="columns" :rows="displayRows" row-key="id">
+        <template #cell-priority="{ value }">
+          <AppBadge variant="neutral">{{ priorityLabel(String(value)) }}</AppBadge>
+        </template>
         <template #cell-status="{ value }">
           <AppBadge variant="neutral">{{ tmaStatusLabel(String(value)) }}</AppBadge>
         </template>
@@ -127,7 +130,16 @@
         <template #card="{ item }">
           <div class="tma-kanban-card">
             <p class="tma-kanban-card__title">{{ (item as TmaRow).title }}</p>
-            <AppBadge variant="neutral">{{ tmaStatusLabel(String((item as TmaRow).status)) }}</AppBadge>
+            <p v-if="(item as TmaRow).applicationId" class="tma-kanban-card__meta">
+              {{ (item as TmaRow).application }}
+            </p>
+            <p v-if="(item as TmaRow).assigneeId" class="tma-kanban-card__meta">
+              {{ (item as TmaRow).assignee }}
+            </p>
+            <div class="tma-kanban-card__badges">
+              <AppBadge variant="neutral">{{ priorityLabel(String((item as TmaRow).priority)) }}</AppBadge>
+              <AppBadge variant="neutral">{{ tmaStatusLabel(String((item as TmaRow).status)) }}</AppBadge>
+            </div>
             <div class="tma-actions">
               <AppButton
                 variant="ghost"
@@ -194,10 +206,17 @@ const TMA_STATUSES = [
   'resolue'
 ] as const
 
+const TMA_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
+
 type TmaRow = {
   id: string
   title: string
   status: string
+  applicationId: string
+  application: string
+  assigneeId: string
+  assignee: string
+  priority: string
   createdAt: string
 }
 
@@ -205,9 +224,23 @@ const { t } = useI18n()
 const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { extractFetchError } = useApiError()
-const { list, create, remove, exportXml, pickId, pickSubject, pickStatus, pickCreatedAt } = useTma()
+const {
+  list,
+  create,
+  remove,
+  exportXml,
+  pickId,
+  pickSubject,
+  pickStatus,
+  pickPriority,
+  pickApplicationId,
+  pickAssigneeId,
+  pickCreatedAt
+} = useTma()
 const { uploadAll } = useRequestAttachments()
 const { can, canValidateTma } = usePermissions()
+const { list: listApps, pickAppLabel, appById } = useApplications()
+const { list: listUsers, pickUserId, pickUserLogin } = useUsers()
 
 const canWriteTma = computed(() => can('tma', 'E'))
 
@@ -232,14 +265,40 @@ if (route.query.create === '1') {
 }
 
 const { data, pending, refresh } = await useAsyncData('tma-demands', () => list())
+// Label enrichment only — Collaborateur may lack org L for /users.
+const { data: appsData } = await useAsyncData('tma-apps', () => listApps().catch(() => []))
+const { data: usersData } = await useAsyncData('tma-users', () => listUsers().catch(() => []))
+
+const appMap = computed(() => appById(appsData.value ?? []))
+
+const userLoginById = computed(() => {
+  const map = new Map<string, string>()
+  for (const user of usersData.value ?? []) {
+    const id = pickUserId(user)
+    if (!id) continue
+    map.set(id, pickUserLogin(user) || id)
+  }
+  return map
+})
 
 const listItems = computed((): TmaRow[] =>
-  (data.value ?? []).map((d) => ({
-    id: pickId(d),
-    title: pickSubject(d),
-    status: pickStatus(d),
-    createdAt: pickCreatedAt(d)
-  }))
+  (data.value ?? []).map((d) => {
+    const applicationId = pickApplicationId(d)
+    const assigneeId = pickAssigneeId(d)
+    return {
+      id: pickId(d),
+      title: pickSubject(d),
+      status: pickStatus(d),
+      applicationId,
+      application: pickAppLabel(appMap.value.get(applicationId)) || applicationId || t('common.none'),
+      assigneeId,
+      assignee: assigneeId
+        ? (userLoginById.value.get(assigneeId) || assigneeId)
+        : t('common.none'),
+      priority: pickPriority(d),
+      createdAt: pickCreatedAt(d)
+    }
+  })
 )
 
 const tmaStatusLabel = (status: string) => {
@@ -248,7 +307,27 @@ const tmaStatusLabel = (status: string) => {
   return translated === key ? status : translated
 }
 
+const priorityLabel = (priority: string) =>
+  t(`requests.priority_${priority}` as const, priority)
+
+const appFilterOptions = computed(() => {
+  const seen = new Map<string, string>()
+  for (const row of listItems.value) {
+    if (!row.applicationId || seen.has(row.applicationId)) continue
+    seen.set(row.applicationId, row.application)
+  }
+  return [...seen.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+})
+
 const listFilters = computed(() => ({
+  applicationId: {
+    type: 'select' as const,
+    label: t('requests.col_application'),
+    options: appFilterOptions.value,
+    match: (row: TmaRow, value: string) => row.applicationId === value
+  },
   status: {
     type: 'select' as const,
     label: t('tma.col_status'),
@@ -258,17 +337,30 @@ const listFilters = computed(() => ({
     })),
     match: (row: TmaRow, value: string) => row.status === value
   },
+  priority: {
+    type: 'select' as const,
+    label: t('tma.col_priority'),
+    options: TMA_PRIORITIES.map((priority) => ({
+      value: priority,
+      label: priorityLabel(priority)
+    })),
+    match: (row: TmaRow, value: string) => row.priority === value
+  },
   q: {
     type: 'search' as const,
     label: t('common.list.search'),
-    placeholder: t('tma.col_title'),
-    match: (row: TmaRow, query: string) => applyTextSearch(query, row.title)
+    placeholder: t('tma.search_placeholder'),
+    match: (row: TmaRow, query: string) =>
+      applyTextSearch(query, row.title, row.application, row.assignee)
   }
 }))
 
 const sortKeys = computed(() => [
   { key: 'createdAt', label: t('tma.sort_created'), type: 'date' as const, accessor: (row: TmaRow) => row.createdAt },
   { key: 'title', label: t('tma.col_title'), type: 'string' as const, accessor: (row: TmaRow) => row.title },
+  { key: 'application', label: t('requests.col_application'), type: 'string' as const, accessor: (row: TmaRow) => row.application },
+  { key: 'assignee', label: t('requests.col_assignee'), type: 'string' as const, accessor: (row: TmaRow) => row.assignee },
+  { key: 'priority', label: t('tma.col_priority'), type: 'string' as const, accessor: (row: TmaRow) => row.priority },
   { key: 'status', label: t('tma.col_status'), type: 'string' as const, accessor: (row: TmaRow) => row.status }
 ])
 
@@ -304,6 +396,9 @@ const kpi = computed(() => {
 
 const columns = computed(() => [
   { key: 'title', label: t('tma.col_title') },
+  { key: 'application', label: t('requests.col_application') },
+  { key: 'assignee', label: t('requests.col_assignee') },
+  { key: 'priority', label: t('tma.col_priority') },
   { key: 'status', label: t('tma.col_status') },
   { key: 'actions', label: t('tma.col_actions') }
 ])
@@ -407,6 +502,19 @@ const onCreate = async (payload: ServiceRequestPayload) => {
   font-weight: 600;
   color: var(--kore-text);
   word-break: break-word;
+}
+
+.tma-kanban-card__meta {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+  word-break: break-word;
+}
+
+.tma-kanban-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-xs);
 }
 
 .tma-delete {

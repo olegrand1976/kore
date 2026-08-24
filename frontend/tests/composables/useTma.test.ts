@@ -20,6 +20,22 @@ describe('useTma pickDescription', () => {
   })
 })
 
+describe('useTma list field pickers', () => {
+  it('reads application, assignee, priority and due date with camelCase preference', () => {
+    const { pickApplicationId, pickAssigneeId, pickPriority, pickDueAt } = useTma()
+    expect(
+      pickApplicationId({ applicationId: 'app-1', ApplicationID: 'app-other' })
+    ).toBe('app-1')
+    expect(pickApplicationId({ ApplicationID: 'app-2' })).toBe('app-2')
+    expect(pickAssigneeId({ assigneeId: 'user-1', AssigneeID: 'user-other' })).toBe('user-1')
+    expect(pickAssigneeId({})).toBe('')
+    expect(pickPriority({ priority: 'high', Priority: 'low' })).toBe('high')
+    expect(pickPriority({})).toBe('normal')
+    expect(pickDueAt({ dueAt: '2026-01-01', DueAt: '2025-01-01' })).toBe('2026-01-01')
+    expect(pickDueAt({})).toBe('')
+  })
+})
+
 describe('useTma remove', () => {
   it('calls DELETE on the demand BFF route', async () => {
     apiFetch.mockResolvedValueOnce({ data: { status: 'deleted' } })
