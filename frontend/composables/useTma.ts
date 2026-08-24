@@ -27,6 +27,8 @@ export type TmaDemand = {
   EpicID?: string | null
   storyPoints?: number | null
   StoryPoints?: number | null
+  reopenReason?: string
+  ReopenReason?: string
 }
 
 export type TmaGanttItem = {
@@ -59,6 +61,7 @@ export function useTma() {
   const pickApplicationId = (d: TmaDemand) => d.applicationId ?? d.ApplicationID ?? ''
   const pickAssigneeId = (d: TmaDemand) => d.assigneeId ?? d.AssigneeID ?? ''
   const pickWorkflowId = (d: TmaDemand) => d.workflowInstanceId ?? d.WorkflowInstanceID ?? ''
+  const pickReopenReason = (d: TmaDemand) => (d.reopenReason ?? d.ReopenReason ?? '').trim()
   const pickCreatedAt = (d: TmaDemand) => d.createdAt ?? d.CreatedAt ?? ''
 
   const toGanttItem = (d: TmaDemand): TmaGanttItem | null => {
@@ -175,6 +178,7 @@ export function useTma() {
     pickApplicationId,
     pickAssigneeId,
     pickWorkflowId,
+    pickReopenReason,
     pickCreatedAt,
     toGanttItem,
     toGanttItems

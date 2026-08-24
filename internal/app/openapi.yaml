@@ -1819,9 +1819,20 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1 }
       responses:
         "200":
           description: Rouverte
+        "400":
+          description: Motif de réouverture manquant
         "422":
           description: Limite WIP Kanban dépassée (application agile_kanban)
   /demands/{id}/validate-creation:

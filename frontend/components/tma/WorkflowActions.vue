@@ -60,6 +60,10 @@ const showResolve = computed(() => hasAction('resolve'))
 
 const showReopen = computed(() => hasAction('reopen'))
 
+watch(showReopen, (visible) => {
+  if (!visible) reopenReason.value = ''
+})
+
 const onAssign = () => {
   if (!selectedAssignee.value) return
   emit('assign', selectedAssignee.value)

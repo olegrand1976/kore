@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ var (
 	ErrTransitionNotAllowed   = errors.New("transition not allowed")
 	ErrDemandAlreadyResolved  = errors.New("demand already resolved")
 	ErrAnalysisNotFound       = errors.New("analysis not found")
+	ErrReopenReasonRequired   = errors.New("reopen reason required")
 	ErrEpicNotInApplication   = errors.New("epic does not belong to application")
 	ErrSprintNotInApplication = errors.New("sprint does not belong to application")
 )
@@ -78,6 +80,7 @@ type Demand struct {
 	StoryPoints        *int16
 	BacklogRank        *int
 	ResolvedAt         *time.Time
+	ReopenReason       string
 	DeletedAt          *time.Time
 	CreatedAt          time.Time
 }
@@ -191,6 +194,7 @@ func (d *Demand) Resolve(at time.Time) error {
 	d.Status = DemandStatusResolved
 	t := at.UTC()
 	d.ResolvedAt = &t
+	d.ReopenReason = ""
 	return nil
 }
 
@@ -198,10 +202,14 @@ func (d *Demand) Reopen(reason string) error {
 	if !d.Visible {
 		return ErrDemandNotVisible
 	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return ErrReopenReasonRequired
+	}
 	d.Status = DemandStatusRework
 	d.ConsumptionActive = true
 	d.ResolvedAt = nil
-	_ = reason
+	d.ReopenReason = reason
 	return nil
 }
 

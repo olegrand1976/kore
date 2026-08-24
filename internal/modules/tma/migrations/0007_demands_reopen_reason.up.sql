@@ -1,0 +1,2 @@
+ALTER TABLE tma.demands
+    ADD COLUMN IF NOT EXISTS reopen_reason TEXT NOT NULL DEFAULT '';

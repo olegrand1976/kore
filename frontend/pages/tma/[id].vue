@@ -24,6 +24,10 @@
             <dt>{{ $t('tma.col_description') }}</dt>
             <dd class="description">{{ description }}</dd>
           </div>
+          <div v-if="reopenReason">
+            <dt>{{ $t('tma.reopen_reason') }}</dt>
+            <dd class="description">{{ reopenReason }}</dd>
+          </div>
           <div v-if="agileStoryPoints != null"><dt>{{ $t('project.col_story_points') }}</dt><dd>{{ agileStoryPoints }}</dd></div>
           <div v-if="agileEpicTitle"><dt>Epic</dt><dd>{{ agileEpicTitle }}</dd></div>
           <div v-if="workflowState"><dt>{{ $t('tma.workflow_state') }}</dt><dd>{{ workflowState }}</dd></div>
@@ -91,6 +95,7 @@ const {
   pickSubject,
   pickDescription,
   pickStatus,
+  pickReopenReason,
   pickWorkflowId
 } = useTma()
 const { getInstance, availableActions, pickState } = useWorkflow()
@@ -184,6 +189,10 @@ if (can('tma', 'V') || can('tma', 'E')) {
 const status = computed(() => pickStatus(demand.value ?? {}))
 const subject = computed(() => pickSubject(demand.value ?? {}))
 const description = computed(() => pickDescription(demand.value ?? {}))
+const reopenReason = computed(() => {
+  if (status.value !== 'rework') return ''
+  return pickReopenReason(demand.value ?? {})
+})
 const assigneeId = computed(() => {
   const raw = demand.value?.assigneeId ?? demand.value?.AssigneeID
   return raw ? String(raw) : ''

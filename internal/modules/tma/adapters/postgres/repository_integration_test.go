@@ -33,6 +33,23 @@ func TestTMA_DemandRoundTrip(t *testing.T) {
 	require.Equal(t, "Incident prod", got.Subject)
 }
 
+func TestTMA_DemandReopenReasonRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	d := domain.NewDemand(tenant, uuid.New(), uuid.New(), "Incident prod", "details", kernel.PriorityHigh, nil, false)
+	require.NoError(t, d.Resolve(time.Now().UTC()))
+	require.NoError(t, d.Reopen("Correction incomplète"))
+	require.NoError(t, repo.Save(ctx, d))
+
+	got, err := repo.Get(ctx, tenant, d.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.DemandStatusRework, got.Status)
+	require.Equal(t, "Correction incomplète", got.ReopenReason)
+}
+
 func TestTMA_DemandSoftDelete(t *testing.T) {
 	pool := dbtest.NewPostgres(t)
 	repo := postgres.NewRepository(pool)

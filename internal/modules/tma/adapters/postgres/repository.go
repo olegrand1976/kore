@@ -27,8 +27,8 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 		INSERT INTO tma.demands (
 			id, tenant_id, application_id, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
-			epic_id, sprint_id, story_points, backlog_rank, resolved_at, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		ON CONFLICT (id) DO UPDATE SET
 			assignee_id = EXCLUDED.assignee_id,
 			status = EXCLUDED.status,
@@ -42,10 +42,11 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 			sprint_id = EXCLUDED.sprint_id,
 			story_points = EXCLUDED.story_points,
 			backlog_rank = EXCLUDED.backlog_rank,
-			resolved_at = EXCLUDED.resolved_at
+			resolved_at = EXCLUDED.resolved_at,
+			reopen_reason = EXCLUDED.reopen_reason
 	`, d.ID, d.TenantID.UUID(), d.ApplicationID, string(d.Type), d.Subject, d.Description, string(d.Priority), d.DueAt,
 		d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate,
-		d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.ResolvedAt, d.CreatedAt)
+		d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.ResolvedAt, d.ReopenReason, d.CreatedAt)
 	return err
 }
 
@@ -53,7 +54,7 @@ func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UU
 	return r.scanDemand(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
-			epic_id, sprint_id, story_points, backlog_rank, resolved_at, created_at
+			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
 		FROM tma.demands WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), id))
 }
@@ -76,7 +77,7 @@ func (r *Repository) SoftDelete(ctx context.Context, tenant kernel.TenantID, id 
 func demandSelectColumns() string {
 	return `id, tenant_id, application_id, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, status, visible, consumption_active, requires_chef_gate,
-			epic_id, sprint_id, story_points, backlog_rank, resolved_at, created_at`
+			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at`
 }
 
 func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
@@ -177,7 +178,7 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	err := row.Scan(
 		&d.ID, &tenantID, &d.ApplicationID, &demandType, &d.Subject, &d.Description, &priority, &d.DueAt,
 		&d.WorkflowInstanceID, &d.AuthorID, &d.AssigneeID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate,
-		&d.EpicID, &d.SprintID, &d.StoryPoints, &d.BacklogRank, &d.ResolvedAt, &d.CreatedAt,
+		&d.EpicID, &d.SprintID, &d.StoryPoints, &d.BacklogRank, &d.ResolvedAt, &d.ReopenReason, &d.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

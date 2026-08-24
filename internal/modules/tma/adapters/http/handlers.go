@@ -434,11 +434,16 @@ func reopenDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
+		reason := strings.TrimSpace(req.Reason)
+		if reason == "" {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "reason required")
+			return
+		}
 		identity, _ := authx.FromContext(r.Context())
 		err = tma.Reopen(r.Context(), ports.ReworkCommand{
 			TenantID: identity.TenantID,
 			ID:       id,
-			Reason:   req.Reason,
+			Reason:   reason,
 			ActorID:  identity.UserID,
 		})
 		if err != nil {
@@ -459,6 +464,8 @@ func writeTmaTransitionError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
 	case errors.Is(err, projectdomain.ErrWipLimitExceeded):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrReopenReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
 	}

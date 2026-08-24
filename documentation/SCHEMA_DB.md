@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 22/08/2026 (tables Taiga `external_links`, `user_mappings`)
+> **Dernière mise à jour doc** : 24/08/2026 (colonne `tma.demands.reopen_reason`)
 
 ---
 
@@ -784,6 +784,7 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `story_points` | SMALLINT | |
 | `backlog_rank` | INTEGER | |
 | `resolved_at` | TIMESTAMPTZ | Date de résolution (burndown, migration `0005`) |
+| `reopen_reason` | TEXT | NOT NULL, DEFAULT `''` — motif de la dernière réouverture (migration `0007`) |
 | `deleted_at` | TIMESTAMPTZ | Soft-delete (migration `0006`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 

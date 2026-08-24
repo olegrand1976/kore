@@ -44,3 +44,12 @@ describe('useTma remove', () => {
     expect(apiFetch).toHaveBeenCalledWith('/api/tma/demands/demand-1', { method: 'DELETE' })
   })
 })
+
+describe('useTma pickReopenReason', () => {
+  it('prefers camelCase, trims whitespace and falls back to PascalCase', () => {
+    const { pickReopenReason } = useTma()
+    expect(pickReopenReason({ reopenReason: '  motif  ', ReopenReason: 'other' })).toBe('motif')
+    expect(pickReopenReason({ ReopenReason: ' from-api ' })).toBe('from-api')
+    expect(pickReopenReason({})).toBe('')
+  })
+})

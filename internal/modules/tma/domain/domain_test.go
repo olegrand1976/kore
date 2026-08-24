@@ -34,6 +34,22 @@ func TestDemand_ReopenReactivatesConsumption(t *testing.T) {
 	d.ConsumptionActive = false
 	require.NoError(t, d.Reopen("rework"))
 	assert.True(t, d.ConsumptionActive)
+	assert.Equal(t, "rework", d.ReopenReason)
+}
+
+func TestDemand_ReopenRequiresReason(t *testing.T) {
+	d := testDemand(false)
+	require.NoError(t, d.Resolve(time.Now().UTC()))
+	assert.ErrorIs(t, d.Reopen("  "), domain.ErrReopenReasonRequired)
+}
+
+func TestDemand_ResolveClearsReopenReason(t *testing.T) {
+	d := testDemand(false)
+	require.NoError(t, d.Resolve(time.Now().UTC()))
+	require.NoError(t, d.Reopen("motif rework"))
+	require.Equal(t, "motif rework", d.ReopenReason)
+	require.NoError(t, d.Resolve(time.Now().UTC()))
+	assert.Empty(t, d.ReopenReason)
 }
 
 func TestDemand_IsOpen(t *testing.T) {
