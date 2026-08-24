@@ -50,7 +50,7 @@ func (r *Repository) GetTicket(ctx context.Context, tenant kernel.TenantID, id u
 func (r *Repository) ListTickets(ctx context.Context, tenant kernel.TenantID) ([]domain.Ticket, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, tenant_id, application_id, subject, description, priority, due_at, state, channel,
-			reporter_id, assignee_id, analysis_note, created_at, resolved_at
+			reporter_id, assignee_id,taken_over_by_id, analysis_note, created_at, resolved_at
 		FROM support.tickets WHERE tenant_id = $1 ORDER BY created_at DESC
 	`, tenant.UUID())
 	if err != nil {
