@@ -17,6 +17,8 @@ export type SupportTicket = {
   Channel?: string
   assigneeId?: string
   AssigneeID?: string
+  takenOverById?: string
+  TakenOverByID?: string
   createdAt?: string
   CreatedAt?: string
   resolvedAt?: string
@@ -106,6 +108,9 @@ export function useSupport() {
     })
     return (res?.data ?? res) as TicketReply
   }
+  const pickTakenOverById = (t: SupportTicket) =>
+  t.takenOverById ?? t.TakenOverByID ?? ''
+
 
   return {
     list,
@@ -122,6 +127,7 @@ export function useSupport() {
     pickPriority,
     pickDueAt,
     pickApplicationId,
-    pickAssigneeId
+    pickAssigneeId,
+    pickTakenOverById
   }
 }

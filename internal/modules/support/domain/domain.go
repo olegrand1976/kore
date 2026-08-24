@@ -33,6 +33,7 @@ type Ticket struct {
 	Channel       string
 	ReporterID    *uuid.UUID
 	AssigneeID    *uuid.UUID
+	TakenOverByID *uuid.UUID
 	AnalysisNote  string
 	CreatedAt     time.Time
 	ResolvedAt    *time.Time
@@ -63,8 +64,15 @@ func NewTicket(tenant kernel.TenantID, appID uuid.UUID, subject, description str
 	}
 }
 
-func (t *Ticket) TakeOver(assigneeID uuid.UUID) {
-	t.Assign(assigneeID)
+//	func (t *Ticket) TakeOver(assigneeID uuid.UUID) {
+//		t.Assign(assigneeID)
+//	}
+func (t *Ticket) TakeOver(userID uuid.UUID) {
+	t.TakenOverByID = &userID
+
+	if t.State == TicketStateOpen {
+		t.State = TicketStateInProgress
+	}
 }
 
 func (t *Ticket) Assign(assigneeID uuid.UUID) {

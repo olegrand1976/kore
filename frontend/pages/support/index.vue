@@ -44,6 +44,9 @@
 import type { ServiceRequestPayload } from '~/components/requests/ServiceRequestForm.vue'
 import { REQUEST_RESOURCE, useRequestAttachments } from '~/composables/useRequestAttachments'
 import { formatOrgClock } from '~/composables/useCountryTimezone'
+import { useUsers } from '~/composables/useUsers'
+import { useSupport } from '~/composables/useSupport'
+import { ref } from 'vue'
 
 definePageMeta({ layout: 'default' })
 
@@ -51,10 +54,12 @@ const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
 const { t, locale } = useI18n()
 const { extractFetchError } = useApiError()
-const { list, create, pickId, pickSubject, pickState, pickPriority, pickDueAt, pickApplicationId } = useSupport()
+const { list, create, pickId, pickSubject, pickState, pickPriority, pickDueAt, pickApplicationId,pickAssigneeId,
+  pickTakenOverById } = useSupport()
 const { uploadAll } = useRequestAttachments()
 const { list: listApps, pickAppLabel, appById } = useApplications()
 const { orgPays } = useOrgPays()
+const { list: listUsers, pickUserId, pickUserLogin } = useUsers()
 
 const pending = ref(true)
 const busy = ref(false)
@@ -66,6 +71,8 @@ const apps = ref<Awaited<ReturnType<typeof listApps>>>([])
 const columns = computed(() => [
   { key: 'subject', label: t('support.col_subject') },
   { key: 'application', label: t('requests.col_application') },
+  { key: 'assignee', label: 'Affecté à' },
+  { key: 'takenOverBy', label: 'Pris en charge par' },
   { key: 'priority', label: t('requests.col_priority') },
   { key: 'dueAt', label: t('requests.col_due_at') },
   { key: 'state', label: t('support.col_state') },
@@ -81,12 +88,24 @@ const rows = computed(() =>
       id: pickId(ticket),
       subject: pickSubject(ticket),
       application: pickAppLabel(appMap.value.get(appId)),
+      assignee: userMap.value.get(pickAssigneeId(ticket)) || '—',
+      takenOverBy: userMap.value.get(pickTakenOverById(ticket)) || '—',
       priority: pickPriority(ticket),
       dueAt: formatDueAt(pickDueAt(ticket)),
       state: pickState(ticket)
     }
   })
 )
+
+const userMap = computed(() => {
+  const map = new Map<string, string>()
+
+  for (const user of users.value) {
+    map.set(pickUserId(user), pickUserLogin(user))
+  }
+
+  return map
+})
 
 const formatDueAt = (raw: string) =>
   formatOrgClock(raw || null, orgPays.value, locale.value, 'datetime')
@@ -97,14 +116,16 @@ const supportStateLabel = (state: string) => {
   const key = `support.state_${state}` as const
   return t(key, state)
 }
-
+const users = ref<Awaited<ReturnType<typeof listUsers>>>([])
+  
 const load = async () => {
   pending.value = true
   errorMsg.value = ''
   try {
-    const [ticketList, appList] = await Promise.all([list(), listApps()])
+    const [ticketList, appList,userList] = await Promise.all([list(), listApps(), listUsers()])
     tickets.value = ticketList
     apps.value = appList
+    users.value = userList
   } catch (e) {
     errorMsg.value = extractFetchError(e)
   } finally {
