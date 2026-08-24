@@ -95,6 +95,10 @@
               {{ value ? $t('applications.active') : $t('applications.inactive') }}
             </AppBadge>
           </template>
+          <template #cell-equipeLabels="{ row }">
+            <span v-if="row.equipeLabels">{{ row.equipeLabels }}</span>
+            <span v-else class="muted">{{ $t('applications.empty_equipes') }}</span>
+          </template>
           <template #cell-actions="{ row }">
             <div class="apps-actions">
               <AppButton variant="ghost" size="sm" type="button" @click="openEdit(row)">
@@ -616,7 +620,7 @@ const {
   pickAppBudgetDefautId,
   pickAppMethodologyProfile
 } = useApplications()
-const { listSites, listServices, listEquipes, createEquipe, orgId, orgLabel } = useOrganisation()
+const { listSites, listServices, listEquipes, createEquipe, orgId, orgLabel, equipesForApplication, formatEquipeOptionLabels } = useOrganisation()
 const { list: listUsers, update: updateUser, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
 const { list: listBudgets, pickId: pickBudgetId } = useBudget()
 
@@ -631,7 +635,7 @@ type AppRow = {
   defaultTjmCents: number
   uoActivee: boolean
   active: boolean
-  equipeCount: number
+  equipeLabels: string
   chefUtilisateurId: string
   budgetDefautId: string
   siteIds: string[]
@@ -740,7 +744,7 @@ const columns = computed(() => [
   { key: 'sharesLabel', label: t('applications.col_shares') },
   { key: 'proprietaire', label: t('applications.col_proprietaire') },
   { key: 'modeLabel', label: t('applications.col_mode') },
-  { key: 'equipeCount', label: t('applications.col_equipes') },
+  { key: 'equipeLabels', label: t('applications.col_equipes'), wrap: true },
   { key: 'active', label: t('applications.col_status') },
   { key: 'actions', label: t('common.actions') }
 ])
@@ -787,10 +791,10 @@ const sortKeys = computed(() => [
     accessor: (item: AppRow) => item.sharesLabel
   },
   {
-    key: 'equipeCount',
+    key: 'equipeLabels',
     label: t('applications.col_equipes'),
-    type: 'number' as const,
-    accessor: (item: AppRow) => item.equipeCount
+    type: 'string' as const,
+    accessor: (item: AppRow) => item.equipeLabels
   }
 ])
 
@@ -1100,15 +1104,11 @@ const userOptions = computed(() =>
 
 const editEquipes = computed(() => {
   if (!editingId.value) return []
-  const shared = new Set(
-    rows.value.find((r) => r.id === editingId.value)?.equipeIds ?? []
-  )
-  return equipes.value
-    .filter(
-      (e) =>
-        (e.applicationId ?? e.ApplicationID) === editingId.value || shared.has(orgId(e))
-    )
-    .map((e) => ({ id: orgId(e), label: orgLabel(e) }))
+  const row = rows.value.find((r) => r.id === editingId.value)
+  return equipesForApplication(equipes.value, editingId.value, row?.equipeIds ?? []).map((e) => ({
+    id: e.value,
+    label: e.label
+  }))
 })
 
 watch(
@@ -1242,6 +1242,7 @@ const loadAll = async () => {
       const siteIds = pickAppSiteIds(app)
       const equipeIds = pickAppEquipeIds(app)
       const mode = pickAppMode(app)
+      const appEquipes = equipesForApplication(equipeList, id, equipeIds)
       return {
         id,
         libelle: pickAppLabel(app),
@@ -1255,10 +1256,7 @@ const loadAll = async () => {
         defaultTjmCents: Number(app.defaultTjmCents ?? app.DefaultTJMCents ?? 0),
         uoActivee: app.uoActivee ?? app.UOActivee ?? false,
         active: pickAppActive(app),
-        equipeCount: equipeList.filter(
-          (e) =>
-            (e.applicationId ?? e.ApplicationID) === id || equipeIds.includes(orgId(e))
-        ).length,
+        equipeLabels: formatEquipeOptionLabels(appEquipes),
         chefUtilisateurId: pickAppChefId(app),
         budgetDefautId: pickAppBudgetDefautId(app),
         methodologyProfile: pickAppMethodologyProfile(app),

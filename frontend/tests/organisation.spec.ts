@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildEquipeOptions,
+  equipesForApplication,
+  formatEquipeOptionLabels,
   orgId,
   orgLabel,
   planEquipeMembershipUpdates,
@@ -24,49 +26,90 @@ describe('org payload normalisation', () => {
 })
 
 describe('buildEquipeOptions', () => {
-  it('qualifies each team with its application', () => {
-    const options = buildEquipeOptions(
-      [{ id: 'e1', applicationId: 'a1', libelle: 'Équipe Dev' }],
-      [{ id: 'a1', libelle: 'Portail Client' }]
-    )
-    expect(options).toEqual([{ value: 'e1', label: 'Équipe Dev — Portail Client' }])
+  it('maps each team to a value/label pair', () => {
+    const options = buildEquipeOptions([
+      { id: 'e1', applicationId: 'a1', libelle: 'Équipe Dev' }
+    ])
+    expect(options).toEqual([{ value: 'e1', label: 'Équipe Dev' }])
   })
 
-  it('disambiguates homonymous teams across applications', () => {
-    const options = buildEquipeOptions(
-      [
-        { id: 'e1', applicationId: 'a1', libelle: 'Équipe Dev' },
-        { id: 'e2', applicationId: 'a2', libelle: 'Équipe Dev' }
-      ],
-      [
-        { id: 'a1', libelle: 'Portail Client' },
-        { id: 'a2', libelle: 'Refonte ERP' }
-      ]
-    )
-    expect(options.map((o) => o.label)).toEqual([
-      'Équipe Dev — Portail Client',
-      'Équipe Dev — Refonte ERP'
+  it('keeps homonymous teams as separate options', () => {
+    const options = buildEquipeOptions([
+      { id: 'e1', applicationId: 'a1', libelle: 'Équipe Dev' },
+      { id: 'e2', applicationId: 'a2', libelle: 'Équipe Dev' }
+    ])
+    expect(options).toEqual([
+      { value: 'e1', label: 'Équipe Dev' },
+      { value: 'e2', label: 'Équipe Dev' }
     ])
   })
 
-  it('falls back to the bare team label when the application is unknown', () => {
-    const options = buildEquipeOptions(
-      [{ id: 'e1', applicationId: 'missing', libelle: 'Équipe orpheline' }],
-      [{ id: 'a1', libelle: 'Portail Client' }]
-    )
-    expect(options).toEqual([{ value: 'e1', label: 'Équipe orpheline' }])
+  it('handles Go-cased payloads', () => {
+    const options = buildEquipeOptions([
+      { ID: 'e1', ApplicationID: 'a1', Libelle: 'Équipe Dev' }
+    ])
+    expect(options).toEqual([{ value: 'e1', label: 'Équipe Dev' }])
   })
 
-  it('handles Go-cased payloads', () => {
-    const options = buildEquipeOptions(
-      [{ ID: 'e1', ApplicationID: 'a1', Libelle: 'Équipe Dev' }],
-      [{ ID: 'a1', Libelle: 'Portail Client' }]
-    )
-    expect(options).toEqual([{ value: 'e1', label: 'Équipe Dev — Portail Client' }])
+  it('falls back to the team id when the label is empty', () => {
+    expect(buildEquipeOptions([{ id: 'e1', applicationId: 'a1' }])).toEqual([
+      { value: 'e1', label: 'e1' }
+    ])
   })
 
   it('returns an empty list when there is no team', () => {
-    expect(buildEquipeOptions([], [{ id: 'a1', libelle: 'Portail Client' }])).toEqual([])
+    expect(buildEquipeOptions([])).toEqual([])
+  })
+})
+
+describe('equipesForApplication', () => {
+  const equipes = [
+    { id: 'e1', applicationId: 'a1', libelle: 'MG Consulting' },
+    { id: 'e2', applicationId: 'a2', libelle: 'SOFT-CONNECT' },
+    { id: 'e3', applicationId: 'a3', libelle: 'Support' }
+  ]
+
+  it('returns owned and shared teams sorted by label', () => {
+    expect(equipesForApplication(equipes, 'a1', ['e3'])).toEqual([
+      { value: 'e1', label: 'MG Consulting' },
+      { value: 'e3', label: 'Support' }
+    ])
+  })
+
+  it('returns an empty list when the application id is missing', () => {
+    expect(equipesForApplication(equipes, '', ['e1'])).toEqual([])
+  })
+
+  it('handles Go-cased payloads', () => {
+    expect(
+      equipesForApplication(
+        [{ ID: 'e1', ApplicationID: 'a1', Libelle: 'MG Consulting' }],
+        'a1',
+        ['e1']
+      )
+    ).toEqual([{ value: 'e1', label: 'MG Consulting' }])
+  })
+
+  it('does not duplicate an owned team also listed as shared', () => {
+    expect(equipesForApplication(equipes, 'a1', ['e1', 'e3'])).toEqual([
+      { value: 'e1', label: 'MG Consulting' },
+      { value: 'e3', label: 'Support' }
+    ])
+  })
+})
+
+describe('formatEquipeOptionLabels', () => {
+  it('joins team labels for display', () => {
+    expect(
+      formatEquipeOptionLabels([
+        { value: 'e1', label: 'MG Consulting' },
+        { value: 'e2', label: 'SOFT-CONNECT' }
+      ])
+    ).toBe('MG Consulting, SOFT-CONNECT')
+  })
+
+  it('returns an empty string when there are no teams', () => {
+    expect(formatEquipeOptionLabels([])).toBe('')
   })
 })
 

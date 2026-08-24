@@ -282,7 +282,7 @@ const formatEquipeLabels = (ids: string[]) => {
 const loadEquipes = async () => {
   try {
     const [eq, apps] = await Promise.all([listEquipes(), listApplications()])
-    equipeOptions.value = buildEquipeOptions(eq, apps)
+    equipeOptions.value = buildEquipeOptions(eq)
     applicationFilterOptions.value = apps.map((a) => ({
       value: orgId(a),
       label: a.libelle ?? a.Libelle ?? orgId(a)

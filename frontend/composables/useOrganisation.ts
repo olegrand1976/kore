@@ -81,23 +81,35 @@ function unwrap<T>(res: unknown): T[] {
 export type EquipeOption = { value: string; label: string }
 
 /**
- * Construit les options d'un sélecteur d'équipe en affichant « Équipe — Application ».
- * L'application lève l'ambiguïté entre équipes homonymes rattachées à des périmètres
- * différents. Fonction pure : testable sans les globales Nuxt.
+ * Construit les options d'un sélecteur d'équipe (libellé seul).
+ * Fonction pure : testable sans les globales Nuxt.
  */
-export function buildEquipeOptions(
+export function buildEquipeOptions(equipes: OrgEquipe[]): EquipeOption[] {
+  return equipes.map((equipe) => ({
+    value: orgId(equipe),
+    label: orgLabel(equipe) || orgId(equipe)
+  }))
+}
+
+/** Teams owned by or shared with the given application. */
+export function equipesForApplication(
   equipes: OrgEquipe[],
-  applications: OrgApplication[]
+  applicationId: string,
+  sharedEquipeIds: string[] = []
 ): EquipeOption[] {
-  const appLabels = new Map(applications.map((a) => [orgId(a), orgLabel(a)]))
-  return equipes.map((equipe) => {
-    const appLabel = appLabels.get(equipe.applicationId ?? equipe.ApplicationID ?? '') ?? ''
-    const equipeLabel = orgLabel(equipe)
-    return {
-      value: orgId(equipe),
-      label: appLabel ? `${equipeLabel} — ${appLabel}` : equipeLabel
-    }
-  })
+  if (!applicationId) return []
+  const shared = new Set(sharedEquipeIds.filter(Boolean))
+  return equipes
+    .filter(
+      (e) =>
+        (e.applicationId ?? e.ApplicationID) === applicationId || shared.has(orgId(e))
+    )
+    .map((e) => ({ value: orgId(e), label: orgLabel(e) || orgId(e) }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+}
+
+export function formatEquipeOptionLabels(options: EquipeOption[]): string {
+  return options.map((option) => option.label).join(', ')
 }
 
 export type EquipeMemberSnapshot = {
@@ -272,6 +284,8 @@ export function useOrganisation() {
     orgId,
     orgLabel,
     buildEquipeOptions,
+    equipesForApplication,
+    formatEquipeOptionLabels,
     planEquipeMembershipUpdates,
     unwrapOrgData
   }
