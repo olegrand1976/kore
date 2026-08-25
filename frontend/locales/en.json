@@ -1187,6 +1187,7 @@
     "col_due_at": "Due date",
     "col_priority": "Priority",
     "col_assignee": "Assigned to",
+    "col_taken_over_by": "Taken over by",
     "assign_to": "Assign to"
   },
   "demandes": {

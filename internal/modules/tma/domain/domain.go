@@ -71,6 +71,7 @@ type Demand struct {
 	WorkflowInstanceID *uuid.UUID
 	AuthorID           uuid.UUID
 	AssigneeID         *uuid.UUID
+	TakenOverByID      *uuid.UUID
 	Status             DemandStatus
 	Visible            bool
 	ConsumptionActive  bool
@@ -179,7 +180,8 @@ func (d *Demand) TakeOver(userID uuid.UUID) error {
 	if !d.Visible {
 		return ErrDemandNotVisible
 	}
-	d.AssigneeID = &userID
+	// d.AssigneeID = &userID
+	d.TakenOverByID = &userID
 	d.Status = DemandStatusInProgress
 	return nil
 }

@@ -136,6 +136,9 @@
             <p v-if="(item as TmaRow).assigneeId" class="tma-kanban-card__meta">
               {{ (item as TmaRow).assignee }}
             </p>
+            <p v-if="(item as TmaRow).takenOverById" class="tma-kanban-card__meta">
+              {{ (item as TmaRow).takenOverBy }}
+            </p>
             <div class="tma-kanban-card__badges">
               <AppBadge variant="neutral">{{ priorityLabel(String((item as TmaRow).priority)) }}</AppBadge>
               <AppBadge variant="neutral">{{ tmaStatusLabel(String((item as TmaRow).status)) }}</AppBadge>
@@ -216,6 +219,8 @@ type TmaRow = {
   application: string
   assigneeId: string
   assignee: string
+  takenOverById: string
+  takenOverBy: string
   priority: string
   createdAt: string
 }
@@ -235,6 +240,7 @@ const {
   pickPriority,
   pickApplicationId,
   pickAssigneeId,
+  pickTakenOverById,
   pickCreatedAt
 } = useTma()
 const { uploadAll } = useRequestAttachments()
@@ -285,6 +291,7 @@ const listItems = computed((): TmaRow[] =>
   (data.value ?? []).map((d) => {
     const applicationId = pickApplicationId(d)
     const assigneeId = pickAssigneeId(d)
+    const takenOverById = pickTakenOverById(d)
     return {
       id: pickId(d),
       title: pickSubject(d),
@@ -294,9 +301,13 @@ const listItems = computed((): TmaRow[] =>
       assigneeId,
       assignee: assigneeId
         ? (userLoginById.value.get(assigneeId) || assigneeId)
+      : t('common.none'),
+      takenOverById,
+      takenOverBy: takenOverById
+        ? (userLoginById.value.get(takenOverById) || takenOverById)
         : t('common.none'),
       priority: pickPriority(d),
-      createdAt: pickCreatedAt(d)
+      createdAt: pickCreatedAt(d),
     }
   })
 )
@@ -360,6 +371,7 @@ const sortKeys = computed(() => [
   { key: 'title', label: t('tma.col_title'), type: 'string' as const, accessor: (row: TmaRow) => row.title },
   { key: 'application', label: t('requests.col_application'), type: 'string' as const, accessor: (row: TmaRow) => row.application },
   { key: 'assignee', label: t('requests.col_assignee'), type: 'string' as const, accessor: (row: TmaRow) => row.assignee },
+  { key: 'takenOverBy',label: t('requests.col_taken_over_by'),type: 'string' as const,accessor: (row: TmaRow) => row.takenOverBy},
   { key: 'priority', label: t('tma.col_priority'), type: 'string' as const, accessor: (row: TmaRow) => row.priority },
   { key: 'status', label: t('tma.col_status'), type: 'string' as const, accessor: (row: TmaRow) => row.status }
 ])
@@ -398,6 +410,7 @@ const columns = computed(() => [
   { key: 'title', label: t('tma.col_title') },
   { key: 'application', label: t('requests.col_application') },
   { key: 'assignee', label: t('requests.col_assignee') },
+  { key: 'takenOverBy', label: t('requests.col_taken_over_by') },
   { key: 'priority', label: t('tma.col_priority') },
   { key: 'status', label: t('tma.col_status') },
   { key: 'actions', label: t('tma.col_actions') }

@@ -1187,6 +1187,7 @@
     "col_due_at": "Échéance",
     "col_priority": "Priorité",
     "col_assignee": "Affecté à",
+    "col_taken_over_by": "Pris en charge par",
     "assign_to": "Affecter à"
   },
   "demandes": {

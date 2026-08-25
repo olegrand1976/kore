@@ -19,6 +19,8 @@ export type TmaDemand = {
   WorkflowInstanceID?: string
   assigneeId?: string
   AssigneeID?: string
+  takenOverById?: string
+  TakenOverByID?: string
   requiresChefGate?: boolean
   RequiresChefGate?: boolean
   createdAt?: string
@@ -101,6 +103,10 @@ export function useTma() {
     const res = await apiFetch<{ data?: TmaAnalysis }>(`/api/tma/demands/${id}/analysis`)
     return (res?.data ?? res) as TmaAnalysis
   }
+ 
+  const pickTakenOverById = (d: TmaDemand) =>
+  d.takenOverById ?? d.TakenOverByID ?? ''
+
 
   const create = async (payload: {
     applicationId: string
@@ -177,10 +183,11 @@ export function useTma() {
     pickDueAt,
     pickApplicationId,
     pickAssigneeId,
+    pickTakenOverById,
     pickWorkflowId,
     pickReopenReason,
     pickCreatedAt,
     toGanttItem,
-    toGanttItems
+    toGanttItems,
   }
 }
