@@ -188,6 +188,7 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 		}
 		var req struct {
 			ApplicationID    uuid.UUID  `json:"applicationId"`
+			AssigneeID       *uuid.UUID `json:"assigneeId"`
 			Subject          string     `json:"subject"`
 			Description      string     `json:"description"`
 			Priority         string     `json:"priority"`
@@ -222,6 +223,7 @@ func createDemand(tma ports.TMAService, authorizer authx.Authorizer, channels ke
 			TenantID:         identity.TenantID,
 			ApplicationID:    req.ApplicationID,
 			AuthorID:         identity.UserID,
+			AssigneeID:       req.AssigneeID,
 			Subject:          strings.TrimSpace(req.Subject),
 			Description:      req.Description,
 			Priority:         req.Priority,

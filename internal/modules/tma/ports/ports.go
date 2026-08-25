@@ -13,6 +13,7 @@ type CreateDemandCommand struct {
 	TenantID         kernel.TenantID
 	ApplicationID    uuid.UUID
 	AuthorID         uuid.UUID
+	AssigneeID       *uuid.UUID
 	Subject          string
 	Description      string
 	Priority         string

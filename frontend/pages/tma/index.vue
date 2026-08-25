@@ -459,6 +459,7 @@ const onCreate = async (payload: ServiceRequestPayload) => {
   try {
     const created = await create({
       applicationId: payload.applicationId,
+      assigneeId: payload.assigneeId,
       subject: payload.subject,
       description: payload.description,
       priority: payload.priority,

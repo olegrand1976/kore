@@ -62,6 +62,9 @@ func (realClock) Now() time.Time { return time.Now() }
 
 func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandCommand) (domain.Demand, error) {
 	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
+	if cmd.AssigneeID != nil {
+		demand.AssigneeID = cmd.AssigneeID
+	}
 	if err := domain.ValidateStoryPoints(cmd.StoryPoints); err != nil {
 		return domain.Demand{}, err
 	}

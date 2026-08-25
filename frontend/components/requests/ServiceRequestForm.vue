@@ -1,6 +1,8 @@
 <script setup lang="ts">
+
 export type ServiceRequestPayload = {
   applicationId: string
+  assigneeId?: string
   subject: string
   description: string
   priority: string
@@ -26,9 +28,11 @@ const emit = defineEmits<{ submit: [payload: ServiceRequestPayload] }>()
 
 const { t } = useI18n()
 const { get, pickAppMethodologyProfile } = useApplications()
+const { list: listUsers, pickUserId, pickUserLogin, pickUserEquipeIds } = useUsers()
 const { listEpics, pickEpicId, pickEpicTitle } = useProject()
 
 const applicationId = ref('')
+const assigneeId = ref('')
 const subject = ref('')
 const description = ref('')
 const priority = ref('normal')
@@ -43,6 +47,8 @@ const terms = useMethodologyTerms(appProfile)
 
 const showAgile = computed(() => props.showAgileFields && terms.value.isAgile)
 
+const applicationUsers = ref<{ id: string; label: string }[]>([])
+
 watch(applicationId, async (id) => {
   epicId.value = ''
   storyPoints.value = null
@@ -53,14 +59,56 @@ watch(applicationId, async (id) => {
   }
   try {
     const app = await get(id)
+
     appProfile.value = pickAppMethodologyProfile(app)
-    if (terms.value.isAgile) {
-      const items = await listEpics(id)
-      epics.value = items.map((e) => ({ id: pickEpicId(e), title: pickEpicTitle(e) }))
-    }
+
+    // Équipes associées à l'application
+    const applicationEquipeIds = new Set(pickAppEquipeIds(app))
+
+    // Tous les utilisateurs
+    const users = await listUsers()
+
+    // On garde uniquement les utilisateurs
+    // appartenant aux équipes de l'application.
+    applicationUsers.value = users
+      .filter((user) => {
+        const userEquipeIds = pickUserEquipeIds(user)
+
+        return userEquipeIds.some((equipeId) =>
+          applicationEquipeIds.has(equipeId)
+        )
+      })
+      .map((user) => ({
+        id: pickUserId(user),
+        label: pickUserLogin(user)
+      }))
+      .filter((user) => user.id)
   } catch {
     appProfile.value = 'psa'
+    applicationUsers.value = []
   }
+
+  if (terms.value.isAgile) {
+    try {
+      const items = await listEpics(id)
+      epics.value = items.map((e) => ({
+        id: pickEpicId(e),
+        title: pickEpicTitle(e)
+      }))
+    } catch {
+      epics.value = []
+    }
+  }
+  // try {
+  //   const app = await get(id)
+  //   appProfile.value = pickAppMethodologyProfile(app)
+  //   if (terms.value.isAgile) {
+  //     const items = await listEpics(id)
+  //     epics.value = items.map((e) => ({ id: pickEpicId(e), title: pickEpicTitle(e) }))
+  //   }
+  // } catch {
+  //   appProfile.value = 'psa'
+  // }
 })
 
 const priorityOptions = [
@@ -74,6 +122,7 @@ const onSubmit = () => {
   if (!subject.value.trim() || !applicationId.value) return
   emit('submit', {
     applicationId: applicationId.value,
+    assigneeId: assigneeId.value || undefined,
     subject: subject.value.trim(),
     description: description.value.trim(),
     priority: priority.value,
@@ -88,28 +137,40 @@ const onSubmit = () => {
 
 <template>
   <form class="service-request-form" @submit.prevent="onSubmit">
-    <AppApplicationSelect
-      id="request-application"
-      v-model="applicationId"
-      :label="t('requests.form_application')"
-      required
-    />
-    <AppInput
-      id="request-subject"
-      v-model="subject"
-      :label="t('requests.form_subject')"
-      required
-    />
+    <AppApplicationSelect id="request-application" v-model="applicationId" :label="t('requests.form_application')"
+      required />
+
+      <div class="service-request-form__field">
+        <label for="request-assignee" class="service-request-form__label">
+          {{ t('requests.col_assignee') }}
+        </label>
+
+        <select
+          id="request-assignee"
+          v-model="assigneeId"
+          class="service-request-form__select"
+          :disabled="!applicationId || applicationUsers.length === 0"
+        >
+          <option value="">
+            {{ t('common.none') }}
+          </option>
+
+          <option
+            v-for="user in applicationUsers"
+            :key="user.id"
+            :value="user.id"
+          >
+            {{ user.label }}
+          </option>
+        </select>
+      </div>
+
+    <AppInput id="request-subject" v-model="subject" :label="t('requests.form_subject')" required />
     <div class="service-request-form__field">
       <label for="request-description" class="service-request-form__label">
         {{ t('requests.form_description') }}
       </label>
-      <textarea
-        id="request-description"
-        v-model="description"
-        class="service-request-form__textarea"
-        rows="4"
-      />
+      <textarea id="request-description" v-model="description" class="service-request-form__textarea" rows="4" />
     </div>
     <div class="service-request-form__row">
       <div class="service-request-form__field">
@@ -122,12 +183,7 @@ const onSubmit = () => {
           </option>
         </select>
       </div>
-      <AppInput
-        id="request-due-at"
-        v-model="dueAt"
-        type="datetime-local"
-        :label="t('requests.form_due_at')"
-      />
+      <AppInput id="request-due-at" v-model="dueAt" type="datetime-local" :label="t('requests.form_due_at')" />
     </div>
     <AppFileUpload id="request-files" v-model="files" :label="t('requests.form_attachments')" />
     <div v-if="showAgile" class="service-request-form__row">
@@ -138,25 +194,14 @@ const onSubmit = () => {
           <option v-for="epic in epics" :key="epic.id" :value="epic.id">{{ epic.title }}</option>
         </select>
       </div>
-      <AppInput
-        id="request-story-points"
-        v-model.number="storyPoints"
-        type="number"
-        min="0"
-        max="999"
-        :label="terms.estimation"
-      />
+      <AppInput id="request-story-points" v-model.number="storyPoints" type="number" min="0" max="999"
+        :label="terms.estimation" />
     </div>
     <label v-if="showChefGate" class="service-request-form__check">
       <input v-model="requiresChefGate" type="checkbox" />
       {{ t('requests.form_chef_gate') }}
     </label>
-    <AppButton
-      variant="primary"
-      size="sm"
-      type="submit"
-      :disabled="busy || !subject.trim() || !applicationId"
-    >
+    <AppButton variant="primary" size="sm" type="submit" :disabled="busy || !subject.trim() || !applicationId">
       {{ submitLabel || t('requests.form_submit') }}
     </AppButton>
   </form>
