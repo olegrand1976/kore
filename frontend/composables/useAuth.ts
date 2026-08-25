@@ -14,7 +14,10 @@ export function useAuth() {
   // Forward incoming Cookie header during SSR (plain $fetch does not).
   const requestFetch = useRequestFetch()
 
-  const fetchSession = async () => {
+  const fetchSession = async (opts?: { force?: boolean }) => {
+    if (!opts?.force && user.value?.ok) {
+      return user.value
+    }
     try {
       user.value = await requestFetch<SessionUser>('/api/auth/session')
     } catch {

@@ -234,12 +234,15 @@ const {
 const { fetchMine, activeTypes } = useLeaveTypeConfigs()
 const { typeLabel, statusLabel, statusVariant } = useLeaveLabels()
 
-const { data, pending, refresh } = await useAsyncData('leave-requests', () => list())
-const { data: balancesData, pending: balancesPending, refresh: refreshBalances } = await useAsyncData(
-  'leave-balances',
-  () => balances()
-)
-const { data: leaveTypesData } = await useAsyncData('leave-types-mine', () => fetchMine())
+const [
+  { data, pending, refresh },
+  { data: balancesData, pending: balancesPending, refresh: refreshBalances },
+  { data: leaveTypesData }
+] = await Promise.all([
+  useAsyncData('leave-requests', () => list()),
+  useAsyncData('leave-balances', () => balances()),
+  useAsyncData('leave-types-mine', () => fetchMine())
+])
 
 const showForm = ref(false)
 const submitting = ref(false)

@@ -62,7 +62,6 @@ import { useListControls } from '~/composables/useListControls'
 
 const { apiFetch } = useApiFetch()
 const { t } = useI18n()
-const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()
 const { extractFetchError } = useApiError()
 const {
@@ -81,9 +80,6 @@ const {
 const { fetchMine, activeTypes } = useLeaveTypeConfigs()
 const { typeLabel } = useLeaveLabels()
 const { fetchManagerContext } = useAi()
-
-await fetchSession()
-await fetchMine()
 
 type OrgUser = { id?: string; ID?: string; login?: string; Login?: string }
 
@@ -107,19 +103,21 @@ function buildLoginMap(users: OrgUser[]) {
 }
 
 async function loadValidationData(): Promise<ValidationPayload> {
-  const items = pendingFn(await list())
   if (!canValidateConges.value) {
+    const items = pendingFn(await list())
     return { items, logins: {} }
   }
-  try {
-    const res = await apiFetch<{ data?: OrgUser[] }>('/api/org/users')
-    return { items, logins: buildLoginMap(res?.data ?? []) }
-  } catch {
-    return { items, logins: {} }
-  }
+  const [items, res] = await Promise.all([
+    list().then((raw) => pendingFn(raw)),
+    apiFetch<{ data?: OrgUser[] }>('/api/org/users').catch(() => ({ data: [] as OrgUser[] }))
+  ])
+  return { items, logins: buildLoginMap(res?.data ?? []) }
 }
 
-const { data, pending, refresh } = await useAsyncData('leave-validation', loadValidationData)
+const [{ data, pending, refresh }] = await Promise.all([
+  useAsyncData('leave-validation', loadValidationData),
+  fetchMine()
+])
 
 const resolveRequester = (item: LeaveRequest, logins: Record<string, string>) => {
   const userId = normalizeUserId(pickUserId(item))

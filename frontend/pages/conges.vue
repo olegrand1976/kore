@@ -47,10 +47,7 @@ definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const guideRef = ref<{ showAgain: () => void; dismissed: boolean } | null>(null)
-const { fetchSession } = useAuth()
 const { canValidateConges } = usePermissions()
-
-await fetchSession()
 
 /** Serializable signal — never store functions in useState (SSR devalue). */
 const openFormSignal = useState<number>('conges-open-form', () => 0)

@@ -79,7 +79,10 @@ export function useLeaveTypeConfigs() {
   const { apiFetch } = useApiFetch()
   const types = useState<LeaveTypeConfig[]>('leave-type-configs', () => [])
 
-  const fetchMine = async () => {
+  const fetchMine = async (opts?: { force?: boolean }) => {
+    if (!opts?.force && types.value.length > 0) {
+      return types.value
+    }
     const res = await apiFetch<{ data?: LeaveTypeConfig[] }>('/api/conges/leave-type-configs/mine')
     types.value = (res?.data ?? []).slice().sort((a, b) => pickSortOrder(a) - pickSortOrder(b))
     return types.value

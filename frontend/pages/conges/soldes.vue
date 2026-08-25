@@ -28,9 +28,10 @@ const { balances } = useLeave()
 const { fetchMine } = useLeaveTypeConfigs()
 const { typeLabel } = useLeaveLabels()
 
-await fetchMine()
-
-const { data, pending } = await useAsyncData('leave-balances-page', () => balances())
+const [{ data, pending }] = await Promise.all([
+  useAsyncData('leave-balances-page', () => balances()),
+  fetchMine()
+])
 
 type BalanceRow = {
   type: string

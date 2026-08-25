@@ -1,13 +1,29 @@
 import { isCraMonthIncomplete, type CraTimesheet } from '~/composables/useKpiMetrics'
+import { readCachedCraGateMode, writeCraGateModeCache, type CraGateModeCache } from '~/utils/craGateCache'
 import { isCraGateBlockedPath } from '~/utils/craGatePaths'
+
+async function resolveCraGateMode(): Promise<string> {
+  const cache = useState<CraGateModeCache | null>('cra-gate-mode', () => null)
+  const cached = readCachedCraGateMode(cache.value)
+  if (cached !== null) {
+    return cached
+  }
+
+  const calendar = await $fetch<{ data?: { craGateMode?: string } }>('/api/org/users/me/calendar-settings').catch(
+    () => null
+  )
+  const mode = calendar?.data?.craGateMode ?? 'warn'
+  cache.value = writeCraGateModeCache(mode)
+  return mode
+}
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!isCraGateBlockedPath(to.path)) {
     return
   }
 
-  const calendar = await $fetch<{ data?: { craGateMode?: string } }>('/api/org/users/me/calendar-settings').catch(() => null)
-  if ((calendar?.data?.craGateMode ?? 'warn') !== 'block') {
+  const mode = await resolveCraGateMode()
+  if (mode !== 'block') {
     return
   }
 
