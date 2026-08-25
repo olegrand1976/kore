@@ -50,6 +50,28 @@ func TestTMA_DemandReopenReasonRoundTrip(t *testing.T) {
 	require.Equal(t, "Correction incomplète", got.ReopenReason)
 }
 
+func TestTMA_DemandTakenOverByRoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	d := domain.NewDemand(tenant, uuid.New(), uuid.New(), "Incident prod", "details", kernel.PriorityHigh, nil, false)
+	assignee := uuid.New()
+	worker := uuid.New()
+	require.NoError(t, d.Assign(assignee))
+	require.NoError(t, d.TakeOver(worker))
+	require.NoError(t, repo.Save(ctx, d))
+
+	got, err := repo.Get(ctx, tenant, d.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.AssigneeID)
+	require.Equal(t, assignee, *got.AssigneeID)
+	require.NotNil(t, got.TakenOverByID)
+	require.Equal(t, worker, *got.TakenOverByID)
+	require.Equal(t, domain.DemandStatusInProgress, got.Status)
+}
+
 func TestTMA_DemandSoftDelete(t *testing.T) {
 	pool := dbtest.NewPostgres(t)
 	repo := postgres.NewRepository(pool)

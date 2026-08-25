@@ -78,6 +78,30 @@ func TestDemand_AssignRequiresVisible(t *testing.T) {
 	assert.ErrorIs(t, err, domain.ErrDemandNotVisible)
 }
 
+func TestDemand_TakeOverKeepsAssignee(t *testing.T) {
+	d := testDemand(false)
+	assignee := uuid.New()
+	worker := uuid.New()
+	require.NoError(t, d.Assign(assignee))
+	require.NoError(t, d.TakeOver(worker))
+	require.NotNil(t, d.AssigneeID)
+	assert.Equal(t, assignee, *d.AssigneeID)
+	require.NotNil(t, d.TakenOverByID)
+	assert.Equal(t, worker, *d.TakenOverByID)
+	assert.Equal(t, domain.DemandStatusInProgress, d.Status)
+	assert.Equal(t, worker, *d.WorkerID())
+}
+
+func TestDemand_ValidateCreationKeepsPreAssignee(t *testing.T) {
+	d := testDemand(true)
+	assignee := uuid.New()
+	d.AssigneeID = &assignee
+	require.NoError(t, d.ValidateCreation())
+	assert.Equal(t, domain.DemandStatusAssigned, d.Status)
+	require.NotNil(t, d.AssigneeID)
+	assert.Equal(t, assignee, *d.AssigneeID)
+}
+
 func TestDemand_SoftDelete(t *testing.T) {
 	d := testDemand(false)
 	at := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)

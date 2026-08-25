@@ -63,7 +63,14 @@ func (realClock) Now() time.Time { return time.Now() }
 func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandCommand) (domain.Demand, error) {
 	demand := domain.NewDemand(cmd.TenantID, cmd.ApplicationID, cmd.AuthorID, cmd.Subject, cmd.Description, kernel.NormalizeRequestPriority(cmd.Priority), cmd.DueAt, cmd.RequiresChefGate)
 	if cmd.AssigneeID != nil {
-		demand.AssigneeID = cmd.AssigneeID
+		if demand.Visible {
+			if err := demand.Assign(*cmd.AssigneeID); err != nil {
+				return domain.Demand{}, err
+			}
+		} else {
+			// Pre-assign while awaiting chef utilisateur validation (Assign requires Visible).
+			demand.AssigneeID = cmd.AssigneeID
+		}
 	}
 	if err := domain.ValidateStoryPoints(cmd.StoryPoints); err != nil {
 		return domain.Demand{}, err
@@ -222,14 +229,14 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, id, userI
 	if err := demand.Resolve(s.clock.Now().UTC()); err != nil {
 		return err
 	}
-	if s.cra != nil && demand.AssigneeID != nil {
+	if workerID := demand.WorkerID(); s.cra != nil && workerID != nil {
 		duration, derr := kernel.NewDuration(480)
 		if derr != nil {
 			return derr
 		}
 		_ = s.cra.ProposeLines(ctx, []ports.ProposedLine{{
 			TenantID:   tenant,
-			UserID:     *demand.AssigneeID,
+			UserID:     *workerID,
 			SourceType: "tma",
 			SourceID:   demand.ID,
 			Day:        s.clock.Now().UTC().Truncate(24 * time.Hour),
@@ -248,10 +255,10 @@ func (s *service) Resolve(ctx context.Context, tenant kernel.TenantID, id, userI
 			return err
 		}
 	}
-	if s.notifier != nil && demand.AssigneeID != nil {
+	if workerID := demand.WorkerID(); s.notifier != nil && workerID != nil {
 		_ = s.notifier.Notify(ctx, ports.NotificationEvent{
 			TenantID: tenant,
-			UserID:   *demand.AssigneeID,
+			UserID:   *workerID,
 			Subject:  "Demande TMA résolue",
 			Body:     demand.Subject,
 		})

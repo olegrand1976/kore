@@ -105,11 +105,11 @@ export function useTma() {
   }
  
   const pickTakenOverById = (d: TmaDemand) =>
-  d.takenOverById ?? d.TakenOverByID ?? ''
-
+    d.takenOverById ?? d.TakenOverByID ?? ''
 
   const create = async (payload: {
     applicationId: string
+    assigneeId?: string
     subject: string
     description?: string
     priority?: string
@@ -188,6 +188,6 @@ export function useTma() {
     pickReopenReason,
     pickCreatedAt,
     toGanttItem,
-    toGanttItems,
+    toGanttItems
   }
 }

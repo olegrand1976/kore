@@ -26,9 +26,9 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO tma.demands (
 			id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id,taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
+			workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
 			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,$23)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
 		ON CONFLICT (id) DO UPDATE SET
 			assignee_id = EXCLUDED.assignee_id,
 			taken_over_by_id = EXCLUDED.taken_over_by_id,
@@ -54,7 +54,7 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
 	return r.scanDemand(r.pool.QueryRow(ctx, `
 		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id,taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
+			workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
 			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
 		FROM tma.demands WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
 	`, tenant.UUID(), id))

@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 24/08/2026 (colonne `tma.demands.reopen_reason`)
+> **Dernière mise à jour doc** : 25/08/2026 (colonne `tma.demands.taken_over_by_id`)
 
 ---
 
@@ -775,6 +775,7 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `workflow_instance_id` | UUID | |
 | `author_id` | UUID | NOT NULL |
 | `assignee_id` | UUID | |
+| `taken_over_by_id` | UUID | Qui a pris en charge (migration `0008`) — distinct de `assignee_id` |
 | `status` | TEXT | NOT NULL |
 | `visible` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `consumption_active` | BOOLEAN | NOT NULL, DEFAULT TRUE |

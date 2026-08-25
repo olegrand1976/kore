@@ -164,6 +164,9 @@ func (d *Demand) ValidateCreation() error {
 	d.Status = DemandStatusOpen
 	d.Visible = true
 	d.ConsumptionActive = true
+	if d.AssigneeID != nil {
+		d.Status = DemandStatusAssigned
+	}
 	return nil
 }
 
@@ -176,14 +179,22 @@ func (d *Demand) Assign(assigneeID uuid.UUID) error {
 	return nil
 }
 
+// TakeOver records who actually started work without overwriting the planned assignee.
 func (d *Demand) TakeOver(userID uuid.UUID) error {
 	if !d.Visible {
 		return ErrDemandNotVisible
 	}
-	// d.AssigneeID = &userID
 	d.TakenOverByID = &userID
 	d.Status = DemandStatusInProgress
 	return nil
+}
+
+// WorkerID returns the user who took the demand over, falling back to the assignee.
+func (d Demand) WorkerID() *uuid.UUID {
+	if d.TakenOverByID != nil {
+		return d.TakenOverByID
+	}
+	return d.AssigneeID
 }
 
 func (d *Demand) Resolve(at time.Time) error {

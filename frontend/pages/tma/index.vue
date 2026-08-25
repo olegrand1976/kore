@@ -55,7 +55,7 @@
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
 
     <AppCard v-if="showForm" padding="lg" class="mb">
-      <ServiceRequestForm show-chef-gate show-agile-fields :busy="creating" @submit="onCreate" />
+      <ServiceRequestForm show-chef-gate show-agile-fields show-assignee :busy="creating" @submit="onCreate" />
     </AppCard>
 
     <AppListToolbar
@@ -362,7 +362,7 @@ const listFilters = computed(() => ({
     label: t('common.list.search'),
     placeholder: t('tma.search_placeholder'),
     match: (row: TmaRow, query: string) =>
-      applyTextSearch(query, row.title, row.application, row.assignee)
+      applyTextSearch(query, row.title, row.application, row.assignee, row.takenOverBy)
   }
 }))
 
@@ -371,7 +371,7 @@ const sortKeys = computed(() => [
   { key: 'title', label: t('tma.col_title'), type: 'string' as const, accessor: (row: TmaRow) => row.title },
   { key: 'application', label: t('requests.col_application'), type: 'string' as const, accessor: (row: TmaRow) => row.application },
   { key: 'assignee', label: t('requests.col_assignee'), type: 'string' as const, accessor: (row: TmaRow) => row.assignee },
-  { key: 'takenOverBy',label: t('requests.col_taken_over_by'),type: 'string' as const,accessor: (row: TmaRow) => row.takenOverBy},
+  { key: 'takenOverBy', label: t('requests.col_taken_over_by'), type: 'string' as const, accessor: (row: TmaRow) => row.takenOverBy },
   { key: 'priority', label: t('tma.col_priority'), type: 'string' as const, accessor: (row: TmaRow) => row.priority },
   { key: 'status', label: t('tma.col_status'), type: 'string' as const, accessor: (row: TmaRow) => row.status }
 ])

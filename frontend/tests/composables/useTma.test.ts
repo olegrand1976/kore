@@ -22,13 +22,16 @@ describe('useTma pickDescription', () => {
 
 describe('useTma list field pickers', () => {
   it('reads application, assignee, priority and due date with camelCase preference', () => {
-    const { pickApplicationId, pickAssigneeId, pickPriority, pickDueAt } = useTma()
+    const { pickApplicationId, pickAssigneeId, pickTakenOverById, pickPriority, pickDueAt } = useTma()
     expect(
       pickApplicationId({ applicationId: 'app-1', ApplicationID: 'app-other' })
     ).toBe('app-1')
     expect(pickApplicationId({ ApplicationID: 'app-2' })).toBe('app-2')
     expect(pickAssigneeId({ assigneeId: 'user-1', AssigneeID: 'user-other' })).toBe('user-1')
     expect(pickAssigneeId({})).toBe('')
+    expect(pickTakenOverById({ takenOverById: 'user-2', TakenOverByID: 'user-other' })).toBe('user-2')
+    expect(pickTakenOverById({ TakenOverByID: 'user-3' })).toBe('user-3')
+    expect(pickTakenOverById({})).toBe('')
     expect(pickPriority({ priority: 'high', Priority: 'low' })).toBe('high')
     expect(pickPriority({})).toBe('normal')
     expect(pickDueAt({ dueAt: '2026-01-01', DueAt: '2025-01-01' })).toBe('2026-01-01')

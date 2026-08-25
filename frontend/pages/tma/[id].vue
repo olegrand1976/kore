@@ -32,6 +32,7 @@
           <div v-if="agileEpicTitle"><dt>Epic</dt><dd>{{ agileEpicTitle }}</dd></div>
           <div v-if="workflowState"><dt>{{ $t('tma.workflow_state') }}</dt><dd>{{ workflowState }}</dd></div>
           <div v-if="assigneeLabel"><dt>{{ $t('requests.col_assignee') }}</dt><dd>{{ assigneeLabel }}</dd></div>
+          <div v-if="takenOverByLabel"><dt>{{ $t('requests.col_taken_over_by') }}</dt><dd>{{ takenOverByLabel }}</dd></div>
         </dl>
         <WorkflowActions
           :status="status"
@@ -96,6 +97,7 @@ const {
   pickDescription,
   pickStatus,
   pickReopenReason,
+  pickTakenOverById,
   pickWorkflowId
 } = useTma()
 const { getInstance, availableActions, pickState } = useWorkflow()
@@ -201,6 +203,15 @@ const assigneeLabel = computed(() => {
   if (!assigneeId.value) return ''
   const match = teamUsers.value.find((u) => u.id === assigneeId.value)
   return match?.label || assigneeId.value
+})
+const takenOverById = computed(() => {
+  const raw = pickTakenOverById(demand.value ?? {})
+  return raw ? String(raw) : ''
+})
+const takenOverByLabel = computed(() => {
+  if (!takenOverById.value) return ''
+  const match = teamUsers.value.find((u) => u.id === takenOverById.value)
+  return match?.label || takenOverById.value
 })
 const requiresChefGate = computed(() => demand.value?.requiresChefGate ?? demand.value?.RequiresChefGate ?? false)
 const pageTitle = computed(() => subject.value || t('tma.detail_title'))
