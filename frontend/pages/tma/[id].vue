@@ -15,6 +15,10 @@
     <template v-else-if="demand">
       <AppCard padding="lg" class="mb">
         <dl class="meta">
+          <div v-if="ticketNumber">
+            <dt>{{ $t('tma.col_number') }}</dt>
+            <dd>{{ $t('tma.ticket_ref', { n: ticketNumber }) }}</dd>
+          </div>
           <div v-if="subject">
             <dt>{{ $t('tma.col_title') }}</dt>
             <dd>{{ subject }}</dd>
@@ -96,6 +100,7 @@ const {
   pickSubject,
   pickDescription,
   pickStatus,
+  pickTicketNumber,
   pickReopenReason,
   pickTakenOverById,
   pickWorkflowId
@@ -190,6 +195,7 @@ if (can('tma', 'V') || can('tma', 'E')) {
 
 const status = computed(() => pickStatus(demand.value ?? {}))
 const subject = computed(() => pickSubject(demand.value ?? {}))
+const ticketNumber = computed(() => pickTicketNumber(demand.value ?? {}))
 const description = computed(() => pickDescription(demand.value ?? {}))
 const reopenReason = computed(() => {
   if (status.value !== 'rework') return ''
@@ -214,8 +220,16 @@ const takenOverByLabel = computed(() => {
   return match?.label || takenOverById.value
 })
 const requiresChefGate = computed(() => demand.value?.requiresChefGate ?? demand.value?.RequiresChefGate ?? false)
-const pageTitle = computed(() => subject.value || t('tma.detail_title'))
-const pageSubtitle = computed(() => (subject.value ? t('tma.detail_title') : undefined))
+const pageTitle = computed(() => {
+  if (ticketNumber.value && subject.value) {
+    return t('tma.detail_title_numbered', { n: ticketNumber.value, subject: subject.value })
+  }
+  if (ticketNumber.value) {
+    return t('tma.ticket_ref', { n: ticketNumber.value })
+  }
+  return subject.value || t('tma.detail_title')
+})
+const pageSubtitle = computed(() => (subject.value || ticketNumber.value ? t('tma.detail_title') : undefined))
 
 useHead(() => ({
   title: pageTitle.value

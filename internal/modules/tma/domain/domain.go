@@ -63,6 +63,7 @@ type Demand struct {
 	ID                 uuid.UUID
 	TenantID           kernel.TenantID
 	ApplicationID      uuid.UUID
+	TicketNumber       int // sequential per tenant; 0 = not assigned yet
 	Type               DemandType
 	Subject            string
 	Description        string

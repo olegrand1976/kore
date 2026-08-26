@@ -1,6 +1,8 @@
 export type TmaDemand = {
   id?: string
   ID?: string
+  ticketNumber?: number
+  TicketNumber?: number
   applicationId?: string
   ApplicationID?: string
   subject?: string
@@ -55,6 +57,11 @@ export type TmaAnalysis = {
 export function useTma() {
   const { apiFetch } = useApiFetch()
   const pickId = (d: TmaDemand) => d.id ?? d.ID ?? ''
+  const pickTicketNumber = (d: TmaDemand) => {
+    const raw = d.ticketNumber ?? d.TicketNumber
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw
+    return 0
+  }
   const pickSubject = (d: TmaDemand) => d.subject ?? d.Subject ?? ''
   const pickDescription = (d: TmaDemand) => d.description ?? d.Description ?? ''
   const pickStatus = (d: TmaDemand) => d.status ?? d.Status ?? ''
@@ -176,6 +183,7 @@ export function useTma() {
     remove,
     exportXml,
     pickId,
+    pickTicketNumber,
     pickSubject,
     pickDescription,
     pickStatus,

@@ -16,10 +16,16 @@ type fakeDemandRepo struct {
 	lastSaved     domain.Demand
 	lastDeletedAt *time.Time
 	getErr        error
+	nextTicket    int
 }
 
 func (r *fakeDemandRepo) Save(_ context.Context, d domain.Demand) error {
+	if d.TicketNumber <= 0 {
+		r.nextTicket++
+		d.TicketNumber = r.nextTicket
+	}
 	r.lastSaved = d
+	r.demand = d
 	return nil
 }
 
@@ -32,6 +38,10 @@ func (r *fakeDemandRepo) Get(_ context.Context, _ kernel.TenantID, _ uuid.UUID) 
 
 func (r *fakeDemandRepo) List(_ context.Context, _ kernel.TenantID, _ ports.ExportFilter) ([]domain.Demand, error) {
 	return nil, nil
+}
+
+func (r *fakeDemandRepo) EnsureTicketNumbers(_ context.Context, _ kernel.TenantID) error {
+	return nil
 }
 
 func (r *fakeDemandRepo) SoftDelete(_ context.Context, _ kernel.TenantID, _ uuid.UUID, deletedAt time.Time) error {

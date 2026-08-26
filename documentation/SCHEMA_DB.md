@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 25/08/2026 (colonne `tma.demands.taken_over_by_id`)
+> **Dernière mise à jour doc** : 26/08/2026 (colonne `tma.demands.ticket_number` + `tma.tenant_ticket_counters`)
 
 ---
 
@@ -767,6 +767,7 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `id` | UUID | PK |
 | `tenant_id` | UUID | NOT NULL |
 | `application_id` | UUID | NOT NULL |
+| `ticket_number` | INT | Numéro séquentiel par tenant (migration `0009`) — nullable le temps du backfill lazy |
 | `type` | TEXT | NOT NULL, DEFAULT `'incident'` |
 | `subject` | TEXT | NOT NULL |
 | `description` | TEXT | NOT NULL, DEFAULT `''` |
@@ -789,7 +790,16 @@ Demandes TMA, dossiers d'analyse, livraisons.
 | `deleted_at` | TIMESTAMPTZ | Soft-delete (migration `0006`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
-**Index** : `idx_tma_demands_tenant_app_status`, `idx_tma_demands_epic`, `idx_tma_demands_sprint`, `idx_tma_demands_backlog`, `idx_tma_demands_sprint_resolved`, `idx_tma_demands_tenant_active` (`WHERE deleted_at IS NULL`)
+**Index** : `idx_tma_demands_tenant_app_status`, `idx_tma_demands_epic`, `idx_tma_demands_sprint`, `idx_tma_demands_backlog`, `idx_tma_demands_sprint_resolved`, `idx_tma_demands_tenant_active` (`WHERE deleted_at IS NULL`), `idx_tma_demands_tenant_ticket_number` (`UNIQUE (tenant_id, ticket_number) WHERE ticket_number IS NOT NULL`)
+
+### `tma.tenant_ticket_counters`
+
+Compteur de numéros de ticket TMA par tenant (migration `0009`).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `tenant_id` | UUID | PK |
+| `last_number` | INT | NOT NULL, DEFAULT 0 |
 
 ### `tma.analysis_dossiers`
 
@@ -1439,7 +1449,7 @@ Index : `(tenant_id, provider)`. Unique : `(tenant_id, provider, external_user_i
 | `notifications` | rules, messages, device_tokens | 3 |
 | `conges` | leave_requests, leave_balances, leave_type_configs | 3 |
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
-| `tma` | demands, analysis_dossiers, releases, delivery_codes | 4 |
+| `tma` | demands, tenant_ticket_counters, analysis_dossiers, releases, delivery_codes | 5 |
 | `project` | epics, sprints, kanban_configs | 3 |
 | `ssii` | missions, mission_collaborators, mission_applications | 3 |
 | `support` | tickets, ticket_replies | 2 |

@@ -104,10 +104,20 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 	if err := s.repo.Save(ctx, demand); err != nil {
 		return domain.Demand{}, err
 	}
-	return demand, nil
+	return s.repo.Get(ctx, demand.TenantID, demand.ID)
 }
 
 func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
+	d, err := s.repo.Get(ctx, tenant, id)
+	if err != nil {
+		return domain.Demand{}, err
+	}
+	if d.TicketNumber > 0 {
+		return d, nil
+	}
+	if err := s.repo.EnsureTicketNumbers(ctx, tenant); err != nil {
+		return domain.Demand{}, err
+	}
 	return s.repo.Get(ctx, tenant, id)
 }
 
@@ -305,6 +315,9 @@ func (s *service) SoftDelete(ctx context.Context, tenant kernel.TenantID, id uui
 
 func (s *service) List(ctx context.Context, tenant kernel.TenantID, filter ports.ExportFilter) ([]domain.Demand, error) {
 	filter.TenantID = tenant
+	if err := s.repo.EnsureTicketNumbers(ctx, tenant); err != nil {
+		return nil, err
+	}
 	return s.repo.List(ctx, tenant, filter)
 }
 

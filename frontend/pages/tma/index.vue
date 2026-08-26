@@ -88,6 +88,10 @@
 
     <AppCard v-else-if="view === 'table'" padding="none">
       <AppTable :columns="columns" :rows="displayRows" row-key="id">
+        <template #cell-ticketNumber="{ value }">
+          <span v-if="value">{{ $t('tma.ticket_ref', { n: value }) }}</span>
+          <span v-else class="muted">—</span>
+        </template>
         <template #cell-priority="{ value }">
           <AppBadge variant="neutral">{{ priorityLabel(String(value)) }}</AppBadge>
         </template>
@@ -129,6 +133,9 @@
       >
         <template #card="{ item }">
           <div class="tma-kanban-card">
+            <p v-if="(item as TmaRow).ticketNumber" class="tma-kanban-card__number">
+              {{ $t('tma.ticket_ref', { n: (item as TmaRow).ticketNumber }) }}
+            </p>
             <p class="tma-kanban-card__title">{{ (item as TmaRow).title }}</p>
             <p v-if="(item as TmaRow).applicationId" class="tma-kanban-card__meta">
               {{ (item as TmaRow).application }}
@@ -213,6 +220,7 @@ const TMA_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
 
 type TmaRow = {
   id: string
+  ticketNumber: number
   title: string
   status: string
   applicationId: string
@@ -235,6 +243,7 @@ const {
   remove,
   exportXml,
   pickId,
+  pickTicketNumber,
   pickSubject,
   pickStatus,
   pickPriority,
@@ -294,6 +303,7 @@ const listItems = computed((): TmaRow[] =>
     const takenOverById = pickTakenOverById(d)
     return {
       id: pickId(d),
+      ticketNumber: pickTicketNumber(d),
       title: pickSubject(d),
       status: pickStatus(d),
       applicationId,
@@ -362,11 +372,19 @@ const listFilters = computed(() => ({
     label: t('common.list.search'),
     placeholder: t('tma.search_placeholder'),
     match: (row: TmaRow, query: string) =>
-      applyTextSearch(query, row.title, row.application, row.assignee, row.takenOverBy)
+      applyTextSearch(
+        query,
+        row.ticketNumber ? String(row.ticketNumber) : '',
+        row.title,
+        row.application,
+        row.assignee,
+        row.takenOverBy
+      )
   }
 }))
 
 const sortKeys = computed(() => [
+  { key: 'ticketNumber', label: t('tma.col_number'), type: 'number' as const, accessor: (row: TmaRow) => row.ticketNumber },
   { key: 'createdAt', label: t('tma.sort_created'), type: 'date' as const, accessor: (row: TmaRow) => row.createdAt },
   { key: 'title', label: t('tma.col_title'), type: 'string' as const, accessor: (row: TmaRow) => row.title },
   { key: 'application', label: t('requests.col_application'), type: 'string' as const, accessor: (row: TmaRow) => row.application },
@@ -407,6 +425,7 @@ const kpi = computed(() => {
 })
 
 const columns = computed(() => [
+  { key: 'ticketNumber', label: t('tma.col_number'), nowrap: true },
   { key: 'title', label: t('tma.col_title') },
   { key: 'application', label: t('requests.col_application') },
   { key: 'assignee', label: t('requests.col_assignee') },
@@ -508,6 +527,14 @@ const onCreate = async (payload: ServiceRequestPayload) => {
   display: flex;
   flex-direction: column;
   gap: var(--kore-space-sm);
+}
+
+.tma-kanban-card__number {
+  margin: 0;
+  font-size: var(--kore-text-caption);
+  font-weight: 600;
+  color: var(--kore-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .tma-kanban-card__title {

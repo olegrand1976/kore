@@ -23,37 +23,132 @@ func NewRepository(pool *db.Pool) *Repository {
 }
 
 func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO tma.demands (
-			id, tenant_id, application_id, type, subject, description, priority, due_at,
-			workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
-			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
-		ON CONFLICT (id) DO UPDATE SET
-			assignee_id = EXCLUDED.assignee_id,
-			taken_over_by_id = EXCLUDED.taken_over_by_id,
-			status = EXCLUDED.status,
-			visible = EXCLUDED.visible,
-			consumption_active = EXCLUDED.consumption_active,
-			workflow_instance_id = EXCLUDED.workflow_instance_id,
-			description = EXCLUDED.description,
-			priority = EXCLUDED.priority,
-			due_at = EXCLUDED.due_at,
-			epic_id = EXCLUDED.epic_id,
-			sprint_id = EXCLUDED.sprint_id,
-			story_points = EXCLUDED.story_points,
-			backlog_rank = EXCLUDED.backlog_rank,
-			resolved_at = EXCLUDED.resolved_at,
-			reopen_reason = EXCLUDED.reopen_reason
-	`, d.ID, d.TenantID.UUID(), d.ApplicationID, string(d.Type), d.Subject, d.Description, string(d.Priority), d.DueAt,
-		d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, d.TakenOverByID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate,
-		d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.ResolvedAt, d.ReopenReason, d.CreatedAt)
-	return err
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var existingID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		SELECT id FROM tma.demands WHERE id = $1
+	`, d.ID).Scan(&existingID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		ticketNumber := d.TicketNumber
+		if ticketNumber <= 0 {
+			ticketNumber, err = nextTicketNumber(ctx, tx, d.TenantID.UUID())
+			if err != nil {
+				return err
+			}
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO tma.demands (
+				id, tenant_id, application_id, ticket_number, type, subject, description, priority, due_at,
+				workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
+				epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+		`, d.ID, d.TenantID.UUID(), d.ApplicationID, ticketNumber, string(d.Type), d.Subject, d.Description, string(d.Priority), d.DueAt,
+			d.WorkflowInstanceID, d.AuthorID, d.AssigneeID, d.TakenOverByID, string(d.Status), d.Visible, d.ConsumptionActive, d.RequiresChefGate,
+			d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.ResolvedAt, d.ReopenReason, d.CreatedAt)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.Exec(ctx, `
+			UPDATE tma.demands SET
+				assignee_id = $2,
+				taken_over_by_id = $3,
+				status = $4,
+				visible = $5,
+				consumption_active = $6,
+				workflow_instance_id = $7,
+				description = $8,
+				priority = $9,
+				due_at = $10,
+				epic_id = $11,
+				sprint_id = $12,
+				story_points = $13,
+				backlog_rank = $14,
+				resolved_at = $15,
+				reopen_reason = $16
+			WHERE id = $1
+		`, d.ID, d.AssigneeID, d.TakenOverByID, string(d.Status), d.Visible, d.ConsumptionActive,
+			d.WorkflowInstanceID, d.Description, string(d.Priority), d.DueAt,
+			d.EpicID, d.SprintID, d.StoryPoints, d.BacklogRank, d.ResolvedAt, d.ReopenReason)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+func nextTicketNumber(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID) (int, error) {
+	var n int
+	err := tx.QueryRow(ctx, `
+		INSERT INTO tma.tenant_ticket_counters (tenant_id, last_number)
+		VALUES ($1, 1)
+		ON CONFLICT (tenant_id) DO UPDATE
+		SET last_number = tma.tenant_ticket_counters.last_number + 1
+		RETURNING last_number
+	`, tenantID).Scan(&n)
+	return n, err
+}
+
+func (r *Repository) EnsureTicketNumbers(ctx context.Context, tenant kernel.TenantID) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `
+		SELECT id FROM tma.demands
+		WHERE tenant_id = $1 AND ticket_number IS NULL
+		ORDER BY created_at ASC, id ASC
+		FOR UPDATE
+	`, tenant.UUID())
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+
+	for _, id := range ids {
+		n, err := nextTicketNumber(ctx, tx, tenant.UUID())
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE tma.demands SET ticket_number = $3
+			WHERE tenant_id = $1 AND id = $2 AND ticket_number IS NULL
+		`, tenant.UUID(), id, n); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {
 	return r.scanDemand(r.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, application_id, type, subject, description, priority, due_at,
+		SELECT id, tenant_id, application_id, ticket_number, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
 			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at
 		FROM tma.demands WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
@@ -76,7 +171,7 @@ func (r *Repository) SoftDelete(ctx context.Context, tenant kernel.TenantID, id 
 }
 
 func demandSelectColumns() string {
-	return `id, tenant_id, application_id, type, subject, description, priority, due_at,
+	return `id, tenant_id, application_id, ticket_number, type, subject, description, priority, due_at,
 			workflow_instance_id, author_id, assignee_id, taken_over_by_id, status, visible, consumption_active, requires_chef_gate,
 			epic_id, sprint_id, story_points, backlog_rank, resolved_at, reopen_reason, created_at`
 }
@@ -112,7 +207,7 @@ func (r *Repository) List(ctx context.Context, tenant kernel.TenantID, filter po
 	if filter.VisibleOnly {
 		query += " AND visible = TRUE"
 	}
-	query += " ORDER BY backlog_rank NULLS LAST, created_at DESC"
+	query += " ORDER BY ticket_number ASC NULLS LAST, backlog_rank NULLS LAST, created_at DESC"
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -176,8 +271,9 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	var d domain.Demand
 	var tenantID uuid.UUID
 	var demandType, status, priority string
+	var ticketNumber *int
 	err := row.Scan(
-		&d.ID, &tenantID, &d.ApplicationID, &demandType, &d.Subject, &d.Description, &priority, &d.DueAt,
+		&d.ID, &tenantID, &d.ApplicationID, &ticketNumber, &demandType, &d.Subject, &d.Description, &priority, &d.DueAt,
 		&d.WorkflowInstanceID, &d.AuthorID, &d.AssigneeID, &d.TakenOverByID, &status, &d.Visible, &d.ConsumptionActive, &d.RequiresChefGate,
 		&d.EpicID, &d.SprintID, &d.StoryPoints, &d.BacklogRank, &d.ResolvedAt, &d.ReopenReason, &d.CreatedAt,
 	)
@@ -191,6 +287,9 @@ func (r *Repository) scanDemandRow(row pgx.Row) (domain.Demand, error) {
 	d.Type = domain.DemandType(demandType)
 	d.Status = domain.DemandStatus(status)
 	d.Priority = kernel.RequestPriority(priority)
+	if ticketNumber != nil {
+		d.TicketNumber = *ticketNumber
+	}
 	return d, nil
 }
 

@@ -31,6 +31,41 @@ func TestTMA_DemandRoundTrip(t *testing.T) {
 	require.Equal(t, domain.DemandStatusOpen, got.Status)
 	require.True(t, got.Visible)
 	require.Equal(t, "Incident prod", got.Subject)
+	require.Equal(t, 1, got.TicketNumber)
+}
+
+func TestTMA_DemandTicketNumbersSequentialAndEnsure(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	d1 := domain.NewDemand(tenant, uuid.New(), uuid.New(), "First", "", kernel.PriorityNormal, nil, false)
+	d2 := domain.NewDemand(tenant, uuid.New(), uuid.New(), "Second", "", kernel.PriorityNormal, nil, false)
+	require.NoError(t, repo.Save(ctx, d1))
+	require.NoError(t, repo.Save(ctx, d2))
+
+	got1, err := repo.Get(ctx, tenant, d1.ID)
+	require.NoError(t, err)
+	got2, err := repo.Get(ctx, tenant, d2.ID)
+	require.NoError(t, err)
+	require.Equal(t, 1, got1.TicketNumber)
+	require.Equal(t, 2, got2.TicketNumber)
+
+	// Simulate a legacy row without ticket_number (pre-migration edge / NULL).
+	_, err = pool.Exec(ctx, `UPDATE tma.demands SET ticket_number = NULL WHERE id = $1`, d2.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.EnsureTicketNumbers(ctx, tenant))
+	got2, err = repo.Get(ctx, tenant, d2.ID)
+	require.NoError(t, err)
+	require.Equal(t, 3, got2.TicketNumber)
+
+	list, err := repo.List(ctx, tenant, ports.ExportFilter{})
+	require.NoError(t, err)
+	require.Len(t, list, 2)
+	require.Equal(t, 1, list[0].TicketNumber)
+	require.Equal(t, 3, list[1].TicketNumber)
 }
 
 func TestTMA_DemandReopenReasonRoundTrip(t *testing.T) {

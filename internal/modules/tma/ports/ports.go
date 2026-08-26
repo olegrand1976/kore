@@ -123,6 +123,8 @@ type DemandRepository interface {
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error)
 	SoftDelete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID, deletedAt time.Time) error
 	List(ctx context.Context, tenant kernel.TenantID, filter ExportFilter) ([]domain.Demand, error)
+	// EnsureTicketNumbers assigns sequential ticket numbers to demands that still lack one.
+	EnsureTicketNumbers(ctx context.Context, tenant kernel.TenantID) error
 	SaveAnalysis(ctx context.Context, dossier domain.AnalysisDossier) error
 	GetAnalysis(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (domain.AnalysisDossier, error)
 }

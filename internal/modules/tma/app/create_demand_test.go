@@ -27,6 +27,9 @@ func TestCreateDemandSucceedsWithoutDefaultBudget(t *testing.T) {
 	if got.Subject != "Suivi d'équipe" {
 		t.Fatalf("subject = %q", got.Subject)
 	}
+	if got.TicketNumber != 1 {
+		t.Fatalf("ticketNumber = %d, want 1", got.TicketNumber)
+	}
 	if repo.lastSaved.ID != got.ID {
 		t.Fatalf("demand not saved")
 	}
