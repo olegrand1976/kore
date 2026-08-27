@@ -27,7 +27,7 @@ func (r *Repository) Save(ctx context.Context, d domain.Demand) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var existingID uuid.UUID
 	err = tx.QueryRow(ctx, `
@@ -104,7 +104,7 @@ func (r *Repository) EnsureTicketNumbers(ctx context.Context, tenant kernel.Tena
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	rows, err := tx.Query(ctx, `
 		SELECT id FROM tma.demands
