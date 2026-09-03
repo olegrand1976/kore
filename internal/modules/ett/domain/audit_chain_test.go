@@ -64,6 +64,46 @@ func TestVerifyChainDetectsBrokenLink(t *testing.T) {
 	}
 }
 
+// frozenAuditEntryHash est un vecteur figé : il a été calculé une fois et ne doit
+// jamais changer. Il verrouille la représentation binaire produite par
+// encoding/json (tri des clés de map, échappement HTML, format des nombres), dont
+// dépend canonicalPayload et donc entry_hash tel qu'il est persisté en base.
+//
+// Une montée de toolchain Go ou un refactor de canonicalPayload qui ferait bouger
+// ces octets basculerait tout l'historique déjà écrit en INTEGRITY_BROKEN, sans
+// rattrapage possible (le chaînage PrevHash est irréversible). Si ce test casse,
+// ne pas mettre le vecteur à jour : c'est la compatibilité des données existantes
+// qui est en jeu.
+const frozenAuditEntryHash = "091cc1738beead8976e4e68aa0a4ddb38349c1240a1293eed558c2f74517e72a"
+
+func TestComputeHashFrozenVector(t *testing.T) {
+	at := time.Date(2026, 3, 9, 17, 45, 12, 345678000, time.UTC)
+	entry := AuditEntry{
+		TenantID:  kernel.NewTenantID(uuid.MustParse("3f1c8c1e-5a4b-4c2d-9e8f-1a2b3c4d5e6f")),
+		RecordID:  uuid.MustParse("7d9e0b21-8c33-4f10-a5b6-c7d8e9f0a1b2"),
+		Action:    "clock_out",
+		ActorID:   uuid.MustParse("11223344-5566-7788-99aa-bbccddeeff00"),
+		CreatedAt: at,
+		Seq:       42,
+		Payload: map[string]any{
+			// Clés volontairement hors ordre alphabétique : le hash dépend du tri
+			// des clés appliqué par json.Marshal.
+			"previousClockOut": nil,
+			"note":             "Dupont & Fils <SA>",           // échappé en & / < / >
+			"clockOut":         at,                             // normalisé en string 6 décimales
+			"hours":            7.5,                            // format des flottants
+			"comment":          "café — été",                   // UTF-8 non ASCII
+			"meta":             map[string]any{"z": 1, "a": 2}, // map imbriquée, non normalisée
+		},
+	}
+
+	got := entry.ComputeHash("prev-hash-fixe")
+	if got != frozenAuditEntryHash {
+		t.Fatalf("la représentation JSON canonique a changé : hash %s, attendu %s\npayload canonique : %s",
+			got, frozenAuditEntryHash, canonicalPayload(entry.Payload))
+	}
+}
+
 func TestComputeHashStableAfterDBRoundTrip(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	at := time.Date(2026, 7, 15, 9, 30, 0, 0, time.UTC)
