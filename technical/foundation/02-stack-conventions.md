@@ -16,7 +16,7 @@ La modernisation n'est **pas** un masquage ou une surcouche de l'ancienne interf
 
 | Couche | Technologie | Rôle |
 | --- | --- | --- |
-| Langage backend | **Go 1.26** (`go.mod` : `go 1.26.0`, `toolchain go1.26.5`) | API et logique métier |
+| Langage backend | **Go 1.27** (`go.mod` : `go 1.27.0`, `toolchain go1.27.1`) | API et logique métier |
 | Routeur HTTP | **chi** (`go-chi/chi/v5`) | Routing, middleware, léger, proche stdlib |
 | Accès données | **sqlc** | Génération de code type-safe depuis SQL |
 | Driver PostgreSQL | **pgx** (`jackc/pgx/v5`) + `pgxpool` | Pool de connexions performant |
@@ -46,7 +46,8 @@ La modernisation n'est **pas** un masquage ou une surcouche de l'ancienne interf
 
 ## 3. Conventions de code Go
 
-- Formatage : `gofmt` + `goimports` obligatoires. Lint : `golangci-lint` (govet, staticcheck, errcheck, revive, depguard).
+- Formatage : `gofmt` + `goimports` obligatoires (déclarés en `formatters` dans `.golangci.yml`).
+  Lint : `golangci-lint` v2 (set `standard` — errcheck, govet, ineffassign, staticcheck, unused — plus `revive`).
 - Nommage packages : court, minuscule, sans underscore (`cra`, `tma`, `authx`).
 - Interfaces (ports) : nommées par capacité (`CRAReader`, `InvoicePreparer`), suffixe `-er` quand pertinent (ISP).
 - Erreurs : erreurs sentinelles métier dans `domain` (`var ErrCRAAlreadyValidated = errors.New(...)`), enveloppées avec `%w`. Pas de `panic` en flux nominal.

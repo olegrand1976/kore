@@ -12,7 +12,7 @@ Monolithe modulaire hexagonal : **API Go** (`internal/`, `cmd/`) + **frontend Nu
 
 | Couche | Techno |
 | --- | --- |
-| API / métier | Go 1.26 (`go 1.26.0` + `toolchain go1.26.5` dans `go.mod`, seule source de vérité — la CI lit `go-version-file: go.mod`), chi v5, pgx v5 + pgxpool, golang-migrate, sqlc (`sqlc.yaml`) |
+| API / métier | Go 1.27 (`go 1.27.0` + `toolchain go1.27.1` dans `go.mod`, seule source de vérité — la CI lit `go-version-file: go.mod`), chi v5, pgx v5 + pgxpool, golang-migrate, sqlc (`sqlc.yaml`) |
 | DB | PostgreSQL — **un schéma par module** (`cra`, `tma`, `org`, `authx`, `ai`, …) |
 | Cache / sessions | Redis (`redis/go-redis/v9`), préfixe `kore:` |
 | Frontend web | Nuxt 3 (Vue 3, Nitro), Pinia, `@nuxtjs/i18n` (fr défaut, en) |
@@ -186,7 +186,16 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) : jobs `backend`, `int
 ## Pièges connus
 
 - **`gofmt` bloque régulièrement le déploiement staging** (`golangci-lint` en CI) : lancer
-  `gofmt -l .` / `make lint` avant de pousser sur `staging`.
+  `gofmt -l .` / `make lint` avant de pousser sur `staging`. Attention : `gofmt` du `PATH` peut être
+  plus ancien que la toolchain de `go.mod` — utiliser `"$(go env GOROOT)/bin/gofmt"`.
+- **Monter la version de Go = trois fichiers d'un seul geste** : `toolchain` dans `go.mod`,
+  `FROM golang:X.Y.Z-bookworm` dans [deploy/Dockerfile.api](deploy/Dockerfile.api) et le miroir dans
+  [technical/foundation/07-docker-devops.md](technical/foundation/07-docker-devops.md). Les images
+  officielles `golang:` posent `GOTOOLCHAIN=local` : une image inférieure à la directive `go` fait
+  échouer `go mod download` en dur (`go.mod requires go >= …`), ce qui casse `make up`, `make migrate`
+  et le build Kaniko du déploiement staging.
+- Le binaire `golangci-lint` doit être compilé avec un Go >= celui ciblé par `go.mod`, sinon son
+  type-checker refuse le module. La version de la CI (`ci.yml`, job `backend`) est la référence.
 - Le cache Redis peut masquer un `seed-reset` : invalider ou redémarrer Redis si les données seed
   semblent périmées.
 - `internal/app/openapi.yaml` incomplet = CI rouge (test de contrat), y compris pour les webhooks.

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # go.mod est la source unique de la version Go (directive toolchain).
           go-version-file: go.mod
@@ -24,16 +24,17 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          # v1.64.8 est compilé avec go1.24 et refuse un module ciblant go 1.26
-          # (« the Go language version used to build golangci-lint is lower than
-          # the targeted Go version »). v2.13.2 est compilé avec go1.27.
+          # Le binaire doit être compilé avec une version de Go >= celle ciblée par
+          # go.mod, sinon son type-checker refuse le module (« the Go language
+          # version used to build golangci-lint is lower than the targeted Go
+          # version »). v2.13.2 est compilé avec go1.27.0, donc compatible go 1.27.
           version: v2.13.2
 
   integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # go.mod est la source unique de la version Go (directive toolchain).
           go-version-file: go.mod
@@ -75,7 +76,7 @@ jobs:
     needs: [backend]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # go.mod est la source unique de la version Go (directive toolchain).
           go-version-file: go.mod
@@ -118,7 +119,7 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # go.mod est la source unique de la version Go (directive toolchain).
           go-version-file: go.mod
