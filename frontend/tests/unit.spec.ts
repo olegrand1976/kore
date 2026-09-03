@@ -394,6 +394,33 @@ describe('craDayState', () => {
     expect(unlocked[0]?.origin).toBe('manual')
     expect(unlocked[1]?.origin).toBe('prefill')
   })
+
+  it('detects comment and billable edits in the day snapshot', async () => {
+    const { rowsSnapshot } = await import('../utils/craDayState')
+    const row = {
+      key: 'line-1',
+      sourceType: 'mission',
+      hours: '4',
+      origin: 'manual',
+      comment: '',
+      billable: true,
+      workRefType: undefined,
+      workRefId: undefined,
+    }
+
+    expect(rowsSnapshot([row])).toBe(rowsSnapshot([{ ...row }]))
+    expect(rowsSnapshot([row])).not.toBe(rowsSnapshot([{ ...row, comment: 'Réunion client' }]))
+    expect(rowsSnapshot([row])).not.toBe(rowsSnapshot([{ ...row, billable: false }]))
+    expect(rowsSnapshot([row])).not.toBe(rowsSnapshot([{ ...row, hours: '5' }]))
+    expect(rowsSnapshot([row])).not.toBe(rowsSnapshot([{ ...row, workRefType: 'ticket', workRefId: 't-1' }]))
+  })
+
+  it('keeps snapshots distinct when comments contain separator characters', async () => {
+    const { rowsSnapshot } = await import('../utils/craDayState')
+    const base = { key: 'line-1', sourceType: 'mission', hours: '4', origin: 'manual', billable: true }
+
+    expect(rowsSnapshot([{ ...base, comment: 'a|b:c' }])).not.toBe(rowsSnapshot([{ ...base, comment: 'a:b|c' }]))
+  })
 })
 
 describe('useWeekRows toSaveLines', () => {

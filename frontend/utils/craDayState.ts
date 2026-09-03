@@ -5,6 +5,10 @@ export type DayRowLike = {
   sourceType: string
   hours: string
   origin?: string
+  comment?: string
+  billable?: boolean
+  workRefType?: string
+  workRefId?: string
 }
 
 export function withManualOrigin<T extends { origin: string }>(row: T): T {
@@ -37,13 +41,21 @@ export function partialAbsenceHoursLabel(capacityMinutes: number): string {
   return Number.isInteger(halfDayHours) ? String(halfDayHours) : halfDayHours.toFixed(1)
 }
 
+/**
+ * Empreinte d'une journée : doit couvrir tous les champs éditables d'une ligne,
+ * sinon une modification (ex. commentaire seul) est considérée comme un no-op
+ * et n'est jamais remontée au parent — donc jamais enregistrée.
+ */
 export function rowsSnapshot(rows: DayRowLike[]): string {
-  return rows
-    .map((row) => {
-      const workRef = 'workRefType' in row && 'workRefId' in row
-        ? `${(row as { workRefType?: string }).workRefType ?? ''}:${(row as { workRefId?: string }).workRefId ?? ''}`
-        : ''
-      return `${row.key ?? row.sourceType}:${row.hours}:${row.origin ?? ''}:${workRef}`
-    })
-    .join('|')
+  return JSON.stringify(
+    rows.map((row) => [
+      row.key ?? row.sourceType,
+      row.hours,
+      row.origin ?? '',
+      row.comment ?? '',
+      row.billable ?? true,
+      row.workRefType ?? '',
+      row.workRefId ?? ''
+    ])
+  )
 }
