@@ -242,7 +242,7 @@ type OrganizationRepository interface {
 	BudgetBelongsToApplication(ctx context.Context, tenant kernel.TenantID, budgetID, applicationID uuid.UUID) (bool, error)
 	CountProjectArtifacts(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) (int, error)
 	MergeApplications(ctx context.Context, tenant kernel.TenantID, absorbedApplicationID, referenceApplicationID uuid.UUID) (domain.Application, error)
-	RecordAdminAuditEvent(ctx context.Context, tenant kernel.TenantID, actorUserID uuid.UUID, action string, payload map[string]interface{}) error
+	RecordAdminAuditEvent(ctx context.Context, tenant kernel.TenantID, actorUserID uuid.UUID, action string, payload map[string]any) error
 	SaveUser(ctx context.Context, u domain.User) error
 	FindUserByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.User, error)
 	FindUserDetailByID(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (UserDetail, error)

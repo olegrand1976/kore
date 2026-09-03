@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -55,12 +56,7 @@ func (i Identity) EffectiveProfiles() []Profile {
 
 // HasProfile reports whether the identity carries the given profile.
 func (i Identity) HasProfile(p Profile) bool {
-	for _, profile := range i.EffectiveProfiles() {
-		if profile == p {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(i.EffectiveProfiles(), p)
 }
 
 type contextKey struct{}
@@ -250,12 +246,7 @@ func NewRBACAuthorizer(permissions map[string]map[Module]map[Action]bool) *RBACA
 }
 
 func IsPlatformAdmin(identity Identity) bool {
-	for _, role := range identity.Roles {
-		if role == RolePlatformAdmin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(identity.Roles, RolePlatformAdmin)
 }
 
 func (a *RBACAuthorizer) Can(ctx context.Context, module Module, action Action) bool {

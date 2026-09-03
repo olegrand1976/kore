@@ -525,7 +525,7 @@ func (s *userService) decryptSecret(encrypted string) (string, error) {
 func (s *userService) generateBackupCodes() ([]string, []string, error) {
 	codes := make([]string, 0, totpBackupCodeCount)
 	hashes := make([]string, 0, totpBackupCodeCount)
-	for i := 0; i < totpBackupCodeCount; i++ {
+	for range totpBackupCodeCount {
 		code, err := randomBackupCode()
 		if err != nil {
 			return nil, nil, err
@@ -543,7 +543,7 @@ func (s *userService) generateBackupCodes() ([]string, []string, error) {
 func randomBackupCode() (string, error) {
 	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 	var b strings.Builder
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
 		if err != nil {
 			return "", err

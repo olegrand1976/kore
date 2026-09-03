@@ -491,8 +491,8 @@ func TestUpdateUser_attachesEquipe(t *testing.T) {
 	user := equipeTestUser(tenant, nil)
 	equipeID := uuid.New()
 	repo := &structureRepo{
-		refreshUserRepo: refreshUserRepo{user: user},
-		equipes:         []domain.Equipe{{ID: equipeID, TenantID: tenant}},
+		user:    user,
+		equipes: []domain.Equipe{{ID: equipeID, TenantID: tenant}},
 	}
 	svc := newUserServiceForEquipe(t, repo)
 
@@ -520,7 +520,7 @@ func TestUpdateUser_detachesEquipe(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	current := uuid.New()
 	user := equipeTestUser(tenant, &current)
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	repo := &structureRepo{user: user}
 	svc := newUserServiceForEquipe(t, repo)
 
 	// Pointeur vers nil = détachement explicite.
@@ -547,8 +547,8 @@ func TestUpdateUser_allowsSelfEquipeChange(t *testing.T) {
 	user := equipeTestUser(tenant, &current)
 	other := uuid.New()
 	repo := &structureRepo{
-		refreshUserRepo: refreshUserRepo{user: user},
-		equipes:         []domain.Equipe{{ID: other, TenantID: tenant}},
+		user:    user,
+		equipes: []domain.Equipe{{ID: other, TenantID: tenant}},
 	}
 	svc := newUserServiceForEquipe(t, repo)
 
@@ -575,7 +575,7 @@ func TestUpdateUser_allowsSelfProfilesChange(t *testing.T) {
 	user := equipeTestUser(tenant, nil)
 	user.Profile = domain.ProfileAdmin
 	user.Profiles = []domain.Profile{domain.ProfileAdmin}
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	repo := &structureRepo{user: user}
 	svc := newUserServiceForEquipe(t, repo)
 
 	profiles := []domain.Profile{domain.ProfileAdmin, domain.ProfileCollaborateur}
@@ -599,7 +599,7 @@ func TestUpdateUser_allowsSelfProfilesChange(t *testing.T) {
 func TestUpdateUser_blocksSelfDeactivate(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	user := equipeTestUser(tenant, nil)
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	repo := &structureRepo{user: user}
 	svc := newUserServiceForEquipe(t, repo)
 
 	active := false
@@ -622,7 +622,7 @@ func TestUpdateUser_blocksSelfDemoteAdmin(t *testing.T) {
 	user := equipeTestUser(tenant, nil)
 	user.Profile = domain.ProfileAdmin
 	user.Profiles = []domain.Profile{domain.ProfileAdmin}
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	repo := &structureRepo{user: user}
 	svc := newUserServiceForEquipe(t, repo)
 
 	profiles := []domain.Profile{domain.ProfileCollaborateur}
@@ -646,8 +646,8 @@ func TestUpdateUser_blocksLastAdminDemote(t *testing.T) {
 	admin.Profile = domain.ProfileAdmin
 	admin.Profiles = []domain.Profile{domain.ProfileAdmin}
 	repo := &structureRepo{
-		refreshUserRepo: refreshUserRepo{user: admin},
-		listedUsers:     []domain.User{admin},
+		user:        admin,
+		listedUsers: []domain.User{admin},
 	}
 	svc := newUserServiceForEquipe(t, repo)
 
@@ -676,8 +676,8 @@ func TestUpdateUser_allowsDemoteWhenOtherAdminExists(t *testing.T) {
 	other.Profile = domain.ProfileAdmin
 	other.Profiles = []domain.Profile{domain.ProfileAdmin}
 	repo := &structureRepo{
-		refreshUserRepo: refreshUserRepo{user: admin},
-		listedUsers:     []domain.User{admin, other},
+		user:        admin,
+		listedUsers: []domain.User{admin, other},
 	}
 	svc := newUserServiceForEquipe(t, repo)
 
@@ -700,7 +700,7 @@ func TestUpdateUser_keepsEquipeWhenFieldAbsent(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	current := uuid.New()
 	user := equipeTestUser(tenant, &current)
-	repo := &structureRepo{refreshUserRepo: refreshUserRepo{user: user}}
+	repo := &structureRepo{user: user}
 	svc := newUserServiceForEquipe(t, repo)
 
 	profile := domain.ProfileAdmin

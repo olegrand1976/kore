@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,12 +52,7 @@ func (d Demand) IsOpen() bool {
 
 // IsOpenStatus reports whether status is in the open portefeuille set.
 func IsOpenStatus(status DemandStatus) bool {
-	for _, s := range OpenStatuses {
-		if status == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(OpenStatuses, status)
 }
 
 type Demand struct {

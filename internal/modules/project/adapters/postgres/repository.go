@@ -308,14 +308,8 @@ func (r *Repository) GetSprintBurndown(ctx context.Context, tenant kernel.Tenant
 		lastDay = startDay
 	}
 
-	days := int(lastDay.Sub(startDay).Hours()/24) + 1
-	if days < 1 {
-		days = 1
-	}
-	totalDays := int(endDay.Sub(startDay).Hours()/24) + 1
-	if totalDays < 1 {
-		totalDays = 1
-	}
+	days := max(int(lastDay.Sub(startDay).Hours()/24)+1, 1)
+	totalDays := max(int(endDay.Sub(startDay).Hours()/24)+1, 1)
 
 	resolvedByDay := make(map[string]int)
 	rows, err := r.pool.Query(ctx, `
@@ -358,14 +352,8 @@ func (r *Repository) GetSprintBurndown(ctx context.Context, tenant kernel.Tenant
 			doneCumulative += resolvedByDay[resolvedDays[resolvedIdx]]
 			resolvedIdx++
 		}
-		remaining := planned - doneCumulative
-		if remaining < 0 {
-			remaining = 0
-		}
-		ideal := planned - (planned * i / totalDays)
-		if ideal < 0 {
-			ideal = 0
-		}
+		remaining := max(planned-doneCumulative, 0)
+		ideal := max(planned-(planned*i/totalDays), 0)
 		points = append(points, domain.BurndownPoint{
 			Date:            date,
 			RemainingPoints: remaining,

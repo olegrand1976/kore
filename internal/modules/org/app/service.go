@@ -348,7 +348,7 @@ func (s *organizationService) MergeApplications(ctx context.Context, cmd ports.M
 		return domain.Application{}, err
 	}
 	if cmd.ActorUserID != uuid.Nil {
-		if err := s.repo.RecordAdminAuditEvent(ctx, cmd.TenantID, cmd.ActorUserID, "applications.merge", map[string]interface{}{
+		if err := s.repo.RecordAdminAuditEvent(ctx, cmd.TenantID, cmd.ActorUserID, "applications.merge", map[string]any{
 			"absorbedApplicationId":  absorbedID.String(),
 			"referenceApplicationId": referenceID.String(),
 			"absorbedLibelle":        absorbedApp.Libelle,

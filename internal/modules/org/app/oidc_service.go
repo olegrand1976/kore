@@ -253,13 +253,13 @@ func (s *oidcService) resolveUser(ctx context.Context, tenant kernel.TenantID, i
 func (s *oidcService) generateJITLogin(ctx context.Context, tenant kernel.TenantID, email string) (domain.Login, error) {
 	prefix := "SSO"
 	if email != "" {
-		local := strings.Split(email, "@")[0]
+		local, _, _ := strings.Cut(email, "@")
 		local = strings.ToLower(strings.NewReplacer(".", "_", "-", "_").Replace(local))
 		if len(local) >= 3 {
 			prefix = strings.ToUpper(local[:3])
 		}
 	}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		suffix := email
 		if suffix == "" {
 			suffix = uuid.New().String()[:8]

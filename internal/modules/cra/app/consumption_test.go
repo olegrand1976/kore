@@ -65,7 +65,7 @@ func TestConsumedByApplication_InvalidatesAfterSaveWeek(t *testing.T) {
 	weekID := uuid.New()
 	day := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
 	repo := &countingConsumptionRepo{
-		validationRepo: validationRepo{ts: domain.Timesheet{
+		ts: domain.Timesheet{
 			ID:       uuid.New(),
 			TenantID: tenant,
 			UserID:   userID,
@@ -75,7 +75,7 @@ func TestConsumedByApplication_InvalidatesAfterSaveWeek(t *testing.T) {
 				ID:         weekID,
 				WeekNumber: 2,
 			}},
-		}},
+		},
 		data: []domain.Consumption{{
 			UserID:   userID,
 			Source:   domain.SourceRef{Type: "application", ID: appID.String()},

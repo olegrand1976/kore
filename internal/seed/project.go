@@ -163,7 +163,7 @@ func (r *Runner) seedKanbanProjectData(ctx context.Context, tenant kernel.Tenant
 		Columns: []projectdomain.KanbanColumn{
 			{StateCode: "ouverte", Label: "À faire"},
 			{StateCode: "affectee", Label: "Affectée"},
-			{StateCode: "en_cours", Label: "En cours", WipLimit: intPtr(3)},
+			{StateCode: "en_cours", Label: "En cours", WipLimit: new(3)},
 			{StateCode: "rework", Label: "Rework"},
 			{StateCode: "resolue", Label: "Terminé"},
 		},
@@ -173,10 +173,6 @@ func (r *Runner) seedKanbanProjectData(ctx context.Context, tenant kernel.Tenant
 
 	log.Printf("seed: project kanban — config %s", DemoApp3Label)
 	return nil
-}
-
-func intPtr(n int) *int {
-	return &n
 }
 
 func (r *Runner) seedDemandStoryPoints(ctx context.Context, tenant kernel.TenantID, appID uuid.UUID) error {

@@ -26,8 +26,7 @@ func resolveIDPClientSecret(idp domain.IdentityProvider) string {
 		}
 	}
 	secret := strings.TrimSpace(idp.ClientSecret)
-	if strings.HasPrefix(secret, "sm://") {
-		ref := strings.TrimPrefix(secret, "sm://")
+	if ref, ok := strings.CutPrefix(secret, "sm://"); ok {
 		if envKey, ok := secretRefEnv[ref]; ok {
 			if v := strings.TrimSpace(os.Getenv(envKey)); v != "" {
 				return v

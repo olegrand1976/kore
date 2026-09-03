@@ -71,7 +71,7 @@ func atHour(t time.Time, hour int) time.Time {
 
 func nextWeekday(now time.Time, target time.Weekday) time.Time {
 	candidate := atHour(now, scheduledSendHour)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if candidate.Weekday() == target && candidate.After(now) {
 			return candidate
 		}

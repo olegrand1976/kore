@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func MonthWeekCount(year int, month time.Month, weekStartDay int) int {
 	count := 0
 	for {
 		hasDay := false
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			d := start.AddDate(0, 0, i)
 			if d.Month() == month && d.Day() <= lastDay {
 				hasDay = true
@@ -65,7 +66,7 @@ func WeekDaysInMonth(month Month, weekNumber WeekNumber, weekStartDay int) ([]st
 	}
 	start := WeekRangeStart(year, m, weekNumber, weekStartDay)
 	days := make([]string, 0, 7)
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		d := start.AddDate(0, 0, i)
 		if d.Month() != m {
 			continue
@@ -91,10 +92,8 @@ func MonthWeekNumber(day time.Time, month Month, weekStartDay int) (WeekNumber, 
 			return 0, err
 		}
 		key := day.Format("2006-01-02")
-		for _, d := range days {
-			if d == key {
-				return w, nil
-			}
+		if slices.Contains(days, key) {
+			return w, nil
 		}
 	}
 	return WeekNumber(1), nil

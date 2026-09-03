@@ -22,7 +22,7 @@ func parseAnalysisDraftLLM(text string) (domain.AnalysisDraft, bool) {
 		"TESTS":      &draft.TestScenario,
 	}
 
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -61,7 +61,7 @@ func parseClassifyLLM(text string) (category string, confidence float64, ok bool
 	}
 	category = ""
 	confidence = 0
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		upper := strings.ToUpper(line)
 		switch {
@@ -107,7 +107,7 @@ func parseExecutiveSummaryLLM(text string) (summary string, highlights []string,
 	if text == "" {
 		return "", nil, false
 	}
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		line = strings.TrimSpace(line)
 		upper := strings.ToUpper(line)
 		switch {

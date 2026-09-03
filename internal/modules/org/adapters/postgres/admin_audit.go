@@ -14,7 +14,7 @@ func (r *Repository) RecordAdminAuditEvent(
 	tenant kernel.TenantID,
 	actorUserID uuid.UUID,
 	action string,
-	payload map[string]interface{},
+	payload map[string]any,
 ) error {
 	if actorUserID == uuid.Nil || action == "" {
 		return nil

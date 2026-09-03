@@ -579,7 +579,7 @@ func nextMonday(from time.Time) time.Time {
 
 func nextWeekdayAt(from time.Time, weekday time.Weekday, hour, minute int) time.Time {
 	day := from.UTC()
-	for i := 0; i < 14; i++ {
+	for range 14 {
 		if day.Weekday() == weekday && day.After(from) {
 			return time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, time.UTC)
 		}

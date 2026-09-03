@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -243,10 +244,8 @@ func (s *TaigaService) ensureTaigaProjectAvailable(ctx context.Context, tenant k
 		return err
 	}
 	extID := strconv.Itoa(taigaProjectID)
-	for _, id := range linked {
-		if id == extID {
-			return domain.ErrTaigaProjectLinked
-		}
+	if slices.Contains(linked, extID) {
+		return domain.ErrTaigaProjectLinked
 	}
 	return nil
 }

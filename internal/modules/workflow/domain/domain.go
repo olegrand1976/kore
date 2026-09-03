@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/platform/authx"
@@ -159,10 +160,8 @@ func TransitionAllowed(t Transition, actor authx.Identity) bool {
 		if actor.HasProfile(authx.Profile(role)) {
 			return true
 		}
-		for _, r := range actor.Roles {
-			if r == role {
-				return true
-			}
+		if slices.Contains(actor.Roles, role) {
+			return true
 		}
 	}
 	return false

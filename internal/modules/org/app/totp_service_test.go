@@ -84,7 +84,7 @@ func (r *totpUserRepo) CountProjectArtifacts(context.Context, kernel.TenantID, u
 func (r *totpUserRepo) MergeApplications(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID) (domain.Application, error) {
 	return domain.Application{}, domain.ErrApplicationNotFound
 }
-func (r *totpUserRepo) RecordAdminAuditEvent(context.Context, kernel.TenantID, uuid.UUID, string, map[string]interface{}) error {
+func (r *totpUserRepo) RecordAdminAuditEvent(context.Context, kernel.TenantID, uuid.UUID, string, map[string]any) error {
 	return nil
 }
 func (r *totpUserRepo) SaveUser(context.Context, domain.User) error { return nil }
@@ -271,7 +271,7 @@ func TestVerify2FAEnrollment_invalidCodeKeepsToken(t *testing.T) {
 	_, err = svc.Setup2FAWithEnrollmentToken(context.Background(), auth.EnrollmentToken)
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, err = svc.Verify2FAEnrollment(context.Background(), auth.EnrollmentToken, "000000", "")
 		require.ErrorIs(t, err, domain.Err2FAInvalidCode)
 	}
@@ -299,7 +299,7 @@ func TestVerify2FAEnrollment_rateLimited(t *testing.T) {
 	_, err = svc.Setup2FAWithEnrollmentToken(context.Background(), auth.EnrollmentToken)
 	require.NoError(t, err)
 
-	for i := 0; i < totpRateLimitMax; i++ {
+	for range totpRateLimitMax {
 		_, err = svc.Verify2FAEnrollment(context.Background(), auth.EnrollmentToken, "000000", "")
 		require.ErrorIs(t, err, domain.Err2FAInvalidCode)
 	}
@@ -332,7 +332,7 @@ func TestVerify2FAChallenge_rateLimited(t *testing.T) {
 	auth, err := svc.Authenticate(context.Background(), "ADM_admin", "Admin123!")
 	require.NoError(t, err)
 
-	for i := 0; i < totpRateLimitMax; i++ {
+	for range totpRateLimitMax {
 		_, err := svc.Verify2FAChallenge(context.Background(), auth.ChallengeToken, "000000")
 		require.ErrorIs(t, err, domain.Err2FAInvalidCode)
 	}

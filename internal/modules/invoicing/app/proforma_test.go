@@ -135,11 +135,11 @@ func TestEmitProformaRequiresEmail(t *testing.T) {
 
 func extractProformaToken(body string) string {
 	const marker = "/public/proforma/"
-	i := strings.Index(body, marker)
-	if i < 0 {
+	_, after, ok := strings.Cut(body, marker)
+	if !ok {
 		return ""
 	}
-	rest := body[i+len(marker):]
+	rest := after
 	end := strings.IndexAny(rest, " \n\r\t")
 	if end < 0 {
 		return strings.TrimSpace(rest)

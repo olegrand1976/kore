@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -148,12 +149,7 @@ func (u User) HasAdminProfile() bool {
 }
 
 func ProfilesContain(profiles []Profile, want Profile) bool {
-	for _, p := range profiles {
-		if p == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(profiles, want)
 }
 
 type ActivationPeriod struct {
@@ -209,10 +205,8 @@ func (u *User) SyncPrimaryMemberships() {
 	switch {
 	case len(u.EquipeIDs) > 0:
 		if u.EquipeID != nil {
-			for _, id := range u.EquipeIDs {
-				if id == *u.EquipeID {
-					return
-				}
+			if slices.Contains(u.EquipeIDs, *u.EquipeID) {
+				return
 			}
 		}
 		id := u.EquipeIDs[0]

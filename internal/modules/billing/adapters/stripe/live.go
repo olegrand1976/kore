@@ -52,7 +52,7 @@ func (g *Gateway) CreateCheckoutSession(ctx context.Context, req ports.CheckoutR
 	_ = ctx
 	customerID := req.CustomerID
 	if customerID == "" && req.CustomerEmail != "" {
-		c, err := customer.New(&stripe.CustomerParams{Email: stripe.String(req.CustomerEmail)})
+		c, err := customer.New(&stripe.CustomerParams{Email: new(req.CustomerEmail)})
 		if err != nil {
 			return domain.CheckoutSession{}, fmt.Errorf("stripe create customer: %w", err)
 		}
@@ -60,9 +60,9 @@ func (g *Gateway) CreateCheckoutSession(ctx context.Context, req ports.CheckoutR
 	}
 	params := &stripe.CheckoutSessionParams{
 		Mode:              stripe.String(string(stripe.CheckoutSessionModeSubscription)),
-		ClientReferenceID: stripe.String(req.TenantID.String()),
-		SuccessURL:        stripe.String(req.SuccessURL),
-		CancelURL:         stripe.String(req.CancelURL),
+		ClientReferenceID: new(req.TenantID.String()),
+		SuccessURL:        new(req.SuccessURL),
+		CancelURL:         new(req.CancelURL),
 		LineItems:         buildLineItems(req.Modules),
 		Metadata: map[string]string{
 			"tenant_id": req.TenantID.String(),
@@ -71,11 +71,11 @@ func (g *Gateway) CreateCheckoutSession(ctx context.Context, req ports.CheckoutR
 		},
 	}
 	if customerID != "" {
-		params.Customer = stripe.String(customerID)
+		params.Customer = new(customerID)
 	}
 	if g.TrialDays > 0 {
 		params.SubscriptionData = &stripe.CheckoutSessionSubscriptionDataParams{
-			TrialPeriodDays: stripe.Int64(int64(g.TrialDays)),
+			TrialPeriodDays: new(int64(g.TrialDays)),
 		}
 	}
 	sess, err := checkoutsession.New(params)
@@ -87,8 +87,8 @@ func (g *Gateway) CreateCheckoutSession(ctx context.Context, req ports.CheckoutR
 
 func (g *Gateway) CreatePortalSession(_ context.Context, customerID, returnURL string) (domain.PortalSession, error) {
 	sess, err := billingportal.New(&stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(customerID),
-		ReturnURL: stripe.String(returnURL),
+		Customer:  new(customerID),
+		ReturnURL: new(returnURL),
 	})
 	if err != nil {
 		return domain.PortalSession{}, fmt.Errorf("stripe portal session: %w", err)
@@ -121,7 +121,7 @@ func (g *Gateway) CancelSubscription(_ context.Context, subscriptionID string) e
 }
 
 func (g *Gateway) ListPrices(_ context.Context) (domain.PricingCatalog, error) {
-	iter := price.List(&stripe.PriceListParams{Active: stripe.Bool(true), Expand: []*string{stripe.String("data.product")}})
+	iter := price.List(&stripe.PriceListParams{Active: new(true), Expand: []*string{new("data.product")}})
 	catalog := domain.PricingCatalog{Currency: "EUR", TrialDays: g.TrialDays}
 	for iter.Next() {
 		p := iter.Price()
@@ -161,14 +161,14 @@ func buildLineItems(modules []domain.ModuleCode) []*stripe.CheckoutSessionLineIt
 			continue
 		}
 		items = append(items, &stripe.CheckoutSessionLineItemParams{
-			Price:    stripe.String(priceID),
+			Price:    new(priceID),
 			Quantity: stripe.Int64(1),
 		})
 	}
 	if len(items) == 0 {
 		if defaultPrice := os.Getenv("STRIPE_DEFAULT_PRICE_ID"); defaultPrice != "" {
 			items = append(items, &stripe.CheckoutSessionLineItemParams{
-				Price:    stripe.String(defaultPrice),
+				Price:    new(defaultPrice),
 				Quantity: stripe.Int64(1),
 			})
 		}

@@ -65,7 +65,7 @@ func (d *WebhookDispatcher) Dispatch(ctx context.Context, evt ports.OutboundEven
 
 func (d *WebhookDispatcher) deliverWithRetry(ctx context.Context, url, secret string, payload []byte) error {
 	var lastErr error
-	for attempt := 0; attempt < maxWebhookAttempts; attempt++ {
+	for attempt := range maxWebhookAttempts {
 		if attempt > 0 {
 			delay := webhookRetryDelays[attempt-1]
 			if delay > 0 {

@@ -430,14 +430,14 @@ func (s *Service) CongesManagerContext(ctx context.Context, cmd ports.CongesMana
 		return ports.ManagerContextResult{}, err
 	}
 	balances, _ := s.leaves.ListBalances(ctx, cmd.TenantID, leave.UserID)
-	pending, _ := s.leaves.ListLeaves(ctx, cmd.TenantID, ptrStatus(congesdomain.LeaveStatusPending))
-	var balanceText string
+	pending, _ := s.leaves.ListLeaves(ctx, cmd.TenantID, new(congesdomain.LeaveStatusPending))
+	var balanceText strings.Builder
 	for _, b := range balances {
-		balanceText += fmt.Sprintf("%s: %.1f restant; ", b.Type, b.Remaining)
+		fmt.Fprintf(&balanceText, "%s: %.1f restant; ", b.Type, b.Remaining)
 	}
 	contextText := fmt.Sprintf(
 		"Demande du %s au %s. Motif : %s. Soldes demandeur : %s Autres demandes en attente équipe : %d. Contexte factuel — décision manager requise.",
-		leave.Period.From.Format("02/01/2006"), leave.Period.To.Format("02/01/2006"), leave.Motif, balanceText, len(pending),
+		leave.Period.From.Format("02/01/2006"), leave.Period.To.Format("02/01/2006"), leave.Motif, balanceText.String(), len(pending),
 	)
 	result := ports.ManagerContextResult{Context: contextText}
 	out, _ := json.Marshal(result)
@@ -557,10 +557,6 @@ func ptrUUID(id uuid.UUID) *uuid.UUID {
 		return nil
 	}
 	return &id
-}
-
-func ptrStatus(s congesdomain.LeaveStatus) *congesdomain.LeaveStatus {
-	return &s
 }
 
 func mustJSON(v any) []byte {

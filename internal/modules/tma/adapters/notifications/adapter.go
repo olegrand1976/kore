@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"maps"
 
 	"github.com/google/uuid"
 	notifports "github.com/kore/kore/internal/modules/notifications/ports"
@@ -22,9 +23,7 @@ func (a *PublisherAdapter) Notify(ctx context.Context, evt ports.NotificationEve
 		trigger = "tma.notification"
 	}
 	vars := map[string]string{}
-	for k, v := range evt.Vars {
-		vars[k] = v
-	}
+	maps.Copy(vars, evt.Vars)
 	if evt.Body != "" {
 		vars["body"] = evt.Body
 	}

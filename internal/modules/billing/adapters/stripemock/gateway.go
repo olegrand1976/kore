@@ -143,7 +143,7 @@ func (g *Gateway) verifySignature(payload []byte, signatureHeader string) bool {
 		return g.WebhookSecret == "whsec_test"
 	}
 	var timestamp, sigV1 string
-	for _, part := range strings.Split(signatureHeader, ",") {
+	for part := range strings.SplitSeq(signatureHeader, ",") {
 		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
 		if len(kv) != 2 {
 			continue

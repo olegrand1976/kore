@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -143,13 +144,7 @@ func (g *Gateway) ValidateIDToken(ctx context.Context, idToken, issuer, jwksURI,
 		return IDTokenClaims{}, errors.New("invalid id token claims")
 	}
 	if clientID != "" {
-		found := false
-		for _, aud := range claims.Audience {
-			if aud == clientID {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(claims.Audience, clientID)
 		if !found && len(claims.Audience) > 0 {
 			return IDTokenClaims{}, errors.New("audience mismatch")
 		}

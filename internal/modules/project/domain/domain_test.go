@@ -29,7 +29,7 @@ func TestValidateKanbanConfig(t *testing.T) {
 	t.Parallel()
 	valid := []domain.KanbanColumn{
 		{StateCode: "ouverte", Label: "Open"},
-		{StateCode: "en_cours", Label: "Doing", WipLimit: intPtr(3)},
+		{StateCode: "en_cours", Label: "Doing", WipLimit: new(3)},
 	}
 	if err := domain.ValidateKanbanConfig(valid); err != nil {
 		t.Fatalf("valid config: %v", err)
@@ -42,8 +42,6 @@ func TestValidateKanbanConfig(t *testing.T) {
 		t.Fatalf("expected invalid kanban config, got %v", err)
 	}
 }
-
-func intPtr(n int) *int { return &n }
 
 func TestValidateStoryPoints(t *testing.T) {
 	t.Parallel()

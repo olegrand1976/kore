@@ -27,7 +27,7 @@ type mergeRepoStub struct {
 	apps            map[uuid.UUID]domain.Application
 	artifactCounts  map[uuid.UUID]int
 	auditAction     string
-	auditPayload    map[string]interface{}
+	auditPayload    map[string]any
 }
 
 func (r *mergeRepoStub) GetApplication(_ context.Context, _ kernel.TenantID, id uuid.UUID) (domain.Application, error) {
@@ -53,7 +53,7 @@ func (r *mergeRepoStub) MergeApplications(_ context.Context, _ kernel.TenantID, 
 	return domain.Application{ID: referenceID}, nil
 }
 
-func (r *mergeRepoStub) RecordAdminAuditEvent(_ context.Context, _ kernel.TenantID, _ uuid.UUID, action string, payload map[string]interface{}) error {
+func (r *mergeRepoStub) RecordAdminAuditEvent(_ context.Context, _ kernel.TenantID, _ uuid.UUID, action string, payload map[string]any) error {
 	r.auditAction = action
 	r.auditPayload = payload
 	return nil

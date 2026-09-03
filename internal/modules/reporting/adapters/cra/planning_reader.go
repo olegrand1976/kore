@@ -129,10 +129,7 @@ func BuildGanttView(period kernel.Period, rows []reportports.PlanningActivityRow
 	items := make([]reportdomain.GanttItem, 0, len(keys))
 	for _, id := range keys {
 		item := agg[id]
-		days := int(item.end.Sub(item.start).Hours()/24) + 1
-		if days < 1 {
-			days = 1
-		}
+		days := max(int(item.end.Sub(item.start).Hours()/24)+1, 1)
 		capacityMinutes := days * 480
 		progress := float64(item.minutes) / float64(capacityMinutes)
 		if progress > 1 {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -696,12 +697,7 @@ func (a anyModuleAuthorizer) Can(_ context.Context, module authx.Module, action 
 	if action != authx.ActionRead {
 		return false
 	}
-	for _, m := range a.modules {
-		if m == module {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(a.modules, module)
 }
 
 type stubClientService struct {

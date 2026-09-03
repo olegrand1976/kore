@@ -10,8 +10,7 @@ import (
 
 // InvalidTokens extrait les tokens FCM invalides d'une erreur d'envoi.
 func InvalidTokens(err error) []string {
-	var inv *invalidTokensError
-	if errors.As(err, &inv) {
+	if inv, ok := errors.AsType[*invalidTokensError](err); ok {
 		return inv.InvalidTokens()
 	}
 	return nil

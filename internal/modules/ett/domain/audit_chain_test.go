@@ -16,7 +16,7 @@ func chainedEntries(t *testing.T, n int) []AuditEntry {
 	base := time.Date(2027, 1, 4, 8, 0, 0, 0, time.UTC)
 	entries := make([]AuditEntry, 0, n)
 	prev := ""
-	for i := 0; i < n; i++ {
+	for i := range n {
 		e := AuditEntry{
 			ID:        uuid.New(),
 			TenantID:  tenant,
