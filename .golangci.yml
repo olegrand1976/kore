@@ -1,24 +1,45 @@
-run:
-  timeout: 5m
-
+version: "2"
 linters:
   enable:
-    - errcheck
-    - govet
-    - staticcheck
     - revive
-    - ineffassign
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+      # QF1008 (« could remove embedded field from selector ») est un quickfix
+      # stylistique activé par défaut en golangci-lint v2. On le laisse de côté :
+      # dans platform/db/pool.go, le sélecteur explicite p.Pool.Ping est
+      # obligatoire (sinon récursion infinie), et le supprimer sur les seules
+      # méthodes non redéfinies rendrait le fichier incohérent et fragile.
+      - linters:
+          - staticcheck
+        text: 'QF1008'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      # Go vendored dans un paquet npm : ce n'est pas notre code.
+      - frontend/node_modules
+formatters:
+  enable:
     - gofmt
     - goimports
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        disabled: true
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - frontend/node_modules

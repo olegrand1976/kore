@@ -11,9 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          # go.mod est la source unique de la version Go (directive toolchain).
+          go-version-file: go.mod
       - name: Go test
         run: go test ./...
       - name: Coverage gate (domain)
@@ -21,18 +22,21 @@ jobs:
         env:
           COVERAGE_THRESHOLD: '50'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.64.8
-          verify: false
+          # v1.64.8 est compilé avec go1.24 et refuse un module ciblant go 1.26
+          # (« the Go language version used to build golangci-lint is lower than
+          # the targeted Go version »). v2.13.2 est compilé avec go1.27.
+          version: v2.13.2
 
   integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          # go.mod est la source unique de la version Go (directive toolchain).
+          go-version-file: go.mod
       - name: Integration tests (testcontainers)
         run: make test-integration
 
@@ -71,9 +75,10 @@ jobs:
     needs: [backend]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          # go.mod est la source unique de la version Go (directive toolchain).
+          go-version-file: go.mod
       - name: Start test stack
         env:
           COMPOSE_PROJECT_NAME: kore-test
@@ -113,9 +118,10 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          # go.mod est la source unique de la version Go (directive toolchain).
+          go-version-file: go.mod
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

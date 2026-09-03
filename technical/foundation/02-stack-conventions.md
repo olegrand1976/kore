@@ -16,7 +16,7 @@ La modernisation n'est **pas** un masquage ou une surcouche de l'ancienne interf
 
 | Couche | Technologie | Rôle |
 | --- | --- | --- |
-| Langage backend | **Go** (>= 1.23) | API et logique métier |
+| Langage backend | **Go 1.26** (`go.mod` : `go 1.26.0`, `toolchain go1.26.5`) | API et logique métier |
 | Routeur HTTP | **chi** (`go-chi/chi/v5`) | Routing, middleware, léger, proche stdlib |
 | Accès données | **sqlc** | Génération de code type-safe depuis SQL |
 | Driver PostgreSQL | **pgx** (`jackc/pgx/v5`) + `pgxpool` | Pool de connexions performant |

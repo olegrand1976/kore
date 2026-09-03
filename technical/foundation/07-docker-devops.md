@@ -45,7 +45,7 @@ Un fichier `deploy/docker-compose.test.yml` (ou profil `test`) fournit un enviro
 
 ```dockerfile
 # build
-FROM golang:1.23 AS build
+FROM golang:1.26.5-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

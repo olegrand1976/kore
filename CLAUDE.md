@@ -12,7 +12,7 @@ Monolithe modulaire hexagonal : **API Go** (`internal/`, `cmd/`) + **frontend Nu
 
 | Couche | Techno |
 | --- | --- |
-| API / métier | Go (`go 1.21` dans `go.mod`, CI `setup-go 1.21`), chi v5, pgx v5 + pgxpool, golang-migrate, sqlc (`sqlc.yaml`) |
+| API / métier | Go 1.26 (`go 1.26.0` + `toolchain go1.26.5` dans `go.mod`, seule source de vérité — la CI lit `go-version-file: go.mod`), chi v5, pgx v5 + pgxpool, golang-migrate, sqlc (`sqlc.yaml`) |
 | DB | PostgreSQL — **un schéma par module** (`cra`, `tma`, `org`, `authx`, `ai`, …) |
 | Cache / sessions | Redis (`redis/go-redis/v9`), préfixe `kore:` |
 | Frontend web | Nuxt 3 (Vue 3, Nitro), Pinia, `@nuxtjs/i18n` (fr défaut, en) |
