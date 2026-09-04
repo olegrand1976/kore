@@ -97,14 +97,7 @@ func trimJoin(parts ...string) string {
 			out = append(out, p)
 		}
 	}
-	if len(out) == 0 {
-		return ""
-	}
-	result := out[0]
-	for i := 1; i < len(out); i++ {
-		result += " · " + out[i]
-	}
-	return result
+	return strings.Join(out, " · ")
 }
 
 var _ ports.PDFRenderer = (*TenantRenderer)(nil)
