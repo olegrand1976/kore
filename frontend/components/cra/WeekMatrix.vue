@@ -29,8 +29,12 @@
         :icon-for="iconFor"
         :work-ref-options="workRefOptions"
         :work-ref-label-for="workRefLabelFor"
+        :dirty-row-keys="dirtyKeys"
+        :saving-row-key="savingRowKey"
+        :saving="saving"
         @update:rows="(rows) => setDayRows(day, rows)"
         @add-activity="openAddModal"
+        @save-line="saveLine"
       />
     </div>
 
@@ -59,7 +63,7 @@ import type { ActivityRow } from '~/composables/useWeekRows'
 import { hoursToMinutes } from '~/composables/useWeekCalendar'
 import { useCraSourceLabels } from '~/composables/useCraSourceLabels'
 import { newRowKey, useWeekRows } from '~/composables/useWeekRows'
-import { unlockHolidayPrefillRows } from '~/utils/craDayState'
+import { dirtyRowKeys, unlockHolidayPrefillRows } from '~/utils/craDayState'
 
 import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
 
@@ -129,13 +133,27 @@ const weekTotalMinutes = computed(() => {
   return total
 })
 
+// `rowsByDay` vient du store (dernière réponse serveur), `editableRows` porte le
+// brouillon : leur écart donne les lignes à enregistrer.
+const dirtyKeys = computed(() => dirtyRowKeys(editableRows.value, rowsByDay.value, hoursToMinutes))
+
+const savingRowKey = ref('')
+
 watch(rowsByDay, (map) => {
   const next = new Map<string, ActivityRow[]>()
   for (const [day, rows] of map) {
     next.set(day, rows.map((r) => ({ ...r })))
   }
   editableRows.value = next
+  savingRowKey.value = ''
 }, { immediate: true, deep: true })
+
+// Un enregistrement en échec ne modifie pas le store, donc le watcher ci-dessus
+// ne se déclenche pas : sans ce reset la ligne resterait bloquée sur le sablier,
+// bouton désactivé, jusqu'au prochain succès ou rechargement.
+watch(() => props.saving, (saving) => {
+  if (!saving) savingRowKey.value = ''
+})
 
 onMounted(() => {
   const mq = window.matchMedia('(max-width: 768px)')
@@ -185,6 +203,16 @@ const emitSave = () => {
     allRows.push(...rows)
   }
   emit('save', toSaveLines(allRows))
+}
+
+/**
+ * Enregistrer « une ligne » reste un PUT de la semaine entière — l'API remplace
+ * intégralement `week.Lines`, envoyer la seule ligne éditée supprimerait les autres.
+ * La granularité est donc UX : `savingRowKey` ne sert qu'à situer l'indicateur.
+ */
+const saveLine = (rowKey: string) => {
+  savingRowKey.value = rowKey
+  emitSave()
 }
 
 const incompleteDays = computed(() => {

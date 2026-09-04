@@ -84,11 +84,13 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 		}
 		var req struct {
 			Lines []struct {
+				ID          string `json:"id"`
 				SourceType  string `json:"sourceType"`
 				SourceID    string `json:"sourceId"`
 				Day         string `json:"day"`
 				Duration    int    `json:"duration"`
 				Comment     string `json:"comment"`
+				Origin      string `json:"origin"`
 				Billable    *bool  `json:"billable"`
 				WorkRefType string `json:"workRefType"`
 				WorkRefID   string `json:"workRefId"`
@@ -110,11 +112,25 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 			if l.Billable != nil {
 				billable = *l.Billable
 			}
+			// Carry the client-side identity through: the service keeps a line ID only
+			// when it already belongs to the week being saved, so stale or forged IDs
+			// simply yield a fresh one. Without it every save regenerates all IDs,
+			// which remounts the grid rows and drops the caret mid-edit.
+			lineID, err := uuid.Parse(l.ID)
+			if err != nil {
+				lineID = uuid.Nil
+			}
+			origin := domain.LineOrigin(l.Origin)
+			if origin != domain.OriginPrefill && origin != domain.OriginManual {
+				origin = ""
+			}
 			lines = append(lines, domain.TimeLine{
+				ID:          lineID,
 				Source:      domain.SourceRef{Type: l.SourceType, ID: l.SourceID},
 				Day:         day,
 				Duration:    kernel.Duration{Minutes: l.Duration},
 				Comment:     l.Comment,
+				Origin:      origin,
 				Billable:    billable,
 				WorkRefType: l.WorkRefType,
 				WorkRefID:   l.WorkRefID,

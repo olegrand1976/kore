@@ -635,8 +635,13 @@ const ensurePrestationPersisted = async () => {
   await persistPrestation()
 }
 
-const fetchPdfBlob = async () =>
-  apiFetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
+const fetchPdfBlob = async () => {
+  const blob = await apiFetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
+  // Un relais binaire cassé renvoie 200 avec un corps vide : sans ce garde-fou
+  // le navigateur télécharge un .pdf illisible au lieu d'afficher une erreur.
+  if (!blob || blob.size === 0) throw new Error('empty pdf payload')
+  return blob
+}
 
 const revokePdfPreviewUrl = () => {
   if (pdfPreviewUrl.value) {
@@ -679,8 +684,13 @@ const downloadPdf = async () => {
     const a = document.createElement('a')
     a.href = url
     a.download = `cra-${timesheet.value?.month ?? id.value}.pdf`
+    // Firefox et Safari ignorent un lien détaché du document et annulent le
+    // téléchargement si l'URL est révoquée dans la foulée du clic.
+    a.style.display = 'none'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   } catch (err) {
     downloadError.value = mapCraError(err, t('cra.download_error'))
   } finally {

@@ -8,6 +8,7 @@ import { fetchWithRefresh } from '../composables/useApiFetch'
 import { mapCraApiError } from '../composables/useCraError'
 import { useReporting } from '../composables/useReporting'
 import { buildKey, useWeekRows } from '../composables/useWeekRows'
+import { hoursToMinutes, minutesToHoursLabel } from '../composables/useWeekCalendar'
 import { decodeWorkRef, encodeWorkRef } from '../composables/useCraWorkRefs'
 import {
   isManualPrestationEntry,
@@ -386,6 +387,7 @@ describe('craDayState', () => {
 
     expect(partialAbsenceHoursLabel(480)).toBe('4')
     expect(partialAbsenceHoursLabel(420)).toBe('3.5')
+    expect(partialAbsenceHoursLabel(450)).toBe('3.75')
 
     const unlocked = unlockHolidayPrefillRows([
       { sourceType: 'holiday', hours: '', origin: 'prefill' },
@@ -393,6 +395,42 @@ describe('craDayState', () => {
     ])
     expect(unlocked[0]?.origin).toBe('manual')
     expect(unlocked[1]?.origin).toBe('prefill')
+  })
+
+  it('flags only the rows that differ from the saved state', async () => {
+    const { dirtyRowKeys } = await import('../utils/craDayState')
+    const toMinutes = (hours: string) => Number(hours) * 60 || 0
+    const day = '2026-07-07'
+    const saved = new Map([[day, [
+      { key: 'a', sourceType: 'manual', hours: '4', comment: '', billable: true },
+      { key: 'b', sourceType: 'mission', hours: '2', comment: 'note', billable: true }
+    ]]])
+
+    // Aucune édition : rien à enregistrer.
+    expect(dirtyRowKeys(saved, saved, toMinutes).size).toBe(0)
+
+    const draft = new Map([[day, [
+      { key: 'a', sourceType: 'manual', hours: '6.25', comment: '', billable: true },
+      { key: 'b', sourceType: 'mission', hours: '2', comment: 'note', billable: true },
+      // Ligne ajoutée mais encore vide : ne doit pas proposer l'enregistrement.
+      { key: 'c', sourceType: 'manual', hours: '', comment: '   ', billable: true },
+      // Ligne ajoutée avec des heures : à enregistrer.
+      { key: 'd', sourceType: 'manual', hours: '1', comment: '', billable: true }
+    ]]])
+    const dirty = dirtyRowKeys(draft, saved, toMinutes)
+    expect([...dirty].sort()).toEqual(['a', 'd'])
+  })
+
+  it('flags a row whose comment or billable flag changed', async () => {
+    const { dirtyRowKeys } = await import('../utils/craDayState')
+    const toMinutes = (hours: string) => Number(hours) * 60 || 0
+    const day = '2026-07-07'
+    const base = { key: 'a', sourceType: 'manual', hours: '4', comment: 'x', billable: true }
+    const saved = new Map([[day, [base]]])
+
+    expect(dirtyRowKeys(new Map([[day, [{ ...base, comment: 'y' }]]]), saved, toMinutes).has('a')).toBe(true)
+    expect(dirtyRowKeys(new Map([[day, [{ ...base, billable: false }]]]), saved, toMinutes).has('a')).toBe(true)
+    expect(dirtyRowKeys(new Map([[day, [{ ...base }]]]), saved, toMinutes).has('a')).toBe(false)
   })
 
   it('detects comment and billable edits in the day snapshot', async () => {
@@ -420,6 +458,25 @@ describe('craDayState', () => {
     const base = { key: 'line-1', sourceType: 'mission', hours: '4', origin: 'manual', billable: true }
 
     expect(rowsSnapshot([{ ...base, comment: 'a|b:c' }])).not.toBe(rowsSnapshot([{ ...base, comment: 'a:b|c' }]))
+  })
+})
+
+describe('cra hours formatting', () => {
+  it('keeps two decimals instead of rounding to one', () => {
+    expect(minutesToHoursLabel(375)).toBe('6.25')
+    expect(minutesToHoursLabel(45)).toBe('0.75')
+    expect(minutesToHoursLabel(450)).toBe('7.5')
+    expect(minutesToHoursLabel(480)).toBe('8')
+    expect(minutesToHoursLabel(0)).toBe('0')
+    expect(minutesToHoursLabel(Number.NaN)).toBe('0')
+  })
+
+  it('round-trips minutes without drifting', () => {
+    // Le libellé alimente l'input éditable puis repart en base : tout arrondi
+    // non stable ferait dériver la durée à chaque enregistrement (6.25 -> 6.3 -> 378 min).
+    for (const minutes of [15, 45, 225, 361, 375, 450, 480]) {
+      expect(hoursToMinutes(minutesToHoursLabel(minutes))).toBe(minutes)
+    }
   })
 })
 
@@ -464,6 +521,25 @@ describe('useWeekRows toSaveLines', () => {
     expect(lines).toHaveLength(1)
     expect(lines[0].duration).toBe(450)
     expect(lines[0].comment).toBe('done')
+  })
+
+  it('converts quarter-hour input without losing the second decimal', () => {
+    const week = ref({ weekNumber: 1, lines: [], submittedAt: null })
+    const { toSaveLines } = useWeekRows(week, ref(1), ref('2026-07'), ref(1))
+    const lines = toSaveLines([
+      {
+        key: buildKey('manual', 'default', '2026-07-07'),
+        sourceType: 'manual',
+        sourceId: 'default',
+        day: '2026-07-07',
+        hours: '6.25',
+        comment: '',
+        origin: 'manual',
+        billable: true
+      }
+    ])
+    expect(lines).toHaveLength(1)
+    expect(lines[0].duration).toBe(375)
   })
 
   it('persists comment-only rows with zero duration', () => {

@@ -15,7 +15,7 @@
           type="number"
           min="0"
           :max="maxHours"
-          step="0.5"
+          step="0.25"
           :label="$t('cra.hours')"
           :disabled="disabled"
         />
@@ -83,6 +83,19 @@
         {{ $t('cra.billable') }}
       </label>
       <AppButton
+        v-if="!disabled"
+        variant="ghost"
+        size="sm"
+        class="activity-line__save"
+        :class="{ 'activity-line__save--dirty': dirty }"
+        :disabled="busy || saving || !dirty"
+        :aria-label="saveLabel"
+        :title="saveLabel"
+        @click="$emit('save-line')"
+      >
+        <AppIcon :name="saving ? 'hourglass_top' : 'save'" />
+      </AppButton>
+      <AppButton
         v-if="canRemove"
         variant="ghost"
         size="sm"
@@ -100,6 +113,7 @@
 import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
 import { decodeWorkRef, encodeWorkRef } from '~/composables/useCraWorkRefs'
 import { partialAbsenceHoursLabel } from '~/utils/craDayState'
+import { formatHoursValue } from '~/utils/craDuration'
 
 const props = withDefaults(defineProps<{
   inputId: string
@@ -118,6 +132,10 @@ const props = withDefaults(defineProps<{
   dayCapacityMinutes?: number
   disabled?: boolean
   canRemove?: boolean
+  dirty?: boolean
+  saving?: boolean
+  /** Un enregistrement est en cours ailleurs dans la semaine. */
+  busy?: boolean
 }>(), {
   dayCapacityMinutes: 8 * 60,
   workRefType: '',
@@ -130,10 +148,18 @@ const emit = defineEmits<{
   'update:comment': [value: string]
   'update:billable': [value: boolean]
   'update:workRef': [payload: { type: string; id: string }]
+  'save-line': []
   remove: []
 }>()
 
+const { t } = useI18n()
+
 const workRefSelectId = computed(() => `${props.inputId}-work-ref`)
+
+const saveLabel = computed(() => {
+  if (props.saving) return t('cra.saving')
+  return props.dirty ? t('cra.save_line') : t('cra.line_saved')
+})
 
 const showWorkRef = computed(() => {
   if (props.absence) return false
@@ -224,7 +250,7 @@ const localWorkRef = computed({
 const step = (delta: number) => {
   const current = Number(localHours.value) || 0
   const next = Math.max(0, Math.min(maxHours.value, current + delta))
-  emit('update:hours', Number.isInteger(next) ? String(next) : next.toFixed(1))
+  emit('update:hours', formatHoursValue(next))
 }
 
 const startPartialAbsence = () => {
@@ -388,6 +414,15 @@ const startPartialAbsence = () => {
   gap: var(--kore-space-xs);
   font-size: var(--kore-text-small);
   color: var(--kore-text-muted);
+}
+
+/* Au repos le bouton reste discret : seule une ligne modifiée appelle l'action. */
+.activity-line__save {
+  color: var(--kore-text-muted);
+}
+
+.activity-line__save--dirty {
+  color: var(--kore-link);
 }
 
 @media (max-width: 768px) {

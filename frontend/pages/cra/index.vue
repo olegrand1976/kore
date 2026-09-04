@@ -144,7 +144,7 @@
           </span>
         </template>
         <template #cell-hours="{ value }">
-          <span class="cra-hours">{{ $t('cra.hours_value', { n: formatHours(Number(value)) }) }}</span>
+          <span class="cra-hours">{{ $t('cra.hours_value', { n: minutesToHoursLabel(Number(value)) }) }}</span>
         </template>
         <template #cell-status="{ value }">
           <AppBadge :variant="statusVariant(String(value))">{{ statusLabel(String(value)) }}</AppBadge>
@@ -198,7 +198,7 @@
                   {{ (item as CraRow).client || $t('cra.context_empty') }}
                 </NuxtLink>
                 <span v-else>{{ (item as CraRow).client || $t('cra.context_empty') }}</span>
-                · {{ $t('cra.hours_value', { n: formatHours(Number((item as CraRow).hours)) }) }}
+                · {{ $t('cra.hours_value', { n: minutesToHoursLabel(Number((item as CraRow).hours)) }) }}
               </p>
               <p v-if="(item as CraRow).missionId || (item as CraRow).mission" class="cra-kanban-card__meta">
                 <NuxtLink
@@ -239,6 +239,7 @@ import { useCraError } from '~/composables/useCraError'
 import { currentMonthKey, useCraStatus } from '~/composables/useCraStatus'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
+import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
 
 definePageMeta({ layout: 'default' })
 
@@ -448,12 +449,6 @@ const formatMonth = (raw: string) => {
     month: 'long',
     year: 'numeric'
   })
-}
-
-const formatHours = (minutes: number) => {
-  if (!minutes) return '0'
-  const hours = minutes / 60
-  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1)
 }
 
 const formatUpdated = (raw: string) => {

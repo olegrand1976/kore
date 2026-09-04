@@ -185,6 +185,14 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 		return domain.Timesheet{}, domain.ErrCRAAlreadyValidated
 	}
 	week := ts.EnsureWeek(cmd.WeekNumber)
+	// Line IDs supplied by the client are only honoured when they already belong to
+	// this week: rows are re-inserted without ON CONFLICT, so an unknown or forged ID
+	// would either collide with another tenant's row or resurrect a deleted one.
+	knownIDs := make(map[uuid.UUID]struct{}, len(week.Lines))
+	for _, line := range week.Lines {
+		knownIDs[line.ID] = struct{}{}
+	}
+	seenIDs := make(map[uuid.UUID]struct{}, len(cmd.Lines))
 	lines := make([]domain.TimeLine, 0, len(cmd.Lines))
 	for _, line := range cmd.Lines {
 		// Keep zero-duration lines only when they carry a non-empty comment.
@@ -197,9 +205,13 @@ func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (doma
 		if line.Origin == "" {
 			line.Origin = domain.OriginManual
 		}
-		if line.ID == uuid.Nil {
+		if _, ok := knownIDs[line.ID]; !ok {
+			line.ID = uuid.Nil
+		}
+		if _, dup := seenIDs[line.ID]; line.ID == uuid.Nil || dup {
 			line.ID = uuid.New()
 		}
+		seenIDs[line.ID] = struct{}{}
 		lines = append(lines, line)
 	}
 	week.Lines = lines

@@ -319,6 +319,70 @@ func TestSaveWeek_AllowsDuplicateActivityTypesOnSameDay(t *testing.T) {
 	}
 }
 
+func TestSaveWeek_KeepsKnownLineIDsAndRejectsForeignOnes(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	weekID := uuid.New()
+	day := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	source := domain.SourceRef{Type: "manual", ID: "default"}
+	existingID := uuid.New()
+	foreignID := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+		Weeks: []domain.WeekEntry{{
+			ID:         weekID,
+			WeekNumber: 1,
+			Lines: []domain.TimeLine{{
+				ID:          existingID,
+				TenantID:    tenant,
+				WeekEntryID: weekID,
+				Source:      source,
+				Day:         day,
+				Duration:    kernel.Duration{Minutes: 300},
+				Origin:      domain.OriginPrefill,
+			}},
+		}},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	if _, err := svc.SaveWeek(context.Background(), ports.SaveWeekCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		WeekNumber:  1,
+		Lines: []domain.TimeLine{
+			// Known ID: kept, so the grid row is not remounted on save.
+			{ID: existingID, Source: source, Day: day, Duration: kernel.Duration{Minutes: 375}, Origin: domain.OriginPrefill},
+			// Unknown ID: must be replaced, the insert has no ON CONFLICT clause.
+			{ID: foreignID, Source: source, Day: day, Duration: kernel.Duration{Minutes: 60}},
+		},
+	}); err != nil {
+		t.Fatalf("SaveWeek: %v", err)
+	}
+
+	week, _ := repo.ts.Week(1)
+	if week == nil || len(week.Lines) != 2 {
+		t.Fatalf("expected 2 lines, got %+v", week)
+	}
+	if week.Lines[0].ID != existingID {
+		t.Fatalf("known line ID not preserved: got %s, want %s", week.Lines[0].ID, existingID)
+	}
+	if week.Lines[0].Duration.Minutes != 375 {
+		t.Fatalf("expected updated duration 375, got %d", week.Lines[0].Duration.Minutes)
+	}
+	if week.Lines[0].Origin != domain.OriginPrefill {
+		t.Fatalf("origin not preserved: got %q", week.Lines[0].Origin)
+	}
+	if week.Lines[1].ID == foreignID {
+		t.Fatal("foreign line ID must not be reused")
+	}
+	if week.Lines[1].ID == uuid.Nil {
+		t.Fatal("expected a generated ID for the new line")
+	}
+}
+
 func TestSaveWeek_KeepsCommentOnlyLine(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	userID := uuid.New()

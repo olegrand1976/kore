@@ -20,3 +20,17 @@ export function safeMinutes(value: unknown): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
 }
+
+/**
+ * Formate un nombre d'heures sur 2 décimales, sans zéros de fin :
+ * 6.25 → "6.25", 7.5 → "7.5", 8 → "8".
+ *
+ * 2 décimales = 0,6 min de précision : l'aller-retour minutes → libellé → minutes
+ * est stable pour toute valeur entière de minutes, ce qui évite la dérive de la
+ * valeur réinjectée dans les champs de saisie du CRA.
+ */
+export function formatHoursValue(hours: number): string {
+  const n = Number(hours)
+  if (!Number.isFinite(n)) return '0'
+  return String(Math.round(n * 100) / 100)
+}

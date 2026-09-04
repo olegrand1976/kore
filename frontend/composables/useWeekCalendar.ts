@@ -1,3 +1,5 @@
+import { formatHoursValue } from '~/utils/craDuration'
+
 export type WeekTab = {
   weekNumber: number
   start: string
@@ -96,8 +98,7 @@ export function weekNumberForDay(month: string, day: string, weekStartDay = DEFA
 export function minutesToHoursLabel(minutes: number): string {
   const value = Number(minutes)
   if (!Number.isFinite(value)) return '0'
-  const h = value / 60
-  return Number.isInteger(h) ? String(h) : h.toFixed(1)
+  return formatHoursValue(value / 60)
 }
 
 export function hoursToMinutes(hours: string | number): number {

@@ -621,6 +621,8 @@
     "add_activity": "Ajouter une activité",
     "activity_type": "Type d'activité",
     "remove_line": "Supprimer la ligne",
+    "save_line": "Enregistrer cette ligne",
+    "line_saved": "Ligne enregistrée",
     "increase_hours": "Augmenter les heures",
     "decrease_hours": "Diminuer les heures",
     "origin_prefill": "Pré-rempli",

@@ -45,10 +45,14 @@
           :day-capacity-minutes="capacityMinutes"
           :disabled="disabled"
           :can-remove="localRows.length > 1"
+          :dirty="dirtyRowKeys?.has(row.key) ?? false"
+          :saving="savingRowKey === row.key"
+          :busy="saving"
           @update:hours="(v) => updateRow(idx, 'hours', v)"
           @update:comment="(v) => updateRow(idx, 'comment', v)"
           @update:billable="(v) => updateRowBillable(idx, v)"
           @update:work-ref="(v) => updateRowWorkRef(idx, v)"
+          @save-line="$emit('save-line', row.key)"
           @remove="removeRow(idx)"
         />
       </template>
@@ -86,11 +90,15 @@ const props = defineProps<{
   iconFor: (sourceType: string) => string
   workRefOptions?: CraWorkRefOption[]
   workRefLabelFor?: (type: string, id: string) => string
+  dirtyRowKeys?: Set<string>
+  savingRowKey?: string
+  saving?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:rows': [rows: ActivityRow[]]
   'add-activity': [day: string]
+  'save-line': [rowKey: string]
 }>()
 
 const { t, locale } = useI18n()

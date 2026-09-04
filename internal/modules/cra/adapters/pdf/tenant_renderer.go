@@ -2,7 +2,7 @@ package pdf
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kore/kore/internal/modules/cra/domain"
@@ -68,22 +68,26 @@ func buildLinesFromTimesheet(ts domain.Timesheet) []CRALine {
 			if line.Duration.Minutes <= 0 {
 				continue
 			}
-			hours := float64(line.Duration.Minutes) / 60
 			out = append(out, CRALine{
 				Task:  line.Source.Type + "/" + line.Source.ID,
 				Days:  line.Day.Format("02/01/2006"),
-				Hours: formatHours(hours),
+				Hours: formatHours(line.Duration.Minutes),
 			})
 		}
 	}
 	return out
 }
 
-func formatHours(h float64) string {
-	if h == float64(int(h)) {
-		return fmt.Sprintf("%d", int(h))
+// formatHours renders a duration in hours with up to 2 decimals and no trailing
+// zeros: 480 -> "8", 450 -> "7.5", 375 -> "6.25". Formatting straight from
+// minutes keeps quarter-hours exact and matches the web grid, where "%.1f" used
+// to round 6.25 down to "6.2" (ties-to-even) while the UI showed "6.3".
+func formatHours(minutes int) string {
+	if minutes%60 == 0 {
+		return strconv.Itoa(minutes / 60)
 	}
-	return fmt.Sprintf("%.1f", h)
+	s := strconv.FormatFloat(float64(minutes)/60, 'f', 2, 64)
+	return strings.TrimRight(strings.TrimRight(s, "0"), ".")
 }
 
 func trimJoin(parts ...string) string {

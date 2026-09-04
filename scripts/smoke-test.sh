@@ -59,6 +59,33 @@ curl -sf -X PUT "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks/
 curl -sf -X POST "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/weeks/1/submit" \
   -H "Authorization: Bearer $TOKEN" >/dev/null
 
+# CRA PDF: vérifie que le rendu headless Chromium est opérationnel dans l'image.
+# Un 422 (info commerciale incomplète) est une réponse métier légitime et n'échoue pas ;
+# tout autre code, ou un corps qui n'est pas un PDF, est une régression.
+#
+# Un échec de rendu remonte en 500 (aucun fallback sans navigateur). Le contrôle est
+# donc conditionné à la présence d'un binaire Chrome : dans l'image API il est garanti
+# (CHROME_PATH), mais le job CI `smoke` lance le binaire directement sur le runner,
+# sans étape d'installation de navigateur. Sans ce garde-fou, la disparition de Chrome
+# de l'image du runner bloquerait tous les déploiements pour une raison sans rapport.
+if [ -n "${CHROME_PATH:-}" ] || command -v google-chrome >/dev/null 2>&1 \
+  || command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null 2>&1; then
+  CRA_PDF=$(mktemp)
+  CRA_PDF_CODE=$(curl -s -o "$CRA_PDF" -w '%{http_code}' -X POST \
+    "http://localhost:${API_PORT}/api/v1/timesheets/${CRA_ID}/pdf" \
+    -H "Authorization: Bearer $TOKEN")
+  if [ "$CRA_PDF_CODE" = "200" ]; then
+    head -c 5 "$CRA_PDF" | grep -q '%PDF' || { echo "CRA PDF: en-tête %PDF absent"; exit 1; }
+    test "$(wc -c < "$CRA_PDF")" -gt 1000 || { echo "CRA PDF: corps trop court"; exit 1; }
+  elif [ "$CRA_PDF_CODE" != "422" ]; then
+    echo "CRA PDF: code HTTP inattendu $CRA_PDF_CODE"
+    exit 1
+  fi
+  rm -f "$CRA_PDF"
+else
+  echo "CRA PDF: ignoré (aucun binaire Chrome disponible)"
+fi
+
 # Budget (admin)
 curl -sf "http://localhost:${API_PORT}/api/v1/budgets" -H "Authorization: Bearer $TOKEN" >/dev/null
 curl -sf "http://localhost:${API_PORT}/api/v1/applications" -H "Authorization: Bearer $TOKEN" >/dev/null

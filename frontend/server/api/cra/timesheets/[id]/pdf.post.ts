@@ -16,7 +16,11 @@ export default defineEventHandler(async (event) => {
     if (disposition) {
       setHeader(event, 'content-disposition', disposition)
     }
-    return response._data
+    // Un ArrayBuffer nu ne correspond à aucune branche binaire de h3
+    // (`handleHandlerResponse`) : il finit dans `JSON.stringify(val)` et le
+    // téléchargement produit un fichier de 2 octets `{}` portant les en-têtes PDF.
+    // `Buffer` expose `.buffer`, ce qui aiguille bien vers l'envoi binaire.
+    return Buffer.from(response._data as ArrayBuffer)
   } catch (e: unknown) {
     const err = e as {
       statusCode?: number

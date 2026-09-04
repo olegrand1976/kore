@@ -1,4 +1,5 @@
 import { isAbsenceSourceType } from '~/utils/craAbsence'
+import { formatHoursValue } from '~/utils/craDuration'
 
 export type DayRowLike = {
   key?: string
@@ -37,8 +38,36 @@ export function isFullAbsenceDay(
 }
 
 export function partialAbsenceHoursLabel(capacityMinutes: number): string {
-  const halfDayHours = capacityMinutes / 2 / 60
-  return Number.isInteger(halfDayHours) ? String(halfDayHours) : halfDayHours.toFixed(1)
+  return formatHoursValue(capacityMinutes / 2 / 60)
+}
+
+/**
+ * Clés des lignes modifiées par rapport à l'état enregistré, jour par jour.
+ *
+ * `saved` est dérivé de la dernière réponse serveur, `draft` porte les éditions en
+ * cours : la comparaison par empreinte évite de maintenir une baseline séparée.
+ * Une ligne ajoutée n'est signalée que si elle porte des heures ou un commentaire,
+ * sinon la ligne vide insérée d'office sur chaque jour serait toujours « modifiée ».
+ */
+export function dirtyRowKeys(
+  draft: Map<string, DayRowLike[]>,
+  saved: Map<string, DayRowLike[]>,
+  hoursToMinutes: (hours: string) => number
+): Set<string> {
+  const dirty = new Set<string>()
+  for (const [day, rows] of draft) {
+    const savedByKey = new Map((saved.get(day) ?? []).map((row) => [row.key, row]))
+    for (const row of rows) {
+      if (!row.key) continue
+      const base = savedByKey.get(row.key)
+      if (!base) {
+        if (hoursToMinutes(row.hours) > 0 || (row.comment ?? '').trim() !== '') dirty.add(row.key)
+        continue
+      }
+      if (rowsSnapshot([row]) !== rowsSnapshot([base])) dirty.add(row.key)
+    }
+  }
+  return dirty
 }
 
 /**
