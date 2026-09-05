@@ -6,9 +6,12 @@
   <style>
     :root { --kore-brand-navy: #1e3a5f; --kore-brand-gold: #c9a227; --kore-text: #1a1f2e; --kore-text-muted: #6b7280; --kore-border: #e2e6ed; }
     body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: var(--kore-text); margin: 0; padding: 24px; }
-    .header { border-bottom: 2px solid var(--kore-brand-gold); padding-bottom: 12px; margin-bottom: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid var(--kore-brand-gold); padding-bottom: 12px; margin-bottom: 24px; }
     .header h1 { color: var(--kore-brand-navy); font-size: 18pt; margin: 0 0 4px; }
-    .header .company { font-size: 9pt; color: var(--kore-text-muted); }
+    .header__period { font-size: 9pt; color: var(--kore-text-muted); }
+    .header__company { flex: 0 0 auto; max-width: 45%; text-align: right; font-size: 9pt; color: var(--kore-text-muted); }
+    .header__logo { display: block; margin: 0 0 6px auto; max-height: 56px; max-width: 200px; }
+    .header__company-name { color: var(--kore-text); font-size: 10pt; font-weight: 700; }
     .title { color: var(--kore-brand-navy); font-size: 14pt; }
     table { width: 100%; border-collapse: collapse; margin: 16px 0; }
     th, td { border: 1px solid var(--kore-border); padding: 8px; text-align: left; }
@@ -21,17 +24,24 @@
     .lines-table .col-comment { width: 26%; }
     .lines-table .col-duration { width: 10%; white-space: nowrap; text-align: right; }
     .lines-table tr { page-break-inside: avoid; }
-    .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--kore-border); font-size: 8pt; color: var(--kore-text-muted); }
-    .kore-badge { color: var(--kore-brand-gold); font-weight: bold; }
+    .footer { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--kore-border); font-size: 8pt; color: var(--kore-text-muted); }
+    .footer__brand { display: flex; align-items: center; gap: 10px; }
+    .footer__logo { flex: 0 0 auto; width: 84px; height: auto; }
+    .footer__product { display: block; color: var(--kore-brand-navy); font-size: 8.5pt; font-weight: 700; }
+    .footer__baseline { display: block; margin-top: 2px; }
+    .footer__meta { flex: 0 0 auto; text-align: right; white-space: nowrap; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Compte-rendu d'activité</h1>
-    <div class="company">
-      {{ if .CompanyName }}<strong>{{ .CompanyName }}</strong><br />{{ end }}
-      {{ if .CompanyAddr }}{{ .CompanyAddr }}<br />{{ end }}
-      Période : {{ .Month }} · Statut : {{ .Status }}
+    <div class="header__doc">
+      <h1>Compte-rendu d'activité</h1>
+      <div class="header__period">Période : {{ .Month }} · Statut : {{ .Status }}</div>
+    </div>
+    <div class="header__company">
+      {{ if .CompanyLogo }}<img class="header__logo" src="{{ .CompanyLogo }}" alt="{{ .CompanyName }}" />{{ end }}
+      {{ if .CompanyName }}<div class="header__company-name">{{ .CompanyName }}</div>{{ end }}
+      {{ if .CompanyAddr }}<div>{{ .CompanyAddr }}</div>{{ end }}
     </div>
   </div>
   <h2 class="title">Informations de prestation</h2>
@@ -70,8 +80,26 @@
     </tbody>
   </table>
   <div class="footer">
-    <span>Généré le {{ .GeneratedAt }}</span>
-    {{ if .ShowKoreFooter }}<span class="kore-badge">Généré par Kore</span>{{ end }}
+    {{ if .ShowKoreFooter }}
+    <div class="footer__brand">
+      <!-- Logo Kore inline : miroir de frontend/public/brand/kore-logo-horizontal.svg.
+           Inline plutôt qu'embarqué, pour rester net à l'impression sans asset externe.
+           viewBox resserrée sur le tracé (l'original laisse du vide à droite et rogne
+           la pointe de l'hexagone), le tracé lui-même est inchangé. -->
+      <svg class="footer__logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 -6 152 44" role="img" aria-label="Kore">
+        <g transform="translate(0, -8) scale(0.75)">
+          <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" fill="#1e3a5f" stroke="#c9a227" stroke-width="2"/>
+          <path d="M22 18 L22 46 L28 46 L28 32 L38 46 L46 46 L34 30 L44 18 L36 18 L28 28 L28 18 Z" fill="#c9a227"/>
+        </g>
+        <text x="58" y="32" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="0.08em" fill="#1e3a5f">KORE</text>
+      </svg>
+      <div>
+        <span class="footer__product">Kore — Le cockpit de votre activité IT</span>
+        <span class="footer__baseline">CRA · TMA · Budget UO · Facturation{{ if .ProductSite }} · {{ .ProductSite }}{{ end }}</span>
+      </div>
+    </div>
+    {{ end }}
+    <div class="footer__meta">Généré le {{ .GeneratedAt }}</div>
   </div>
 </body>
 </html>

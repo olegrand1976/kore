@@ -15,8 +15,10 @@ import (
 var craTemplateHTML string
 
 type CRABrandData struct {
-	CompanyName       string
-	CompanyLogo       string
+	CompanyName string
+	// CompanyLogo is typed template.URL because it carries a data: URI, which
+	// html/template's URL filter would otherwise replace with #ZgotmplZ.
+	CompanyLogo       template.URL
 	CompanyAddr       string
 	UserID            string
 	Collaborateur     string
@@ -24,6 +26,7 @@ type CRABrandData struct {
 	Status            string
 	GeneratedAt       string
 	ShowKoreFooter    bool
+	ProductSite       string
 	Client            string
 	Mission           string
 	Description       string

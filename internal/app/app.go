@@ -227,6 +227,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 				"ticket":       crasupport.NewWorkRefLabelReader(supportRepo),
 				"work_request": cramaintenance.NewWorkRefLabelReader(maintenanceRepo),
 			}),
+			crapdf.WithProductSite(cfg.PublicBaseURL),
 		))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
 		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).

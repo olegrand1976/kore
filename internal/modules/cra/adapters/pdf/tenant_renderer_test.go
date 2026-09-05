@@ -2,13 +2,16 @@ package pdf
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"html/template"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/cra/domain"
 	"github.com/kore/kore/internal/modules/cra/ports"
+	orgports "github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -35,6 +38,93 @@ type fakeUserResolver struct {
 
 func (f fakeUserResolver) ResolveUserIdentity(_ context.Context, _ kernel.TenantID, _ uuid.UUID) (ports.UserIdentity, error) {
 	return f.identity, f.err
+}
+
+// fakeOrg overrides only the branding call the renderer makes; the embedded
+// interface supplies the rest of the method set and panics if anything else is
+// reached, which is exactly the signal we want.
+type fakeOrg struct {
+	orgports.OrganizationService
+	logo        []byte
+	contentType string
+	err         error
+}
+
+func (f fakeOrg) GetTenantLogo(_ context.Context, _ kernel.TenantID) ([]byte, string, error) {
+	return f.logo, f.contentType, f.err
+}
+
+func TestProductSiteHost(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{"public https origin", "https://kore.ll-it-sc.be", "kore.ll-it-sc.be"},
+		{"strips path and port", "https://kore.ll-it-sc.be:8443/app", "kore.ll-it-sc.be"},
+		{"dev origin dropped", "http://localhost:3001", ""},
+		{"bare host dropped", "http://kore", ""},
+		{"ip dropped", "http://10.0.0.4:3001", ""},
+		{"empty", "", ""},
+		{"not a url", "kore.ll-it-sc.be", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := productSiteHost(tc.raw); got != tc.want {
+				t.Fatalf("productSiteHost(%q) = %q, want %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestImageMIME(t *testing.T) {
+	cases := []struct {
+		raw    string
+		want   string
+		wantOK bool
+	}{
+		{"image/png", "image/png", true},
+		{"image/svg+xml; charset=utf-8", "image/svg+xml", true},
+		{" IMAGE/JPEG ", "image/jpeg", true},
+		{"application/octet-stream", "", false},
+		{"text/html", "", false},
+		{"", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.raw, func(t *testing.T) {
+			got, ok := imageMIME(tc.raw)
+			if got != tc.want || ok != tc.wantOK {
+				t.Fatalf("imageMIME(%q) = (%q, %v), want (%q, %v)", tc.raw, got, ok, tc.want, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestCompanyLogo(t *testing.T) {
+	png := []byte{0x89, 'P', 'N', 'G', 0x0d}
+	wantDataURI := template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(png))
+
+	cases := []struct {
+		name     string
+		org      orgports.OrganizationService
+		declared string
+		want     template.URL
+	}{
+		{"stored logo wins", fakeOrg{logo: png, contentType: "image/png"}, "https://cdn.example/logo.png", wantDataURI},
+		{"absolute url fallback", fakeOrg{err: errors.New("no logo")}, "https://cdn.example/logo.png", "https://cdn.example/logo.png"},
+		{"api path is not fetchable", fakeOrg{err: errors.New("no logo")}, "/api/v1/org/branding/logo/abc", ""},
+		{"unsupported content type", fakeOrg{logo: png, contentType: "application/pdf"}, "", ""},
+		{"empty content", fakeOrg{contentType: "image/png"}, "", ""},
+		{"no org service", nil, "https://cdn.example/logo.png", "https://cdn.example/logo.png"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &TenantRenderer{org: tc.org}
+			if got := r.companyLogo(context.Background(), testTenant, tc.declared); got != tc.want {
+				t.Fatalf("companyLogo = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestTrimJoin(t *testing.T) {

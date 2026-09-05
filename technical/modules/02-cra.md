@@ -104,7 +104,14 @@ type WorkRefLabelReader interface {
 - **PostgreSQL (sqlc)** : schéma `cra`.
 - **PDFRenderer** : gateway de génération PDF (implémentation dédiée). `TenantRenderer` compose
   le HTML (`adapters/pdf/templates/cra.html`), `ChromedpRenderer` l'imprime en PDF via Chromium
-  headless. Le tableau « Détail des prestations » reprend les colonnes de la grille CRA :
+  headless. En-tête en papier à en-tête : titre + période à gauche, logo de la société qui preste,
+  raison sociale et adresse à droite. Le logo est embarqué en data URI depuis `GetTenantLogo`
+  (types image connus uniquement) — la page est imprimée depuis une URL `data:`, où le chemin API
+  du logo ne résoudrait pas ; un logo déclaré en URL absolue reste chargé par le navigateur.
+  Le champ est typé `template.URL`, sinon le filtre d'URL de `html/template` remplace le data URI
+  par `#ZgotmplZ`. Pied de page produit (logo Kore inline, baseline, hôte de `PUBLIC_BASE_URL`
+  quand ce n'est pas un origin de dev), masqué par `ShowKoreFooter` en marque blanche.
+  Le tableau « Détail des prestations » reprend les colonnes de la grille CRA :
   **Jour · Personne (nom + prénom) · Affectation · Commentaire · Temps** (heures + minutes,
   ex. `6 h 15`). L'affectation reprend le libellé de la demande TMA / du ticket / de la demande
   d'exploitation ; à défaut, le libellé de la source de la ligne (Prestation, Congé, Jour férié…).

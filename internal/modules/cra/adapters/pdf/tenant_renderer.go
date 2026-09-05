@@ -2,7 +2,11 @@ package pdf
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"html/template"
+	"net"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,10 +19,11 @@ import (
 
 // TenantRenderer loads société branding before rendering the CRA document.
 type TenantRenderer struct {
-	org      orgports.OrganizationService
-	users    ports.UserIdentityResolver
-	workRefs map[string]ports.WorkRefLabelReader
-	inner    *HTMLRenderer
+	org         orgports.OrganizationService
+	users       ports.UserIdentityResolver
+	workRefs    map[string]ports.WorkRefLabelReader
+	productSite string
+	inner       *HTMLRenderer
 }
 
 type TenantRendererOption func(*TenantRenderer)
@@ -35,6 +40,25 @@ func WithWorkRefLabelReaders(readers map[string]ports.WorkRefLabelReader) Tenant
 	return func(r *TenantRenderer) { r.workRefs = readers }
 }
 
+// WithProductSite names the Kore site in the product footer. Takes the public
+// frontend origin and keeps only its host; a dev origin (localhost, bare IP) is
+// dropped rather than printed on a document meant to be sent to a client.
+func WithProductSite(rawURL string) TenantRendererOption {
+	return func(r *TenantRenderer) { r.productSite = productSiteHost(rawURL) }
+}
+
+func productSiteHost(rawURL string) string {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	host := u.Hostname()
+	if host == "" || host == "localhost" || net.ParseIP(host) != nil || !strings.Contains(host, ".") {
+		return ""
+	}
+	return host
+}
+
 func NewTenantRenderer(org orgports.OrganizationService, opts ...TenantRendererOption) ports.PDFRenderer {
 	r := &TenantRenderer{org: org, inner: NewHTMLRenderer()}
 	for _, opt := range opts {
@@ -47,7 +71,9 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 	brand := CRABrandData{
 		CompanyName:    "Kore",
 		ShowKoreFooter: true,
+		ProductSite:    r.productSite,
 	}
+	declaredLogo := ""
 	societes, err := r.societes(ctx, ts.TenantID)
 	if err == nil && len(societes) > 0 {
 		s := societes[0]
@@ -59,8 +85,9 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 		} else {
 			brand.CompanyAddr = trimJoin(s.Adresse, s.URLTenant)
 		}
-		brand.CompanyLogo = s.Logo
+		declaredLogo = s.Logo
 	}
+	brand.CompanyLogo = r.companyLogo(ctx, ts.TenantID, declaredLogo)
 
 	brand.Collaborateur = r.collaborateur(ctx, ts)
 	brand.Lines = r.buildLines(ctx, ts, brand.Collaborateur)
@@ -89,6 +116,41 @@ func (r *TenantRenderer) societes(ctx context.Context, tenant kernel.TenantID) (
 		return nil, nil
 	}
 	return r.org.ListSocietes(ctx, tenant)
+}
+
+// companyLogo embeds the société logo as a data URI. The PDF is printed from a
+// data: page, where the stored logo's own API path would not resolve and an
+// external fetch would make the export depend on the network; only a logo
+// declared as an absolute URL is left to the browser to fetch.
+func (r *TenantRenderer) companyLogo(ctx context.Context, tenant kernel.TenantID, declared string) template.URL {
+	if r.org != nil {
+		content, contentType, err := r.org.GetTenantLogo(ctx, tenant)
+		if err == nil && len(content) > 0 {
+			if mime, ok := imageMIME(contentType); ok {
+				return template.URL("data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(content))
+			}
+		}
+	}
+	if strings.HasPrefix(declared, "https://") || strings.HasPrefix(declared, "http://") {
+		return template.URL(declared)
+	}
+	return ""
+}
+
+// imageMIME keeps the data URI to image types a print engine renders — an
+// unknown content type is a corrupt upload, not a logo worth risking in an
+// unfiltered attribute.
+func imageMIME(contentType string) (string, bool) {
+	mime := strings.ToLower(strings.TrimSpace(contentType))
+	if idx := strings.Index(mime, ";"); idx >= 0 {
+		mime = strings.TrimSpace(mime[:idx])
+	}
+	switch mime {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml":
+		return mime, true
+	default:
+		return "", false
+	}
 }
 
 // collaborateur formats the CRA owner as "Nom Prénom", falling back to the login
