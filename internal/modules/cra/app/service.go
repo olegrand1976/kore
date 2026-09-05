@@ -296,7 +296,7 @@ func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCo
 		return ports.ValidateFinalResult{}, domain.ErrCRAAlreadyValidated
 	}
 	if ts.Status != domain.StatusValideSemaine {
-		return ports.ValidateFinalResult{}, domain.ErrWeekIncomplete
+		return ports.ValidateFinalResult{}, domain.ErrCRANotSubmitted
 	}
 	if !ts.CommercialInfo.Complete() {
 		return ports.ValidateFinalResult{}, domain.ErrCommercialInfoRequired

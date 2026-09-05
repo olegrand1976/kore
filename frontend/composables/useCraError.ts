@@ -29,6 +29,8 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
         return t('cra.errors.already_invoiced')
       case 'WEEK_INCOMPLETE':
         return t('cra.errors.week_incomplete')
+      case 'CRA_NOT_SUBMITTED':
+        return t('cra.errors.not_submitted')
       default:
         break
     }

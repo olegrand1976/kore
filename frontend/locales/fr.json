@@ -170,6 +170,7 @@
             "Sites / Services / Équipes : listes dédiées (création et modification) ; Structure conserve la vue arbre.",
             "Applications : créer / modifier / désactiver, rattacher équipes et suivre budgets liés ; fusionner deux applications (référence conservée, badge Taiga, garde-fous double Taiga, sprints actifs, méthodologie agile et budgets défaut).",
             "CRA, TMA, congés, budget : lecture, écriture et validation.",
+        "CRA validé par erreur : bouton Dévalider sur la fiche CRA (Administrateur uniquement) — le CRA repasse en ValidéSemaine et redevient éditable ; refusé si une facture existe déjà.",
             "Projets agile (/projets) : backlog, sprints, epics et métriques (L/E/V).",
             "Fiche TMA : panneau Lien Taiga (lecture TMA) si user story liée.",
             "Facturation : accessible si le module est activé pour l'organisation (L/E/V).",
@@ -682,6 +683,7 @@
       "already_validated": "Ce CRA est déjà validé définitivement.",
       "already_invoiced": "Ce CRA a déjà une facture. Annulez-la avant de dévalider ou supprimer.",
       "week_incomplete": "Semaine incomplète : tous les jours ouvrés doivent être renseignés.",
+      "not_submitted": "Aucune semaine n'a encore été soumise : soumettez au moins une semaine avant la validation définitive.",
       "conflict": "Conflit : action impossible dans l'état actuel.",
       "validation": "Données invalides."
     },

@@ -57,6 +57,11 @@ Un utilisateur peut cumuler plusieurs profils : les droits sont l'**union** (le 
 - Menu **Projets agile** (`/projets`) pour les applications en mode Scrum ou Kanban.
 - Fiche demande TMA (`/tma/{id}`) : panneau **Lien Taiga** (lecture TMA) si une user story Taiga est liée via webhook.
 - Validation complète CRA / TMA / congés / budget.
+- **Réouverture d'un CRA définitif** (`/cra/{id}` → bouton **Dévalider**, réservé Administrateur) :
+  ramène le CRA en **ValidéSemaine**, donc éditable, et efface l'horodatage de validation.
+  Refusée si une facture existe déjà pour ce CRA (`CRA_ALREADY_INVOICED`) : annuler la facture
+  d'abord. C'est le recours en cas de validation définitive par erreur — la clôture n'est jamais
+  un cul-de-sac.
 - Facturation métier : L/E/V si le module org est activé.
 - CRA définitifs → brouillons facture :
   - **Facturation → Depuis un CRA** (wizard preview prérempli, droits Facturation écriture **et** CRA validation) ;

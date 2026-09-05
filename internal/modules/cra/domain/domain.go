@@ -19,6 +19,11 @@ var (
 	ErrWeekNotFound           = errors.New("week not found")
 	ErrWeekIncomplete         = errors.New("week has days without hours")
 	ErrCRANotFinal            = errors.New("cra is not validated")
+	// ErrCRANotSubmitted is the precondition of the final validation: at least one
+	// week must have been submitted. Distinct from ErrWeekIncomplete, which is about
+	// working days left without hours inside a week being submitted — conflating the
+	// two told the user to fill days that were already filled.
+	ErrCRANotSubmitted = errors.New("cra has no submitted week")
 )
 
 const (

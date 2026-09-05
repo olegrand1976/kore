@@ -759,6 +759,8 @@ func writeCRAError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeCRAConflictAbsence, err.Error())
 	case errors.Is(err, domain.ErrWeekIncomplete):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeWeekIncomplete, err.Error())
+	case errors.Is(err, domain.ErrCRANotSubmitted):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeCRANotSubmitted, err.Error())
 	case errors.Is(err, domain.ErrTimesheetNotFound), errors.Is(err, domain.ErrWeekNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	default:

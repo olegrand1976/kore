@@ -231,8 +231,72 @@ func TestValidateFinal_RequiresSubmittedStatus(t *testing.T) {
 		TimesheetID: repo.ts.ID,
 		ManagerID:   uuid.New(),
 	})
-	if err != domain.ErrWeekIncomplete {
-		t.Fatalf("expected ErrWeekIncomplete, got %v", err)
+	// Distinct de ErrWeekIncomplete : le CRA est en brouillon, aucune semaine n'a été
+	// soumise. Confondre les deux affichait « tous les jours ouvrés doivent être
+	// renseignés » à un utilisateur qui les avait déjà renseignés.
+	if err != domain.ErrCRANotSubmitted {
+		t.Fatalf("expected ErrCRANotSubmitted, got %v", err)
+	}
+}
+
+func TestValidateFinal_ClosesTimesheetAndStaysReopenable(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	managerID := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusValideSemaine,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "ACME",
+			Mission: "Projet X",
+		},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	if _, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   managerID,
+	}); err != nil {
+		t.Fatalf("ValidateFinal: %v", err)
+	}
+	if repo.ts.Status != domain.StatusDefinitif {
+		t.Fatalf("CRA non clôturé : statut %q", repo.ts.Status)
+	}
+	if repo.ts.ValidatedAt == nil || repo.ts.ValidatedBy == nil || *repo.ts.ValidatedBy != managerID {
+		t.Fatalf("horodatage/auteur de validation absents : %+v / %+v", repo.ts.ValidatedAt, repo.ts.ValidatedBy)
+	}
+	if repo.ts.CanEdit() {
+		t.Fatal("un CRA définitif ne doit plus être éditable")
+	}
+
+	// La clôture ne doit jamais être un cul-de-sac : la réouverture ramène le CRA
+	// en semaine validée, éditable, et efface la trace de validation.
+	if err := svc.UnvalidateTimesheet(context.Background(), tenant, repo.ts.ID); err != nil {
+		t.Fatalf("UnvalidateTimesheet: %v", err)
+	}
+	if repo.ts.Status != domain.StatusValideSemaine {
+		t.Fatalf("CRA non rouvert : statut %q", repo.ts.Status)
+	}
+	if !repo.ts.CanEdit() {
+		t.Fatal("un CRA rouvert doit redevenir éditable")
+	}
+	if repo.ts.ValidatedAt != nil || repo.ts.ValidatedBy != nil {
+		t.Fatal("la trace de validation doit être effacée à la réouverture")
+	}
+
+	// Et il doit pouvoir être re-clôturé derrière.
+	if _, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   managerID,
+	}); err != nil {
+		t.Fatalf("re-validation après réouverture : %v", err)
+	}
+	if repo.ts.Status != domain.StatusDefinitif {
+		t.Fatalf("re-clôture échouée : statut %q", repo.ts.Status)
 	}
 }
 

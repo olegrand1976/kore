@@ -78,6 +78,21 @@
       </template>
     </AppPageHeader>
 
+    <!--
+      Les retours d'action restent sous l'en-tête, au contact des boutons qui les
+      déclenchent : plus bas, ils tombaient sous la grille du mois et un échec de
+      validation définitive passait pour un bouton sans effet.
+    -->
+    <div v-if="validateMsg || prefillMsg || downloadError || actionError" class="cra-detail__flashes">
+      <p v-if="validateMsg" class="flash" role="status">
+        {{ validateMsg }}
+        <NuxtLink v-if="invoiceLink" :to="invoiceLink" class="flash__link">{{ $t('cra.invoice_created_link') }}</NuxtLink>
+      </p>
+      <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
+      <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
+      <p v-if="actionError" class="flash flash--error" role="alert">{{ actionError }}</p>
+    </div>
+
     <AppCard v-if="loading" padding="lg">
       <CraSkeleton />
     </AppCard>
@@ -203,14 +218,6 @@
       :preview-url="pdfPreviewUrl"
       @download="downloadPdf"
     />
-
-    <p v-if="validateMsg" class="flash" role="status">
-      {{ validateMsg }}
-      <NuxtLink v-if="invoiceLink" :to="invoiceLink" class="flash__link">{{ $t('cra.invoice_created_link') }}</NuxtLink>
-    </p>
-    <p v-if="prefillMsg" class="flash flash--info" role="status">{{ prefillMsg }}</p>
-    <p v-if="downloadError" class="flash flash--error" role="alert">{{ downloadError }}</p>
-    <p v-if="actionError" class="flash flash--error" role="alert">{{ actionError }}</p>
 
     <AppModal v-model:open="rejectOpen" width="md" :title-id="rejectTitleId" :aria-label="$t('cra.reject')">
       <form class="reject-form" @submit.prevent="confirmReject">
@@ -794,6 +801,12 @@ const downloadPdf = async () => {
 }
 
 .muted { color: var(--kore-text-muted); }
+
+.cra-detail__flashes {
+  display: grid;
+  gap: var(--kore-space-xs);
+  margin-bottom: var(--kore-space-md);
+}
 
 .flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
 .flash__link {

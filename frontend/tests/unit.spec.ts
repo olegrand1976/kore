@@ -348,6 +348,22 @@ describe('mapCraApiError', () => {
     expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.validation')
   })
 
+  it('distinguishes a draft timesheet from a week with unfilled days', () => {
+    // Le backend renvoyait WEEK_INCOMPLETE quand aucune semaine n'avait été soumise :
+    // l'utilisateur lisait « renseignez tous les jours ouvrés » alors qu'ils l'étaient.
+    const notSubmitted = {
+      statusCode: 422,
+      data: { error: { code: 'CRA_NOT_SUBMITTED', message: 'cra has no submitted week' } }
+    }
+    expect(mapCraApiError(notSubmitted, (key) => key)).toBe('cra.errors.not_submitted')
+
+    const incompleteWeek = {
+      statusCode: 422,
+      data: { error: { code: 'WEEK_INCOMPLETE', message: 'week has days without hours' } }
+    }
+    expect(mapCraApiError(incompleteWeek, (key) => key)).toBe('cra.errors.week_incomplete')
+  })
+
   it('maps already invoiced conflict', () => {
     const err = {
       statusCode: 409,

@@ -845,7 +845,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/CRAError'
         "422":
-          description: Erreur de validation CRA
+          description: >-
+            Précondition non remplie : CRA_NOT_SUBMITTED (aucune semaine soumise)
+            ou COMMERCIAL_INFO_REQUIRED (client/mission manquants).
           content:
             application/json:
               schema:

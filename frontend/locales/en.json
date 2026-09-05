@@ -170,6 +170,7 @@
             "Sites / Services / Teams: dedicated list pages (create and edit); Structure keeps the tree view.",
             "Applications: create / edit / deactivate, link teams and review related budgets; merge two applications (reference kept, Taiga badge, guards for double Taiga, active sprints, agile methodology and default budgets).",
             "Timesheets, TMA, leave, budget: read, write and validate.",
+        "Timesheet finalized by mistake: Unvalidate button on the timesheet page (Administrator only) — it goes back to week-approved and becomes editable again; refused if an invoice already exists.",
             "Agile projects (/projets): backlog, sprints, epics and metrics (R/W/V).",
             "TMA demand detail: Taiga link panel (TMA read) when a user story is linked.",
             "Invoicing: available when the organisation module is enabled (R/W/V).",
@@ -682,6 +683,7 @@
       "already_validated": "This timesheet is already finalized.",
       "already_invoiced": "This timesheet already has an invoice. Cancel it before unvalidating or deleting.",
       "week_incomplete": "Incomplete week: all working days must be filled in.",
+      "not_submitted": "No week has been submitted yet: submit at least one week before the final validation.",
       "conflict": "Conflict: action not allowed in the current state.",
       "validation": "Invalid data."
     },
