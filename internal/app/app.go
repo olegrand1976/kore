@@ -34,11 +34,15 @@ import (
 	congesapp "github.com/kore/kore/internal/modules/conges/app"
 	crahttp "github.com/kore/kore/internal/modules/cra/adapters/http"
 	crainvoicing "github.com/kore/kore/internal/modules/cra/adapters/invoicing"
+	cramaintenance "github.com/kore/kore/internal/modules/cra/adapters/maintenance"
 	craorg "github.com/kore/kore/internal/modules/cra/adapters/org"
 	crapdf "github.com/kore/kore/internal/modules/cra/adapters/pdf"
 	crapostgres "github.com/kore/kore/internal/modules/cra/adapters/postgres"
 	crassii "github.com/kore/kore/internal/modules/cra/adapters/ssii"
+	crasupport "github.com/kore/kore/internal/modules/cra/adapters/support"
+	cratma "github.com/kore/kore/internal/modules/cra/adapters/tma"
 	craapp "github.com/kore/kore/internal/modules/cra/app"
+	craports "github.com/kore/kore/internal/modules/cra/ports"
 	ettcra "github.com/kore/kore/internal/modules/ett/adapters/cra"
 	etthttp "github.com/kore/kore/internal/modules/ett/adapters/http"
 	ettpostgres "github.com/kore/kore/internal/modules/ett/adapters/postgres"
@@ -216,7 +220,14 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	wfEffects := wfnotif.NewEffectsExecutor(orgRepo, notifService)
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService), wfEffects)
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
-		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService))).
+		WithPDFRenderer(crapdf.NewChromedpRenderer(crapdf.NewTenantRenderer(orgService,
+			crapdf.WithUserIdentityResolver(craorg.NewUserIdentityResolver(orgRepo)),
+			crapdf.WithWorkRefLabelReaders(map[string]craports.WorkRefLabelReader{
+				"tma":          cratma.NewWorkRefLabelReader(tmaRepo),
+				"ticket":       crasupport.NewWorkRefLabelReader(supportRepo),
+				"work_request": cramaintenance.NewWorkRefLabelReader(maintenanceRepo),
+			}),
+		))).
 		WithCalendarReader(craorg.NewSocieteReader(orgRepo)).
 		WithRejectNotifier(notifService, craorg.NewEmailResolver(orgRepo)).
 		WithMissionRateReader(crassii.NewMissionRateReader(ssiiRepo)).

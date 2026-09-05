@@ -19,6 +19,7 @@ type CRABrandData struct {
 	CompanyLogo       string
 	CompanyAddr       string
 	UserID            string
+	Collaborateur     string
 	Month             string
 	Status            string
 	GeneratedAt       string
@@ -32,10 +33,14 @@ type CRABrandData struct {
 	Lines             []CRALine
 }
 
+// CRALine mirrors one row of the CRA grid: who, what it is charged to, the free
+// comment and the time in hours and minutes.
 type CRALine struct {
-	Task  string
-	Days  string
-	Hours string
+	Day        string
+	Person     string
+	Assignment string
+	Comment    string
+	Duration   string
 }
 
 type HTMLRenderer struct{}
@@ -53,7 +58,7 @@ func (HTMLRenderer) Render(_ context.Context, ts domain.Timesheet, brand CRABran
 	brand.Status = string(ts.Status)
 	if len(brand.Lines) == 0 {
 		brand.Lines = []CRALine{
-			{Task: "Prestation", Days: "—", Hours: "—"},
+			{Day: "—", Person: brand.Collaborateur, Assignment: "Prestation", Duration: "—"},
 		}
 	}
 

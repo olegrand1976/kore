@@ -14,6 +14,13 @@
     th, td { border: 1px solid var(--kore-border); padding: 8px; text-align: left; }
     th { background: #f1f3f6; color: var(--kore-brand-navy); font-size: 9pt; }
     .info-table th { width: 28%; font-weight: 600; }
+    .lines-table { table-layout: fixed; }
+    .lines-table td { word-wrap: break-word; }
+    .lines-table .col-day { width: 11%; white-space: nowrap; }
+    .lines-table .col-person { width: 17%; }
+    .lines-table .col-comment { width: 26%; }
+    .lines-table .col-duration { width: 10%; white-space: nowrap; text-align: right; }
+    .lines-table tr { page-break-inside: avoid; }
     .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--kore-border); font-size: 8pt; color: var(--kore-text-muted); }
     .kore-badge { color: var(--kore-brand-gold); font-weight: bold; }
   </style>
@@ -30,6 +37,7 @@
   <h2 class="title">Informations de prestation</h2>
   <table class="info-table">
     <tbody>
+      {{ if .Collaborateur }}<tr><th>Collaborateur</th><td>{{ .Collaborateur }}</td></tr>{{ end }}
       {{ if .Client }}<tr><th>Client</th><td>{{ .Client }}</td></tr>{{ end }}
       {{ if .Mission }}<tr><th>Mission</th><td>{{ .Mission }}</td></tr>{{ end }}
       {{ if .Description }}<tr><th>Description</th><td>{{ .Description }}</td></tr>{{ end }}
@@ -39,13 +47,25 @@
     </tbody>
   </table>
   <h2 class="title">Détail des prestations</h2>
-  <table>
+  <table class="lines-table">
     <thead>
-      <tr><th>Tâche</th><th>Jours</th><th>Heures</th></tr>
+      <tr>
+        <th class="col-day">Jour</th>
+        <th class="col-person">Personne</th>
+        <th>Affectation</th>
+        <th class="col-comment">Commentaire</th>
+        <th class="col-duration">Temps</th>
+      </tr>
     </thead>
     <tbody>
       {{ range .Lines }}
-      <tr><td>{{ .Task }}</td><td>{{ .Days }}</td><td>{{ .Hours }}</td></tr>
+      <tr>
+        <td class="col-day">{{ .Day }}</td>
+        <td class="col-person">{{ .Person }}</td>
+        <td>{{ .Assignment }}</td>
+        <td class="col-comment">{{ .Comment }}</td>
+        <td class="col-duration">{{ .Duration }}</td>
+      </tr>
       {{ end }}
     </tbody>
   </table>

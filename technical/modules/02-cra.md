@@ -83,6 +83,17 @@ type CRARepository interface {
 type PDFRenderer interface { Render(ctx context.Context, ts Timesheet) (Document, error) }
 type Clock interface { Now() time.Time }
 type Cache interface { /* platform/cache — cf. foundation/10 */ }
+
+// nomme le collaborateur propriétaire du CRA sur le PDF (adapter vers 00 Identity)
+type UserIdentityResolver interface {
+    ResolveUserIdentity(ctx context.Context, tenant TenantID, userID uuid.UUID) (UserIdentity, error)
+}
+
+// résout le sujet de l'affectation d'une ligne — une implémentation par module
+// voisin, indexée par type d'affectation (`tma`, `ticket`, `work_request`)
+type WorkRefLabelReader interface {
+    WorkRefLabel(ctx context.Context, tenant TenantID, id uuid.UUID) (string, error)
+}
 ```
 
 > **Cache (Redis)** : les agrégats de consommation par application/période (`ConsumedByApplication`) sont mis en cache (clé `kore:{tenant}:cra:consumption:{app}:{period}`, TTL court) et **invalidés** à toute écriture/validation de CRA. Cache-aside, dégradation vers la base si Redis indisponible (cf. [foundation/10-cache-redis.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/10-cache-redis.md)).
@@ -91,7 +102,15 @@ type Cache interface { /* platform/cache — cf. foundation/10 */ }
 
 - **HTTP (chi)** : `internal/modules/cra/adapters/http`.
 - **PostgreSQL (sqlc)** : schéma `cra`.
-- **PDFRenderer** : gateway de génération PDF (implémentation dédiée).
+- **PDFRenderer** : gateway de génération PDF (implémentation dédiée). `TenantRenderer` compose
+  le HTML (`adapters/pdf/templates/cra.html`), `ChromedpRenderer` l'imprime en PDF via Chromium
+  headless. Le tableau « Détail des prestations » reprend les colonnes de la grille CRA :
+  **Jour · Personne (nom + prénom) · Affectation · Commentaire · Temps** (heures + minutes,
+  ex. `6 h 15`). L'affectation reprend le libellé de la demande TMA / du ticket / de la demande
+  d'exploitation ; à défaut, le libellé de la source de la ligne (Prestation, Congé, Jour férié…).
+- **UserIdentityResolver** : `adapters/org` → annuaire (00 Identity).
+- **WorkRefLabelReader** : `adapters/tma`, `adapters/support`, `adapters/maintenance` — lecture du
+  sujet de l'affectation. Une résolution en échec n'échoue pas le rendu : repli sur `Type #id`.
 - **Clock** : horloge injectée (déterminisme des tests temporels).
 
 ## 6. Contrat d'API

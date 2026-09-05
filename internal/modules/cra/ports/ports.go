@@ -246,6 +246,26 @@ type UserEmailResolver interface {
 	ResolveUserEmails(ctx context.Context, tenant kernel.TenantID, userIDs []uuid.UUID) ([]string, error)
 }
 
+// UserIdentity is the display identity of the collaborator a CRA belongs to.
+type UserIdentity struct {
+	Login  string
+	Prenom string
+	Nom    string
+}
+
+// UserIdentityResolver names the CRA owner on exported documents, where a raw
+// user UUID is unreadable.
+type UserIdentityResolver interface {
+	ResolveUserIdentity(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID) (UserIdentity, error)
+}
+
+// WorkRefLabelReader resolves the subject of the work item a CRA line is charged
+// to (the "affectation"): a TMA demand, a support ticket or a work request.
+// One implementation per neighbouring module, keyed by work ref type.
+type WorkRefLabelReader interface {
+	WorkRefLabel(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (string, error)
+}
+
 type SocieteCalendarReader interface {
 	SettingsForUser(ctx context.Context, tenant kernel.TenantID, userID UserID) (SocieteCraSettings, error)
 }
