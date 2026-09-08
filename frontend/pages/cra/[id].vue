@@ -9,7 +9,7 @@
           v-if="canValidateCra"
           variant="secondary"
           size="sm"
-          :disabled="!canEdit || saving"
+          :disabled="!canEdit || saving || forceValidating"
           @click="onValidateFinal"
         >
           {{ $t('cra.validate_final') }}
@@ -233,6 +233,12 @@
         </div>
       </form>
     </AppModal>
+
+    <CraForceValidateModal
+      v-model:open="forceValidateOpen"
+      :validating="forceValidating"
+      @confirm="confirmForceValidate"
+    />
   </div>
 </template>
 
@@ -243,6 +249,7 @@ import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
 import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craPrestation'
 import { normalizeAnomalyMessages } from '~/utils/craAnomalies'
+import { timesheetHasLoggedTime } from '~/utils/craLoggedTime'
 
 definePageMeta({ layout: 'default' })
 
@@ -251,7 +258,7 @@ const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
 const { canValidateCra } = usePermissions()
-const { mapCraError, mapInvoiceDraftMessage: mapInvoiceDraft } = useCraError()
+const { mapCraError, mapInvoiceDraftMessage: mapInvoiceDraft, isCommercialInfoRequiredError } = useCraError()
 const id = computed(() => String(route.params.id))
 
 const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal, rejectTimesheet } = useCra(id)
@@ -345,6 +352,8 @@ const rejectReason = ref('')
 const rejecting = ref(false)
 const rejectTitleId = 'cra-reject-title'
 const rejectReasonId = 'cra-reject-reason'
+const forceValidateOpen = ref(false)
+const forceValidating = ref(false)
 const anomalies = ref<string[]>([])
 const anomaliesLoading = ref(false)
 const { suggestCraPrefill, fetchCraAnomalies } = useAi()
@@ -559,21 +568,50 @@ const onSubmitWeek = async (weekNumber: number) => {
   }
 }
 
+const hasLoggedTime = computed(() => timesheetHasLoggedTime(timesheet.value?.weeks))
+
+const applyValidateSuccess = async (draft: Awaited<ReturnType<typeof validateFinal>>) => {
+  validateMsg.value = mapInvoiceDraft(draft)
+  const invoiceId = (draft as { invoiceId?: string } | undefined)?.invoiceId
+  if (draft?.status === 'created' && invoiceId) {
+    invoiceLink.value = `/facturation/${invoiceId}`
+  }
+  await loadAnomalies()
+}
+
 const onValidateFinal = async () => {
+  if (forceValidating.value) return
   actionError.value = ''
   validateMsg.value = ''
   invoiceLink.value = ''
   try {
     await persistPrestation()
     const draft = await validateFinal()
-    validateMsg.value = mapInvoiceDraft(draft)
-    const invoiceId = (draft as { invoiceId?: string } | undefined)?.invoiceId
-    if (draft?.status === 'created' && invoiceId) {
-      invoiceLink.value = `/facturation/${invoiceId}`
+    await applyValidateSuccess(draft)
+  } catch (err) {
+    // Infos prestation manquantes + temps saisi : modal de forçage sans banner d'erreur concurrente.
+    if (isCommercialInfoRequiredError(err) && hasLoggedTime.value) {
+      forceValidateOpen.value = true
+      return
     }
-    await loadAnomalies()
+    actionError.value = mapCraError(err)
+  }
+}
+
+const confirmForceValidate = async () => {
+  if (forceValidating.value) return
+  forceValidating.value = true
+  actionError.value = ''
+  validateMsg.value = ''
+  invoiceLink.value = ''
+  try {
+    const draft = await validateFinal({ force: true })
+    forceValidateOpen.value = false
+    await applyValidateSuccess(draft)
   } catch (err) {
     actionError.value = mapCraError(err)
+  } finally {
+    forceValidating.value = false
   }
 }
 

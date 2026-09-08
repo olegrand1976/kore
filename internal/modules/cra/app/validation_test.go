@@ -321,6 +321,91 @@ func TestValidateFinal_RequiresCommercialInfo(t *testing.T) {
 	}
 }
 
+func TestValidateFinal_ForceSkipsCommercialInfo(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	managerID := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusValideSemaine,
+		Weeks: []domain.WeekEntry{{
+			WeekNumber: 1,
+			Lines: []domain.TimeLine{{
+				Duration: kernel.Duration{Minutes: 480},
+			}},
+		}},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	result, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   managerID,
+		Force:       true,
+	})
+	if err != nil {
+		t.Fatalf("ValidateFinal force: %v", err)
+	}
+	if !result.Forced {
+		t.Fatal("expected Forced=true in result")
+	}
+	if repo.ts.Status != domain.StatusDefinitif {
+		t.Fatalf("expected Définitif, got %s", repo.ts.Status)
+	}
+	if !repo.ts.ValidationForced {
+		t.Fatal("expected ValidationForced=true persisted on timesheet")
+	}
+	if repo.ts.ValidatedBy == nil || *repo.ts.ValidatedBy != managerID {
+		t.Fatalf("expected ValidatedBy=%s, got %+v", managerID, repo.ts.ValidatedBy)
+	}
+}
+
+func TestValidateFinal_ForceRequiresLoggedTime(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusValideSemaine,
+	}}
+	svc := NewService(repo, nil, nil)
+
+	_, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   uuid.New(),
+		Force:       true,
+	})
+	if err != domain.ErrCRANoLoggedTime {
+		t.Fatalf("expected ErrCRANoLoggedTime, got %v", err)
+	}
+}
+
+func TestValidateFinal_ForceStillRequiresSubmittedStatus(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusBrouillon,
+	}}
+	svc := NewService(repo, nil, nil)
+
+	_, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   uuid.New(),
+		Force:       true,
+	})
+	if err != domain.ErrCRANotSubmitted {
+		t.Fatalf("expected ErrCRANotSubmitted, got %v", err)
+	}
+}
+
 func TestSaveWeek_AllowsDuplicateActivityTypesOnSameDay(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	userID := uuid.New()

@@ -24,6 +24,8 @@ var (
 	// working days left without hours inside a week being submitted — conflating the
 	// two told the user to fill days that were already filled.
 	ErrCRANotSubmitted = errors.New("cra has no submitted week")
+	// ErrCRANoLoggedTime blocks force validation when the month has no logged minutes.
+	ErrCRANoLoggedTime = errors.New("cra has no logged time")
 )
 
 const (
@@ -101,18 +103,19 @@ type WeekEntry struct {
 }
 
 type Timesheet struct {
-	ID             uuid.UUID       `json:"id"`
-	TenantID       kernel.TenantID `json:"tenantId"`
-	UserID         uuid.UUID       `json:"userId"`
-	Month          Month           `json:"month"`
-	Status         TimesheetStatus `json:"status"`
-	CommercialInfo CommercialInfo  `json:"commercialInfo"`
-	Weeks          []WeekEntry     `json:"weeks"`
-	ValidatedAt    *time.Time      `json:"validatedAt,omitempty"`
-	ValidatedBy    *uuid.UUID      `json:"validatedBy,omitempty"`
-	RejectedAt     *time.Time      `json:"rejectedAt,omitempty"`
-	RejectedBy     *uuid.UUID      `json:"rejectedBy,omitempty"`
-	RejectReason   string          `json:"rejectReason,omitempty"`
+	ID               uuid.UUID       `json:"id"`
+	TenantID         kernel.TenantID `json:"tenantId"`
+	UserID           uuid.UUID       `json:"userId"`
+	Month            Month           `json:"month"`
+	Status           TimesheetStatus `json:"status"`
+	CommercialInfo   CommercialInfo  `json:"commercialInfo"`
+	Weeks            []WeekEntry     `json:"weeks"`
+	ValidatedAt      *time.Time      `json:"validatedAt,omitempty"`
+	ValidatedBy      *uuid.UUID      `json:"validatedBy,omitempty"`
+	ValidationForced bool            `json:"validationForced,omitempty"`
+	RejectedAt       *time.Time      `json:"rejectedAt,omitempty"`
+	RejectedBy       *uuid.UUID      `json:"rejectedBy,omitempty"`
+	RejectReason     string          `json:"rejectReason,omitempty"`
 }
 
 type TimesheetSummary struct {
@@ -162,6 +165,18 @@ func (ts Timesheet) IsFinal() bool {
 	return ts.Status == StatusDefinitif
 }
 
+// HasLoggedTime reports whether any line on the timesheet carries a positive duration.
+func (ts Timesheet) HasLoggedTime() bool {
+	for _, week := range ts.Weeks {
+		for _, line := range week.Lines {
+			if line.Duration.Minutes > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (ts Timesheet) CanEdit() bool {
 	return ts.Status != StatusDefinitif
 }
@@ -188,6 +203,7 @@ func (ts *Timesheet) Unvalidate() error {
 	ts.Status = StatusValideSemaine
 	ts.ValidatedAt = nil
 	ts.ValidatedBy = nil
+	ts.ValidationForced = false
 	return nil
 }
 

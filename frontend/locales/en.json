@@ -615,6 +615,10 @@
     "submit_week": "Submit week",
     "validate_final": "Final validation",
     "validated_ok": "Timesheet finally validated.",
+    "force_validate_title": "Force final validation?",
+    "force_validate_body": "Delivery information (client / mission) is incomplete. Time has already been logged this month: you can force validation. The timesheet can be reopened later if needed.",
+    "force_validate_hint": "PDF and invoicing may stay limited until client and mission are filled in.",
+    "force_validate_confirm": "Force validation",
     "invoice_created": "Validated — invoice draft created.",
     "invoice_created_link": "Open invoice",
     "invoice_skipped": "Validated — no invoice draft ({reason}).",
@@ -684,6 +688,7 @@
       "already_invoiced": "This timesheet already has an invoice. Cancel it before unvalidating or deleting.",
       "week_incomplete": "Incomplete week: all working days must be filled in.",
       "not_submitted": "No week has been submitted yet: submit at least one week before the final validation.",
+      "no_logged_time": "Cannot force validation: no hours logged this month.",
       "conflict": "Conflict: action not allowed in the current state.",
       "validation": "Invalid data."
     },

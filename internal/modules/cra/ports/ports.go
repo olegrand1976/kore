@@ -37,6 +37,10 @@ type ManagerValidateCommand struct {
 	TenantID    kernel.TenantID
 	TimesheetID TimesheetID
 	ManagerID   UserID
+	// Force skips the commercial-info completeness check (client + mission).
+	// Still requires at least one submitted week (StatusValideSemaine) and
+	// logged time on the month; the timesheet is flagged ValidationForced.
+	Force bool
 }
 
 type InvoiceDraftStatus string
@@ -56,6 +60,7 @@ type InvoiceDraftOutcome struct {
 
 type ValidateFinalResult struct {
 	InvoiceDraft InvoiceDraftOutcome `json:"invoiceDraft"`
+	Forced       bool                `json:"forced,omitempty"`
 }
 
 type RejectTimesheetCommand struct {

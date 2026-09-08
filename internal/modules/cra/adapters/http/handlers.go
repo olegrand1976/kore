@@ -303,11 +303,16 @@ func validateFinal(svc ports.CRAService, authorizer authx.Authorizer) http.Handl
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
 			return
 		}
+		var req struct {
+			Force bool `json:"force"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		identity, _ := authx.FromContext(r.Context())
 		result, err := svc.ValidateFinal(r.Context(), ports.ManagerValidateCommand{
 			TenantID:    identity.TenantID,
 			TimesheetID: id,
 			ManagerID:   identity.UserID,
+			Force:       req.Force,
 		})
 		if err != nil {
 			writeCRAError(w, err)
@@ -315,6 +320,7 @@ func validateFinal(svc ports.CRAService, authorizer authx.Authorizer) http.Handl
 		}
 		httpx.WriteData(w, http.StatusOK, map[string]any{
 			"status":       "validated",
+			"forced":       result.Forced,
 			"invoiceDraft": result.InvoiceDraft,
 		})
 	}
@@ -761,6 +767,8 @@ func writeCRAError(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeWeekIncomplete, err.Error())
 	case errors.Is(err, domain.ErrCRANotSubmitted):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeCRANotSubmitted, err.Error())
+	case errors.Is(err, domain.ErrCRANoLoggedTime):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeCRANoLoggedTime, err.Error())
 	case errors.Is(err, domain.ErrTimesheetNotFound), errors.Is(err, domain.ErrWeekNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	default:

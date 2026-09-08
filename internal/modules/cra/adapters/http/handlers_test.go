@@ -61,6 +61,12 @@ func TestWriteCRAError_BusinessCodes(t *testing.T) {
 			wantCode:   httpx.ErrCodeWeekIncomplete,
 		},
 		{
+			name:       "no logged time",
+			err:        domain.ErrCRANoLoggedTime,
+			wantStatus: http.StatusUnprocessableEntity,
+			wantCode:   httpx.ErrCodeCRANoLoggedTime,
+		},
+		{
 			name:       "not final",
 			err:        domain.ErrCRANotFinal,
 			wantStatus: http.StatusConflict,

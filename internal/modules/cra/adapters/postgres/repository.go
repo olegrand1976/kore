@@ -77,7 +77,28 @@ func (r *Repository) Save(ctx context.Context, ts domain.Timesheet) error {
 }
 
 func (r *Repository) execSaveTimesheet(ctx context.Context, tx pgx.Tx, ts domain.Timesheet, commercial []byte) error {
-	if r.schema.hasRejectReason {
+	switch {
+	case r.schema.hasRejectReason && r.schema.hasValidationForced:
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.timesheets (
+				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+				validation_forced, rejected_at, rejected_by, reject_reason, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+			ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
+				status = EXCLUDED.status,
+				commercial_info = EXCLUDED.commercial_info,
+				validated_at = EXCLUDED.validated_at,
+				validated_by = EXCLUDED.validated_by,
+				validation_forced = EXCLUDED.validation_forced,
+				rejected_at = EXCLUDED.rejected_at,
+				rejected_by = EXCLUDED.rejected_by,
+				reject_reason = EXCLUDED.reject_reason,
+				updated_at = NOW()
+		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
+			commercial, ts.ValidatedAt, ts.ValidatedBy, ts.ValidationForced,
+			ts.RejectedAt, ts.RejectedBy, ts.RejectReason)
+		return err
+	case r.schema.hasRejectReason:
 		_, err := tx.Exec(ctx, `
 			INSERT INTO cra.timesheets (
 				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
@@ -95,20 +116,21 @@ func (r *Repository) execSaveTimesheet(ctx context.Context, tx pgx.Tx, ts domain
 		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
 			commercial, ts.ValidatedAt, ts.ValidatedBy, ts.RejectedAt, ts.RejectedBy, ts.RejectReason)
 		return err
+	default:
+		_, err := tx.Exec(ctx, `
+			INSERT INTO cra.timesheets (
+				id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by, updated_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+			ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
+				status = EXCLUDED.status,
+				commercial_info = EXCLUDED.commercial_info,
+				validated_at = EXCLUDED.validated_at,
+				validated_by = EXCLUDED.validated_by,
+				updated_at = NOW()
+		`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
+			commercial, ts.ValidatedAt, ts.ValidatedBy)
+		return err
 	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO cra.timesheets (
-			id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-		ON CONFLICT (tenant_id, user_id, month) DO UPDATE SET
-			status = EXCLUDED.status,
-			commercial_info = EXCLUDED.commercial_info,
-			validated_at = EXCLUDED.validated_at,
-			validated_by = EXCLUDED.validated_by,
-			updated_at = NOW()
-	`, ts.ID, ts.TenantID.UUID(), ts.UserID, string(ts.Month), string(ts.Status),
-		commercial, ts.ValidatedAt, ts.ValidatedBy)
-	return err
 }
 
 func (r *Repository) execSaveTimeLine(ctx context.Context, tx pgx.Tx, tenant kernel.TenantID, weekID uuid.UUID, line domain.TimeLine) error {
@@ -176,7 +198,20 @@ func (r *Repository) GetByID(ctx context.Context, tenant kernel.TenantID, id por
 	var commercial []byte
 	var month string
 	var status string
-	if r.schema.hasRejectReason {
+	if r.schema.hasRejectReason && r.schema.hasValidationForced {
+		err := r.pool.QueryRow(ctx, `
+			SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
+				validation_forced, rejected_at, rejected_by, COALESCE(reject_reason, '')
+			FROM cra.timesheets WHERE tenant_id = $1 AND id = $2
+		`, tenant.UUID(), id).Scan(&ts.ID, &tenantID, &ts.UserID, &month, &status, &commercial, &ts.ValidatedAt, &ts.ValidatedBy,
+			&ts.ValidationForced, &ts.RejectedAt, &ts.RejectedBy, &ts.RejectReason)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Timesheet{}, domain.ErrTimesheetNotFound
+			}
+			return domain.Timesheet{}, err
+		}
+	} else if r.schema.hasRejectReason {
 		err := r.pool.QueryRow(ctx, `
 			SELECT id, tenant_id, user_id, month, status, commercial_info, validated_at, validated_by,
 				rejected_at, rejected_by, COALESCE(reject_reason, '')

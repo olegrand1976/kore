@@ -1,3 +1,27 @@
+import { extractFetchErrorCode } from '~/composables/useApiError'
+
+function extractErrorMessage(err: unknown): string {
+  if (!err || typeof err !== 'object') return ''
+  const e = err as {
+    data?: { message?: string; error?: string | { message?: string; code?: string } }
+    statusMessage?: string
+    message?: string
+  }
+  const nested = e.data?.error
+  if (typeof nested === 'string' && nested.trim()) return nested
+  if (nested && typeof nested === 'object' && typeof nested.message === 'string') {
+    return nested.message
+  }
+  return e.data?.message ?? e.statusMessage ?? e.message ?? ''
+}
+
+export function isCommercialInfoRequiredError(err: unknown): boolean {
+  const code = extractFetchErrorCode(err) ?? ''
+  if (code === 'COMMERCIAL_INFO_REQUIRED') return true
+  const message = extractErrorMessage(err).toLowerCase()
+  return message.includes('commercial info required')
+}
+
 export function mapCraApiError(err: unknown, t: (key: string) => string, fallback?: string): string {
   if (err && typeof err === 'object') {
     const e = err as {
@@ -6,14 +30,8 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
       statusMessage?: string
       message?: string
     }
-    const code = e.data?.error?.code ?? ''
-    const message = (
-      e.data?.error?.message ??
-      e.data?.message ??
-      e.statusMessage ??
-      e.message ??
-      ''
-    ).toLowerCase()
+    const code = extractFetchErrorCode(err) ?? e.data?.error?.code ?? ''
+    const message = extractErrorMessage(err).toLowerCase()
     const status = e.statusCode ?? 0
 
     switch (code) {
@@ -31,6 +49,8 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
         return t('cra.errors.week_incomplete')
       case 'CRA_NOT_SUBMITTED':
         return t('cra.errors.not_submitted')
+      case 'CRA_NO_LOGGED_TIME':
+        return t('cra.errors.no_logged_time')
       default:
         break
     }
@@ -53,10 +73,20 @@ export function mapCraApiError(err: unknown, t: (key: string) => string, fallbac
     if (message.includes('incomplete') || message.includes('incomplet')) {
       return t('cra.errors.week_incomplete')
     }
+    if (message.includes('no submitted week') || message.includes('not submitted')) {
+      return t('cra.errors.not_submitted')
+    }
+    if (message.includes('no logged time')) {
+      return t('cra.errors.no_logged_time')
+    }
     if (status === 409) {
       return t('cra.errors.conflict')
     }
     if (status === 422) {
+      const raw = extractErrorMessage(err).trim()
+      if (raw && raw.toLowerCase() !== 'invalid data' && raw.toLowerCase() !== 'données invalides.') {
+        return `${t('cra.errors.validation')} (${raw})`
+      }
       return t('cra.errors.validation')
     }
   }
@@ -67,6 +97,7 @@ export function useCraError() {
   const { t } = useI18n()
   return {
     mapCraError: (err: unknown, fallback?: string) => mapCraApiError(err, t, fallback),
+    isCommercialInfoRequiredError,
     mapInvoiceDraftMessage: (
       draft: { status?: string; reason?: string } | null | undefined,
       skippedKey = 'cra.invoice_skipped'

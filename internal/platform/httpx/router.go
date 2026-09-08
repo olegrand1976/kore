@@ -32,6 +32,7 @@ const (
 	ErrCodeCRAConflictAbsence             ErrorCode = "CRA_CONFLICT_ABSENCE"
 	ErrCodeWeekIncomplete                 ErrorCode = "WEEK_INCOMPLETE"
 	ErrCodeCRANotSubmitted                ErrorCode = "CRA_NOT_SUBMITTED"
+	ErrCodeCRANoLoggedTime                ErrorCode = "CRA_NO_LOGGED_TIME"
 	ErrCodeApplicationsMergeBothTaiga     ErrorCode = "APPLICATIONS_MERGE_BOTH_TAIGA"
 	ErrCodeApplicationsMergeActiveSprint  ErrorCode = "APPLICATIONS_MERGE_ACTIVE_SPRINT"
 	ErrCodeApplicationsMergeMethodology   ErrorCode = "APPLICATIONS_MERGE_METHODOLOGY"

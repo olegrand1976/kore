@@ -7,20 +7,22 @@ import (
 )
 
 type craSchema struct {
-	hasRejectReason bool
-	hasLineBillable bool
-	hasLineOrigin   bool
-	hasLineWorkRef  bool
-	hasSSMissions   bool
+	hasRejectReason     bool
+	hasValidationForced bool
+	hasLineBillable     bool
+	hasLineOrigin       bool
+	hasLineWorkRef      bool
+	hasSSMissions       bool
 }
 
 func probeCraSchema(ctx context.Context, pool *db.Pool) craSchema {
 	return craSchema{
-		hasRejectReason: columnExists(ctx, pool, "cra", "timesheets", "reject_reason"),
-		hasLineBillable: columnExists(ctx, pool, "cra", "time_lines", "billable"),
-		hasLineOrigin:   columnExists(ctx, pool, "cra", "time_lines", "origin"),
-		hasLineWorkRef:  columnExists(ctx, pool, "cra", "time_lines", "work_ref_type"),
-		hasSSMissions:   tableExists(ctx, pool, "ssii.missions"),
+		hasRejectReason:     columnExists(ctx, pool, "cra", "timesheets", "reject_reason"),
+		hasValidationForced: columnExists(ctx, pool, "cra", "timesheets", "validation_forced"),
+		hasLineBillable:     columnExists(ctx, pool, "cra", "time_lines", "billable"),
+		hasLineOrigin:       columnExists(ctx, pool, "cra", "time_lines", "origin"),
+		hasLineWorkRef:      columnExists(ctx, pool, "cra", "time_lines", "work_ref_type"),
+		hasSSMissions:       tableExists(ctx, pool, "ssii.missions"),
 	}
 }
 

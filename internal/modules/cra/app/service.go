@@ -298,19 +298,27 @@ func (s *Service) ValidateFinal(ctx context.Context, cmd ports.ManagerValidateCo
 	if ts.Status != domain.StatusValideSemaine {
 		return ports.ValidateFinalResult{}, domain.ErrCRANotSubmitted
 	}
+	forced := false
 	if !ts.CommercialInfo.Complete() {
-		return ports.ValidateFinalResult{}, domain.ErrCommercialInfoRequired
+		if !cmd.Force {
+			return ports.ValidateFinalResult{}, domain.ErrCommercialInfoRequired
+		}
+		if !ts.HasLoggedTime() {
+			return ports.ValidateFinalResult{}, domain.ErrCRANoLoggedTime
+		}
+		forced = true
 	}
 	now := s.clock.Now().UTC()
 	ts.Status = domain.StatusDefinitif
 	ts.ValidatedAt = &now
 	ts.ValidatedBy = &cmd.ManagerID
+	ts.ValidationForced = forced
 	if err := s.repo.Save(ctx, ts); err != nil {
 		return ports.ValidateFinalResult{}, err
 	}
 	s.invalidateConsumptionCache(ctx, cmd.TenantID)
 	draft := s.tryPublishValidationInvoice(ctx, ts)
-	return ports.ValidateFinalResult{InvoiceDraft: draft}, nil
+	return ports.ValidateFinalResult{InvoiceDraft: draft, Forced: forced}, nil
 }
 
 func (s *Service) ProposeLines(ctx context.Context, lines []ports.ProposedLine) error {

@@ -22,7 +22,7 @@ export function useCra(timesheetId?: Ref<string> | string) {
 
   const saveWeek = (weekNumber: number, lines: CraLine[]) => store.saveWeek(weekNumber, lines)
   const submitWeek = (weekNumber: number) => store.submitWeek(weekNumber)
-  const validateFinal = () => store.validateFinal()
+  const validateFinal = (opts?: { force?: boolean }) => store.validateFinal(opts)
   const rejectTimesheet = (reason: string) => store.rejectTimesheet(reason)
 
   return {

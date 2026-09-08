@@ -1,0 +1,2 @@
+ALTER TABLE cra.timesheets
+  ADD COLUMN IF NOT EXISTS validation_forced BOOLEAN NOT NULL DEFAULT FALSE;

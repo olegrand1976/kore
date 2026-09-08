@@ -186,7 +186,7 @@ func TestReminderCandidate_IsIncomplete(t *testing.T) {
 func TestUnvalidate_FinalTimesheetBecomesSubmitted(t *testing.T) {
 	now := time.Now()
 	manager := uuid.New()
-	ts := Timesheet{Status: StatusDefinitif, ValidatedAt: &now, ValidatedBy: &manager}
+	ts := Timesheet{Status: StatusDefinitif, ValidatedAt: &now, ValidatedBy: &manager, ValidationForced: true}
 	if err := ts.Unvalidate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -195,6 +195,19 @@ func TestUnvalidate_FinalTimesheetBecomesSubmitted(t *testing.T) {
 	}
 	if ts.ValidatedAt != nil || ts.ValidatedBy != nil {
 		t.Fatal("expected validation metadata to be cleared")
+	}
+	if ts.ValidationForced {
+		t.Fatal("expected ValidationForced to be cleared")
+	}
+}
+
+func TestHasLoggedTime(t *testing.T) {
+	if (Timesheet{}).HasLoggedTime() {
+		t.Fatal("empty timesheet should have no logged time")
+	}
+	ts := Timesheet{Weeks: []WeekEntry{{Lines: []TimeLine{{Duration: kernel.Duration{Minutes: 30}}}}}}
+	if !ts.HasLoggedTime() {
+		t.Fatal("expected logged time")
 	}
 }
 

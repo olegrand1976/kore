@@ -615,6 +615,10 @@
     "submit_week": "Soumettre la semaine",
     "validate_final": "Valider définitivement",
     "validated_ok": "CRA validé définitivement.",
+    "force_validate_title": "Forcer la validation définitive ?",
+    "force_validate_body": "Les informations de prestation (client / mission) sont incomplètes. Du temps a déjà été saisi sur ce mois : vous pouvez forcer la validation. Le CRA pourra être réouvert ensuite si besoin.",
+    "force_validate_hint": "Le PDF et la facturation pourront rester limités tant que client et mission ne sont pas renseignés.",
+    "force_validate_confirm": "Forcer la validation",
     "invoice_created": "CRA validé — brouillon facture créé.",
     "invoice_created_link": "Ouvrir la facture",
     "invoice_skipped": "CRA validé — brouillon facture non créé ({reason}).",
@@ -684,6 +688,7 @@
       "already_invoiced": "Ce CRA a déjà une facture. Annulez-la avant de dévalider ou supprimer.",
       "week_incomplete": "Semaine incomplète : tous les jours ouvrés doivent être renseignés.",
       "not_submitted": "Aucune semaine n'a encore été soumise : soumettez au moins une semaine avant la validation définitive.",
+      "no_logged_time": "Impossible de forcer la validation : aucune heure saisie sur ce mois.",
       "conflict": "Conflit : action impossible dans l'état actuel.",
       "validation": "Données invalides."
     },

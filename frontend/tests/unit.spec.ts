@@ -345,7 +345,7 @@ describe('mapCraApiError', () => {
       statusCode: 422,
       data: { error: { code: 'VALIDATION', message: 'invalid commercialId' } }
     }
-    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.validation')
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.validation (invalid commercialId)')
   })
 
   it('distinguishes a draft timesheet from a week with unfilled days', () => {
@@ -370,6 +370,43 @@ describe('mapCraApiError', () => {
       data: { error: { code: 'CRA_ALREADY_INVOICED', message: 'cra already invoiced' } }
     }
     expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.already_invoiced')
+  })
+})
+
+describe('isCommercialInfoRequiredError', () => {
+  it('detects commercial info required by code or message', async () => {
+    const { isCommercialInfoRequiredError } = await import('../composables/useCraError')
+    expect(isCommercialInfoRequiredError({
+      statusCode: 422,
+      data: { error: { code: 'COMMERCIAL_INFO_REQUIRED', message: 'commercial info required' } }
+    })).toBe(true)
+    expect(isCommercialInfoRequiredError({
+      statusCode: 422,
+      data: { error: { message: 'commercial info required' } }
+    })).toBe(true)
+    expect(isCommercialInfoRequiredError({
+      statusCode: 422,
+      data: { error: { code: 'CRA_NOT_SUBMITTED', message: 'cra has no submitted week' } }
+    })).toBe(false)
+  })
+})
+
+describe('timesheetHasLoggedTime', () => {
+  it('detects positive durations on any week line', async () => {
+    const { timesheetHasLoggedTime } = await import('../utils/craLoggedTime')
+    expect(timesheetHasLoggedTime([])).toBe(false)
+    expect(timesheetHasLoggedTime([{ lines: [{ duration: 0 }] }])).toBe(false)
+    expect(timesheetHasLoggedTime([{ lines: [{ duration: 30 }] }])).toBe(true)
+  })
+})
+
+describe('mapCraApiError no logged time', () => {
+  it('maps CRA_NO_LOGGED_TIME', () => {
+    const err = {
+      statusCode: 422,
+      data: { error: { code: 'CRA_NO_LOGGED_TIME', message: 'cra has no logged time' } }
+    }
+    expect(mapCraApiError(err, (key) => key)).toBe('cra.errors.no_logged_time')
   })
 })
 

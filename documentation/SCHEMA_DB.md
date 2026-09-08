@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 26/08/2026 (colonne `tma.demands.ticket_number` + `tma.tenant_ticket_counters`)
+> **Dernière mise à jour doc** : 08/09/2026 (colonne `cra.timesheets.validation_forced`)
 
 ---
 
@@ -531,6 +531,7 @@ Comptes rendus d'activité (pivot temps).
 | `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` — contexte **prestation** (JSON `client` / `mission` requis pour le PDF ; `description`, `technologies`, `lieu`, `responsableClient` optionnels) |
 | `validated_at` | TIMESTAMPTZ | |
 | `validated_by` | UUID | |
+| `validation_forced` | BOOLEAN | NOT NULL, DEFAULT FALSE — validation définitive sans client/mission complets (migration `0005`) |
 | `rejected_at` | TIMESTAMPTZ | Rejet manager (Lot 4) |
 | `rejected_by` | UUID | |
 | `reject_reason` | TEXT | NOT NULL, DEFAULT `''` |

@@ -824,6 +824,19 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  description: >-
+                    Contourne l'exigence client+mission (infos de prestation).
+                    Exige toujours au moins une semaine soumise et du temps saisi
+                    sur le mois ; la validation est tracée via validationForced.
       responses:
         "200":
           description: CRA validé
@@ -836,6 +849,7 @@ paths:
                     type: object
                     properties:
                       status: { type: string }
+                      forced: { type: boolean }
                       invoiceDraft:
                         $ref: '#/components/schemas/InvoiceDraftResult'
         "409":
@@ -846,8 +860,9 @@ paths:
                 $ref: '#/components/schemas/CRAError'
         "422":
           description: >-
-            Précondition non remplie : CRA_NOT_SUBMITTED (aucune semaine soumise)
-            ou COMMERCIAL_INFO_REQUIRED (client/mission manquants).
+            Précondition non remplie : CRA_NOT_SUBMITTED (aucune semaine soumise),
+            COMMERCIAL_INFO_REQUIRED (client/mission manquants, sauf force=true),
+            ou CRA_NO_LOGGED_TIME (force sans heure saisie).
           content:
             application/json:
               schema:
