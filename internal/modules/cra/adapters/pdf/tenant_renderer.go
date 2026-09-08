@@ -40,9 +40,13 @@ func WithWorkRefLabelReaders(readers map[string]ports.WorkRefLabelReader) Tenant
 	return func(r *TenantRenderer) { r.workRefs = readers }
 }
 
+// defaultProductSiteHost is printed in the Kore product footer when PublicBaseURL
+// is a local/dev origin (or unset).
+const defaultProductSiteHost = "kore.ll-it-sc.be"
+
 // WithProductSite names the Kore site in the product footer. Takes the public
 // frontend origin and keeps only its host; a dev origin (localhost, bare IP) is
-// dropped rather than printed on a document meant to be sent to a client.
+// dropped — Render then falls back to defaultProductSiteHost.
 func WithProductSite(rawURL string) TenantRendererOption {
 	return func(r *TenantRenderer) { r.productSite = productSiteHost(rawURL) }
 }
@@ -59,6 +63,13 @@ func productSiteHost(rawURL string) string {
 	return host
 }
 
+func (r *TenantRenderer) resolvedProductSite() string {
+	if r.productSite != "" {
+		return r.productSite
+	}
+	return defaultProductSiteHost
+}
+
 func NewTenantRenderer(org orgports.OrganizationService, opts ...TenantRendererOption) ports.PDFRenderer {
 	r := &TenantRenderer{org: org, inner: NewHTMLRenderer()}
 	for _, opt := range opts {
@@ -71,7 +82,7 @@ func (r *TenantRenderer) Render(ctx context.Context, ts domain.Timesheet) (domai
 	brand := CRABrandData{
 		CompanyName:    "Kore",
 		ShowKoreFooter: true,
-		ProductSite:    r.productSite,
+		ProductSite:    r.resolvedProductSite(),
 	}
 	declaredLogo := ""
 	societes, err := r.societes(ctx, ts.TenantID)

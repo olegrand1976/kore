@@ -77,6 +77,21 @@ func TestProductSiteHost(t *testing.T) {
 	}
 }
 
+func TestResolvedProductSite(t *testing.T) {
+	r := &TenantRenderer{}
+	if got := r.resolvedProductSite(); got != defaultProductSiteHost {
+		t.Fatalf("empty productSite = %q, want %q", got, defaultProductSiteHost)
+	}
+	WithProductSite("https://staging.example.com")(r)
+	if got := r.resolvedProductSite(); got != "staging.example.com" {
+		t.Fatalf("configured productSite = %q, want staging.example.com", got)
+	}
+	WithProductSite("http://localhost:3001")(r)
+	if got := r.resolvedProductSite(); got != defaultProductSiteHost {
+		t.Fatalf("dev origin fallback = %q, want %q", got, defaultProductSiteHost)
+	}
+}
+
 func TestImageMIME(t *testing.T) {
 	cases := []struct {
 		raw    string

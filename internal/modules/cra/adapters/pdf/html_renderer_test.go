@@ -97,7 +97,7 @@ func TestHTMLRenderer_LetterheadAndProductFooter(t *testing.T) {
 		"Rue de la Résistance 92 / A, 7131 Waudrez, Belgique",
 		`aria-label="Kore"`,
 		"Kore — Le cockpit de votre activité IT",
-		"kore.ll-it-sc.be",
+		"https://kore.ll-it-sc.be",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected %q in CRA HTML", want)
