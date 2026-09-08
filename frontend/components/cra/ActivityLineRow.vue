@@ -20,6 +20,32 @@
           :disabled="disabled"
         />
         <button type="button" class="stepper-btn" :disabled="disabled" :aria-label="$t('cra.increase_hours')" @click="step(0.5)">+</button>
+        <div class="activity-line__hours-actions">
+          <AppButton
+            v-if="!disabled"
+            variant="ghost"
+            size="sm"
+            class="activity-line__calc"
+            :aria-label="$t('cra.hours_calc.open')"
+            :title="$t('cra.hours_calc.open')"
+            @click="calcOpen = true"
+          >
+            <AppIcon name="calculate" />
+          </AppButton>
+          <AppButton
+            v-if="!disabled"
+            variant="ghost"
+            size="sm"
+            class="activity-line__save"
+            :class="{ 'activity-line__save--dirty': dirty }"
+            :disabled="busy || saving || !dirty"
+            :aria-label="saveLabel"
+            :title="saveLabel"
+            @click="$emit('save-line')"
+          >
+            <AppIcon :name="saving ? 'hourglass_top' : 'save'" />
+          </AppButton>
+        </div>
       </div>
       <div v-else-if="allowPartialAbsence" class="activity-line__hours-placeholder">
         <span class="activity-line__hours-placeholder-label">{{ $t('cra.hours') }}</span>
@@ -83,19 +109,6 @@
         {{ $t('cra.billable') }}
       </label>
       <AppButton
-        v-if="!disabled"
-        variant="ghost"
-        size="sm"
-        class="activity-line__save"
-        :class="{ 'activity-line__save--dirty': dirty }"
-        :disabled="busy || saving || !dirty"
-        :aria-label="saveLabel"
-        :title="saveLabel"
-        @click="$emit('save-line')"
-      >
-        <AppIcon :name="saving ? 'hourglass_top' : 'save'" />
-      </AppButton>
-      <AppButton
         v-if="canRemove"
         variant="ghost"
         size="sm"
@@ -106,6 +119,12 @@
         <AppIcon name="delete" />
       </AppButton>
     </div>
+
+    <CraHoursCalculatorModal
+      v-model:open="calcOpen"
+      :max-hours="maxHours"
+      @apply="onCalcApply"
+    />
   </div>
 </template>
 
@@ -256,6 +275,12 @@ const step = (delta: number) => {
 const startPartialAbsence = () => {
   emit('update:hours', partialAbsenceHoursLabel(props.dayCapacityMinutes))
 }
+
+const calcOpen = ref(false)
+
+const onCalcApply = (hoursLabel: string) => {
+  emit('update:hours', hoursLabel)
+}
 </script>
 
 <style scoped>
@@ -357,6 +382,13 @@ const startPartialAbsence = () => {
   align-items: end;
 }
 
+.activity-line__hours-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--kore-space-xs);
+}
+
 .activity-line__hours-placeholder {
   display: grid;
   gap: var(--kore-space-xs);
@@ -417,8 +449,13 @@ const startPartialAbsence = () => {
 }
 
 /* Au repos le bouton reste discret : seule une ligne modifiée appelle l'action. */
+.activity-line__calc,
 .activity-line__save {
   color: var(--kore-text-muted);
+}
+
+.activity-line__calc:hover {
+  color: var(--kore-link);
 }
 
 .activity-line__save--dirty {

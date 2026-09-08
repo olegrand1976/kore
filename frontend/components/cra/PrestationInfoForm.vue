@@ -4,6 +4,9 @@
       <div>
         <h3 class="prestation-info__title">{{ $t('cra.prestation_title') }}</h3>
         <p class="prestation-info__hint">{{ $t('cra.prestation_hint') }}</p>
+        <p class="prestation-info__capacity" role="note">
+          {{ $t('cra.prestation_week_capacity', { hours: weekCapacityLabel }) }}
+        </p>
       </div>
       <AppBadge :variant="isComplete ? 'success' : 'warning'">
         {{ isComplete ? $t('cra.prestation_complete') : $t('cra.prestation_incomplete') }}
@@ -126,6 +129,7 @@ import {
   unwrapMissionPayload,
   type PrestationInfoFields
 } from '~/utils/craPrestation'
+import { theoreticalWeekHoursLabel } from '~/utils/craHoursCalculator'
 
 export type PrestationMissionOption = {
   id: string
@@ -134,7 +138,7 @@ export type PrestationMissionOption = {
   label?: string
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   client?: string
   mission?: string
   clientId?: string
@@ -148,7 +152,10 @@ const props = defineProps<{
   saving?: boolean
   message?: string
   isError?: boolean
-}>()
+  dayCapacityMinutes?: number
+}>(), {
+  dayCapacityMinutes: 8 * 60
+})
 
 const emit = defineEmits<{
   submit: []
@@ -173,6 +180,7 @@ const linkedToKnownMission = computed(() => isKnownMissionLink(local.missionId, 
 const manualEntry = computed(() => !linkedToKnownMission.value)
 const identityLocked = computed(() => Boolean(props.disabled) || linkedToKnownMission.value)
 const isComplete = computed(() => prestationInfoComplete(local.client, local.mission))
+const weekCapacityLabel = computed(() => theoreticalWeekHoursLabel(props.dayCapacityMinutes))
 const missionLoadError = ref('')
 
 const snapshot = (): PrestationInfoFields => ({
@@ -299,6 +307,12 @@ defineExpose({ local, isComplete })
   margin: 0;
   font-size: var(--kore-text-small);
   color: var(--kore-text-muted);
+}
+
+.prestation-info__capacity {
+  margin: var(--kore-space-xs) 0 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text);
 }
 
 .prestation-info__form {

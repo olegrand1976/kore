@@ -400,6 +400,38 @@ describe('timesheetHasLoggedTime', () => {
   })
 })
 
+describe('craHoursCalculator', () => {
+  it('parses clock strings and computes range duration', async () => {
+    const {
+      parseClockToMinutes,
+      calculateHoursFromRange,
+      theoreticalWeekHoursLabel,
+      clampHoursLabel
+    } = await import('../utils/craHoursCalculator')
+
+    expect(parseClockToMinutes('8:30')).toBe(8 * 60 + 30)
+    expect(parseClockToMinutes('8h30')).toBe(8 * 60 + 30)
+    expect(parseClockToMinutes('08.30')).toBe(8 * 60 + 30)
+    expect(parseClockToMinutes('8')).toBe(8 * 60)
+    expect(parseClockToMinutes('25:00')).toBeNull()
+
+    const ok = calculateHoursFromRange({ start: '08:30', end: '12:30', breakMinutes: 15 })
+    expect(ok).toEqual({ ok: true, minutes: 225, hours: 3.75, hoursLabel: '3.75' })
+
+    expect(calculateHoursFromRange({ start: '12:00', end: '08:00' })).toEqual({
+      ok: false,
+      reason: 'end_before_start'
+    })
+    expect(calculateHoursFromRange({ start: '08:00', end: '12:00', breakMinutes: 240 })).toEqual({
+      ok: false,
+      reason: 'break_exceeds'
+    })
+    expect(theoreticalWeekHoursLabel(480)).toBe('40')
+    expect(clampHoursLabel(10, 8)).toBe('8')
+    expect(clampHoursLabel(-1, 8)).toBe('0')
+  })
+})
+
 describe('mapCraApiError no logged time', () => {
   it('maps CRA_NO_LOGGED_TIME', () => {
     const err = {

@@ -9,7 +9,7 @@
           v-if="canValidateCra"
           variant="secondary"
           size="sm"
-          :disabled="!canEdit || saving || forceValidating"
+          :disabled="!canEdit || saving || validatingFinal || forceValidating"
           @click="onValidateFinal"
         >
           {{ $t('cra.validate_final') }}
@@ -173,6 +173,7 @@
             :technologies="prestation.technologies"
             :lieu="prestation.lieu"
             :responsable-client="prestation.responsableClient"
+            :day-capacity-minutes="dayCapacityMinutes"
             :disabled="!canEdit"
             :saving="savingPrestation"
             :message="prestationMsg"
@@ -354,6 +355,7 @@ const rejectTitleId = 'cra-reject-title'
 const rejectReasonId = 'cra-reject-reason'
 const forceValidateOpen = ref(false)
 const forceValidating = ref(false)
+const validatingFinal = ref(false)
 const anomalies = ref<string[]>([])
 const anomaliesLoading = ref(false)
 const { suggestCraPrefill, fetchCraAnomalies } = useAi()
@@ -580,7 +582,8 @@ const applyValidateSuccess = async (draft: Awaited<ReturnType<typeof validateFin
 }
 
 const onValidateFinal = async () => {
-  if (forceValidating.value) return
+  if (validatingFinal.value || forceValidating.value) return
+  validatingFinal.value = true
   actionError.value = ''
   validateMsg.value = ''
   invoiceLink.value = ''
@@ -595,11 +598,13 @@ const onValidateFinal = async () => {
       return
     }
     actionError.value = mapCraError(err)
+  } finally {
+    validatingFinal.value = false
   }
 }
 
 const confirmForceValidate = async () => {
-  if (forceValidating.value) return
+  if (forceValidating.value || validatingFinal.value) return
   forceValidating.value = true
   actionError.value = ''
   validateMsg.value = ''
@@ -609,6 +614,8 @@ const confirmForceValidate = async () => {
     forceValidateOpen.value = false
     await applyValidateSuccess(draft)
   } catch (err) {
+    // Fermer la modal pour n'afficher qu'un seul signal d'erreur (flash).
+    forceValidateOpen.value = false
     actionError.value = mapCraError(err)
   } finally {
     forceValidating.value = false

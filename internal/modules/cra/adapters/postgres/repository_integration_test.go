@@ -208,3 +208,47 @@ func TestCRA_DeleteTimesheet_CascadesWeeks(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, summaries)
 }
+
+func TestCRA_ValidationForced_RoundTrip(t *testing.T) {
+	pool := dbtest.NewPostgres(t)
+	repo := postgres.NewRepository(pool)
+	ctx := context.Background()
+
+	tenant := kernel.NewTenantID(uuid.New())
+	userID := uuid.New()
+	managerID := uuid.New()
+	month := domain.Month("2026-08")
+	now := time.Date(2026, 8, 15, 12, 0, 0, 0, time.UTC)
+
+	ts := domain.Timesheet{
+		ID:               uuid.New(),
+		TenantID:         tenant,
+		UserID:           userID,
+		Month:            month,
+		Status:           domain.StatusDefinitif,
+		ValidatedAt:      &now,
+		ValidatedBy:      &managerID,
+		ValidationForced: true,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "",
+			Mission: "",
+		},
+	}
+	require.NoError(t, repo.Save(ctx, ts))
+
+	got, err := repo.GetByID(ctx, tenant, ts.ID)
+	require.NoError(t, err)
+	require.True(t, got.ValidationForced, "validation_forced must round-trip through Save/GetByID")
+	require.Equal(t, domain.StatusDefinitif, got.Status)
+	require.NotNil(t, got.ValidatedBy)
+	require.Equal(t, managerID, *got.ValidatedBy)
+
+	require.NoError(t, got.Unvalidate())
+	require.False(t, got.ValidationForced)
+	require.NoError(t, repo.Save(ctx, got))
+
+	reopened, err := repo.GetByID(ctx, tenant, ts.ID)
+	require.NoError(t, err)
+	require.False(t, reopened.ValidationForced, "unvalidate must clear validation_forced in DB")
+	require.Equal(t, domain.StatusValideSemaine, reopened.Status)
+}

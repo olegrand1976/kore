@@ -384,6 +384,48 @@ func TestValidateFinal_ForceRequiresLoggedTime(t *testing.T) {
 	}
 }
 
+func TestValidateFinal_ForceWithCompleteCommercialIsNotForced(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	managerID := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       uuid.New(),
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusValideSemaine,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "ACME",
+			Mission: "Support",
+		},
+		Weeks: []domain.WeekEntry{{
+			WeekNumber: 1,
+			Lines: []domain.TimeLine{{
+				Duration: kernel.Duration{Minutes: 240},
+			}},
+		}},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	result, err := svc.ValidateFinal(context.Background(), ports.ManagerValidateCommand{
+		TenantID:    tenant,
+		TimesheetID: repo.ts.ID,
+		ManagerID:   managerID,
+		Force:       true,
+	})
+	if err != nil {
+		t.Fatalf("ValidateFinal: %v", err)
+	}
+	if result.Forced {
+		t.Fatal("expected Forced=false when commercial info is complete")
+	}
+	if repo.ts.ValidationForced {
+		t.Fatal("expected ValidationForced=false on timesheet")
+	}
+	if repo.ts.Status != domain.StatusDefinitif {
+		t.Fatalf("expected Définitif, got %s", repo.ts.Status)
+	}
+}
+
 func TestValidateFinal_ForceStillRequiresSubmittedStatus(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	repo := &validationRepo{ts: domain.Timesheet{
