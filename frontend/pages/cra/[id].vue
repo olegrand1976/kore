@@ -185,6 +185,7 @@
 
         <div class="cra-detail__main">
           <TimesheetGrid
+            v-model:active-week="gridActiveWeek"
             :weeks="selectedWeeks"
             :month="timesheet.month"
             :week-start-day="weekStartDay"
@@ -265,6 +266,17 @@ const id = computed(() => String(route.params.id))
 const { timesheet, loading, error, canEdit, selectedWeeks, saving, load, saveWeek, submitWeek, validateFinal, rejectTimesheet } = useCra(id)
 const { user, fetchSession } = useAuth()
 const { options: workRefOptions, load: loadWorkRefs, labelFor: workRefLabelFor } = useCraWorkRefs()
+
+/** Locked week tab for TimesheetGrid (null = auto current week). Survives save remounts. */
+const gridActiveWeek = ref<number | null>(null)
+watch(id, () => {
+  gridActiveWeek.value = null
+})
+watch(() => timesheet.value?.month, (month, prev) => {
+  if (prev != null && month != null && month !== prev) {
+    gridActiveWeek.value = null
+  }
+})
 
 const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)

@@ -12,7 +12,7 @@
           :class="{ 'week-tab--active': tab.weekNumber === activeWeek }"
           :aria-selected="tab.weekNumber === activeWeek"
           :data-week="tab.weekNumber"
-          @click="selectWeek(tab.weekNumber)"
+          @click="lockActiveWeek(tab.weekNumber)"
         >
           <span class="week-tab__label">{{ weekTabLabel(tab) }}</span>
           <AppIcon v-if="isWeekSubmitted(tab.weekNumber)" name="check_circle" class="week-tab__check" />
@@ -66,43 +66,47 @@ const emit = defineEmits<{
   submit: [weekNumber: number]
 }>()
 
+/** null = auto (current week if month is current); set = locked selection (survives save / remount). */
+const activeWeekModel = defineModel<number | null>('activeWeek', { default: null })
+
 const { t, locale } = useI18n()
 
 const weekTabsEl = ref<HTMLElement | null>(null)
 const weekTabs = computed(() => computeMonthWeeks(props.month, props.weekStartDay))
-/** Once the user picks a tab, do not auto-jump on weekStartDay / month sync. */
-const userPickedWeek = ref(false)
-const activeWeek = ref(initialActiveWeekNumber(props.month, props.weekStartDay))
 
-const syncActiveWeek = () => {
-  const tabs = weekTabs.value
-  if (userPickedWeek.value) {
-    if (!tabs.some((tab) => tab.weekNumber === activeWeek.value)) {
-      activeWeek.value = tabs[0]?.weekNumber ?? 1
-    }
-    return
+const activeWeek = computed({
+  get: () => activeWeekModel.value ?? initialActiveWeekNumber(props.month, props.weekStartDay),
+  set: (weekNumber: number) => {
+    activeWeekModel.value = weekNumber
   }
-  activeWeek.value = initialActiveWeekNumber(props.month, props.weekStartDay)
-}
-
-watch([() => props.month, () => props.weekStartDay, weekTabs], (curr, prev) => {
-  // New timesheet month (route reuse) → re-apply auto week; keep pick across weekStartDay load.
-  if (prev && curr[0] !== prev[0]) {
-    userPickedWeek.value = false
-  }
-  syncActiveWeek()
 })
 
-const selectWeek = (weekNumber: number) => {
-  userPickedWeek.value = true
-  activeWeek.value = weekNumber
+const lockActiveWeek = (weekNumber: number) => {
+  activeWeekModel.value = weekNumber
 }
 
+watch(() => props.weekStartDay, () => {
+  if (activeWeekModel.value == null) return
+  if (!weekTabs.value.some((tab) => tab.weekNumber === activeWeekModel.value)) {
+    activeWeekModel.value = weekTabs.value[0]?.weekNumber ?? 1
+  }
+})
+
+/** Scroll only the tab strip — avoid page jump from Element.scrollIntoView. */
 const scrollActiveTabIntoView = () => {
   const root = weekTabsEl.value
   if (!root || typeof root.querySelector !== 'function') return
   const active = root.querySelector<HTMLElement>(`.week-tab[data-week="${activeWeek.value}"]`)
-  active?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+  if (!active) return
+  const tabLeft = active.offsetLeft
+  const tabRight = tabLeft + active.offsetWidth
+  const viewLeft = root.scrollLeft
+  const viewRight = viewLeft + root.clientWidth
+  if (tabLeft < viewLeft) {
+    root.scrollTo({ left: tabLeft, behavior: 'smooth' })
+  } else if (tabRight > viewRight) {
+    root.scrollTo({ left: tabRight - root.clientWidth, behavior: 'smooth' })
+  }
 }
 
 onMounted(() => {
@@ -139,8 +143,17 @@ const weekTabLabel = (tab: { weekNumber: number; start: string; end: string }) =
 
 const isWeekSubmitted = (weekNumber: number) => Boolean(props.weeks.find((w) => w.weekNumber === weekNumber)?.submittedAt)
 
-const onSave = (lines: CraLine[]) => emit('save', activeWeek.value, lines)
-const onSubmit = () => emit('submit', activeWeek.value)
+const onSave = (lines: CraLine[]) => {
+  const weekNumber = activeWeek.value
+  lockActiveWeek(weekNumber)
+  emit('save', weekNumber, lines)
+}
+
+const onSubmit = () => {
+  const weekNumber = activeWeek.value
+  lockActiveWeek(weekNumber)
+  emit('submit', weekNumber)
+}
 </script>
 
 <style scoped>
