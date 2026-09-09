@@ -95,6 +95,22 @@ export function weekNumberForDay(month: string, day: string, weekStartDay = DEFA
   return weeks[0]?.weekNumber ?? 1
 }
 
+/**
+ * Default week tab when opening a timesheet: current calendar week if `month`
+ * matches `now`, otherwise the first week of the month.
+ */
+export function initialActiveWeekNumber(
+  month: string,
+  weekStartDay = DEFAULT_WEEK_START_DAY,
+  now: Date = new Date()
+): number {
+  const todayMonth = formatLocalDate(now).slice(0, 7)
+  if (month !== todayMonth) {
+    return computeMonthWeeks(month, weekStartDay)[0]?.weekNumber ?? 1
+  }
+  return weekNumberForDay(month, formatLocalDate(now), weekStartDay)
+}
+
 export function minutesToHoursLabel(minutes: number): string {
   const value = Number(minutes)
   if (!Number.isFinite(value)) return '0'

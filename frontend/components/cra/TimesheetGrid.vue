@@ -2,7 +2,7 @@
   <AppCard padding="lg">
     <div class="grid-header">
       <h3 class="section-title">{{ $t('cra.weeks_title') }}</h3>
-      <div class="week-tabs" role="tablist">
+      <div ref="weekTabsEl" class="week-tabs" role="tablist">
         <button
           v-for="tab in weekTabs"
           :key="tab.weekNumber"
@@ -11,7 +11,8 @@
           class="week-tab"
           :class="{ 'week-tab--active': tab.weekNumber === activeWeek }"
           :aria-selected="tab.weekNumber === activeWeek"
-          @click="activeWeek = tab.weekNumber"
+          :data-week="tab.weekNumber"
+          @click="selectWeek(tab.weekNumber)"
         >
           <span class="week-tab__label">{{ weekTabLabel(tab) }}</span>
           <AppIcon v-if="isWeekSubmitted(tab.weekNumber)" name="check_circle" class="week-tab__check" />
@@ -42,7 +43,7 @@
 <script setup lang="ts">
 import type { CraLine, CraWeek } from '~/stores/cra'
 import type { MissionSummary } from '~/composables/useCraSourceLabels'
-import { computeMonthWeeks } from '~/composables/useWeekCalendar'
+import { computeMonthWeeks, initialActiveWeekNumber } from '~/composables/useWeekCalendar'
 
 import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
 
@@ -67,13 +68,49 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 
+const weekTabsEl = ref<HTMLElement | null>(null)
 const weekTabs = computed(() => computeMonthWeeks(props.month, props.weekStartDay))
-const activeWeek = ref(weekTabs.value[0]?.weekNumber ?? 1)
+/** Once the user picks a tab, do not auto-jump on weekStartDay / month sync. */
+const userPickedWeek = ref(false)
+const activeWeek = ref(initialActiveWeekNumber(props.month, props.weekStartDay))
 
-watch(weekTabs, (tabs) => {
-  if (!tabs.some((tab) => tab.weekNumber === activeWeek.value)) {
-    activeWeek.value = tabs[0]?.weekNumber ?? 1
+const syncActiveWeek = () => {
+  const tabs = weekTabs.value
+  if (userPickedWeek.value) {
+    if (!tabs.some((tab) => tab.weekNumber === activeWeek.value)) {
+      activeWeek.value = tabs[0]?.weekNumber ?? 1
+    }
+    return
   }
+  activeWeek.value = initialActiveWeekNumber(props.month, props.weekStartDay)
+}
+
+watch([() => props.month, () => props.weekStartDay, weekTabs], (curr, prev) => {
+  // New timesheet month (route reuse) → re-apply auto week; keep pick across weekStartDay load.
+  if (prev && curr[0] !== prev[0]) {
+    userPickedWeek.value = false
+  }
+  syncActiveWeek()
+})
+
+const selectWeek = (weekNumber: number) => {
+  userPickedWeek.value = true
+  activeWeek.value = weekNumber
+}
+
+const scrollActiveTabIntoView = () => {
+  const root = weekTabsEl.value
+  if (!root || typeof root.querySelector !== 'function') return
+  const active = root.querySelector<HTMLElement>(`.week-tab[data-week="${activeWeek.value}"]`)
+  active?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+}
+
+onMounted(() => {
+  nextTick(scrollActiveTabIntoView)
+})
+
+watch(activeWeek, () => {
+  nextTick(scrollActiveTabIntoView)
 })
 
 const currentWeek = computed(() => props.weeks.find((w) => w.weekNumber === activeWeek.value))
