@@ -536,6 +536,8 @@
     "unvalidate_error": "Could not unvalidate this timesheet.",
     "admin_invoice_warning": "A timesheet that already has an invoice cannot be unvalidated or deleted.",
     "col_period": "Period",
+    "filter_month": "Month",
+    "filter_year": "Year",
     "col_status": "Status",
     "col_user": "Contributor",
     "col_client": "Client",

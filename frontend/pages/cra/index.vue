@@ -240,6 +240,11 @@ import { currentMonthKey, useCraStatus } from '~/composables/useCraStatus'
 import { applyTextSearch, useListControls } from '~/composables/useListControls'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
 import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
+import {
+  buildMonthFilterOptions,
+  buildYearFilterOptions,
+  matchPeriodMonthYear
+} from '~/utils/craPeriodFilter'
 
 definePageMeta({ layout: 'default' })
 
@@ -347,10 +352,17 @@ const listFilters = computed(() => ({
     })),
     match: (row: CraRow, value: string) => row.status === value
   },
-  month: {
-    type: 'month' as const,
-    label: t('cra.col_period'),
-    match: (row: CraRow, value: string) => row.month === value
+  periodMonth: {
+    type: 'select' as const,
+    label: t('cra.filter_month'),
+    options: buildMonthFilterOptions(locale.value),
+    match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, value, '')
+  },
+  periodYear: {
+    type: 'select' as const,
+    label: t('cra.filter_year'),
+    options: buildYearFilterOptions(listItems.value.map((row) => row.month)),
+    match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, '', value)
   },
   q: {
     type: 'search' as const,

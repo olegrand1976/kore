@@ -536,6 +536,8 @@
     "unvalidate_error": "Impossible de dévalider ce CRA.",
     "admin_invoice_warning": "Un CRA déjà facturé ne peut pas être dévalidé ni supprimé.",
     "col_period": "Période",
+    "filter_month": "Mois",
+    "filter_year": "Année",
     "col_status": "Statut",
     "col_user": "Collaborateur",
     "col_client": "Client",
