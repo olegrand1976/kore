@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -73,23 +74,24 @@ func (s *service) GetDetail(ctx context.Context, tenant kernel.TenantID, id uuid
 		rateUnit = string(domain.RateUnitTJM)
 	}
 	return ports.MissionDetail{
-		ID:               m.ID,
-		ClientID:         m.ClientID,
-		ClientName:       clientName,
-		Status:           string(m.Status),
-		StartDate:        m.StartDate,
-		EndDate:          m.EndDate,
-		Title:            m.Title,
-		RateUnit:         rateUnit,
-		TJMAmount:        m.TJMAmount,
-		Currency:         m.Currency,
-		Technologies:     m.Technologies,
-		ClientContact:    contactLabel,
-		ClientContactIDs: contactIDs,
-		ClientContacts:   clientContacts,
-		CreatedAt:        m.CreatedAt,
-		Collaborators:    collaborators,
-		Applications:     applications,
+		ID:                 m.ID,
+		ClientID:           m.ClientID,
+		ClientName:         clientName,
+		Status:             string(m.Status),
+		StartDate:          m.StartDate,
+		EndDate:            m.EndDate,
+		Title:              m.Title,
+		RateUnit:           rateUnit,
+		TJMAmount:          m.TJMAmount,
+		Currency:           m.Currency,
+		Technologies:       m.Technologies,
+		ClientContact:      contactLabel,
+		ClientContactIDs:   contactIDs,
+		ClientContacts:     clientContacts,
+		PlannedWeekMinutes: m.PlannedWeekMinutes,
+		CreatedAt:          m.CreatedAt,
+		Collaborators:      collaborators,
+		Applications:       applications,
 	}, nil
 }
 
@@ -112,6 +114,10 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	if err != nil {
 		return domain.Mission{}, err
 	}
+	planned, err := domain.NormalizePlannedWeekMinutes(cmd.PlannedWeekMinutes)
+	if err != nil {
+		return domain.Mission{}, err
+	}
 	m := domain.NewMission(cmd.TenantID, cmd.ClientID, cmd.StartDate, cmd.TJMAmount)
 	m.EndDate = cmd.EndDate
 	m.Title = strings.TrimSpace(cmd.Title)
@@ -120,6 +126,7 @@ func (s *service) Create(ctx context.Context, cmd ports.CreateMissionCommand) (d
 	m.Technologies = cmd.Technologies
 	m.ClientContact = contactLabel
 	m.ClientContactIDs = contactIDs
+	m.PlannedWeekMinutes = planned
 	if m.Currency == "" {
 		m.Currency = "EUR"
 	}
@@ -142,6 +149,14 @@ func (s *service) Update(ctx context.Context, cmd ports.UpdateMissionCommand) (p
 	if err != nil {
 		return ports.MissionDetail{}, err
 	}
+
+	beforeTitle := m.Title
+	beforeRateUnit := m.RateUnit
+	beforeTJM := m.TJMAmount
+	beforeContact := m.ClientContact
+	beforeContactIDs := append([]uuid.UUID(nil), m.ClientContactIDs...)
+	beforePlanned := cloneIntPtr(m.PlannedWeekMinutes)
+
 	m.Title = strings.TrimSpace(cmd.Title)
 	m.RateUnit = rateUnit
 	m.TJMAmount = cmd.TJMAmount
@@ -159,10 +174,153 @@ func (s *service) Update(ctx context.Context, cmd ports.UpdateMissionCommand) (p
 	} else if strings.TrimSpace(cmd.ClientContact) != "" {
 		m.ClientContact = strings.TrimSpace(cmd.ClientContact)
 	}
+	if cmd.PlannedWeekMinutesSet {
+		planned, nErr := domain.NormalizePlannedWeekMinutes(cmd.PlannedWeekMinutes)
+		if nErr != nil {
+			return ports.MissionDetail{}, nErr
+		}
+		m.PlannedWeekMinutes = planned
+	}
 	if err := s.repo.SaveMission(ctx, m); err != nil {
 		return ports.MissionDetail{}, err
 	}
+
+	rateChanged := beforeTitle != m.Title ||
+		beforeRateUnit != m.RateUnit ||
+		beforeTJM != m.TJMAmount ||
+		beforeContact != m.ClientContact ||
+		!slices.Equal(beforeContactIDs, m.ClientContactIDs)
+	plannedChanged := cmd.PlannedWeekMinutesSet && !intPtrEqual(beforePlanned, m.PlannedWeekMinutes)
+
+	if cmd.ActorUserID != uuid.Nil {
+		if rateChanged {
+			beforePayload := map[string]any{
+				"title":            beforeTitle,
+				"rateUnit":         string(beforeRateUnit),
+				"tjmAmount":        beforeTJM,
+				"clientContact":    beforeContact,
+				"clientContactIds": uuidSliceStrings(beforeContactIDs),
+			}
+			afterPayload := map[string]any{
+				"title":            m.Title,
+				"rateUnit":         string(m.RateUnit),
+				"tjmAmount":        m.TJMAmount,
+				"clientContact":    m.ClientContact,
+				"clientContactIds": uuidSliceStrings(m.ClientContactIDs),
+			}
+			if plannedChanged {
+				beforePayload["plannedWeekMinutes"] = intPtrValue(beforePlanned)
+				afterPayload["plannedWeekMinutes"] = intPtrValue(m.PlannedWeekMinutes)
+			}
+			_ = s.repo.InsertBillingEvent(ctx, cmd.TenantID, ports.MissionBillingEvent{
+				ID:          uuid.New(),
+				MissionID:   m.ID,
+				ActorUserID: cmd.ActorUserID,
+				EventType:   domain.BillingEventRateUpdated,
+				Payload:     map[string]any{"before": beforePayload, "after": afterPayload},
+				CreatedAt:   time.Now().UTC(),
+			})
+		}
+		if plannedChanged {
+			_ = s.repo.InsertBillingEvent(ctx, cmd.TenantID, ports.MissionBillingEvent{
+				ID:          uuid.New(),
+				MissionID:   m.ID,
+				ActorUserID: cmd.ActorUserID,
+				EventType:   domain.BillingEventPlannedHoursUpdated,
+				Payload: map[string]any{
+					"before": map[string]any{"plannedWeekMinutes": intPtrValue(beforePlanned)},
+					"after":  map[string]any{"plannedWeekMinutes": intPtrValue(m.PlannedWeekMinutes)},
+				},
+				CreatedAt: time.Now().UTC(),
+			})
+		}
+	}
+
 	return s.GetDetail(ctx, cmd.TenantID, m.ID)
+}
+
+func (s *service) ListBillingEvents(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]ports.MissionBillingEvent, error) {
+	if _, err := s.repo.GetMission(ctx, tenant, missionID); err != nil {
+		return nil, err
+	}
+	events, err := s.repo.ListBillingEvents(ctx, tenant, missionID)
+	if err != nil {
+		return nil, err
+	}
+	if events == nil {
+		return []ports.MissionBillingEvent{}, nil
+	}
+	return events, nil
+}
+
+func (s *service) AddBillingNote(ctx context.Context, cmd ports.AddBillingEventCommand) (ports.MissionBillingEvent, error) {
+	if _, err := s.repo.GetMission(ctx, cmd.TenantID, cmd.MissionID); err != nil {
+		return ports.MissionBillingEvent{}, err
+	}
+	if cmd.ActorUserID == uuid.Nil {
+		return ports.MissionBillingEvent{}, domain.ErrInvalidBillingEvent
+	}
+	msg := strings.TrimSpace(cmd.Message)
+	if msg == "" {
+		return ports.MissionBillingEvent{}, domain.ErrInvalidBillingEvent
+	}
+	eventType := strings.TrimSpace(cmd.EventType)
+	if eventType == "" {
+		eventType = domain.BillingEventNote
+	}
+	if eventType != domain.BillingEventNote {
+		return ports.MissionBillingEvent{}, domain.ErrInvalidBillingEvent
+	}
+	payload := cmd.Payload
+	if payload == nil {
+		payload = map[string]any{}
+	}
+	event := ports.MissionBillingEvent{
+		ID:          uuid.New(),
+		MissionID:   cmd.MissionID,
+		ActorUserID: cmd.ActorUserID,
+		EventType:   eventType,
+		Message:     msg,
+		Payload:     payload,
+		CreatedAt:   time.Now().UTC(),
+	}
+	if err := s.repo.InsertBillingEvent(ctx, cmd.TenantID, event); err != nil {
+		return ports.MissionBillingEvent{}, err
+	}
+	return event, nil
+}
+
+func cloneIntPtr(v *int) *int {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	return &out
+}
+
+func intPtrEqual(a, b *int) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+func intPtrValue(v *int) any {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+
+func uuidSliceStrings(ids []uuid.UUID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }
 
 func (s *service) Stop(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Mission, error) {

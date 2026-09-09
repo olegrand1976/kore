@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 08/09/2026 (colonne `cra.timesheets.validation_forced`)
+> **Dernière mise à jour doc** : 09/09/2026 (ssii `planned_week_minutes` + `mission_billing_events`)
 
 ---
 
@@ -30,6 +30,7 @@ erDiagram
 
     ssii_missions ||--o{ ssii_mission_collaborators : "mission_id"
     ssii_missions ||--o{ ssii_mission_applications : "mission_id"
+    ssii_missions ||--o{ ssii_mission_billing_events : "mission_id"
     org_applications ||--o{ ssii_mission_applications : "application_id"
 
     org_societes ||--o{ conges_leave_type_configs : "societe_id"
@@ -1066,6 +1067,7 @@ Missions ESN (staffing, TJM, collaborateurs).
 | `technologies` | TEXT[] | NOT NULL, DEFAULT `'{}'` |
 | `client_contact` | TEXT | NOT NULL, DEFAULT `''` (libellé dénormalisé des contacts sélectionnés) |
 | `client_contact_ids` | UUID[] | NOT NULL, DEFAULT `'{}'` (références vers `org.clients.contacts[].id`) |
+| `planned_week_minutes` | INT | NULL — charge hebdo planifiée en minutes ; CHECK (`NULL` OR `> 0`) (migration `0005`) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 ### `ssii.mission_collaborators`
@@ -1092,6 +1094,23 @@ Rattachement optionnel N–N mission ↔ applications org.
 
 **Contrainte** : UNIQUE (`mission_id`, `application_id`)  
 **Index** : `idx_ssii_mission_applications_tenant (tenant_id, mission_id)`, `idx_ssii_mission_applications_app (tenant_id, application_id)`
+
+### `ssii.mission_billing_events` (migration `0005`)
+
+Historique facturation / notes sur une mission (tarif, heures planifiées, notes manuelles).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `mission_id` | UUID | NOT NULL → `ssii.missions(id)` ON DELETE CASCADE |
+| `actor_user_id` | UUID | NOT NULL |
+| `event_type` | TEXT | NOT NULL (`note` \| `rate_updated` \| `planned_hours_updated`) |
+| `message` | TEXT | NOT NULL, DEFAULT `''` |
+| `payload` | JSONB | NOT NULL, DEFAULT `'{}'` (diffs before/after) |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Index** : `idx_ssii_mission_billing_events_mission (tenant_id, mission_id, created_at DESC)`
 
 ---
 
@@ -1452,7 +1471,7 @@ Index : `(tenant_id, provider)`. Unique : `(tenant_id, provider, external_user_i
 | `budget` | budgets, estimates, quotes, consumptions | 4 |
 | `tma` | demands, tenant_ticket_counters, analysis_dossiers, releases, delivery_codes | 5 |
 | `project` | epics, sprints, kanban_configs | 3 |
-| `ssii` | missions, mission_collaborators, mission_applications | 3 |
+| `ssii` | missions, mission_collaborators, mission_applications, mission_billing_events | 4 |
 | `support` | tickets, ticket_replies | 2 |
 | `maintenance` | work_requests | 1 |
 | `invoicing` | invoices, invoice_lines, pdp_queue | 3 |

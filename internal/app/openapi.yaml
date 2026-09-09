@@ -2290,6 +2290,7 @@ paths:
       description: >
         Le pays pour le préremplissage des jours fériés est dérivé de `org.clients.pays`
         (plus de `countryCode` dans le body). `applicationIds` est optionnel (0..N, apps actives uniquement).
+        `plannedWeekMinutes` est optionnel (minutes > 0, ou omis/null = non renseigné).
         Persistance atomique (mission + collaborateurs + applications).
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -2318,10 +2319,15 @@ paths:
                 applicationIds:
                   type: array
                   items: { type: string, format: uuid }
+                plannedWeekMinutes:
+                  type: integer
+                  minimum: 1
+                  nullable: true
+                  description: Charge hebdomadaire planifiée en minutes
               required: [clientId, startDate, collaboratorIds]
       responses:
         "201": { description: Créé }
-        "422": { description: Validation (collaborateurs / rateUnit / applications) }
+        "422": { description: Validation (collaborateurs / rateUnit / applications / plannedWeekMinutes) }
   /missions/{id}:
     get:
       summary: Détail mission
@@ -2330,15 +2336,36 @@ paths:
       responses:
         "200": { description: OK }
     put:
-      summary: Mettre à jour mission (titre, tarif, contacts)
+      summary: Mettre à jour mission (titre, tarif, contacts, heures planifiées)
       description: >
         `clientContactIds` omis = inchangé ; tableau vide = clear ;
         tableau renseigné = remplacement des contacts sélectionnés.
+        `plannedWeekMinutes` omis = inchangé ; `null` = clear ; entier > 0 = set.
+        Les changements tarif/contacts/titre génèrent un événement `rate_updated` ;
+        un changement d'heures planifiées génère `planned_hours_updated`.
       security: [{ bearerAuth: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                rateUnit: { type: string, enum: [tjm, hourly] }
+                tjmAmount: { type: integer }
+                clientContact: { type: string }
+                clientContactIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                plannedWeekMinutes:
+                  type: integer
+                  minimum: 1
+                  nullable: true
       responses:
         "200": { description: OK }
-        "422": { description: rateUnit ou contact invalide }
+        "422": { description: rateUnit, contact ou plannedWeekMinutes invalide }
   /missions/{id}/stop:
     post:
       summary: Arrêter mission
@@ -2384,6 +2411,54 @@ paths:
         "403": { description: Forbidden }
         "404": { description: Mission introuvable }
         "422": { description: application invalide ou inactive }
+  /missions/{id}/billing-events:
+    get:
+      summary: Historique facturation / notes mission
+      description: Liste les événements `note`, `rate_updated`, `planned_hours_updated` (ssii L ou cra L).
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MissionBillingEvent'
+        "403": { description: Forbidden }
+        "404": { description: Mission introuvable }
+    post:
+      summary: Ajouter une note de facturation
+      description: >
+        Crée un événement note (ssii E). Body JSON avec champ message obligatoire.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string, minLength: 1 }
+              required: [message]
+      responses:
+        "201":
+          description: Créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/MissionBillingEvent'
+        "403": { description: Forbidden }
+        "404": { description: Mission introuvable }
+        "422": { description: message vide }
   /request-attachments:
     get:
       summary: Liste pièces jointes demande
@@ -2634,6 +2709,20 @@ components:
         invoiceCount: { type: integer }
         currency: { type: string }
         billableHours: { type: number, format: float }
+    MissionBillingEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        missionId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        eventType:
+          type: string
+          enum: [note, rate_updated, planned_hours_updated]
+        message: { type: string }
+        payload:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
     ReportingPeriod:
       type: object
       properties:

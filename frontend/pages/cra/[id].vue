@@ -193,6 +193,7 @@
             :week-submit-policy="weekSubmitPolicy"
             :can-edit="canEdit"
             :saving="saving"
+            :planned-week-minutes="missionPlannedWeekMinutes"
             :missions="missions"
             :task-types="taskTypesEnabled"
             :work-ref-options="workRefOptions"
@@ -282,6 +283,7 @@ const weekStartDay = ref(1)
 const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
+const missionPlannedWeekMinutes = ref<number | null>(null)
 const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
 const prestationFormRef = ref<{ local: Record<string, unknown> } | null>(null)
 const pdfPreviewOpen = ref(false)
@@ -347,6 +349,26 @@ const loadMissions = async () => {
     }).filter((m) => m.id)
   } catch {
     missions.value = []
+  }
+}
+
+const loadMissionPlannedWeekMinutes = async (missionId: string) => {
+  if (!missionId) {
+    missionPlannedWeekMinutes.value = null
+    return
+  }
+  try {
+    const res = await apiFetch<{ data?: { plannedWeekMinutes?: number | null }; plannedWeekMinutes?: number | null }>(
+      `/api/ssii/missions/${missionId}`
+    )
+    const data = res.data ?? res
+    const planned = data.plannedWeekMinutes
+    missionPlannedWeekMinutes.value =
+      planned != null && Number.isFinite(Number(planned)) && Number(planned) > 0
+        ? Number(planned)
+        : null
+  } catch {
+    missionPlannedWeekMinutes.value = null
   }
 }
 
@@ -527,6 +549,14 @@ watch(timesheet, (ts) => {
   prestation.lieu = ts.commercialInfo.lieu ?? ''
   prestation.responsableClient = ts.commercialInfo.responsableClient ?? ''
 }, { immediate: true })
+
+watch(
+  () => prestation.missionId,
+  (missionId) => {
+    void loadMissionPlannedWeekMinutes(missionId || '')
+  },
+  { immediate: true }
+)
 
 const canDownload = computed(() => prestationInfoComplete(prestation.client, prestation.mission))
 

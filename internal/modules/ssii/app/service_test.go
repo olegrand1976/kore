@@ -475,6 +475,150 @@ func TestGetDetail_includesApplications(t *testing.T) {
 	}
 }
 
+type billingRepo struct {
+	missionStoreRepo
+	events []ports.MissionBillingEvent
+}
+
+func (r *billingRepo) InsertBillingEvent(_ context.Context, _ kernel.TenantID, event ports.MissionBillingEvent) error {
+	r.events = append(r.events, event)
+	return nil
+}
+
+func (r *billingRepo) ListBillingEvents(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionBillingEvent, error) {
+	out := make([]ports.MissionBillingEvent, len(r.events))
+	copy(out, r.events)
+	return out, nil
+}
+
+func TestUpdate_writesRateUpdatedBillingEvent(t *testing.T) {
+	actor := uuid.New()
+	repo := &billingRepo{
+		missionStoreRepo: missionStoreRepo{
+			mission: domain.Mission{
+				ID:        uuid.New(),
+				TenantID:  kernel.NewTenantID(uuid.New()),
+				ClientID:  uuid.New(),
+				Title:     "Old",
+				RateUnit:  domain.RateUnitTJM,
+				TJMAmount: 40000,
+			},
+		},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.Update(context.Background(), ports.UpdateMissionCommand{
+		TenantID:    repo.mission.TenantID,
+		MissionID:   repo.mission.ID,
+		ActorUserID: actor,
+		Title:       "New",
+		RateUnit:    "tjm",
+		TJMAmount:   55000,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if len(repo.events) != 1 {
+		t.Fatalf("events = %d, want 1", len(repo.events))
+	}
+	ev := repo.events[0]
+	if ev.EventType != domain.BillingEventRateUpdated {
+		t.Fatalf("eventType = %q", ev.EventType)
+	}
+	if ev.ActorUserID != actor {
+		t.Fatalf("actor = %v", ev.ActorUserID)
+	}
+	if repo.mission.TJMAmount != 55000 || repo.mission.Title != "New" {
+		t.Fatalf("mission not updated: %+v", repo.mission)
+	}
+}
+
+func TestUpdate_writesPlannedHoursBillingEvent(t *testing.T) {
+	actor := uuid.New()
+	planned := 2400
+	repo := &billingRepo{
+		missionStoreRepo: missionStoreRepo{
+			mission: domain.Mission{
+				ID:       uuid.New(),
+				TenantID: kernel.NewTenantID(uuid.New()),
+				ClientID: uuid.New(),
+				Title:    "Same",
+				RateUnit: domain.RateUnitTJM,
+			},
+		},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.Update(context.Background(), ports.UpdateMissionCommand{
+		TenantID:              repo.mission.TenantID,
+		MissionID:             repo.mission.ID,
+		ActorUserID:           actor,
+		Title:                 "Same",
+		RateUnit:              "tjm",
+		PlannedWeekMinutes:    &planned,
+		PlannedWeekMinutesSet: true,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if len(repo.events) != 1 || repo.events[0].EventType != domain.BillingEventPlannedHoursUpdated {
+		t.Fatalf("events = %+v", repo.events)
+	}
+	if repo.mission.PlannedWeekMinutes == nil || *repo.mission.PlannedWeekMinutes != 2400 {
+		t.Fatalf("planned = %v", repo.mission.PlannedWeekMinutes)
+	}
+}
+
+func TestAddBillingNote(t *testing.T) {
+	actor := uuid.New()
+	repo := &billingRepo{
+		missionStoreRepo: missionStoreRepo{
+			mission: domain.Mission{
+				ID:       uuid.New(),
+				TenantID: kernel.NewTenantID(uuid.New()),
+				ClientID: uuid.New(),
+				RateUnit: domain.RateUnitTJM,
+			},
+		},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	ev, err := svc.AddBillingNote(context.Background(), ports.AddBillingEventCommand{
+		TenantID:    repo.mission.TenantID,
+		MissionID:   repo.mission.ID,
+		ActorUserID: actor,
+		Message:     "  Ajustement client  ",
+	})
+	if err != nil {
+		t.Fatalf("AddBillingNote: %v", err)
+	}
+	if ev.EventType != domain.BillingEventNote || ev.Message != "Ajustement client" {
+		t.Fatalf("event = %+v", ev)
+	}
+	if len(repo.events) != 1 {
+		t.Fatalf("stored events = %d", len(repo.events))
+	}
+}
+
+func TestAddBillingNote_rejectsEmpty(t *testing.T) {
+	repo := &billingRepo{
+		missionStoreRepo: missionStoreRepo{
+			mission: domain.Mission{
+				ID:       uuid.New(),
+				TenantID: kernel.NewTenantID(uuid.New()),
+				RateUnit: domain.RateUnitTJM,
+			},
+		},
+	}
+	svc := NewService(repo, nil, nil, nil)
+	_, err := svc.AddBillingNote(context.Background(), ports.AddBillingEventCommand{
+		TenantID:    repo.mission.TenantID,
+		MissionID:   repo.mission.ID,
+		ActorUserID: uuid.New(),
+		Message:     "   ",
+	})
+	if !errors.Is(err, domain.ErrInvalidBillingEvent) {
+		t.Fatalf("err = %v, want ErrInvalidBillingEvent", err)
+	}
+}
+
 type noopRepo struct{}
 
 func (noopRepo) SaveMission(context.Context, domain.Mission) error { return nil }
@@ -516,4 +660,10 @@ func (noopRepo) ListClientContacts(context.Context, kernel.TenantID, uuid.UUID) 
 }
 func (noopRepo) PurgeClientContactsFromMissions(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
 	return nil
+}
+func (noopRepo) InsertBillingEvent(context.Context, kernel.TenantID, ports.MissionBillingEvent) error {
+	return nil
+}
+func (noopRepo) ListBillingEvents(context.Context, kernel.TenantID, uuid.UUID) ([]ports.MissionBillingEvent, error) {
+	return nil, nil
 }

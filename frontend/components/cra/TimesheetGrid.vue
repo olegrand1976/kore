@@ -30,6 +30,7 @@
       :week-label="activeTabLabel"
       :disabled="!canEdit"
       :saving="saving"
+      :planned-week-minutes="plannedWeekMinutes"
       :missions="missions"
       :task-types="taskTypes"
       :work-ref-options="workRefOptions"
@@ -55,6 +56,7 @@ const props = defineProps<{
   weekSubmitPolicy?: 'block' | 'warn' | 'none'
   canEdit: boolean
   saving?: boolean
+  plannedWeekMinutes?: number | null
   missions?: MissionSummary[]
   taskTypes?: string[]
   workRefOptions?: CraWorkRefOption[]

@@ -59,6 +59,12 @@ func (r *missionRepoStub) ListClientContacts(context.Context, kernel.TenantID, u
 func (r *missionRepoStub) PurgeClientContactsFromMissions(context.Context, kernel.TenantID, uuid.UUID, []uuid.UUID) error {
 	return nil
 }
+func (r *missionRepoStub) InsertBillingEvent(context.Context, kernel.TenantID, ssiiports.MissionBillingEvent) error {
+	return nil
+}
+func (r *missionRepoStub) ListBillingEvents(context.Context, kernel.TenantID, uuid.UUID) ([]ssiiports.MissionBillingEvent, error) {
+	return nil, nil
+}
 
 type craActivityStub struct {
 	rows []craports.DailyActivityRow

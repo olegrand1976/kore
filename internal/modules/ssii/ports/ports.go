@@ -10,29 +10,33 @@ import (
 )
 
 type CreateMissionCommand struct {
-	TenantID         kernel.TenantID
-	ClientID         uuid.UUID
-	StartDate        time.Time
-	EndDate          *time.Time
-	Title            string
-	RateUnit         string
-	TJMAmount        int64
-	Currency         string
-	Technologies     []string
-	ClientContact    string
-	ClientContactIDs []uuid.UUID
-	CollaboratorIDs  []uuid.UUID
-	ApplicationIDs   []uuid.UUID
+	TenantID           kernel.TenantID
+	ClientID           uuid.UUID
+	StartDate          time.Time
+	EndDate            *time.Time
+	Title              string
+	RateUnit           string
+	TJMAmount          int64
+	Currency           string
+	Technologies       []string
+	ClientContact      string
+	ClientContactIDs   []uuid.UUID
+	CollaboratorIDs    []uuid.UUID
+	ApplicationIDs     []uuid.UUID
+	PlannedWeekMinutes *int
 }
 
 type UpdateMissionCommand struct {
-	TenantID         kernel.TenantID
-	MissionID        uuid.UUID
-	Title            string
-	RateUnit         string
-	TJMAmount        int64
-	ClientContact    string
-	ClientContactIDs *[]uuid.UUID // nil = leave unchanged; empty slice = clear
+	TenantID              kernel.TenantID
+	MissionID             uuid.UUID
+	ActorUserID           uuid.UUID
+	Title                 string
+	RateUnit              string
+	TJMAmount             int64
+	ClientContact         string
+	ClientContactIDs      *[]uuid.UUID // nil = leave unchanged; empty slice = clear
+	PlannedWeekMinutes    *int         // used when PlannedWeekMinutesSet
+	PlannedWeekMinutesSet bool         // true when JSON key present (null clears)
 }
 
 type UpdateEndDateCommand struct {
@@ -76,36 +80,57 @@ type MissionClientContact struct {
 }
 
 type MissionDetail struct {
-	ID               uuid.UUID              `json:"id"`
-	ClientID         uuid.UUID              `json:"clientId"`
-	ClientName       string                 `json:"clientName"`
-	Status           string                 `json:"status"`
-	StartDate        time.Time              `json:"startDate"`
-	EndDate          *time.Time             `json:"endDate,omitempty"`
-	Title            string                 `json:"title"`
-	RateUnit         string                 `json:"rateUnit"`
-	TJMAmount        int64                  `json:"tjmAmount"`
-	Currency         string                 `json:"currency"`
-	Technologies     []string               `json:"technologies"`
-	ClientContact    string                 `json:"clientContact"`
-	ClientContactIDs []uuid.UUID            `json:"clientContactIds"`
-	ClientContacts   []MissionClientContact `json:"clientContacts"`
-	CreatedAt        time.Time              `json:"createdAt"`
-	Collaborators    []MissionCollaborator  `json:"collaborators"`
-	Applications     []MissionApplication   `json:"applications"`
+	ID                 uuid.UUID              `json:"id"`
+	ClientID           uuid.UUID              `json:"clientId"`
+	ClientName         string                 `json:"clientName"`
+	Status             string                 `json:"status"`
+	StartDate          time.Time              `json:"startDate"`
+	EndDate            *time.Time             `json:"endDate,omitempty"`
+	Title              string                 `json:"title"`
+	RateUnit           string                 `json:"rateUnit"`
+	TJMAmount          int64                  `json:"tjmAmount"`
+	Currency           string                 `json:"currency"`
+	Technologies       []string               `json:"technologies"`
+	ClientContact      string                 `json:"clientContact"`
+	ClientContactIDs   []uuid.UUID            `json:"clientContactIds"`
+	ClientContacts     []MissionClientContact `json:"clientContacts"`
+	PlannedWeekMinutes *int                   `json:"plannedWeekMinutes,omitempty"`
+	CreatedAt          time.Time              `json:"createdAt"`
+	Collaborators      []MissionCollaborator  `json:"collaborators"`
+	Applications       []MissionApplication   `json:"applications"`
 }
 
 type MissionSummary struct {
-	ID         uuid.UUID  `json:"id"`
-	ClientID   uuid.UUID  `json:"clientId"`
-	ClientName string     `json:"clientName"`
-	Status     string     `json:"status"`
-	StartDate  time.Time  `json:"startDate"`
-	EndDate    *time.Time `json:"endDate,omitempty"`
-	Title      string     `json:"title"`
-	RateUnit   string     `json:"rateUnit"`
-	TJMAmount  int64      `json:"tjmAmount"`
-	Currency   string     `json:"currency"`
+	ID                 uuid.UUID  `json:"id"`
+	ClientID           uuid.UUID  `json:"clientId"`
+	ClientName         string     `json:"clientName"`
+	Status             string     `json:"status"`
+	StartDate          time.Time  `json:"startDate"`
+	EndDate            *time.Time `json:"endDate,omitempty"`
+	Title              string     `json:"title"`
+	RateUnit           string     `json:"rateUnit"`
+	TJMAmount          int64      `json:"tjmAmount"`
+	Currency           string     `json:"currency"`
+	PlannedWeekMinutes *int       `json:"plannedWeekMinutes,omitempty"`
+}
+
+type MissionBillingEvent struct {
+	ID          uuid.UUID      `json:"id"`
+	MissionID   uuid.UUID      `json:"missionId"`
+	ActorUserID uuid.UUID      `json:"actorUserId"`
+	EventType   string         `json:"eventType"`
+	Message     string         `json:"message"`
+	Payload     map[string]any `json:"payload"`
+	CreatedAt   time.Time      `json:"createdAt"`
+}
+
+type AddBillingEventCommand struct {
+	TenantID    kernel.TenantID
+	MissionID   uuid.UUID
+	ActorUserID uuid.UUID
+	EventType   string // for manual: only "note"
+	Message     string
+	Payload     map[string]any
 }
 
 type ClientContactSnapshot struct {
@@ -128,6 +153,8 @@ type SSIIService interface {
 	UpdateEndDate(ctx context.Context, cmd UpdateEndDateCommand) (domain.Mission, error)
 	UpdateCollaborators(ctx context.Context, cmd UpdateCollaboratorsCommand) (MissionDetail, error)
 	UpdateApplications(ctx context.Context, cmd UpdateApplicationsCommand) (MissionDetail, error)
+	ListBillingEvents(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionBillingEvent, error)
+	AddBillingNote(ctx context.Context, cmd AddBillingEventCommand) (MissionBillingEvent, error)
 }
 
 type SSIIRepository interface {
@@ -148,4 +175,6 @@ type SSIIRepository interface {
 	GetClientPays(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) (string, error)
 	ListClientContacts(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID) ([]ClientContactSnapshot, error)
 	PurgeClientContactsFromMissions(ctx context.Context, tenant kernel.TenantID, clientID uuid.UUID, removedIDs []uuid.UUID) error
+	InsertBillingEvent(ctx context.Context, tenant kernel.TenantID, event MissionBillingEvent) error
+	ListBillingEvents(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]MissionBillingEvent, error)
 }

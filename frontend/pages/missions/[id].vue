@@ -86,6 +86,16 @@
               :label="editRateAmountLabel"
               required
             />
+            <AppInput
+              id="mission-edit-planned-hours"
+              v-model="billingForm.plannedWeekHours"
+              type="number"
+              min="0"
+              step="0.5"
+              :label="$t('missions.field_planned_week_hours')"
+              :tooltip="$t('missions.field_planned_week_hours_hint')"
+            />
+            <p class="muted-small">{{ $t('missions.field_planned_week_hours_hint') }}</p>
             <ClientContactMultiSelect
               id="mission-edit-contacts"
               v-model="billingForm.clientContactIds"
@@ -153,6 +163,10 @@
             <div>
               <dt>{{ $t('missions.col_rate') }}</dt>
               <dd>{{ rateLabel }}</dd>
+            </div>
+            <div>
+              <dt>{{ $t('missions.field_planned_week_hours') }}</dt>
+              <dd>{{ plannedWeekHoursLabel }}</dd>
             </div>
             <div v-if="missionContacts.length">
               <dt>{{ $t('fiche.col_client_contact') }}</dt>
@@ -228,6 +242,40 @@
         </AppButton>
       </AppCard>
 
+      <AppCard padding="lg" class="mission-billing-history">
+        <h3 class="fiche-section-title">{{ $t('missions.billing_history_title') }}</h3>
+        <form
+          v-if="canEditBilling"
+          class="mission-billing-note"
+          @submit.prevent="submitBillingNote"
+        >
+          <AppInput
+            id="mission-billing-note"
+            v-model="billingNote"
+            :label="$t('missions.billing_note_label')"
+            :placeholder="$t('missions.billing_note_placeholder')"
+          />
+          <AppButton variant="secondary" size="sm" type="submit" :loading="billingNoteSaving">
+            {{ $t('missions.billing_note_add') }}
+          </AppButton>
+          <p v-if="billingNoteError" class="flash flash--error" role="alert">{{ billingNoteError }}</p>
+        </form>
+        <p v-if="billingEventsPending" class="muted">{{ $t('fiche.loading') }}</p>
+        <ol v-else-if="billingEvents.length" class="mission-billing-timeline">
+          <li v-for="ev in billingEvents" :key="ev.id" class="mission-billing-timeline__item">
+            <div class="mission-billing-timeline__meta">
+              <AppBadge variant="default">{{ billingEventTypeLabel(ev.eventType) }}</AppBadge>
+              <time class="muted-small" :datetime="ev.createdAt">{{ formatDate(ev.createdAt) }}</time>
+            </div>
+            <p v-if="ev.message" class="mission-billing-timeline__message">{{ ev.message }}</p>
+            <p v-else-if="billingEventSummary(ev)" class="mission-billing-timeline__message muted">
+              {{ billingEventSummary(ev) }}
+            </p>
+          </li>
+        </ol>
+        <p v-else class="muted">{{ $t('missions.billing_history_empty') }}</p>
+      </AppCard>
+
       <AppCard padding="none" class="fiche-table-wrap">
         <div class="fiche-table-head">
           <h3 class="fiche-section-title">{{ $t('fiche.section_staffing') }}</h3>
@@ -295,6 +343,7 @@
 
 <script setup lang="ts">
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
+import { hoursInputToMinutes, minutesToHoursInput } from '~/utils/craWeekCapacity'
 
 definePageMeta({ layout: 'default' })
 
@@ -331,6 +380,7 @@ type MissionDetail = {
   title?: string
   rateUnit?: string
   tjmAmount?: number
+  plannedWeekMinutes?: number | null
   currency?: string
   technologies: string[]
   clientContact?: string
@@ -339,6 +389,16 @@ type MissionDetail = {
   createdAt?: string
   collaborators?: MissionCollaborator[]
   applications?: MissionApplication[]
+}
+
+type MissionBillingEvent = {
+  id: string
+  missionId?: string
+  actorUserId?: string
+  eventType: string
+  message?: string
+  payload?: Record<string, unknown>
+  createdAt: string
 }
 
 const route = useRoute()
@@ -373,8 +433,15 @@ const billingForm = reactive({
   title: '',
   rateUnit: 'tjm' as RateUnit,
   amountEuros: 0,
+  plannedWeekHours: '',
   clientContactIds: [] as string[]
 })
+
+const billingEvents = ref<MissionBillingEvent[]>([])
+const billingEventsPending = ref(false)
+const billingNote = ref('')
+const billingNoteSaving = ref(false)
+const billingNoteError = ref('')
 
 const availableClientContacts = ref<MissionClientContact[]>([])
 const contactModalOpen = ref(false)
@@ -618,10 +685,100 @@ const rateLabel = computed(() => {
   }
 })
 
+const plannedWeekHoursLabel = computed(() => {
+  const minutes = mission.value?.plannedWeekMinutes
+  if (minutes == null || !Number.isFinite(Number(minutes)) || Number(minutes) <= 0) {
+    return t('fiche.none')
+  }
+  return t('missions.planned_week_hours_value', { hours: minutesToHoursInput(Number(minutes)) })
+})
+
+const unwrapList = <T,>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) return payload as T[]
+  if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)) {
+    return (payload as { data: T[] }).data
+  }
+  return []
+}
+
+const loadBillingEvents = async () => {
+  if (!id.value) return
+  billingEventsPending.value = true
+  try {
+    const res = await apiFetch<unknown>(`/api/ssii/missions/${id.value}/billing-events`)
+    billingEvents.value = unwrapList<MissionBillingEvent>(res).map((ev) => ({
+      id: String(ev.id),
+      missionId: ev.missionId,
+      actorUserId: ev.actorUserId,
+      eventType: String(ev.eventType ?? 'note'),
+      message: ev.message ?? '',
+      payload: ev.payload,
+      createdAt: String(ev.createdAt ?? '')
+    }))
+  } catch {
+    billingEvents.value = []
+  } finally {
+    billingEventsPending.value = false
+  }
+}
+
+const billingEventTypeLabel = (eventType: string) => {
+  switch (eventType) {
+    case 'note':
+      return t('missions.billing_event_note')
+    case 'rate_updated':
+      return t('missions.billing_event_rate_updated')
+    case 'planned_hours_updated':
+      return t('missions.billing_event_planned_hours')
+    default:
+      return eventType
+  }
+}
+
+const billingEventSummary = (ev: MissionBillingEvent) => {
+  const payload = ev.payload ?? {}
+  if (ev.eventType === 'planned_hours_updated') {
+    const after = (payload.after as { plannedWeekMinutes?: number | null } | undefined)?.plannedWeekMinutes
+    if (after == null) return t('missions.billing_event_planned_cleared')
+    return t('missions.billing_event_planned_set', { hours: minutesToHoursInput(after) })
+  }
+  if (ev.eventType === 'rate_updated') {
+    return t('missions.billing_event_rate_summary')
+  }
+  return ''
+}
+
+const submitBillingNote = async () => {
+  const message = billingNote.value.trim()
+  if (!message) {
+    billingNoteError.value = t('missions.billing_note_required')
+    return
+  }
+  billingNoteSaving.value = true
+  billingNoteError.value = ''
+  try {
+    await apiFetch(`/api/ssii/missions/${id.value}/billing-events`, {
+      method: 'POST',
+      body: { message }
+    })
+    billingNote.value = ''
+    await loadBillingEvents()
+  } catch (err) {
+    billingNoteError.value = extractFetchError(err, t('missions.billing_note_error'))
+  } finally {
+    billingNoteSaving.value = false
+  }
+}
+
+watch(id, () => {
+  void loadBillingEvents()
+}, { immediate: true })
+
 const startBillingEdit = () => {
   billingForm.title = mission.value?.title ?? ''
   billingForm.rateUnit = normalizeRateUnit(mission.value?.rateUnit)
   billingForm.amountEuros = Number(mission.value?.tjmAmount ?? 0) / 100
+  billingForm.plannedWeekHours = minutesToHoursInput(mission.value?.plannedWeekMinutes)
   billingForm.clientContactIds = [...(mission.value?.clientContactIds ?? [])]
   billingError.value = ''
   editingBilling.value = true
@@ -692,11 +849,13 @@ const saveBilling = async () => {
         title: billingForm.title.trim(),
         rateUnit: billingForm.rateUnit,
         tjmAmount: Math.round(Number(billingForm.amountEuros) * 100),
+        plannedWeekMinutes: hoursInputToMinutes(billingForm.plannedWeekHours),
         clientContactIds: billingForm.clientContactIds
       }
     })
     editingBilling.value = false
     await refresh()
+    await loadBillingEvents()
   } catch (err) {
     billingError.value = extractFetchError(err, t('missions.save_billing_error'))
   } finally {
@@ -800,6 +959,47 @@ const staffRows = computed(() =>
   margin-top: var(--kore-space-lg);
   display: grid;
   gap: var(--kore-space-md);
+}
+
+.mission-billing-history {
+  margin-bottom: var(--kore-space-lg);
+}
+
+.mission-billing-note {
+  display: grid;
+  gap: var(--kore-space-sm);
+  margin-bottom: var(--kore-space-lg);
+}
+
+.mission-billing-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.mission-billing-timeline__item {
+  padding-bottom: var(--kore-space-md);
+  border-bottom: 1px solid var(--kore-border);
+}
+
+.mission-billing-timeline__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.mission-billing-timeline__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kore-space-sm);
+  margin-bottom: var(--kore-space-xs);
+}
+
+.mission-billing-timeline__message {
+  margin: 0;
+  font-size: var(--kore-text-small);
 }
 
 .fiche-apps-edit {

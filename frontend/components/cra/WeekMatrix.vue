@@ -64,6 +64,7 @@ import { hoursToMinutes } from '~/composables/useWeekCalendar'
 import { useCraSourceLabels } from '~/composables/useCraSourceLabels'
 import { newRowKey, useWeekRows } from '~/composables/useWeekRows'
 import { dirtyRowKeys, unlockHolidayPrefillRows } from '~/utils/craDayState'
+import { resolveWeekCapacityMinutes } from '~/utils/craWeekCapacity'
 
 import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
 
@@ -77,6 +78,8 @@ const props = defineProps<{
   weekLabel?: string
   disabled?: boolean
   saving?: boolean
+  /** Optional mission planned week target (minutes); overrides org day×days capacity. */
+  plannedWeekMinutes?: number | null
   missions?: MissionSummary[]
   taskTypes?: string[]
   workRefOptions?: CraWorkRefOption[]
@@ -112,7 +115,13 @@ const showStickyPill = ref(false)
 const originFilter = ref<'all' | 'prefill' | 'manual'>('all')
 
 const dayCapacityMinutes = computed(() => props.dayCapacityMinutes ?? 8 * 60)
-const weekCapacityMinutes = computed(() => weekDays.value.length * dayCapacityMinutes.value)
+const weekCapacityMinutes = computed(() =>
+  resolveWeekCapacityMinutes({
+    weekDayCount: weekDays.value.length,
+    dayCapacityMinutes: dayCapacityMinutes.value,
+    plannedWeekMinutes: props.plannedWeekMinutes
+  })
+)
 
 const matchesOriginFilter = (row: ActivityRow) => {
   if (originFilter.value === 'all') return true
@@ -237,6 +246,22 @@ const emitSubmit = () => {
       const ok = window.confirm(t('cra.submit_week_incomplete', { n: missing.length }))
       if (!ok) return
     }
+  }
+  const planned = props.plannedWeekMinutes
+  if (
+    planned != null &&
+    planned > 0 &&
+    weekTotalMinutes.value < planned &&
+    policy !== 'none'
+  ) {
+    const target = (planned / 60).toLocaleString(undefined, { maximumFractionDigits: 2 })
+    const actual = (weekTotalMinutes.value / 60).toLocaleString(undefined, { maximumFractionDigits: 2 })
+    if (policy === 'block') {
+      window.alert(t('cra.submit_week_below_planned_blocked', { actual, target }))
+      return
+    }
+    const ok = window.confirm(t('cra.submit_week_below_planned', { actual, target }))
+    if (!ok) return
   }
   emit('submit')
 }

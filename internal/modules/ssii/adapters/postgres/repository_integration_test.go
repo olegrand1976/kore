@@ -12,6 +12,7 @@ import (
 	orgdomain "github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/ssii/adapters/postgres"
 	"github.com/kore/kore/internal/modules/ssii/domain"
+	"github.com/kore/kore/internal/modules/ssii/ports"
 	"github.com/kore/kore/internal/platform/db/dbtest"
 	"github.com/kore/kore/pkg/kernel"
 	"github.com/stretchr/testify/require"
@@ -105,4 +106,44 @@ func TestSSII_ValidateApplicationIDs_ActiveAndAlreadyLinked(t *testing.T) {
 	validCreate, err := repo.ValidateApplicationIDs(ctx, tenant, []uuid.UUID{inactiveAppID}, uuid.Nil)
 	require.NoError(t, err)
 	require.Empty(t, validCreate)
+}
+
+func TestSSII_PlannedWeekMinutes_RoundTripAndBillingEvents(t *testing.T) {
+	repo, tenant, clientID, _, _ := seedMissionAppsFixture(t)
+	ctx := context.Background()
+
+	planned := 2400
+	mission := domain.NewMission(tenant, clientID, time.Now().UTC(), 45000)
+	mission.Title = "Planned hours"
+	mission.Technologies = []string{}
+	mission.PlannedWeekMinutes = &planned
+	require.NoError(t, repo.CreateMissionWithRelations(ctx, mission, nil, nil))
+
+	got, err := repo.GetMission(ctx, tenant, mission.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.PlannedWeekMinutes)
+	require.Equal(t, 2400, *got.PlannedWeekMinutes)
+
+	got.PlannedWeekMinutes = nil
+	require.NoError(t, repo.SaveMission(ctx, got))
+	cleared, err := repo.GetMission(ctx, tenant, mission.ID)
+	require.NoError(t, err)
+	require.Nil(t, cleared.PlannedWeekMinutes)
+
+	actor := uuid.New()
+	require.NoError(t, repo.InsertBillingEvent(ctx, tenant, ports.MissionBillingEvent{
+		ID:          uuid.New(),
+		MissionID:   mission.ID,
+		ActorUserID: actor,
+		EventType:   domain.BillingEventNote,
+		Message:     "note test",
+		Payload:     map[string]any{"k": "v"},
+		CreatedAt:   time.Now().UTC(),
+	}))
+	events, err := repo.ListBillingEvents(ctx, tenant, mission.ID)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.Equal(t, domain.BillingEventNote, events[0].EventType)
+	require.Equal(t, "note test", events[0].Message)
+	require.Equal(t, actor, events[0].ActorUserID)
 }

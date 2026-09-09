@@ -16,6 +16,14 @@ var (
 	ErrInvalidRateUnit            = errors.New("invalid rate unit")
 	ErrInvalidClientContact       = errors.New("invalid client contact")
 	ErrInvalidApplication         = errors.New("invalid application")
+	ErrInvalidPlannedWeekMinutes  = errors.New("invalid planned week minutes")
+	ErrInvalidBillingEvent        = errors.New("invalid billing event")
+)
+
+const (
+	BillingEventNote                = "note"
+	BillingEventRateUpdated         = "rate_updated"
+	BillingEventPlannedHoursUpdated = "planned_hours_updated"
 )
 
 type MissionStatus string
@@ -35,20 +43,21 @@ const (
 )
 
 type Mission struct {
-	ID               uuid.UUID
-	TenantID         kernel.TenantID
-	ClientID         uuid.UUID
-	Status           MissionStatus
-	StartDate        time.Time
-	EndDate          *time.Time
-	Title            string
-	RateUnit         RateUnit
-	TJMAmount        int64 // cents — daily (tjm) or hourly (hourly)
-	Currency         string
-	Technologies     []string
-	ClientContact    string // legacy display label
-	ClientContactIDs []uuid.UUID
-	CreatedAt        time.Time
+	ID                 uuid.UUID
+	TenantID           kernel.TenantID
+	ClientID           uuid.UUID
+	Status             MissionStatus
+	StartDate          time.Time
+	EndDate            *time.Time
+	Title              string
+	RateUnit           RateUnit
+	TJMAmount          int64 // cents — daily (tjm) or hourly (hourly)
+	Currency           string
+	Technologies       []string
+	ClientContact      string // legacy display label
+	ClientContactIDs   []uuid.UUID
+	PlannedWeekMinutes *int // nil = unset; when set must be > 0
+	CreatedAt          time.Time
 }
 
 func NewMission(tenant kernel.TenantID, clientID uuid.UUID, startDate time.Time, tjm int64) Mission {
@@ -75,6 +84,18 @@ func NormalizeRateUnit(raw string) (RateUnit, error) {
 	default:
 		return "", ErrInvalidRateUnit
 	}
+}
+
+// NormalizePlannedWeekMinutes accepts nil (unset) or a strictly positive minute count.
+func NormalizePlannedWeekMinutes(v *int) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	if *v <= 0 {
+		return nil, ErrInvalidPlannedWeekMinutes
+	}
+	out := *v
+	return &out, nil
 }
 
 func (m *Mission) Stop() error {

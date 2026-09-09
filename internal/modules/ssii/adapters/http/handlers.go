@@ -25,6 +25,8 @@ func RegisterRoutes(r chi.Router, svc ports.SSIIService, tokens *authx.TokenIssu
 		pr.Put("/missions/{id}/end-date", updateEndDate(svc, authorizer))
 		pr.Put("/missions/{id}/collaborators", updateCollaborators(svc, authorizer))
 		pr.Put("/missions/{id}/applications", updateApplications(svc, authorizer))
+		pr.Get("/missions/{id}/billing-events", listBillingEvents(svc, authorizer))
+		pr.Post("/missions/{id}/billing-events", addBillingNote(svc, authorizer))
 	})
 }
 
@@ -53,18 +55,19 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			return
 		}
 		var req struct {
-			ClientID         uuid.UUID   `json:"clientId"`
-			StartDate        time.Time   `json:"startDate"`
-			EndDate          *time.Time  `json:"endDate"`
-			Title            string      `json:"title"`
-			RateUnit         string      `json:"rateUnit"`
-			TJMAmount        int64       `json:"tjmAmount"`
-			Currency         string      `json:"currency"`
-			Technologies     []string    `json:"technologies"`
-			ClientContact    string      `json:"clientContact"`
-			ClientContactIDs []uuid.UUID `json:"clientContactIds"`
-			CollaboratorIDs  []uuid.UUID `json:"collaboratorIds"`
-			ApplicationIDs   []uuid.UUID `json:"applicationIds"`
+			ClientID           uuid.UUID   `json:"clientId"`
+			StartDate          time.Time   `json:"startDate"`
+			EndDate            *time.Time  `json:"endDate"`
+			Title              string      `json:"title"`
+			RateUnit           string      `json:"rateUnit"`
+			TJMAmount          int64       `json:"tjmAmount"`
+			Currency           string      `json:"currency"`
+			Technologies       []string    `json:"technologies"`
+			ClientContact      string      `json:"clientContact"`
+			ClientContactIDs   []uuid.UUID `json:"clientContactIds"`
+			CollaboratorIDs    []uuid.UUID `json:"collaboratorIds"`
+			ApplicationIDs     []uuid.UUID `json:"applicationIds"`
+			PlannedWeekMinutes *int        `json:"plannedWeekMinutes"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
@@ -72,19 +75,20 @@ func createMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 		}
 		identity, _ := authx.FromContext(r.Context())
 		m, err := svc.Create(r.Context(), ports.CreateMissionCommand{
-			TenantID:         identity.TenantID,
-			ClientID:         req.ClientID,
-			StartDate:        req.StartDate,
-			EndDate:          req.EndDate,
-			Title:            req.Title,
-			RateUnit:         req.RateUnit,
-			TJMAmount:        req.TJMAmount,
-			Currency:         req.Currency,
-			Technologies:     req.Technologies,
-			ClientContact:    req.ClientContact,
-			ClientContactIDs: req.ClientContactIDs,
-			CollaboratorIDs:  req.CollaboratorIDs,
-			ApplicationIDs:   req.ApplicationIDs,
+			TenantID:           identity.TenantID,
+			ClientID:           req.ClientID,
+			StartDate:          req.StartDate,
+			EndDate:            req.EndDate,
+			Title:              req.Title,
+			RateUnit:           req.RateUnit,
+			TJMAmount:          req.TJMAmount,
+			Currency:           req.Currency,
+			Technologies:       req.Technologies,
+			ClientContact:      req.ClientContact,
+			ClientContactIDs:   req.ClientContactIDs,
+			CollaboratorIDs:    req.CollaboratorIDs,
+			ApplicationIDs:     req.ApplicationIDs,
+			PlannedWeekMinutes: req.PlannedWeekMinutes,
 		})
 		if err != nil {
 			writeMissionError(w, err)
@@ -105,6 +109,11 @@ func updateMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
 			return
 		}
+		var raw map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
 		var req struct {
 			Title            string       `json:"title"`
 			RateUnit         string       `json:"rateUnit"`
@@ -112,19 +121,33 @@ func updateMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 			ClientContact    string       `json:"clientContact"`
 			ClientContactIDs *[]uuid.UUID `json:"clientContactIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// Re-marshal known fields for typed decode.
+		body, err := json.Marshal(raw)
+		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		planned, plannedSet, err := decodeOptionalInt(raw["plannedWeekMinutes"])
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid plannedWeekMinutes")
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
 		detail, err := svc.Update(r.Context(), ports.UpdateMissionCommand{
-			TenantID:         identity.TenantID,
-			MissionID:        id,
-			Title:            req.Title,
-			RateUnit:         req.RateUnit,
-			TJMAmount:        req.TJMAmount,
-			ClientContact:    req.ClientContact,
-			ClientContactIDs: req.ClientContactIDs,
+			TenantID:              identity.TenantID,
+			MissionID:             id,
+			ActorUserID:           identity.UserID,
+			Title:                 req.Title,
+			RateUnit:              req.RateUnit,
+			TJMAmount:             req.TJMAmount,
+			ClientContact:         req.ClientContact,
+			ClientContactIDs:      req.ClientContactIDs,
+			PlannedWeekMinutes:    planned,
+			PlannedWeekMinutesSet: plannedSet,
 		})
 		if err != nil {
 			writeMissionError(w, err)
@@ -132,6 +155,20 @@ func updateMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Hand
 		}
 		httpx.WriteData(w, http.StatusOK, detail)
 	}
+}
+
+func decodeOptionalInt(raw json.RawMessage) (*int, bool, error) {
+	if raw == nil {
+		return nil, false, nil
+	}
+	if string(raw) == "null" {
+		return nil, true, nil
+	}
+	var v int
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, false, err
+	}
+	return &v, true, nil
 }
 
 func writeMissionError(w http.ResponseWriter, err error) {
@@ -143,6 +180,10 @@ func writeMissionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrInvalidClientContact):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrInvalidApplication):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrInvalidPlannedWeekMinutes):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrInvalidBillingEvent):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	case errors.Is(err, domain.ErrMissionNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
@@ -171,6 +212,63 @@ func getMission(svc ports.SSIIService, authorizer authx.Authorizer) http.Handler
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, m)
+	}
+}
+
+func listBillingEvents(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		canRead := authorizer.Can(r.Context(), "ssii", authx.ActionRead)
+		canReadCra := authorizer.Can(r.Context(), "cra", authx.ActionRead)
+		if !canRead && !canReadCra {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		events, err := svc.ListBillingEvents(r.Context(), identity.TenantID, id)
+		if err != nil {
+			writeMissionError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, events)
+	}
+}
+
+func addBillingNote(svc ports.SSIIService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "ssii", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		var req struct {
+			Message string `json:"message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		event, err := svc.AddBillingNote(r.Context(), ports.AddBillingEventCommand{
+			TenantID:    identity.TenantID,
+			MissionID:   id,
+			ActorUserID: identity.UserID,
+			EventType:   domain.BillingEventNote,
+			Message:     req.Message,
+		})
+		if err != nil {
+			writeMissionError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusCreated, event)
 	}
 }
 

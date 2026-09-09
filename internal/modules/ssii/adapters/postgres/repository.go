@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -38,8 +39,8 @@ func (r *Repository) SaveMission(ctx context.Context, m domain.Mission) error {
 		INSERT INTO ssii.missions (
 			id, tenant_id, client_id, status, start_date, end_date,
 			title, rate_unit, tjm_amount, currency, technologies, client_contact,
-			client_contact_ids, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			client_contact_ids, planned_week_minutes, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
 			end_date = EXCLUDED.end_date,
@@ -48,10 +49,11 @@ func (r *Repository) SaveMission(ctx context.Context, m domain.Mission) error {
 			tjm_amount = EXCLUDED.tjm_amount,
 			technologies = EXCLUDED.technologies,
 			client_contact = EXCLUDED.client_contact,
-			client_contact_ids = EXCLUDED.client_contact_ids
+			client_contact_ids = EXCLUDED.client_contact_ids,
+			planned_week_minutes = EXCLUDED.planned_week_minutes
 	`, m.ID, m.TenantID.UUID(), m.ClientID, string(m.Status), m.StartDate, m.EndDate,
 		m.Title, rateUnit, m.TJMAmount, m.Currency, technologies, m.ClientContact,
-		contactIDs, m.CreatedAt)
+		contactIDs, m.PlannedWeekMinutes, m.CreatedAt)
 	return err
 }
 
@@ -88,8 +90,8 @@ func (r *Repository) execSaveMission(ctx context.Context, tx pgx.Tx, m domain.Mi
 		INSERT INTO ssii.missions (
 			id, tenant_id, client_id, status, start_date, end_date,
 			title, rate_unit, tjm_amount, currency, technologies, client_contact,
-			client_contact_ids, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			client_contact_ids, planned_week_minutes, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO UPDATE SET
 			status = EXCLUDED.status,
 			end_date = EXCLUDED.end_date,
@@ -98,10 +100,11 @@ func (r *Repository) execSaveMission(ctx context.Context, tx pgx.Tx, m domain.Mi
 			tjm_amount = EXCLUDED.tjm_amount,
 			technologies = EXCLUDED.technologies,
 			client_contact = EXCLUDED.client_contact,
-			client_contact_ids = EXCLUDED.client_contact_ids
+			client_contact_ids = EXCLUDED.client_contact_ids,
+			planned_week_minutes = EXCLUDED.planned_week_minutes
 	`, m.ID, m.TenantID.UUID(), m.ClientID, string(m.Status), m.StartDate, m.EndDate,
 		m.Title, rateUnit, m.TJMAmount, m.Currency, technologies, m.ClientContact,
-		contactIDs, m.CreatedAt)
+		contactIDs, m.PlannedWeekMinutes, m.CreatedAt)
 	return err
 }
 
@@ -110,7 +113,7 @@ func (r *Repository) GetMission(ctx context.Context, tenant kernel.TenantID, id 
 		SELECT id, tenant_id, client_id, status, start_date, end_date,
 			COALESCE(title, ''), COALESCE(rate_unit, 'tjm'),
 			tjm_amount, currency, technologies, client_contact,
-			COALESCE(client_contact_ids, '{}'), created_at
+			COALESCE(client_contact_ids, '{}'), planned_week_minutes, created_at
 		FROM ssii.missions WHERE tenant_id = $1 AND id = $2
 	`, tenant.UUID(), id))
 }
@@ -120,7 +123,7 @@ func (r *Repository) ListMissions(ctx context.Context, tenant kernel.TenantID) (
 		SELECT id, tenant_id, client_id, status, start_date, end_date,
 			COALESCE(title, ''), COALESCE(rate_unit, 'tjm'),
 			tjm_amount, currency, technologies, client_contact,
-			COALESCE(client_contact_ids, '{}'), created_at
+			COALESCE(client_contact_ids, '{}'), planned_week_minutes, created_at
 		FROM ssii.missions WHERE tenant_id = $1 ORDER BY created_at DESC
 	`, tenant.UUID())
 	if err != nil {
@@ -144,7 +147,7 @@ func (r *Repository) scanMission(row pgx.Row) (domain.Mission, error) {
 	var status, rateUnit string
 	err := row.Scan(&m.ID, &tenantID, &m.ClientID, &status, &m.StartDate, &m.EndDate,
 		&m.Title, &rateUnit, &m.TJMAmount, &m.Currency, &m.Technologies, &m.ClientContact,
-		&m.ClientContactIDs, &m.CreatedAt)
+		&m.ClientContactIDs, &m.PlannedWeekMinutes, &m.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Mission{}, domain.ErrMissionNotFound
@@ -168,7 +171,7 @@ func (r *Repository) ListMissionSummaries(ctx context.Context, tenant kernel.Ten
 	rows, err := r.pool.Query(ctx, `
 		SELECT m.id, m.client_id, COALESCE(c.raison_sociale, ''), m.status,
 			m.start_date, m.end_date, COALESCE(m.title, ''), COALESCE(m.rate_unit, 'tjm'),
-			m.tjm_amount, m.currency
+			m.tjm_amount, m.currency, m.planned_week_minutes
 		FROM ssii.missions m
 		LEFT JOIN org.clients c ON c.id = m.client_id AND c.tenant_id = m.tenant_id
 		WHERE m.tenant_id = $1
@@ -183,7 +186,7 @@ func (r *Repository) ListMissionSummaries(ctx context.Context, tenant kernel.Ten
 		var s ports.MissionSummary
 		var status, rateUnit string
 		if err := rows.Scan(&s.ID, &s.ClientID, &s.ClientName, &status, &s.StartDate, &s.EndDate,
-			&s.Title, &rateUnit, &s.TJMAmount, &s.Currency); err != nil {
+			&s.Title, &rateUnit, &s.TJMAmount, &s.Currency, &s.PlannedWeekMinutes); err != nil {
 			return nil, err
 		}
 		s.Status = status
@@ -469,6 +472,62 @@ func (r *Repository) PurgeClientContactsFromMissions(ctx context.Context, tenant
 			AND client_contact_ids && $3::uuid[]
 	`, tenant.UUID(), clientID, removedIDs)
 	return err
+}
+
+func (r *Repository) InsertBillingEvent(ctx context.Context, tenant kernel.TenantID, event ports.MissionBillingEvent) error {
+	payload := event.Payload
+	if payload == nil {
+		payload = map[string]any{}
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	createdAt := event.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+	id := event.ID
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO ssii.mission_billing_events (
+			id, tenant_id, mission_id, actor_user_id, event_type, message, payload, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+	`, id, tenant.UUID(), event.MissionID, event.ActorUserID, event.EventType, event.Message, string(raw), createdAt)
+	return err
+}
+
+func (r *Repository) ListBillingEvents(ctx context.Context, tenant kernel.TenantID, missionID uuid.UUID) ([]ports.MissionBillingEvent, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, mission_id, actor_user_id, event_type, message, payload, created_at
+		FROM ssii.mission_billing_events
+		WHERE tenant_id = $1 AND mission_id = $2
+		ORDER BY created_at DESC
+	`, tenant.UUID(), missionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ports.MissionBillingEvent
+	for rows.Next() {
+		var e ports.MissionBillingEvent
+		var raw []byte
+		if err := rows.Scan(&e.ID, &e.MissionID, &e.ActorUserID, &e.EventType, &e.Message, &raw, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		if len(raw) == 0 {
+			e.Payload = map[string]any{}
+		} else if err := json.Unmarshal(raw, &e.Payload); err != nil {
+			return nil, err
+		}
+		if e.Payload == nil {
+			e.Payload = map[string]any{}
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }
 
 var _ ports.SSIIRepository = (*Repository)(nil)
