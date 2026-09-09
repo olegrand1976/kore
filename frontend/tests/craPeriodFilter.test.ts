@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildMonthFilterOptions,
   buildYearFilterOptions,
-  matchPeriodMonthYear
+  matchPeriodMonthYear,
+  migrateLegacyMonthFilter
 } from '../utils/craPeriodFilter'
 
 describe('matchPeriodMonthYear', () => {
@@ -38,5 +39,19 @@ describe('buildMonthFilterOptions', () => {
     expect(buildMonthFilterOptions('fr')).toHaveLength(12)
     expect(buildMonthFilterOptions('fr')[0]?.value).toBe('01')
     expect(buildMonthFilterOptions('fr')[11]?.value).toBe('12')
+  })
+})
+
+describe('migrateLegacyMonthFilter', () => {
+  it('splits YYYY-MM into periodYear and periodMonth', () => {
+    const filters: Record<string, string> = { month: '2026-09' }
+    expect(migrateLegacyMonthFilter(filters)).toBe(true)
+    expect(filters).toEqual({ periodYear: '2026', periodMonth: '09' })
+  })
+
+  it('removes invalid legacy month key', () => {
+    const filters: Record<string, string> = { month: 'invalid', status: '' }
+    expect(migrateLegacyMonthFilter(filters)).toBe(false)
+    expect(filters).toEqual({ status: '' })
   })
 })

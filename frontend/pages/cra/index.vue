@@ -243,7 +243,8 @@ import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
 import {
   buildMonthFilterOptions,
   buildYearFilterOptions,
-  matchPeriodMonthYear
+  matchPeriodMonthYear,
+  migrateLegacyMonthFilter
 } from '~/utils/craPeriodFilter'
 
 definePageMeta({ layout: 'default' })
@@ -409,6 +410,8 @@ const {
   filters: listFilters,
   sortKeys
 })
+
+migrateLegacyMonthFilter(filterValues)
 
 const displayRows = computed(() => sortedItems.value)
 

@@ -1,3 +1,25 @@
+const LEGACY_MONTH_FILTER_KEY = 'month'
+
+/** Migrate persisted list filter `month` (YYYY-MM) → `periodYear` + `periodMonth`. */
+export function migrateLegacyMonthFilter(filterValues: Record<string, string>): boolean {
+  const legacy = filterValues[LEGACY_MONTH_FILTER_KEY]?.trim()
+  if (!legacy) {
+    if (LEGACY_MONTH_FILTER_KEY in filterValues) {
+      delete filterValues[LEGACY_MONTH_FILTER_KEY]
+    }
+    return false
+  }
+  const match = legacy.match(/^(\d{4})-(\d{2})$/)
+  if (!match) {
+    delete filterValues[LEGACY_MONTH_FILTER_KEY]
+    return false
+  }
+  filterValues.periodYear = match[1]
+  filterValues.periodMonth = match[2]
+  delete filterValues[LEGACY_MONTH_FILTER_KEY]
+  return true
+}
+
 /** Match a CRA month key (YYYY-MM) against optional month (MM) and year (YYYY) filters. */
 export function matchPeriodMonthYear(
   monthKey: string,
