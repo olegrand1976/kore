@@ -12,7 +12,10 @@ test.describe('CRA flow', () => {
       page.getByRole('heading', { name: /comptes-rendus d'activité|activity reports|timesheets/i })
     ).toBeVisible({ timeout: 20_000 })
 
-    const openMonth = page.getByRole('button', { name: /cra du mois en cours|current month timesheet/i })
+    // Prefer the page-header CTA: empty state can render a second identical label.
+    const openMonth = page
+      .locator('.app-page-header')
+      .getByRole('button', { name: /cra du mois en cours|current month timesheet/i })
     await expect(openMonth).toBeVisible({ timeout: 15_000 })
     await openMonth.click()
     await expect(page).toHaveURL(/\/cra\/[0-9a-f-]{8,}/i, { timeout: 20_000 })
