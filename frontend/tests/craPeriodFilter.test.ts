@@ -28,9 +28,9 @@ describe('matchPeriodMonthYear', () => {
 })
 
 describe('buildYearFilterOptions', () => {
-  it('includes current year and unique years from keys', () => {
+  it('includes a window around current year plus years from keys', () => {
     const opts = buildYearFilterOptions(['2026-09', '2025-01', '2026-01'], new Date(2026, 8, 9))
-    expect(opts.map((o) => o.value)).toEqual(['2026', '2025'])
+    expect(opts.map((o) => o.value)).toEqual(['2027', '2026', '2025', '2024'])
   })
 })
 

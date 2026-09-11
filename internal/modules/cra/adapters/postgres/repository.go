@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -363,6 +364,72 @@ func (r *Repository) ListSummariesByTenant(ctx context.Context, tenant kernel.Te
 		ORDER BY t.month DESC, u.login ASC
 		LIMIT $2
 	`, tenant.UUID(), limit)
+}
+
+func (r *Repository) ListSummariesFiltered(ctx context.Context, tenant kernel.TenantID, scopeUserID *uuid.UUID, filter ports.TimesheetSummaryFilter) ([]domain.TimesheetSummary, error) {
+	args := []any{tenant.UUID()}
+	where := []string{"t.tenant_id = $1"}
+	argN := 2
+
+	if scopeUserID != nil {
+		where = append(where, "t.user_id = $"+itoa(argN))
+		args = append(args, *scopeUserID)
+		argN++
+	}
+
+	monthKey := ""
+	if filter.Year != "" && filter.MonthMM != "" {
+		monthKey = filter.Year + "-" + filter.MonthMM
+	}
+	if monthKey != "" {
+		where = append(where, "t.month = $"+itoa(argN))
+		args = append(args, monthKey)
+		argN++
+	} else if filter.Year != "" {
+		where = append(where, "t.month LIKE $"+itoa(argN))
+		args = append(args, filter.Year+"-%")
+		argN++
+	} else if filter.MonthMM != "" {
+		where = append(where, "SUBSTRING(t.month FROM 6 FOR 2) = $"+itoa(argN))
+		args = append(args, filter.MonthMM)
+		argN++
+	}
+
+	hasScopedFilter := scopeUserID != nil || monthKey != "" || filter.Year != "" || filter.MonthMM != ""
+	suffix := `
+		WHERE ` + joinWhere(where) + `
+		GROUP BY t.id, u.login, u.prenom, u.nom
+		ORDER BY t.month DESC, u.login ASC
+	`
+	limit := filter.Limit
+	if limit <= 0 {
+		if hasScopedFilter {
+			limit = 500
+		} else {
+			limit = 100
+		}
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	suffix += " LIMIT $" + itoa(argN)
+	args = append(args, limit)
+	return r.queryTimesheetSummaries(ctx, suffix, args...)
+}
+
+func itoa(n int) string {
+	return strconv.Itoa(n)
+}
+
+func joinWhere(parts []string) string {
+	out := ""
+	for i, p := range parts {
+		if i > 0 {
+			out += " AND "
+		}
+		out += p
+	}
+	return out
 }
 
 func (r *Repository) ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error) {

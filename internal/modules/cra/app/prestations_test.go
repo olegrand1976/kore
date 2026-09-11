@@ -52,6 +52,10 @@ func (f *fakeCRARepo) ListSummariesByTenant(context.Context, kernel.TenantID, in
 	return nil, nil
 }
 
+func (f *fakeCRARepo) ListSummariesFiltered(context.Context, kernel.TenantID, *uuid.UUID, ports.TimesheetSummaryFilter) ([]domain.TimesheetSummary, error) {
+	return nil, nil
+}
+
 func (f *fakeCRARepo) ListSummariesByTenantMonth(_ context.Context, _ kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error) {
 	return []domain.TimesheetSummary{{
 		ID:     f.ts.ID,

@@ -51,7 +51,12 @@ export function buildYearFilterOptions(
   now: Date = new Date()
 ): Array<{ value: string; label: string }> {
   const years = new Set<string>()
-  years.add(String(now.getFullYear()))
+  const current = now.getFullYear()
+  // Seed a small window so past/future years stay selectable even when the
+  // server payload is already filtered to the current month.
+  for (let y = current - 2; y <= current + 1; y++) {
+    years.add(String(y))
+  }
   for (const key of monthKeys) {
     const y = String(key ?? '').slice(0, 4)
     if (/^\d{4}$/.test(y)) years.add(y)

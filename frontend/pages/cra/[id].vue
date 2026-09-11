@@ -426,10 +426,17 @@ const loadPrefillETT = async () => {
 }
 
 await Promise.all([load(id.value), loadOrgSettings(), loadMissions(), fetchSession()])
-const userId = user.value?.userId ?? ''
-if (userId) {
-  await loadWorkRefs(userId)
-}
+
+const workRefsOwnerId = computed(
+  () => timesheet.value?.userId || user.value?.userId || ''
+)
+watch(
+  workRefsOwnerId,
+  async (ownerId) => {
+    await loadWorkRefs(ownerId)
+  },
+  { immediate: true }
+)
 await loadAnomalies()
 
 const monthRef = computed(() => timesheet.value?.month ?? '')

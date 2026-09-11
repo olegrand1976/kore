@@ -22,6 +22,7 @@ export type CraWeek = {
 
 export type CraTimesheet = {
   id: string
+  userId?: string
   month: string
   status: string
   commercialInfo?: {
@@ -64,8 +65,10 @@ function normalizeWeek(raw: Record<string, unknown>): CraWeek {
 
 function normalizeTimesheet(raw: Record<string, unknown>): CraTimesheet {
   const weeksRaw = (raw.weeks ?? raw.Weeks ?? []) as Record<string, unknown>[]
+  const userId = String(raw.userId ?? raw.UserID ?? '').trim()
   return {
     id: String(raw.id ?? raw.ID ?? ''),
+    userId: userId || undefined,
     month: String(raw.month ?? raw.Month ?? ''),
     status: String(raw.status ?? raw.Status ?? ''),
     commercialInfo: (raw.commercialInfo ?? raw.CommercialInfo) as CraTimesheet['commercialInfo'],

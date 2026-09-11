@@ -18,7 +18,7 @@ func NewHomeReader(cra craports.CRAService) reportports.HomeCRAReader {
 }
 
 func (r *HomeReader) ListRecentSummaries(ctx context.Context, tenant kernel.TenantID, userID uuid.UUID, limit int) ([]reportports.HomeCRATimesheet, error) {
-	items, err := r.cra.ListTimesheetSummaries(ctx, tenant, userID, false, limit)
+	items, err := r.cra.ListTimesheetSummaries(ctx, tenant, userID, false, craports.TimesheetSummaryFilter{Limit: limit})
 	if err != nil {
 		return nil, err
 	}

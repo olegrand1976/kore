@@ -56,6 +56,9 @@
           @remove="removeRow(idx)"
         />
       </template>
+      <p v-if="isAbsenceDay && !disabled" class="day-block__absence-hint">
+        {{ $t('cra.absence_add_activity_hint') }}
+      </p>
       <AppButton
         variant="ghost"
         size="sm"
@@ -63,7 +66,7 @@
         :disabled="disabled"
         @click="$emit('add-activity', day)"
       >
-        <AppIcon name="add" /> {{ $t('cra.add_activity') }}
+        <AppIcon name="add" /> {{ isAbsenceDay ? $t('cra.add_activity_despite_absence') : $t('cra.add_activity') }}
       </AppButton>
     </div>
   </section>
@@ -278,6 +281,13 @@ const removeRow = (idx: number) => {
   font-size: var(--kore-text-small);
   font-weight: 600;
   color: var(--kore-text);
+}
+
+.day-block__absence-hint {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+  line-height: 1.4;
 }
 
 .day-block__total {

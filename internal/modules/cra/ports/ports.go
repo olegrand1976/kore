@@ -174,11 +174,21 @@ type DailyActivityRow struct {
 	ClientLabel  string
 }
 
+// TimesheetSummaryFilter scopes GET /timesheets/recent.
+// Year is YYYY; MonthMM is "01"–"12"; when Year+MonthMM are set they form YYYY-MM.
+// Limit 0 applies a default (100 unscoped, 500 when period/user scoped); hard max 500.
+type TimesheetSummaryFilter struct {
+	Year    string
+	MonthMM string
+	UserID  *uuid.UUID
+	Limit   int
+}
+
 type CRAService interface {
 	GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
 	GetByID(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Timesheet, error)
 	ListTimesheets(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.Timesheet, error)
-	ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.TimesheetSummary, error)
+	ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, viewerID UserID, managerView bool, filter TimesheetSummaryFilter) ([]domain.TimesheetSummary, error)
 	ListPrestations(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
 	SaveWeek(ctx context.Context, cmd SaveWeekCommand) (domain.Timesheet, error)
 	SubmitWeek(ctx context.Context, cmd SubmitWeekCommand) error
@@ -285,6 +295,7 @@ type CRARepository interface {
 	ListSummariesByUser(ctx context.Context, tenant kernel.TenantID, userID UserID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenant(ctx context.Context, tenant kernel.TenantID, limit int) ([]domain.TimesheetSummary, error)
 	ListSummariesByTenantMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.TimesheetSummary, error)
+	ListSummariesFiltered(ctx context.Context, tenant kernel.TenantID, scopeUserID *uuid.UUID, filter TimesheetSummaryFilter) ([]domain.TimesheetSummary, error)
 	ListReminderCandidatesByMonth(ctx context.Context, tenant kernel.TenantID, month domain.Month) ([]domain.ReminderCandidate, error)
 	ListDailyActivityInPeriod(ctx context.Context, tenant kernel.TenantID, period kernel.Period) ([]DailyActivityRow, error)
 	Delete(ctx context.Context, tenant kernel.TenantID, id TimesheetID) error

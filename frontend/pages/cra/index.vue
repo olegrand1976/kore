@@ -237,7 +237,7 @@ import type { KanbanColumn } from '~/components/ui/AppKanbanBoard.vue'
 import { countCraByStatus } from '~/composables/useKpiMetrics'
 import { useCraError } from '~/composables/useCraError'
 import { currentMonthKey, useCraStatus } from '~/composables/useCraStatus'
-import { applyTextSearch, useListControls } from '~/composables/useListControls'
+import { applyTextSearch, useListControls, type FilterDef } from '~/composables/useListControls'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
 import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
 import {
@@ -289,12 +289,31 @@ const { statusLabel, statusVariant } = useCraStatus()
 const { mapCraError } = useCraError()
 const { canValidateCra, canReadReporting } = usePermissions()
 const { apiFetch } = useApiFetch()
+const { user, fetchSession } = useAuth()
+
+await fetchSession()
 
 const creating = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
 
-const { data, pending, refresh } = await useFetch('/api/cra/timesheets/recent')
+const currentKey = currentMonthKey()
+const defaultPeriodYear = currentKey.slice(0, 4)
+const defaultPeriodMonth = currentKey.slice(5, 7)
+const sessionUserId = computed(() => user.value?.userId ?? '')
+
+/** Query for server-side recent list (period + optional user). Seed userId before first fetch. */
+const recentQuery = reactive({
+  year: defaultPeriodYear,
+  month: defaultPeriodMonth,
+  userId: canValidateCra.value ? (user.value?.userId ?? '') : '',
+  limit: '500'
+})
+
+const { data, pending, refresh } = await useFetch('/api/cra/timesheets/recent', {
+  query: recentQuery,
+  watch: [recentQuery]
+})
 
 const rawItems = computed((): CraSummary[] => {
   const payload = (data.value as { data?: unknown[] })?.data ?? data.value
@@ -343,36 +362,65 @@ const listItems = computed((): CraRow[] =>
   }))
 )
 
-const listFilters = computed(() => ({
-  status: {
-    type: 'select' as const,
-    label: t('cra.col_status'),
-    options: CRA_STATUSES.map((status) => ({
-      value: status,
-      label: statusLabel(status)
-    })),
-    match: (row: CraRow, value: string) => row.status === value
-  },
-  periodMonth: {
-    type: 'select' as const,
-    label: t('cra.filter_month'),
-    options: buildMonthFilterOptions(locale.value),
-    match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, value, '')
-  },
-  periodYear: {
-    type: 'select' as const,
-    label: t('cra.filter_year'),
-    options: buildYearFilterOptions(listItems.value.map((row) => row.month)),
-    match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, '', value)
-  },
-  q: {
-    type: 'search' as const,
-    label: t('common.list.search'),
-    placeholder: t('cra.search_placeholder'),
-    match: (row: CraRow, query: string) =>
-      applyTextSearch(query, row.userDisplay, row.client, row.mission)
+const userFilterOptions = computed(() => {
+  const byId = new Map<string, string>()
+  for (const row of listItems.value) {
+    if (!row.userId) continue
+    if (!byId.has(row.userId)) byId.set(row.userId, row.userDisplay || row.userId)
   }
-}))
+  const sid = sessionUserId.value
+  if (sid && !byId.has(sid)) {
+    byId.set(sid, t('cra.filter_user_me'))
+  }
+  return [...byId.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+})
+
+const listFilters = computed(() => {
+  const filters: Record<string, FilterDef<CraRow>> = {
+    status: {
+      type: 'select' as const,
+      label: t('cra.col_status'),
+      options: CRA_STATUSES.map((status) => ({
+        value: status,
+        label: statusLabel(status)
+      })),
+      match: (row: CraRow, value: string) => row.status === value
+    },
+    periodMonth: {
+      type: 'select' as const,
+      label: t('cra.filter_month'),
+      options: buildMonthFilterOptions(locale.value),
+      defaultValue: defaultPeriodMonth,
+      match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, value, '')
+    },
+    periodYear: {
+      type: 'select' as const,
+      label: t('cra.filter_year'),
+      options: buildYearFilterOptions(listItems.value.map((row) => row.month)),
+      defaultValue: defaultPeriodYear,
+      match: (row: CraRow, value: string) => matchPeriodMonthYear(row.month, '', value)
+    },
+    q: {
+      type: 'search' as const,
+      label: t('common.list.search'),
+      placeholder: t('cra.search_placeholder'),
+      match: (row: CraRow, query: string) =>
+        applyTextSearch(query, row.userDisplay, row.client, row.mission)
+    }
+  }
+  if (canValidateCra.value) {
+    filters.user = {
+      type: 'select' as const,
+      label: t('cra.col_user'),
+      options: userFilterOptions.value,
+      defaultValue: sessionUserId.value,
+      match: (row: CraRow, value: string) => row.userId === value
+    }
+  }
+  return filters
+})
 
 const sortKeys = computed(() => {
   const keys = [
@@ -404,7 +452,7 @@ const {
   setView,
   resetFilters
 } = useListControls(listItems, {
-  storageKey: 'cra-recent',
+  storageKey: 'cra-recent-v2',
   defaultSort: { key: 'month', dir: 'desc' },
   kanbanEnabled: true,
   filters: listFilters,
@@ -412,6 +460,26 @@ const {
 })
 
 migrateLegacyMonthFilter(filterValues)
+
+const ensurePeriodDefaults = () => {
+  if (!filterValues.periodYear) filterValues.periodYear = defaultPeriodYear
+  if (!filterValues.periodMonth) filterValues.periodMonth = defaultPeriodMonth
+  if (canValidateCra.value && sessionUserId.value && !filterValues.user) {
+    filterValues.user = sessionUserId.value
+  }
+}
+ensurePeriodDefaults()
+
+watch(
+  () => [filterValues.periodYear, filterValues.periodMonth, filterValues.user] as const,
+  ([year, month, userId]) => {
+    // Empty year/month = "Tous" : do not coerce back to current period.
+    recentQuery.year = year || ''
+    recentQuery.month = month || ''
+    recentQuery.userId = canValidateCra.value ? (userId || '') : ''
+  },
+  { immediate: true }
+)
 
 const displayRows = computed(() => sortedItems.value)
 

@@ -266,3 +266,103 @@ func TestUnvalidateTimesheet_InvoicedConflict(t *testing.T) {
 		t.Fatalf("status: got %d want 409", rec.Code)
 	}
 }
+
+type stubListRecentService struct {
+	ports.CRAService
+	lastFilter ports.TimesheetSummaryFilter
+	manager    bool
+}
+
+func (s *stubListRecentService) ListTimesheetSummaries(_ context.Context, _ kernel.TenantID, _ ports.UserID, managerView bool, filter ports.TimesheetSummaryFilter) ([]domain.TimesheetSummary, error) {
+	s.manager = managerView
+	s.lastFilter = filter
+	return []domain.TimesheetSummary{}, nil
+}
+
+func serveListRecent(t *testing.T, svc ports.CRAService, authorizer authx.Authorizer, identity authx.Identity, rawQuery string) *httptest.ResponseRecorder {
+	t.Helper()
+	r := chi.NewRouter()
+	r.Get("/timesheets/recent", listTimesheets(svc, authorizer))
+	req := httptest.NewRequest(http.MethodGet, "/timesheets/recent?"+rawQuery, nil)
+	req = req.WithContext(authx.WithIdentity(req.Context(), identity))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestListTimesheets_ParsesPeriodAndUserFilters(t *testing.T) {
+	svc := &stubListRecentService{}
+	target := uuid.New()
+
+	rec := serveListRecent(t, svc, stubAuthorizerList{read: true, validate: true}, adminIdentity(), "year=2026&month=09&userId="+target.String()+"&limit=50")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200 body=%s", rec.Code, rec.Body.String())
+	}
+	if svc.lastFilter.Year != "2026" || svc.lastFilter.MonthMM != "09" {
+		t.Fatalf("filter period: %+v", svc.lastFilter)
+	}
+	if svc.lastFilter.UserID == nil || *svc.lastFilter.UserID != target {
+		t.Fatalf("filter userId: %+v", svc.lastFilter.UserID)
+	}
+	if svc.lastFilter.Limit != 50 {
+		t.Fatalf("limit: got %d want 50", svc.lastFilter.Limit)
+	}
+	if !svc.manager {
+		t.Fatal("expected managerView")
+	}
+}
+
+func TestListTimesheets_UserFilterRequiresValidate(t *testing.T) {
+	svc := &stubListRecentService{}
+	rec := serveListRecent(t, svc, stubAuthorizerList{read: true, validate: false}, authx.Identity{
+		UserID:   uuid.New(),
+		TenantID: kernel.NewTenantID(uuid.New()),
+		Profile:  authx.ProfileCollaborateur,
+	}, "userId="+uuid.New().String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d want 403", rec.Code)
+	}
+}
+
+func TestListTimesheets_RejectsInvalidYearMonth(t *testing.T) {
+	svc := &stubListRecentService{}
+	authz := stubAuthorizerList{read: true, validate: true}
+	id := adminIdentity()
+
+	cases := []struct {
+		query string
+	}{
+		{"year=abcd"},
+		{"year=26"},
+		{"month=00"},
+		{"month=13"},
+		{"month=2026-13"},
+		{"month=September"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.query, func(t *testing.T) {
+			rec := serveListRecent(t, svc, authz, id, tc.query)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status: got %d want 400 for %q", rec.Code, tc.query)
+			}
+		})
+	}
+}
+
+type stubAuthorizerList struct {
+	read, validate bool
+}
+
+func (s stubAuthorizerList) Can(_ context.Context, module authx.Module, action authx.Action) bool {
+	if module != "cra" {
+		return false
+	}
+	switch action {
+	case authx.ActionRead:
+		return s.read
+	case authx.ActionValidate:
+		return s.validate
+	default:
+		return false
+	}
+}

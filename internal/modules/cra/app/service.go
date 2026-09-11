@@ -166,14 +166,15 @@ func (s *Service) ListTimesheets(ctx context.Context, tenant kernel.TenantID, us
 	return s.repo.ListByUser(ctx, tenant, userID, limit)
 }
 
-func (s *Service) ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, managerView bool, limit int) ([]domain.TimesheetSummary, error) {
-	if limit <= 0 {
-		limit = 12
+func (s *Service) ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, viewerID ports.UserID, managerView bool, filter ports.TimesheetSummaryFilter) ([]domain.TimesheetSummary, error) {
+	var scopeUser *uuid.UUID
+	if !managerView {
+		uid := uuid.UUID(viewerID)
+		scopeUser = &uid
+	} else if filter.UserID != nil {
+		scopeUser = filter.UserID
 	}
-	if managerView {
-		return s.repo.ListSummariesByTenant(ctx, tenant, limit)
-	}
-	return s.repo.ListSummariesByUser(ctx, tenant, userID, limit)
+	return s.repo.ListSummariesFiltered(ctx, tenant, scopeUser, filter)
 }
 
 func (s *Service) SaveWeek(ctx context.Context, cmd ports.SaveWeekCommand) (domain.Timesheet, error) {

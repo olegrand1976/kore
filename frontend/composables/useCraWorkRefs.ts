@@ -34,6 +34,7 @@ export function useCraWorkRefs() {
   const { apiFetch } = useApiFetch()
   const { t } = useI18n()
   const options = ref<CraWorkRefOption[]>([])
+  let loadGeneration = 0
 
   const typeLabel = (type: CraWorkRefType) => {
     switch (type) {
@@ -59,8 +60,9 @@ export function useCraWorkRefs() {
   }
 
   const load = async (userId: string) => {
+    const generation = ++loadGeneration
     if (!userId) {
-      options.value = []
+      if (generation === loadGeneration) options.value = []
       return
     }
 
@@ -69,6 +71,8 @@ export function useCraWorkRefs() {
       apiFetch<{ data?: Record<string, unknown>[] }>('/api/tickets'),
       apiFetch<{ data?: Record<string, unknown>[] }>('/api/work-requests')
     ])
+
+    if (generation !== loadGeneration) return
 
     const next: CraWorkRefOption[] = []
 
@@ -106,7 +110,9 @@ export function useCraWorkRefs() {
     }
 
     next.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
-    options.value = next
+    if (generation === loadGeneration) {
+      options.value = next
+    }
   }
 
   const groupedOptions = computed(() => {

@@ -52,6 +52,10 @@ func (r *validationRepo) ListSummariesByTenant(context.Context, kernel.TenantID,
 	return nil, nil
 }
 
+func (r *validationRepo) ListSummariesFiltered(context.Context, kernel.TenantID, *uuid.UUID, ports.TimesheetSummaryFilter) ([]domain.TimesheetSummary, error) {
+	return nil, nil
+}
+
 func (r *validationRepo) ListSummariesByTenantMonth(context.Context, kernel.TenantID, domain.Month) ([]domain.TimesheetSummary, error) {
 	return nil, nil
 }

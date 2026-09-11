@@ -235,15 +235,57 @@ func listTimesheets(svc ports.CRAService, authorizer authx.Authorizer) http.Hand
 			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
 			return
 		}
-		limit := 24
+		filter := ports.TimesheetSummaryFilter{}
 		if raw := r.URL.Query().Get("limit"); raw != "" {
-			if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 48 {
-				limit = n
+			if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 500 {
+				filter.Limit = n
+			}
+		}
+		year := strings.TrimSpace(r.URL.Query().Get("year"))
+		if year != "" {
+			if len(year) != 4 || !isDigits(year) {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "year must be YYYY")
+				return
+			}
+			filter.Year = year
+		}
+		monthRaw := strings.TrimSpace(r.URL.Query().Get("month"))
+		if monthRaw != "" {
+			switch {
+			case len(monthRaw) == 2:
+				if !isMonthMM(monthRaw) {
+					httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month must be MM (01-12)")
+					return
+				}
+				filter.MonthMM = monthRaw
+			case len(monthRaw) == 7 && monthRaw[4] == '-':
+				y, m := monthRaw[:4], monthRaw[5:]
+				if !isDigits(y) || !isMonthMM(m) {
+					httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month must be YYYY-MM")
+					return
+				}
+				filter.Year = y
+				filter.MonthMM = m
+			default:
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "month must be MM or YYYY-MM")
+				return
 			}
 		}
 		identity, _ := authx.FromContext(r.Context())
 		managerView := authorizer.Can(r.Context(), "cra", authx.ActionValidate)
-		items, err := svc.ListTimesheetSummaries(r.Context(), identity.TenantID, identity.UserID, managerView, limit)
+		if rawUser := strings.TrimSpace(r.URL.Query().Get("userId")); rawUser != "" {
+			if !managerView {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "userId filter requires validate permission")
+				return
+			}
+			uid, err := uuid.Parse(rawUser)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid userId")
+				return
+			}
+			filter.UserID = &uid
+		}
+		items, err := svc.ListTimesheetSummaries(r.Context(), identity.TenantID, identity.UserID, managerView, filter)
 		if err != nil {
 			writeCRAError(w, err)
 			return
@@ -257,6 +299,26 @@ func canAccessTimesheet(ctx context.Context, authorizer authx.Authorizer, identi
 		return true
 	}
 	return ts.UserID == identity.UserID
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func isMonthMM(s string) bool {
+	if len(s) != 2 || !isDigits(s) {
+		return false
+	}
+	n, err := strconv.Atoi(s)
+	return err == nil && n >= 1 && n <= 12
 }
 
 func generatePDF(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
