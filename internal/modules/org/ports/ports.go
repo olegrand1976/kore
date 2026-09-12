@@ -388,6 +388,7 @@ type UserSummary struct {
 	Profile   string      `json:"profil"`
 	Profiles  []string    `json:"profils"`
 	Active    bool        `json:"active"`
+	CraRequis bool        `json:"craRequis"`
 	EquipeID  *uuid.UUID  `json:"equipeId,omitempty"`
 	EquipeIDs []uuid.UUID `json:"equipeIds,omitempty"`
 }

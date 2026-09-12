@@ -939,6 +939,7 @@ func userToSummary(u domain.User) ports.UserSummary {
 		Profile:   string(u.Profile),
 		Profiles:  profiles,
 		Active:    u.Active,
+		CraRequis: u.CraRequis,
 		EquipeID:  u.EquipeID,
 		EquipeIDs: u.EquipeIDs,
 	}

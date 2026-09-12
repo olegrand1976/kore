@@ -539,6 +539,7 @@
     "filter_month": "Month",
     "filter_year": "Year",
     "filter_user_me": "Me (session)",
+    "filter_users_load_error": "Unable to load the collaborator list. The user filter is incomplete.",
     "col_status": "Status",
     "col_user": "Contributor",
     "col_client": "Client",

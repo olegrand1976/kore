@@ -1709,7 +1709,7 @@ func (r *Repository) scanUser(row pgx.Row) (domain.User, error) {
 	var totpSecret *string
 	var totpEnabledAt *time.Time
 	err := row.Scan(&u.ID, &tenantID, &u.EquipeID, &login, &u.Prenom, &u.Nom, &email, &u.PasswordHash, &profile,
-		&u.Period.Activation, &expiration, &u.Active, &u.DeletedAt,
+		&u.Period.Activation, &expiration, &u.Active, &u.CraRequis, &u.DeletedAt,
 		&u.TotpEnabled, &u.TotpEnrollmentRequired, &totpSecret, &totpEnabledAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -1908,7 +1908,7 @@ func orderEquipeIDsPrimaryFirst(primary *uuid.UUID, ids []uuid.UUID) []uuid.UUID
 	return out
 }
 
-const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, deleted_at,
+const userSelectCols = `id, tenant_id, equipe_id, login, prenom, nom, email, password_hash, profil, date_activation, date_expiration, active, cra_requis, deleted_at,
 totp_enabled, totp_enrollment_required, totp_secret_encrypted, totp_enabled_at`
 
 func (r *Repository) SaveIdentityProvider(ctx context.Context, idp domain.IdentityProvider) error {

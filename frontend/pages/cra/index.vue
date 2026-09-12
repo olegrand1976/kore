@@ -21,6 +21,9 @@
 
     <p v-if="successMsg" class="flash" role="status">{{ successMsg }}</p>
     <p v-if="errorMsg" class="flash flash--error" role="alert">{{ errorMsg }}</p>
+    <p v-if="canValidateCra && orgUsersLoadFailed" class="flash flash--error" role="alert">
+      {{ $t('cra.filter_users_load_error') }}
+    </p>
 
     <AppKpiGrid compact>
       <AppKpiCard
@@ -241,11 +244,16 @@ import { applyTextSearch, useListControls, type FilterDef } from '~/composables/
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
 import { minutesToHoursLabel } from '~/composables/useWeekCalendar'
 import {
+  useUsers,
+  type OrgUserSummary
+} from '~/composables/useUsers'
+import {
   buildMonthFilterOptions,
   buildYearFilterOptions,
   matchPeriodMonthYear,
   migrateLegacyMonthFilter
 } from '~/utils/craPeriodFilter'
+import { buildCraUserFilterOptions } from '~/utils/craUserFilter'
 
 definePageMeta({ layout: 'default' })
 
@@ -315,6 +323,25 @@ const { data, pending, refresh } = await useFetch('/api/cra/timesheets/recent', 
   watch: [recentQuery]
 })
 
+/** Full collaborator directory for the user filter (validators only). */
+const {
+  data: orgUsersRaw,
+  error: orgUsersError
+} = await useFetch<{ data?: OrgUserSummary[] }>('/api/org/users', {
+  immediate: canValidateCra.value
+})
+
+const {
+  pickUserId,
+  pickUserLogin,
+  pickUserPrenom,
+  pickUserNom,
+  pickUserActive,
+  pickUserCraRequis
+} = useUsers()
+
+const orgUsersLoadFailed = computed(() => Boolean(orgUsersError.value))
+
 const rawItems = computed((): CraSummary[] => {
   const payload = (data.value as { data?: unknown[] })?.data ?? data.value
   if (!Array.isArray(payload)) return []
@@ -363,18 +390,33 @@ const listItems = computed((): CraRow[] =>
 )
 
 const userFilterOptions = computed(() => {
-  const byId = new Map<string, string>()
-  for (const row of listItems.value) {
-    if (!row.userId) continue
-    if (!byId.has(row.userId)) byId.set(row.userId, row.userDisplay || row.userId)
+  const payload = (orgUsersRaw.value as { data?: OrgUserSummary[] } | null)?.data ?? orgUsersRaw.value
+  const users: Array<{
+    id: string
+    prenom?: string
+    nom?: string
+    login?: string
+    active?: boolean
+    craRequis?: boolean
+  }> = []
+  if (Array.isArray(payload)) {
+    for (const row of payload) {
+      const id = pickUserId(row)
+      if (!id) continue
+      users.push({
+        id,
+        prenom: pickUserPrenom(row) || undefined,
+        nom: pickUserNom(row) || undefined,
+        login: pickUserLogin(row) || undefined,
+        active: pickUserActive(row),
+        craRequis: pickUserCraRequis(row)
+      })
+    }
   }
-  const sid = sessionUserId.value
-  if (sid && !byId.has(sid)) {
-    byId.set(sid, t('cra.filter_user_me'))
-  }
-  return [...byId.entries()]
-    .map(([value, label]) => ({ value, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+  const extras = listItems.value
+    .filter((row) => row.userId)
+    .map((row) => ({ id: row.userId, label: row.userDisplay || row.userId }))
+  return buildCraUserFilterOptions(users, extras, sessionUserId.value, t('cra.filter_user_me'))
 })
 
 const listFilters = computed(() => {

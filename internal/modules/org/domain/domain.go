@@ -180,6 +180,7 @@ type User struct {
 	Profile                Profile
 	Profiles               []Profile
 	Active                 bool
+	CraRequis              bool
 	Period                 ActivationPeriod
 	DeletedAt              *time.Time
 	TotpEnabled            bool

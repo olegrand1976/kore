@@ -3,12 +3,18 @@ export type OrgUserSummary = {
   ID?: string
   login?: string
   Login?: string
+  prenom?: string
+  Prenom?: string
+  nom?: string
+  Nom?: string
   profil?: string
   Profil?: string
   profils?: string[]
   Profiles?: string[]
   active?: boolean
   Active?: boolean
+  craRequis?: boolean
+  CraRequis?: boolean
   equipeId?: string
   EquipeID?: string
   equipeIds?: string[]
@@ -47,6 +53,18 @@ function pickUserProfiles(item: OrgUserSummary): string[] {
 
 function pickUserActive(item: OrgUserSummary) {
   return item.active ?? item.Active ?? true
+}
+
+function pickUserCraRequis(item: OrgUserSummary) {
+  return item.craRequis ?? item.CraRequis ?? true
+}
+
+function pickUserPrenom(item: OrgUserSummary) {
+  return item.prenom ?? item.Prenom ?? ''
+}
+
+function pickUserNom(item: OrgUserSummary) {
+  return item.nom ?? item.Nom ?? ''
 }
 
 function pickUserEquipeId(item: OrgUserSummary) {
@@ -107,9 +125,12 @@ export function useUsers() {
     remove,
     pickUserId,
     pickUserLogin,
+    pickUserPrenom,
+    pickUserNom,
     pickUserProfile,
     pickUserProfiles,
     pickUserActive,
+    pickUserCraRequis,
     pickUserEquipeId,
     pickUserEquipeIds
   }
