@@ -131,13 +131,13 @@ func (s *Service) weekStartDayForUser(ctx context.Context, tenant kernel.TenantI
 	return s.settingsForUser(ctx, tenant, userID).WeekStartDay
 }
 
-func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, error) {
+func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID ports.UserID, month domain.Month) (domain.Timesheet, bool, error) {
 	ts, err := s.repo.Get(ctx, tenant, userID, month)
 	if err == nil {
-		return ts, nil
+		return ts, false, nil
 	}
 	if !errors.Is(err, domain.ErrTimesheetNotFound) {
-		return domain.Timesheet{}, err
+		return domain.Timesheet{}, false, err
 	}
 	ts = domain.Timesheet{
 		ID:       uuid.New(),
@@ -147,9 +147,9 @@ func (s *Service) GetOrCreate(ctx context.Context, tenant kernel.TenantID, userI
 		Status:   domain.StatusBrouillon,
 	}
 	if err := s.repo.Save(ctx, ts); err != nil {
-		return domain.Timesheet{}, err
+		return domain.Timesheet{}, false, err
 	}
-	return ts, nil
+	return ts, true, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, tenant kernel.TenantID, id ports.TimesheetID) (domain.Timesheet, error) {
@@ -341,7 +341,7 @@ func (s *Service) ProposeLines(ctx context.Context, lines []ports.ProposedLine) 
 		grouped[key] = append(grouped[key], line)
 	}
 	for key, batch := range grouped {
-		ts, err := s.GetOrCreate(ctx, key.tenant, key.userID, key.month)
+		ts, _, err := s.GetOrCreate(ctx, key.tenant, key.userID, key.month)
 		if err != nil {
 			return err
 		}

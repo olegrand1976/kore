@@ -45,6 +45,12 @@ func RegisterRoutes(r chi.Router, svc ports.CRAService, tokens *authx.TokenIssue
 	})
 }
 
+// timesheetOpenResponse is returned by GET /timesheets?month= — Timesheet fields plus created.
+type timesheetOpenResponse struct {
+	domain.Timesheet
+	Created bool `json:"created"`
+}
+
 func getTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !authorizer.Can(r.Context(), "cra", authx.ActionRead) {
@@ -62,12 +68,15 @@ func getTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.Handle
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		ts, err := svc.GetOrCreate(r.Context(), identity.TenantID, identity.UserID, month)
+		ts, created, err := svc.GetOrCreate(r.Context(), identity.TenantID, identity.UserID, month)
 		if err != nil {
 			writeCRAError(w, err)
 			return
 		}
-		httpx.WriteData(w, http.StatusOK, ts)
+		httpx.WriteData(w, http.StatusOK, timesheetOpenResponse{
+			Timesheet: ts,
+			Created:   created,
+		})
 	}
 }
 

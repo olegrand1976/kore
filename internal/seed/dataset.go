@@ -153,7 +153,7 @@ func (r *Runner) seedTimesheet(
 	managerID uuid.UUID,
 	finalize bool,
 ) error {
-	ts, err := r.deps.CRA.GetOrCreate(ctx, tenant, userID, month)
+	ts, _, err := r.deps.CRA.GetOrCreate(ctx, tenant, userID, month)
 	if err != nil {
 		return err
 	}

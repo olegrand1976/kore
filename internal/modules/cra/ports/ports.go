@@ -185,7 +185,8 @@ type TimesheetSummaryFilter struct {
 }
 
 type CRAService interface {
-	GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, error)
+	// GetOrCreate returns the timesheet and whether it was newly created (true) or already existed (false).
+	GetOrCreate(ctx context.Context, tenant kernel.TenantID, userID UserID, month domain.Month) (domain.Timesheet, bool, error)
 	GetByID(ctx context.Context, tenant kernel.TenantID, id TimesheetID) (domain.Timesheet, error)
 	ListTimesheets(ctx context.Context, tenant kernel.TenantID, userID UserID, managerView bool, limit int) ([]domain.Timesheet, error)
 	ListTimesheetSummaries(ctx context.Context, tenant kernel.TenantID, viewerID UserID, managerView bool, filter TimesheetSummaryFilter) ([]domain.TimesheetSummary, error)

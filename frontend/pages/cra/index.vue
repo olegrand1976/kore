@@ -11,6 +11,9 @@
         <AppButton v-if="canReadReporting" variant="ghost" size="sm" @click="navigateTo('/cra/gantt')">
           {{ $t('cra.gantt_link') }}
         </AppButton>
+        <AppButton variant="secondary" size="sm" :disabled="creating" @click="openPeriodModal">
+          <AppIcon name="history" /> {{ $t('cra.new_other_period') }}
+        </AppButton>
         <AppButton variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">
           <AppIcon name="add" /> {{ $t('cra.new') }}
         </AppButton>
@@ -93,9 +96,14 @@
           :title="hasActiveFilters ? $t('common.list.no_results') : $t('cra.empty')"
           :description="hasActiveFilters ? undefined : $t('cra.empty_desc')"
         >
-          <AppButton v-if="!hasActiveFilters" variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">
-            {{ $t('cra.new') }}
-          </AppButton>
+          <div class="cra-empty-actions">
+            <AppButton v-if="!hasActiveFilters" variant="secondary" size="sm" :disabled="creating" @click="openPeriodModal">
+              {{ $t('cra.new_other_period') }}
+            </AppButton>
+            <AppButton v-if="!hasActiveFilters" variant="primary" size="sm" :disabled="creating" @click="openCurrentMonth">
+              {{ $t('cra.new') }}
+            </AppButton>
+          </div>
         </AppEmptyState>
       </AppCard>
 
@@ -232,6 +240,45 @@
         </AppKanbanBoard>
       </AppCard>
     </template>
+
+    <AppModal
+      v-model:open="periodModalOpen"
+      width="sm"
+      :title-id="periodModalTitleId"
+      :aria-label="$t('cra.new_period_title')"
+    >
+      <form class="cra-period-form" @submit.prevent="confirmPeriodModal">
+        <h2 :id="periodModalTitleId" class="cra-period-form__title">{{ $t('cra.new_period_title') }}</h2>
+        <p class="cra-period-form__hint">{{ $t('cra.new_period_hint') }}</p>
+        <div class="cra-period-form__row">
+          <div class="cra-period-form__field">
+            <label for="cra-period-month">{{ $t('cra.filter_month') }}</label>
+            <select id="cra-period-month" v-model="periodForm.month" required>
+              <option v-for="opt in periodMonthOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div class="cra-period-form__field">
+            <label for="cra-period-year">{{ $t('cra.filter_year') }}</label>
+            <select id="cra-period-year" v-model="periodForm.year" required>
+              <option v-for="opt in periodYearOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <p v-if="periodModalError" class="cra-period-form__error" role="alert">{{ periodModalError }}</p>
+        <div class="cra-period-form__actions">
+          <AppButton variant="ghost" type="button" :disabled="creating" @click="periodModalOpen = false">
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton variant="primary" type="submit" :disabled="creating || !periodMonthOptions.length">
+            {{ creating ? $t('cra.opening') : $t('cra.new_period_submit') }}
+          </AppButton>
+        </div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -247,6 +294,13 @@ import {
   useUsers,
   type OrgUserSummary
 } from '~/composables/useUsers'
+import {
+  buildCreatePeriodMonthOptions,
+  buildCreatePeriodYearOptions,
+  clampCreatePeriodSelection,
+  monthKeyFromParts,
+  previousMonthKey
+} from '~/utils/craCreatePeriod'
 import {
   buildMonthFilterOptions,
   buildYearFilterOptions,
@@ -304,6 +358,33 @@ await fetchSession()
 const creating = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
+const periodModalOpen = ref(false)
+const periodModalError = ref('')
+const periodModalTitleId = 'cra-period-modal-title'
+const prevDefault = previousMonthKey()
+const periodForm = reactive({
+  year: prevDefault.slice(0, 4),
+  month: prevDefault.slice(5, 7)
+})
+const periodYearOptions = computed(() => buildCreatePeriodYearOptions())
+const periodMonthOptions = computed(() =>
+  buildCreatePeriodMonthOptions(periodForm.year, locale.value)
+)
+
+watch(
+  () => periodForm.year,
+  (year) => {
+    const opts = buildCreatePeriodMonthOptions(year, locale.value)
+    if (opts.some((o) => o.value === periodForm.month)) return
+    if (opts.length) {
+      periodForm.month = opts[opts.length - 1]!.value
+      return
+    }
+    const clamped = clampCreatePeriodSelection(year, periodForm.month)
+    periodForm.year = clamped.year
+    periodForm.month = clamped.month
+  }
+)
 
 const currentKey = currentMonthKey()
 const defaultPeriodYear = currentKey.slice(0, 4)
@@ -587,24 +668,56 @@ const formatUpdated = (raw: string) => {
   })
 }
 
-const openCurrentMonth = async () => {
+const openMonth = async (monthKey: string, opts?: { fromModal?: boolean }) => {
   creating.value = true
   errorMsg.value = ''
+  periodModalError.value = ''
   try {
-    const res = await apiFetch<{ data?: { id?: string }; id?: string }>(
-      `/api/cra/timesheets?month=${currentMonthKey()}`
-    )
+    const res = await apiFetch<{
+      data?: { id?: string; created?: boolean }
+      id?: string
+      created?: boolean
+    }>(`/api/cra/timesheets?month=${encodeURIComponent(monthKey)}`)
     const ts = res?.data ?? res
     if (ts?.id) {
-      await navigateTo(`/cra/${ts.id}`)
+      const created = Boolean(ts.created)
+      const notice = created ? 'created' : 'existing'
+      periodModalOpen.value = false
+      await navigateTo({ path: `/cra/${ts.id}`, query: { notice } })
       return
     }
     await refresh()
   } catch (err) {
-    errorMsg.value = mapCraError(err, t('cra.open_error'))
+    const msg = mapCraError(err, t('cra.open_error'))
+    if (opts?.fromModal) {
+      periodModalError.value = msg
+    } else {
+      errorMsg.value = msg
+    }
   } finally {
     creating.value = false
   }
+}
+
+const openCurrentMonth = () => openMonth(currentMonthKey())
+
+const openPeriodModal = () => {
+  const clamped = clampCreatePeriodSelection(periodForm.year, periodForm.month)
+  periodForm.year = clamped.year
+  periodForm.month = clamped.month
+  periodModalError.value = ''
+  periodModalOpen.value = true
+}
+
+const confirmPeriodModal = async () => {
+  const clamped = clampCreatePeriodSelection(periodForm.year, periodForm.month)
+  periodForm.year = clamped.year
+  periodForm.month = clamped.month
+  if (!periodMonthOptions.value.length) {
+    periodModalError.value = t('cra.new_period_invalid')
+    return
+  }
+  await openMonth(monthKeyFromParts(periodForm.year, periodForm.month), { fromModal: true })
 }
 
 const onTimesheetAdminChange = async (action: 'unvalidate' | 'delete') => {
@@ -696,6 +809,68 @@ const onTimesheetDeleteError = (message: string) => {
 
 .muted { color: var(--kore-text-muted); }
 
+.cra-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+}
+
+.cra-period-form {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.cra-period-form__title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+  color: var(--kore-text);
+}
+
+.cra-period-form__hint {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
+
+.cra-period-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--kore-space-sm);
+}
+
+.cra-period-form__field {
+  display: grid;
+  gap: var(--kore-space-xs);
+}
+
+.cra-period-form__field label {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
+
+.cra-period-form__field select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: var(--kore-space-xs) var(--kore-space-sm);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-sm);
+  background: var(--kore-surface);
+  color: var(--kore-text);
+}
+
+.cra-period-form__error {
+  margin: 0;
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
+}
+
+.cra-period-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--kore-space-sm);
+}
+
 .flash {
   margin-top: var(--kore-space-md);
   font-size: var(--kore-text-small);
@@ -727,8 +902,18 @@ const onTimesheetDeleteError = (message: string) => {
   }
 
   .cra-actions :deep(.app-btn),
-  .cra-kanban-card :deep(.app-btn) {
+  .cra-kanban-card :deep(.app-btn),
+  .cra-empty-actions :deep(.app-btn),
+  .cra-period-form__actions :deep(.app-btn) {
     width: 100%;
+  }
+
+  .cra-period-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .cra-period-form__actions {
+    flex-direction: column-reverse;
   }
 }
 </style>

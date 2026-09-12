@@ -727,7 +727,7 @@ paths:
           schema: { type: string, example: "2026-07" }
       responses:
         "200":
-          description: Feuille de temps
+          description: Feuille de temps (champ `created` true si créée, false si déjà existante)
   /timesheets/{id}:
     get:
       summary: Détail CRA

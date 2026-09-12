@@ -16,7 +16,7 @@ func (s *Service) PrefillPublicHolidays(ctx context.Context, tenant kernel.Tenan
 	if countryCode == "" {
 		countryCode = "FR"
 	}
-	ts, err := s.GetOrCreate(ctx, tenant, userID, month)
+	ts, _, err := s.GetOrCreate(ctx, tenant, userID, month)
 	if err != nil {
 		return 0, err
 	}

@@ -83,7 +83,8 @@
       déclenchent : plus bas, ils tombaient sous la grille du mois et un échec de
       validation définitive passait pour un bouton sans effet.
     -->
-    <div v-if="validateMsg || prefillMsg || downloadError || actionError" class="cra-detail__flashes">
+    <div v-if="openNotice || validateMsg || prefillMsg || downloadError || actionError" class="cra-detail__flashes">
+      <p v-if="openNotice" class="flash flash--info" role="status">{{ openNotice }}</p>
       <p v-if="validateMsg" class="flash" role="status">
         {{ validateMsg }}
         <NuxtLink v-if="invoiceLink" :to="invoiceLink" class="flash__link">{{ $t('cra.invoice_created_link') }}</NuxtLink>
@@ -381,6 +382,7 @@ const prefillLoading = ref(false)
 const prefillMsg = ref('')
 const actionError = ref('')
 const validateMsg = ref('')
+const openNotice = ref('')
 const invoiceLink = ref('')
 const rejectOpen = ref(false)
 const rejectReason = ref('')
@@ -598,6 +600,40 @@ const formatMonth = (raw: string) => {
     month: 'long', year: 'numeric'
   })
 }
+
+const pendingOpenNotice = (() => {
+  const raw = route.query.notice
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value === 'created' || value === 'existing') return value
+  return null
+})()
+
+if (pendingOpenNotice) {
+  const nextQuery = { ...route.query }
+  delete nextQuery.notice
+  void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
+}
+
+watch(
+  () => timesheet.value?.month,
+  (month) => {
+    if (!pendingOpenNotice || !month || openNotice.value) return
+    const period = formatMonth(String(month))
+    switch (pendingOpenNotice) {
+      case 'created':
+        openNotice.value = t('cra.notice_created', { period })
+        break
+      case 'existing':
+        openNotice.value = t('cra.notice_existing', { period })
+        break
+      default: {
+        const _exhaustive: never = pendingOpenNotice
+        return _exhaustive
+      }
+    }
+  },
+  { immediate: true }
+)
 
 const onSaveWeek = async (weekNumber: number, lines: Parameters<typeof saveWeek>[1]) => {
   actionError.value = ''
@@ -903,6 +939,7 @@ const downloadPdf = async () => {
 }
 
 .flash--error { color: var(--kore-error); margin-top: var(--kore-space-md); }
+.flash--info { color: var(--kore-brand-blue); margin-top: var(--kore-space-md); }
 .flash__link {
   margin-left: var(--kore-space-sm);
   color: var(--kore-link);
