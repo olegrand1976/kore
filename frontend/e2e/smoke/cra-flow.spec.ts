@@ -22,7 +22,10 @@ test.describe('CRA flow', () => {
     await expect(page.locator('.app-page-header__title')).toBeVisible({ timeout: 20_000 })
     await expect(
       page.getByRole('heading', { name: /informations de prestation|service delivery information/i })
-    ).toBeVisible({ timeout: 15_000 })
+    ).toHaveCount(0)
+    await expect(page.locator('.cra-detail__meta dt').filter({ hasText: /collaborateur|collaborator/i })).toBeVisible({
+      timeout: 15_000
+    })
   })
 
   test('CRA list can open another past period via modal', async ({ page }) => {

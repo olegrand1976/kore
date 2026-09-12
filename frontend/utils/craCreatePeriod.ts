@@ -64,3 +64,21 @@ export function clampCreatePeriodSelection(
   const prev = previousMonthKey(now)
   return { year: prev.slice(0, 4), month: prev.slice(5, 7) }
 }
+
+/**
+ * Resolve which userId to pass to GetOrCreate.
+ * Validators may open/create a CRA for the list filter collaborator;
+ * otherwise always the session user (empty = omit query param).
+ */
+export function resolveOpenTimesheetUserId(
+  canValidate: boolean,
+  sessionUserId: string,
+  filterUserId: string
+): string {
+  if (!canValidate) return ''
+  const target = String(filterUserId ?? '').trim()
+  if (!target) return ''
+  const session = String(sessionUserId ?? '').trim()
+  if (session && target === session) return ''
+  return target
+}

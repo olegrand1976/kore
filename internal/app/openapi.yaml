@@ -725,6 +725,10 @@ paths:
         - name: month
           in: query
           schema: { type: string, example: "2026-07" }
+        - name: userId
+          in: query
+          description: Cible un collaborateur (requiert droit validation CRA)
+          schema: { type: string, format: uuid }
       responses:
         "200":
           description: Feuille de temps (champ `created` true si créée, false si déjà existante)

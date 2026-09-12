@@ -521,6 +521,7 @@
   "cra": {
     "title": "Activity reports",
     "detail_title": "CRA — {period}",
+    "detail_title_owner": "Timesheet — {user} — {period}",
     "empty": "No timesheets yet.",
     "empty_desc": "Create your first activity report.",
     "new": "Current month timesheet",
@@ -605,6 +606,11 @@
       "unknown": "unknown reason"
     },
     "download_hint": "Complete delivery information to enable download.",
+    "download_hint_mission": "Link an SSII mission to enable the PDF (client and mission required).",
+    "mission_link_label": "Link a mission",
+    "mission_link_none": "No mission",
+    "mission_link_hint": "Delivery details (tech, location, client contact…) are managed on the mission / client record.",
+    "mission_link_error": "Unable to link the mission.",
     "download_error": "Unable to generate document.",
     "open_error": "Unable to open the timesheet.",
     "status_draft": "Draft",

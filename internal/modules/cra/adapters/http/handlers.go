@@ -68,7 +68,20 @@ func getTimesheet(svc ports.CRAService, authorizer authx.Authorizer) http.Handle
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
-		ts, created, err := svc.GetOrCreate(r.Context(), identity.TenantID, identity.UserID, month)
+		targetUserID := identity.UserID
+		if raw := strings.TrimSpace(r.URL.Query().Get("userId")); raw != "" {
+			if !authorizer.Can(r.Context(), "cra", authx.ActionValidate) {
+				httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "userId filter requires cra validate")
+				return
+			}
+			uid, err := uuid.Parse(raw)
+			if err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "userId must be a uuid")
+				return
+			}
+			targetUserID = uid
+		}
+		ts, created, err := svc.GetOrCreate(r.Context(), identity.TenantID, targetUserID, month)
 		if err != nil {
 			writeCRAError(w, err)
 			return
@@ -91,6 +104,10 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())
 			return
 		}
+		identity, _ := authx.FromContext(r.Context())
+		if _, ok := loadAccessibleTimesheet(w, r, svc, authorizer, identity, id); !ok {
+			return
+		}
 		var req struct {
 			Lines []struct {
 				ID          string `json:"id"`
@@ -109,7 +126,6 @@ func saveWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerFun
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		identity, _ := authx.FromContext(r.Context())
 		lines := make([]domain.TimeLine, 0, len(req.Lines))
 		for _, l := range req.Lines {
 			day, err := time.Parse("2006-01-02", l.Day)
@@ -171,6 +187,9 @@ func submitWeek(svc ports.CRAService, authorizer authx.Authorizer) http.HandlerF
 			return
 		}
 		identity, _ := authx.FromContext(r.Context())
+		if _, ok := loadAccessibleTimesheet(w, r, svc, authorizer, identity, id); !ok {
+			return
+		}
 		if err := svc.SubmitWeek(r.Context(), ports.SubmitWeekCommand{
 			TenantID:    identity.TenantID,
 			TimesheetID: id,
@@ -195,12 +214,15 @@ func completeCommercialInfo(svc ports.CRAService, authorizer authx.Authorizer) h
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid timesheet id")
 			return
 		}
+		identity, _ := authx.FromContext(r.Context())
+		if _, ok := loadAccessibleTimesheet(w, r, svc, authorizer, identity, id); !ok {
+			return
+		}
 		var info domain.CommercialInfo
 		if err := json.NewDecoder(r.Body).Decode(&info); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		identity, _ := authx.FromContext(r.Context())
 		if err := svc.CompleteCommercialInfo(r.Context(), ports.CommercialCommand{
 			TenantID:    identity.TenantID,
 			TimesheetID: id,
@@ -308,6 +330,26 @@ func canAccessTimesheet(ctx context.Context, authorizer authx.Authorizer, identi
 		return true
 	}
 	return ts.UserID == identity.UserID
+}
+
+func loadAccessibleTimesheet(
+	w http.ResponseWriter,
+	r *http.Request,
+	svc ports.CRAService,
+	authorizer authx.Authorizer,
+	identity authx.Identity,
+	id uuid.UUID,
+) (domain.Timesheet, bool) {
+	ts, err := svc.GetByID(r.Context(), identity.TenantID, id)
+	if err != nil {
+		writeCRAError(w, err)
+		return domain.Timesheet{}, false
+	}
+	if !canAccessTimesheet(r.Context(), authorizer, identity, ts) {
+		httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+		return domain.Timesheet{}, false
+	}
+	return ts, true
 }
 
 func isDigits(s string) bool {

@@ -5,7 +5,8 @@ import {
   clampCreatePeriodSelection,
   isStrictlyPastMonth,
   monthKeyFromParts,
-  previousMonthKey
+  previousMonthKey,
+  resolveOpenTimesheetUserId
 } from '../utils/craCreatePeriod'
 
 describe('craCreatePeriod', () => {
@@ -41,5 +42,17 @@ describe('craCreatePeriod', () => {
     expect(buildCreatePeriodYearOptions(now, 2).map((y) => y.value)).toEqual([
       '2026', '2025', '2024'
     ])
+  })
+})
+
+describe('resolveOpenTimesheetUserId', () => {
+  it('omits userId for non-validators and for self', () => {
+    expect(resolveOpenTimesheetUserId(false, 'me', 'other')).toBe('')
+    expect(resolveOpenTimesheetUserId(true, 'me', 'me')).toBe('')
+    expect(resolveOpenTimesheetUserId(true, 'me', '')).toBe('')
+  })
+
+  it('returns filtered collaborator for validators', () => {
+    expect(resolveOpenTimesheetUserId(true, 'me', 'gerald')).toBe('gerald')
   })
 })

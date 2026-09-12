@@ -299,7 +299,8 @@ import {
   buildCreatePeriodYearOptions,
   clampCreatePeriodSelection,
   monthKeyFromParts,
-  previousMonthKey
+  previousMonthKey,
+  resolveOpenTimesheetUserId
 } from '~/utils/craCreatePeriod'
 import {
   buildMonthFilterOptions,
@@ -673,11 +674,18 @@ const openMonth = async (monthKey: string, opts?: { fromModal?: boolean }) => {
   errorMsg.value = ''
   periodModalError.value = ''
   try {
+    const params = new URLSearchParams({ month: monthKey })
+    const targetUserId = resolveOpenTimesheetUserId(
+      canValidateCra.value,
+      sessionUserId.value,
+      filterValues.user || ''
+    )
+    if (targetUserId) params.set('userId', targetUserId)
     const res = await apiFetch<{
       data?: { id?: string; created?: boolean }
       id?: string
       created?: boolean
-    }>(`/api/cra/timesheets?month=${encodeURIComponent(monthKey)}`)
+    }>(`/api/cra/timesheets?${params.toString()}`)
     const ts = res?.data ?? res
     if (ts?.id) {
       const created = Boolean(ts.created)

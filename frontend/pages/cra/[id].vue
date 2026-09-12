@@ -108,6 +108,19 @@
       </AppCard>
       <AppCard padding="lg" class="cra-detail__meta">
         <dl class="meta">
+          <div>
+            <dt>{{ $t('cra.col_user') }}</dt>
+            <dd>
+              <NuxtLink
+                v-if="timesheet.userId"
+                :to="`/collaborateurs/${timesheet.userId}`"
+                class="meta__link"
+              >
+                {{ ownerLabel || timesheet.userId }}
+              </NuxtLink>
+              <span v-else>{{ ownerLabel || $t('common.none') }}</span>
+            </dd>
+          </div>
           <div><dt>{{ $t('cra.period') }}</dt><dd>{{ formatMonth(timesheet.month) }}</dd></div>
           <div>
             <dt>{{ $t('cra.col_status') }}</dt>
@@ -150,6 +163,25 @@
             </dd>
           </div>
         </dl>
+        <div v-if="canEdit" class="cra-detail__mission-link">
+          <label for="cra-mission-link">{{ $t('cra.mission_link_label') }}</label>
+          <select
+            id="cra-mission-link"
+            v-model="missionLinkId"
+            :disabled="linkingMission"
+            @change="onMissionLinkChange"
+          >
+            <option value="">{{ $t('cra.mission_link_none') }}</option>
+            <option v-for="mission in missions" :key="mission.id" :value="mission.id">
+              {{ mission.label || mission.clientName || mission.id }}
+            </option>
+          </select>
+          <p class="cra-detail__mission-hint">{{ $t('cra.mission_link_hint') }}</p>
+          <p v-if="missionLinkError" class="flash flash--error" role="alert">{{ missionLinkError }}</p>
+        </div>
+        <p v-if="!canDownload" id="cra-download-hint" class="cra-detail__download-hint">
+          {{ $t('cra.download_hint_mission') }}
+        </p>
         <CraMonthlyPreview
           class="cra-detail__preview"
           :total-minutes="totalMinutes"
@@ -161,29 +193,7 @@
         />
       </AppCard>
 
-      <div class="cra-detail__body">
-        <aside class="cra-detail__aside">
-          <PrestationInfoForm
-            ref="prestationFormRef"
-            :client="prestation.client"
-            :mission="prestation.mission"
-            :client-id="prestation.clientId"
-            :mission-id="prestation.missionId"
-            :missions="missions"
-            :description="prestation.description"
-            :technologies="prestation.technologies"
-            :lieu="prestation.lieu"
-            :responsable-client="prestation.responsableClient"
-            :day-capacity-minutes="dayCapacityMinutes"
-            :disabled="!canEdit"
-            :saving="savingPrestation"
-            :message="prestationMsg"
-            :is-error="prestationError"
-            @change="onPrestationChange"
-            @submit="savePrestation"
-          />
-        </aside>
-
+      <div class="cra-detail__body cra-detail__body--single">
         <div class="cra-detail__main">
           <TimesheetGrid
             v-model:active-week="gridActiveWeek"
@@ -251,9 +261,10 @@ import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
-import { prestationInfoComplete, type PrestationInfoFields } from '~/utils/craPrestation'
+import { prestationInfoComplete, unwrapMissionPayload, missionPrestationPatch } from '~/utils/craPrestation'
 import { normalizeAnomalyMessages } from '~/utils/craAnomalies'
 import { timesheetHasLoggedTime } from '~/utils/craLoggedTime'
+import { formatUserDisplayName } from '~/composables/useUserDisplay'
 
 definePageMeta({ layout: 'default' })
 
@@ -286,7 +297,10 @@ const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const missionPlannedWeekMinutes = ref<number | null>(null)
 const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
-const prestationFormRef = ref<{ local: Record<string, unknown> } | null>(null)
+const missionLinkId = ref('')
+const linkingMission = ref(false)
+const missionLinkError = ref('')
+const ownerLabel = ref('')
 const pdfPreviewOpen = ref(false)
 const pdfPreviewLoading = ref(false)
 const pdfPreviewError = ref('')
@@ -373,9 +387,6 @@ const loadMissionPlannedWeekMinutes = async (missionId: string) => {
   }
 }
 
-const savingPrestation = ref(false)
-const prestationMsg = ref('')
-const prestationError = ref(false)
 const downloading = ref(false)
 const downloadError = ref('')
 const prefillLoading = ref(false)
@@ -429,13 +440,34 @@ const loadPrefillETT = async () => {
 
 await Promise.all([load(id.value), loadOrgSettings(), loadMissions(), fetchSession()])
 
-const workRefsOwnerId = computed(
-  () => timesheet.value?.userId || user.value?.userId || ''
-)
+const workRefsOwnerId = computed(() => timesheet.value?.userId || '')
 watch(
   workRefsOwnerId,
   async (ownerId) => {
+    if (!ownerId) return
     await loadWorkRefs(ownerId)
+  },
+  { immediate: true }
+)
+
+watch(
+  () => timesheet.value?.userId,
+  async (uid) => {
+    ownerLabel.value = ''
+    if (!uid) return
+    try {
+      const res = await apiFetch<{
+        data?: { prenom?: string; nom?: string; login?: string; Prenom?: string; Nom?: string; Login?: string }
+      }>(`/api/org/users/${uid}`)
+      const data = res.data ?? (res as unknown as Record<string, string>)
+      ownerLabel.value = formatUserDisplayName(
+        data.prenom ?? data.Prenom,
+        data.nom ?? data.Nom,
+        data.login ?? data.Login
+      )
+    } catch {
+      ownerLabel.value = uid.slice(0, 8)
+    }
   },
   { immediate: true }
 )
@@ -548,7 +580,18 @@ const loadPrefillSuggest = async () => {
 }
 
 watch(timesheet, (ts) => {
-  if (!ts?.commercialInfo) return
+  if (!ts?.commercialInfo) {
+    prestation.client = ''
+    prestation.mission = ''
+    prestation.clientId = ''
+    prestation.missionId = ''
+    prestation.description = ''
+    prestation.technologies = []
+    prestation.lieu = ''
+    prestation.responsableClient = ''
+    missionLinkId.value = ''
+    return
+  }
   prestation.client = ts.commercialInfo.client ?? ''
   prestation.mission = ts.commercialInfo.mission ?? ''
   prestation.clientId = ts.commercialInfo.clientId ?? ''
@@ -557,6 +600,7 @@ watch(timesheet, (ts) => {
   prestation.technologies = [...(ts.commercialInfo.technologies ?? [])]
   prestation.lieu = ts.commercialInfo.lieu ?? ''
   prestation.responsableClient = ts.commercialInfo.responsableClient ?? ''
+  missionLinkId.value = prestation.missionId
 }, { immediate: true })
 
 watch(
@@ -569,9 +613,68 @@ watch(
 
 const canDownload = computed(() => prestationInfoComplete(prestation.client, prestation.mission))
 
+const persistMissionLink = async (missionId: string) => {
+  if (!missionId) {
+    await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
+      method: 'PUT',
+      body: {
+        client: '',
+        mission: '',
+        description: '',
+        technologies: [],
+        lieu: '',
+        responsableClient: ''
+      }
+    })
+    return
+  }
+  const res = await apiFetch(`/api/ssii/missions/${missionId}`)
+  const raw = unwrapMissionPayload(res)
+  const patch = missionPrestationPatch(raw)
+  const missionLabel =
+    String(raw.label ?? raw.Label ?? '').trim() ||
+    patch.client ||
+    missions.value.find((m) => m.id === missionId)?.label ||
+    missionId
+  await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
+    method: 'PUT',
+    body: {
+      client: patch.client || missions.value.find((m) => m.id === missionId)?.clientName || '',
+      mission: missionLabel,
+      clientId: patch.clientId || undefined,
+      missionId,
+      description: '',
+      technologies: patch.technologies,
+      lieu: '',
+      responsableClient: patch.responsableClient
+    }
+  })
+}
+
+const onMissionLinkChange = async () => {
+  if (!canEdit.value) return
+  const previousMissionId = prestation.missionId
+  const nextMissionId = missionLinkId.value
+  linkingMission.value = true
+  missionLinkError.value = ''
+  try {
+    await persistMissionLink(nextMissionId)
+    await load(id.value)
+  } catch (err) {
+    missionLinkId.value = previousMissionId
+    missionLinkError.value = mapCraError(err, t('cra.mission_link_error'))
+  } finally {
+    linkingMission.value = false
+  }
+}
+
 const pageTitle = computed(() => {
   if (!timesheet.value?.month) return t('cra.title')
-  return t('cra.detail_title', { period: formatMonth(timesheet.value.month) })
+  const period = formatMonth(timesheet.value.month)
+  if (ownerLabel.value) {
+    return t('cra.detail_title_owner', { period, user: ownerLabel.value })
+  }
+  return t('cra.detail_title', { period })
 })
 
 const onTimesheetAdminChange = async (action: 'unvalidate' | 'delete') => {
@@ -673,7 +776,6 @@ const onValidateFinal = async () => {
   validateMsg.value = ''
   invoiceLink.value = ''
   try {
-    await persistPrestation()
     const draft = await validateFinal()
     await applyValidateSuccess(draft)
   } catch (err) {
@@ -723,55 +825,6 @@ const confirmReject = async () => {
   }
 }
 
-const onPrestationChange = (payload: PrestationInfoFields) => {
-  prestation.client = payload.client
-  prestation.mission = payload.mission
-  prestation.clientId = payload.clientId
-  prestation.missionId = payload.missionId
-  prestation.description = payload.description
-  prestation.technologies = payload.technologies
-  prestation.lieu = payload.lieu
-  prestation.responsableClient = payload.responsableClient
-}
-
-const persistPrestation = async () => {
-  const local = (prestationFormRef.value?.local ?? prestation) as typeof prestation
-  await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
-    method: 'PUT',
-    body: {
-      client: local.client,
-      mission: local.mission,
-      clientId: local.clientId || undefined,
-      missionId: local.missionId || undefined,
-      description: local.description,
-      technologies: local.technologies,
-      lieu: local.lieu,
-      responsableClient: local.responsableClient
-    }
-  })
-}
-
-const savePrestation = async () => {
-  savingPrestation.value = true
-  prestationMsg.value = ''
-  prestationError.value = false
-  try {
-    await persistPrestation()
-    prestationMsg.value = t('cra.prestation_saved')
-    await load()
-  } catch {
-    prestationMsg.value = t('cra.prestation_save_error')
-    prestationError.value = true
-  } finally {
-    savingPrestation.value = false
-  }
-}
-
-const ensurePrestationPersisted = async () => {
-  if (!canEdit.value) return
-  await persistPrestation()
-}
-
 const fetchPdfBlob = async () => {
   const blob = await apiFetch<Blob>(`/api/cra/timesheets/${id.value}/pdf`, { method: 'POST', responseType: 'blob' })
   // Un relais binaire cassé renvoie 200 avec un corps vide : sans ce garde-fou
@@ -800,7 +853,6 @@ const openPdfPreview = async () => {
   pdfPreviewError.value = ''
   revokePdfPreviewUrl()
   try {
-    await ensurePrestationPersisted()
     const blob = await fetchPdfBlob()
     pdfPreviewUrl.value = URL.createObjectURL(blob)
   } catch (err) {
@@ -815,7 +867,6 @@ const downloadPdf = async () => {
   downloading.value = true
   downloadError.value = ''
   try {
-    await ensurePrestationPersisted()
     const blob = await fetchPdfBlob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -891,36 +942,53 @@ const downloadPdf = async () => {
   align-items: start;
 }
 
+.cra-detail__body--single {
+  grid-template-columns: 1fr;
+}
+
 .cra-detail__main {
   display: grid;
   gap: var(--kore-space-lg);
   min-width: 0;
 }
 
-.cra-detail__aside {
-  min-width: 0;
+.cra-detail__mission-link {
+  display: grid;
+  gap: var(--kore-space-xs);
+  margin-top: var(--kore-space-md);
 }
 
-@media (min-width: 900px) {
-  .cra-detail__body {
-    grid-template-columns: 1fr min(360px, 32%);
-  }
+.cra-detail__mission-link label {
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
+}
 
-  .cra-detail__aside {
-    position: sticky;
-    top: var(--kore-space-lg);
-    order: 2;
-  }
+.cra-detail__mission-link select {
+  width: 100%;
+  max-width: var(--kore-form-max);
+  min-height: 2.5rem;
+  padding: var(--kore-space-xs) var(--kore-space-sm);
+  border: 1px solid var(--kore-border);
+  border-radius: var(--kore-radius-sm);
+  background: var(--kore-surface);
+  color: var(--kore-text);
+}
 
-  .cra-detail__main {
-    order: 1;
-  }
+.cra-detail__mission-hint,
+.cra-detail__download-hint {
+  margin: 0;
+  font-size: var(--kore-text-small);
+  color: var(--kore-text-muted);
 }
 
 @media (max-width: 768px) {
   .meta div {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .cra-detail__mission-link select {
+    max-width: none;
   }
 }
 

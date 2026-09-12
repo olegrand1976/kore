@@ -521,6 +521,7 @@
   "cra": {
     "title": "Comptes-rendus d'activité",
     "detail_title": "CRA — {period}",
+    "detail_title_owner": "CRA — {user} — {period}",
     "empty": "Aucun CRA pour le moment.",
     "empty_desc": "Créez votre premier compte-rendu d'activité.",
     "new": "CRA du mois en cours",
@@ -605,6 +606,11 @@
       "unknown": "raison inconnue"
     },
     "download_hint": "Complétez les informations de prestation pour activer le téléchargement.",
+    "download_hint_mission": "Rattachez une mission SSII pour activer le PDF (client et mission requis).",
+    "mission_link_label": "Rattacher une mission",
+    "mission_link_none": "Aucune mission",
+    "mission_link_hint": "Les détails de prestation (techno, lieu, responsable…) se gèrent sur la fiche mission / client.",
+    "mission_link_error": "Impossible de rattacher la mission.",
     "download_error": "Impossible de générer le document.",
     "open_error": "Impossible d'ouvrir le CRA.",
     "status_draft": "Brouillon",
