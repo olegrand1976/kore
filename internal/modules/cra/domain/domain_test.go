@@ -95,6 +95,26 @@ func TestCommercialInfo_Complete(t *testing.T) {
 	}
 }
 
+func TestTimesheet_CanUpdateCommercialInfo(t *testing.T) {
+	draft := Timesheet{Status: StatusBrouillon}
+	if !draft.CanUpdateCommercialInfo() {
+		t.Fatal("draft should allow commercial info updates")
+	}
+
+	finalIncomplete := Timesheet{Status: StatusDefinitif}
+	if !finalIncomplete.CanUpdateCommercialInfo() {
+		t.Fatal("final incomplete should allow fill-once")
+	}
+
+	finalComplete := Timesheet{
+		Status:         StatusDefinitif,
+		CommercialInfo: CommercialInfo{Client: "ACME", Mission: "Support"},
+	}
+	if finalComplete.CanUpdateCommercialInfo() {
+		t.Fatal("final complete should lock commercial info")
+	}
+}
+
 func TestReject_ClearsSubmittedWeeks(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	submitted := now.Add(-time.Hour)

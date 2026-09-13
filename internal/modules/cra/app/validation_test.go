@@ -145,26 +145,105 @@ func TestSubmitWeekThenValidateFinal(t *testing.T) {
 	}
 }
 
-func TestGeneratePDF_RequiresCommercialInfo(t *testing.T) {
+func TestGeneratePDF_AllowsMissingCommercialInfo(t *testing.T) {
 	tenant := kernel.NewTenantID(uuid.New())
 	repo := &validationRepo{ts: domain.Timesheet{
 		ID:       uuid.New(),
 		TenantID: tenant,
 		UserID:   uuid.New(),
 		Month:    "2026-07",
-		Status:   domain.StatusBrouillon,
+		Status:   domain.StatusDefinitif,
 	}}
 	svc := NewService(repo, nil, nil).WithPDFRenderer(pdf.NewStubRenderer())
 
-	_, err := svc.GeneratePDF(context.Background(), tenant, repo.ts.ID)
-	if err != domain.ErrCommercialInfoRequired {
-		t.Fatalf("expected ErrCommercialInfoRequired, got %v", err)
+	doc, err := svc.GeneratePDF(context.Background(), tenant, repo.ts.ID)
+	if err != nil {
+		t.Fatalf("expected PDF without commercial info, got %v", err)
+	}
+	if len(doc.Content) == 0 {
+		t.Fatal("expected non-empty PDF content")
 	}
 
 	repo.ts.CommercialInfo = domain.CommercialInfo{Client: "ACME", Mission: "Projet X"}
 	_, err = svc.GeneratePDF(context.Background(), tenant, repo.ts.ID)
 	if err != nil {
-		t.Fatalf("expected PDF success, got %v", err)
+		t.Fatalf("expected PDF success with commercial info, got %v", err)
+	}
+}
+
+func TestCompleteCommercialInfo_AllowedAfterFinalValidation(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	id := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       id,
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusDefinitif,
+	}}
+	svc := NewService(repo, nil, nil)
+
+	err := svc.CompleteCommercialInfo(context.Background(), ports.CommercialCommand{
+		TenantID:    tenant,
+		TimesheetID: id,
+		Info:        domain.CommercialInfo{Client: "ACME", Mission: "Support"},
+	})
+	if err != nil {
+		t.Fatalf("expected commercial info update after final validation, got %v", err)
+	}
+	if repo.ts.CommercialInfo.Client != "ACME" || repo.ts.CommercialInfo.Mission != "Support" {
+		t.Fatalf("commercial info not saved: %+v", repo.ts.CommercialInfo)
+	}
+}
+
+func TestCompleteCommercialInfo_RejectedWhenFinalAndComplete(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	id := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       id,
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusDefinitif,
+		CommercialInfo: domain.CommercialInfo{
+			Client:  "ACME",
+			Mission: "Support",
+		},
+	}}
+	svc := NewService(repo, nil, nil)
+
+	err := svc.CompleteCommercialInfo(context.Background(), ports.CommercialCommand{
+		TenantID:    tenant,
+		TimesheetID: id,
+		Info:        domain.CommercialInfo{Client: "Other", Mission: "Other"},
+	})
+	if err != domain.ErrCRAAlreadyValidated {
+		t.Fatalf("expected ErrCRAAlreadyValidated, got %v", err)
+	}
+	if repo.ts.CommercialInfo.Client != "ACME" {
+		t.Fatalf("commercial info should stay locked, got %+v", repo.ts.CommercialInfo)
+	}
+}
+
+func TestCompleteCommercialInfo_RejectedClearAfterFinal(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	id := uuid.New()
+	repo := &validationRepo{ts: domain.Timesheet{
+		ID:       id,
+		TenantID: tenant,
+		UserID:   uuid.New(),
+		Month:    "2026-07",
+		Status:   domain.StatusDefinitif,
+	}}
+	svc := NewService(repo, nil, nil)
+
+	err := svc.CompleteCommercialInfo(context.Background(), ports.CommercialCommand{
+		TenantID:    tenant,
+		TimesheetID: id,
+		Info:        domain.CommercialInfo{},
+	})
+	if err != domain.ErrCommercialInfoRequired {
+		t.Fatalf("expected ErrCommercialInfoRequired on clear after final, got %v", err)
 	}
 }
 

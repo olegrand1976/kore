@@ -32,6 +32,15 @@ export function prestationInfoComplete(client: string, mission: string): boolean
   return Boolean(client.trim() && mission.trim())
 }
 
+/** Mission link UI: full edits while timesheet editable; fill-once after final if incomplete. */
+export function canLinkCraMission(opts: {
+  canWrite: boolean
+  canEditTimesheet: boolean
+  prestationComplete: boolean
+}): boolean {
+  return opts.canWrite && (opts.canEditTimesheet || !opts.prestationComplete)
+}
+
 export function unwrapMissionPayload(res: unknown): Record<string, unknown> {
   if (!res || typeof res !== 'object') return {}
   const body = res as { data?: unknown }

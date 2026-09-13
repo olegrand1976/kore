@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canLinkCraMission,
   isKnownMissionLink,
   isManualPrestationEntry,
   missionPrestationPatch,
@@ -12,6 +13,25 @@ describe('prestationInfoComplete', () => {
     expect(prestationInfoComplete('ACME', '')).toBe(false)
     expect(prestationInfoComplete('ACME', 'Support')).toBe(true)
     expect(prestationInfoComplete('  ACME  ', '  Support  ')).toBe(true)
+  })
+})
+
+describe('canLinkCraMission', () => {
+  it('allows write while timesheet is editable', () => {
+    expect(canLinkCraMission({ canWrite: true, canEditTimesheet: true, prestationComplete: true })).toBe(true)
+    expect(canLinkCraMission({ canWrite: true, canEditTimesheet: true, prestationComplete: false })).toBe(true)
+  })
+
+  it('allows fill-once after final when prestation incomplete', () => {
+    expect(canLinkCraMission({ canWrite: true, canEditTimesheet: false, prestationComplete: false })).toBe(true)
+  })
+
+  it('locks after final when prestation complete', () => {
+    expect(canLinkCraMission({ canWrite: true, canEditTimesheet: false, prestationComplete: true })).toBe(false)
+  })
+
+  it('requires write permission', () => {
+    expect(canLinkCraMission({ canWrite: false, canEditTimesheet: true, prestationComplete: false })).toBe(false)
   })
 })
 

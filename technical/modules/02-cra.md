@@ -50,7 +50,7 @@ type CRAService interface {
     SaveWeek(ctx context.Context, cmd SaveWeekCommand) (Timesheet, error)
     SubmitWeek(ctx context.Context, cmd SubmitWeekCommand) error        // validation prévisionnelle collab
     CompleteCommercialInfo(ctx context.Context, cmd CommercialCommand) error
-    GeneratePDF(ctx context.Context, id TimesheetID) (Document, error)  // refus si infos incomplètes
+    GeneratePDF(ctx context.Context, id TimesheetID) (Document, error)  // client/mission optionnels (enrichissent le PDF)
     ValidateFinal(ctx context.Context, cmd ManagerValidateCommand) error // validation manager
 }
 
@@ -185,7 +185,7 @@ Points d'attention :
 
 **Domaine** (table-driven) :
 - Pré-remplissage n'écrase pas une ligne `origin=manual` (critère PR-08.2 / RG-CRA-01).
-- `GeneratePDF` refuse si client ou mission manquant (RG-CRA-02).
+- `GeneratePDF` accepte un CRA sans client/mission (champs vides sur le document) ; après validation définitive, le rattachement mission est un fill-once tant que client/mission manquent.
 - Dépassement capacité jour rejeté (RG-CRA-03).
 - Conflit mission + absence (congé, arrêt) même jour -> signalé ; férié pré-rempli + mission autorisé.
 - Transitions de statut Brouillon → ValidéSemaine → Définitif ; refus modif après Définitif.

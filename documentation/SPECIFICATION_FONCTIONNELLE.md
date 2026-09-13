@@ -417,7 +417,7 @@ flowchart LR
 2. Saisie demi-journée (0/0.5/1) ou journée complète
 3. Types de tâches : mission, hors prestation, absence, incident, ticket, férié
 4. Workflow CRA prévisionnel → validation hebdo → CRA définitif mensuel
-5. Infos de prestation obligatoires pour PDF (client, mission) ; description, techno, lieu, responsable client optionnels
+5. Infos de prestation (client, mission) recommandées pour enrichir le PDF ; description, techno, lieu, responsable client optionnels — le PDF reste générable sans client/mission
 6. Envoi mail automatique PDF CRA (gestion client, dernier lundi du mois)
 7. Commentaires par tâche et par jour
 8. Navigation calendrier multi-semaines
@@ -893,7 +893,7 @@ sequenceDiagram
 
 #### Flux alternatifs / exceptions
 
-- PDF sans client et mission (infos de prestation) : blocage (RG-CRA-02)
+- PDF sans client et mission (infos de prestation) : PDF généré avec champs vides + avertissement UI (RG-CRA-02) ; rattachement mission fill-once après validation définitive tant qu'incomplet
 - Conflit mission + absence même jour : correction manuelle requise
 - Refus validation manager : retour collaborateur avec notification
 - Compte expiré en cours de saisie : sauvegarde puis déconnexion
@@ -914,7 +914,7 @@ sequenceDiagram
 #### Critères d'acceptation
 
 - [ ] Le pré-remplissage ne supprime jamais une saisie existante
-- [ ] Le PDF est bloqué sans client et mission (infos de prestation)
+- [ ] Le PDF reste générable sans client et mission ; l'UI invite à rattacher une mission pour enrichir le document
 - [ ] Le Gantt reflète le temps saisi
 
 ### PR-08.3 TMA — cycle de vie d'une demande
@@ -1444,13 +1444,13 @@ Format **Given / When / Then** — 18 user stories testables.
 - **When** corrige et valide CRA hebdo
 - **Then** CRA validé avec lignes mission
 
-### US-CRA-02 — Blocage PDF
+### US-CRA-02 — PDF sans prestation complète
 
 **Acteur** : Collaborateur
 
 - **Given** infos de prestation incomplètes (client ou mission manquant)
 - **When** tente export PDF
-- **Then** message d'erreur, PDF non généré
+- **Then** PDF généré (champs client/mission vides) ; message d'avertissement invitant à rattacher une mission
 
 ### US-TMA-01 — Gate TMA
 
@@ -1587,7 +1587,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | ID | Énoncé | Domaine | Processus | User Story |
 | --- | --- | --- | --- | --- |
 | RG-CRA-01 | Le pré-remplissage CRA n'écrase ni ne supprime jamais une saisie existante. | CRA | PR-08.2 | US-CRA-01 |
-| RG-CRA-02 | L'impression PDF du CRA est impossible sans client et mission (infos de prestation) ; description, techno, lieu et responsable client restent optionnels. | CRA | PR-08.2 | US-CRA-02 |
+| RG-CRA-02 | L'impression PDF du CRA reste possible sans client et mission ; ces infos enrichissent le document et peuvent être renseignées en fill-once après validation définitive tant qu'elles manquent ; description, techno, lieu et responsable client restent optionnels. | CRA | PR-08.2 | US-CRA-02 |
 | RG-CRA-03 | Le CRA définitif est transmis par mail le dernier lundi du mois si paramétré. | CRA | PR-08.2 | US-CRA-01 |
 | RG-CONG-01 | La validation d'absence n'impacte le CRA que pour les jours strictement postérieurs à la date du jour. | Congés | PR-08.5 | US-CONG-01 |
 | RG-CONG-02 | Une absence refusée reste visible dans le planning des refusés et peut être modifiée. | Congés | PR-08.5 | US-CONG-02 |
@@ -1622,7 +1622,7 @@ Format **Given / When / Then** — 18 user stories testables.
 | ID | Énoncé | Processus | RG | US |
 | --- | --- | --- | --- | --- |
 | EF-CRA-01 | Pré-remplir automatiquement le CRA depuis missions, tickets, congés et jours fériés. | PR-08.2 | RG-CRA-01 | US-CRA-01 |
-| EF-CRA-02 | Bloquer l'export PDF CRA sans client et mission (infos de prestation). | PR-08.2 | RG-CRA-02 | US-CRA-02 |
+| EF-CRA-02 | Autoriser l'export PDF CRA sans client/mission (document partiel) et permettre le rattachement mission après validation définitive. | PR-08.2 | RG-CRA-02 | US-CRA-02 |
 | EF-TMA-01 | Gérer le cycle de vie complet d'une demande TMA avec workflow configurable. | PR-08.3 | RG-TMA-01 | US-TMA-01 |
 | EF-TMA-02 | Supporter estimation, devis, analyses, tests et rework. | PR-08.3 | RG-TMA-02 | US-TMA-02 |
 | EF-SSII-01 | Créer et gérer missions multi-collaborateurs avec pré-remplissage CRA. | PR-08.7 | RG-MISS-01 | US-SSII-01 |

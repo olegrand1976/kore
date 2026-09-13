@@ -270,8 +270,13 @@ func (s *Service) CompleteCommercialInfo(ctx context.Context, cmd ports.Commerci
 	if err != nil {
 		return err
 	}
-	if !ts.CanEdit() {
+	if !ts.CanUpdateCommercialInfo() {
 		return domain.ErrCRAAlreadyValidated
+	}
+	// After final validation, only a complete client+mission fill is accepted
+	// (no clear / partial overwrite of a locked timesheet).
+	if ts.IsFinal() && !cmd.Info.Complete() {
+		return domain.ErrCommercialInfoRequired
 	}
 	ts.CommercialInfo = cmd.Info
 	return s.repo.Save(ctx, ts)
@@ -282,9 +287,8 @@ func (s *Service) GeneratePDF(ctx context.Context, tenant kernel.TenantID, id po
 	if err != nil {
 		return domain.Document{}, err
 	}
-	if !ts.CommercialInfo.Complete() {
-		return domain.Document{}, domain.ErrCommercialInfoRequired
-	}
+	// Commercial info is optional: forced final validation and draft CRA must
+	// still produce a PDF (client/mission may be blank on the document).
 	return s.pdf.Render(ctx, ts)
 }
 

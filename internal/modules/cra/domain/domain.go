@@ -181,6 +181,15 @@ func (ts Timesheet) CanEdit() bool {
 	return ts.Status != StatusDefinitif
 }
 
+// CanUpdateCommercialInfo is true while the timesheet is editable, or once after
+// final validation when client/mission are still missing (fill-once for PDF).
+func (ts Timesheet) CanUpdateCommercialInfo() bool {
+	if ts.CanEdit() {
+		return true
+	}
+	return ts.IsFinal() && !ts.CommercialInfo.Complete()
+}
+
 func (ts *Timesheet) Reject(now time.Time, managerID uuid.UUID, reason string) error {
 	if ts.IsFinal() {
 		return ErrCRAAlreadyValidated

@@ -60,8 +60,8 @@
         <AppButton
           variant="secondary"
           size="sm"
-          :disabled="downloading || !canDownload"
-          :aria-describedby="canDownload ? undefined : 'cra-download-hint'"
+          :disabled="downloading"
+          :aria-describedby="hasPrestationContext ? undefined : 'cra-download-hint'"
           @click="openPdfPreview"
         >
           {{ $t('cra.preview_pdf') }}
@@ -69,8 +69,8 @@
         <AppButton
           variant="primary"
           size="sm"
-          :disabled="downloading || !canDownload"
-          :aria-describedby="canDownload ? undefined : 'cra-download-hint'"
+          :disabled="downloading"
+          :aria-describedby="hasPrestationContext ? undefined : 'cra-download-hint'"
           @click="downloadPdf"
         >
           <AppIcon name="download" /> {{ $t('cra.download') }}
@@ -163,7 +163,7 @@
             </dd>
           </div>
         </dl>
-        <div v-if="canEdit" class="cra-detail__mission-link">
+        <div v-if="canLinkMission" class="cra-detail__mission-link">
           <label for="cra-mission-link">{{ $t('cra.mission_link_label') }}</label>
           <select
             id="cra-mission-link"
@@ -171,7 +171,7 @@
             :disabled="linkingMission"
             @change="onMissionLinkChange"
           >
-            <option value="">{{ $t('cra.mission_link_none') }}</option>
+            <option v-if="canEdit" value="">{{ $t('cra.mission_link_none') }}</option>
             <option v-for="mission in missions" :key="mission.id" :value="mission.id">
               {{ mission.label || mission.clientName || mission.id }}
             </option>
@@ -179,7 +179,7 @@
           <p class="cra-detail__mission-hint">{{ $t('cra.mission_link_hint') }}</p>
           <p v-if="missionLinkError" class="flash flash--error" role="alert">{{ missionLinkError }}</p>
         </div>
-        <p v-if="!canDownload" id="cra-download-hint" class="cra-detail__download-hint">
+        <p v-if="!hasPrestationContext" id="cra-download-hint" class="cra-detail__download-hint">
           {{ $t('cra.download_hint_mission') }}
         </p>
         <CraMonthlyPreview
@@ -261,7 +261,7 @@ import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
-import { prestationInfoComplete, unwrapMissionPayload, missionPrestationPatch } from '~/utils/craPrestation'
+import { prestationInfoComplete, canLinkCraMission, unwrapMissionPayload, missionPrestationPatch } from '~/utils/craPrestation'
 import { normalizeAnomalyMessages } from '~/utils/craAnomalies'
 import { timesheetHasLoggedTime } from '~/utils/craLoggedTime'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
@@ -272,7 +272,7 @@ const { apiFetch } = useApiFetch()
 const route = useRoute()
 const { t, locale } = useI18n()
 const { statusLabel, statusVariant } = useCraStatus()
-const { canValidateCra } = usePermissions()
+const { can, canValidateCra } = usePermissions()
 const { mapCraError, mapInvoiceDraftMessage: mapInvoiceDraft, isCommercialInfoRequiredError } = useCraError()
 const id = computed(() => String(route.params.id))
 
@@ -611,7 +611,15 @@ watch(
   { immediate: true }
 )
 
-const canDownload = computed(() => prestationInfoComplete(prestation.client, prestation.mission))
+const hasPrestationContext = computed(() => prestationInfoComplete(prestation.client, prestation.mission))
+/** Full edits while editable; fill-once after Définitif when client/mission still missing. */
+const canLinkMission = computed(() =>
+  canLinkCraMission({
+    canWrite: can('cra', 'E'),
+    canEditTimesheet: canEdit.value,
+    prestationComplete: hasPrestationContext.value
+  })
+)
 
 const persistMissionLink = async (missionId: string) => {
   if (!missionId) {
@@ -652,7 +660,7 @@ const persistMissionLink = async (missionId: string) => {
 }
 
 const onMissionLinkChange = async () => {
-  if (!canEdit.value) return
+  if (!canLinkMission.value) return
   const previousMissionId = prestation.missionId
   const nextMissionId = missionLinkId.value
   linkingMission.value = true
@@ -847,7 +855,6 @@ watch(pdfPreviewOpen, (open) => {
 onUnmounted(revokePdfPreviewUrl)
 
 const openPdfPreview = async () => {
-  if (!canDownload.value) return
   pdfPreviewOpen.value = true
   pdfPreviewLoading.value = true
   pdfPreviewError.value = ''
@@ -863,7 +870,6 @@ const openPdfPreview = async () => {
 }
 
 const downloadPdf = async () => {
-  if (!canDownload.value) return
   downloading.value = true
   downloadError.value = ''
   try {

@@ -605,8 +605,8 @@
       "timesheet_not_found": "timesheet not found",
       "unknown": "unknown reason"
     },
-    "download_hint": "Complete delivery information to enable download.",
-    "download_hint_mission": "Link an SSII mission to enable the PDF (client and mission required).",
+    "download_hint": "Complete delivery information to enrich the PDF.",
+    "download_hint_mission": "Link an SSII mission to enrich the PDF (client and mission). Preview and download remain available without a mission.",
     "mission_link_label": "Link a mission",
     "mission_link_none": "No mission",
     "mission_link_hint": "Delivery details (tech, location, client contact…) are managed on the mission / client record.",

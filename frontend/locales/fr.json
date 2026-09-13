@@ -605,8 +605,8 @@
       "timesheet_not_found": "CRA introuvable",
       "unknown": "raison inconnue"
     },
-    "download_hint": "Complétez les informations de prestation pour activer le téléchargement.",
-    "download_hint_mission": "Rattachez une mission SSII pour activer le PDF (client et mission requis).",
+    "download_hint": "Complétez les informations de prestation pour enrichir le PDF.",
+    "download_hint_mission": "Rattachez une mission SSII pour enrichir le PDF (client et mission). L’aperçu et le téléchargement restent disponibles sans mission.",
     "mission_link_label": "Rattacher une mission",
     "mission_link_none": "Aucune mission",
     "mission_link_hint": "Les détails de prestation (techno, lieu, responsable…) se gèrent sur la fiche mission / client.",

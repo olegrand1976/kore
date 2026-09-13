@@ -529,7 +529,7 @@ Comptes rendus d'activité (pivot temps).
 | `user_id` | UUID | NOT NULL |
 | `month` | TEXT | NOT NULL |
 | `status` | TEXT | NOT NULL, DEFAULT `'Brouillon'` |
-| `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` — contexte **prestation** (JSON `client` / `mission` requis pour le PDF ; `description`, `technologies`, `lieu`, `responsableClient` optionnels) |
+| `commercial_info` | JSONB | NOT NULL, DEFAULT `'{}'` — contexte **prestation** (JSON `client` / `mission` recommandés pour enrichir le PDF ; `description`, `technologies`, `lieu`, `responsableClient` optionnels) |
 | `validated_at` | TIMESTAMPTZ | |
 | `validated_by` | UUID | |
 | `validation_forced` | BOOLEAN | NOT NULL, DEFAULT FALSE — validation définitive sans client/mission complets (migration `0005`) |
