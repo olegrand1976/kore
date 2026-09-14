@@ -271,7 +271,8 @@ func ValidateDayCapacity(lines []TimeLine, dayCapacityMinutes int) error {
 	return DetectAbsenceConflict(lines)
 }
 
-// IncompleteDaysInWeek returns in-month days in the week tab with zero total minutes.
+// IncompleteDaysInWeek returns in-month working days in the week tab with zero total minutes.
+// Weekends and days marked as public holidays are excluded.
 func IncompleteDaysInWeek(month Month, weekNumber WeekNumber, weekStartDay int, lines []TimeLine) ([]string, error) {
 	days, err := WeekDaysInMonth(month, weekNumber, weekStartDay)
 	if err != nil {
@@ -291,6 +292,13 @@ func IncompleteDaysInWeek(month Month, weekNumber WeekNumber, weekStartDay int, 
 	var missing []string
 	for _, day := range days {
 		if _, ok := holidayDays[day]; ok {
+			continue
+		}
+		parsed, parseErr := time.ParseInLocation("2006-01-02", day, time.UTC)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		if parsed.Weekday() == time.Saturday || parsed.Weekday() == time.Sunday {
 			continue
 		}
 		if totals[day] <= 0 {

@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import type { PlanningRow } from '~/composables/useReporting'
+import { isWeekend } from '~/utils/craCalendar'
 
 const props = defineProps<{
   rows: PlanningRow[]
@@ -55,11 +56,6 @@ const formatDay = (day: string) => {
     weekday: 'short',
     day: '2-digit'
   })
-}
-
-const isWeekend = (day: string) => {
-  const dow = new Date(`${day}T12:00:00Z`).getUTCDay()
-  return dow === 0 || dow === 6
 }
 
 const slotFor = (row: PlanningRow, day: string) =>

@@ -42,7 +42,7 @@
       <AppButton variant="primary" size="sm" :disabled="disabled || saving" @click="emitSave">
         {{ $t('cra.save_week') }}
       </AppButton>
-      <AppButton variant="secondary" size="sm" :disabled="disabled || saving" @click="emitSubmit">
+      <AppButton variant="secondary" size="sm" :disabled="disabled || saving" @click="startSubmit">
         {{ $t('cra.submit_week') }}
       </AppButton>
     </div>
@@ -53,6 +53,38 @@
       :task-types="taskTypes"
       @add="onAddActivity"
     />
+
+    <AppModal
+      v-model:open="submitDialogOpen"
+      width="sm"
+      :title-id="submitDialogTitleId"
+      :aria-label="submitDialogTitle"
+      :close-label="$t('common.close')"
+    >
+      <div class="week-matrix__dialog">
+        <h2 :id="submitDialogTitleId" class="week-matrix__dialog-title">{{ submitDialogTitle }}</h2>
+        <p class="week-matrix__dialog-body">{{ submitDialogBody }}</p>
+        <div class="week-matrix__dialog-actions">
+          <AppButton
+            v-if="submitDialogCanConfirm"
+            variant="ghost"
+            size="sm"
+            type="button"
+            @click="closeSubmitDialog"
+          >
+            {{ $t('common.cancel') }}
+          </AppButton>
+          <AppButton
+            :variant="submitDialogCanConfirm ? 'primary' : 'secondary'"
+            size="sm"
+            type="button"
+            @click="onSubmitDialogPrimary"
+          >
+            {{ submitDialogPrimaryLabel }}
+          </AppButton>
+        </div>
+      </div>
+    </AppModal>
   </div>
 </template>
 
@@ -63,10 +95,20 @@ import type { ActivityRow } from '~/composables/useWeekRows'
 import { hoursToMinutes } from '~/composables/useWeekCalendar'
 import { useCraSourceLabels } from '~/composables/useCraSourceLabels'
 import { newRowKey, useWeekRows } from '~/composables/useWeekRows'
+import {
+  collectIncompleteWorkingDays,
+  countWorkingDays
+} from '~/utils/craCalendar'
 import { dirtyRowKeys, unlockHolidayPrefillRows } from '~/utils/craDayState'
 import { resolveWeekCapacityMinutes } from '~/utils/craWeekCapacity'
 
 import type { CraWorkRefOption } from '~/composables/useCraWorkRefs'
+
+type SubmitDialog =
+  | { kind: 'incomplete-warn'; n: number }
+  | { kind: 'incomplete-block'; n: number }
+  | { kind: 'below-planned-warn'; actual: string; target: string }
+  | { kind: 'below-planned-block'; actual: string; target: string }
 
 const props = defineProps<{
   weekNumber: number
@@ -113,11 +155,13 @@ const addTargetDay = ref('')
 const isMobile = ref(false)
 const showStickyPill = ref(false)
 const originFilter = ref<'all' | 'prefill' | 'manual'>('all')
+const submitDialog = ref<SubmitDialog | null>(null)
+const submitDialogTitleId = 'cra-week-submit-dialog-title'
 
 const dayCapacityMinutes = computed(() => props.dayCapacityMinutes ?? 8 * 60)
 const weekCapacityMinutes = computed(() =>
   resolveWeekCapacityMinutes({
-    weekDayCount: weekDays.value.length,
+    weekDayCount: countWorkingDays(weekDays.value),
     dayCapacityMinutes: dayCapacityMinutes.value,
     plannedWeekMinutes: props.plannedWeekMinutes
   })
@@ -131,11 +175,23 @@ const matchesOriginFilter = (row: ActivityRow) => {
 
 const summaryTitle = computed(() => props.weekLabel ?? t('cra.week_n', { n: props.weekNumber }))
 
+/** Display total — respects origin filter (summary / sticky pill). */
 const weekTotalMinutes = computed(() => {
   let total = 0
   for (const rows of editableRows.value.values()) {
     for (const row of rows) {
       if (!matchesOriginFilter(row)) continue
+      total += hoursToMinutes(row.hours)
+    }
+  }
+  return total
+})
+
+/** Full week total for submit checks — never filtered by origin. */
+const submitTotalMinutes = computed(() => {
+  let total = 0
+  for (const rows of editableRows.value.values()) {
+    for (const row of rows) {
       total += hoursToMinutes(row.hours)
     }
   }
@@ -224,46 +280,133 @@ const saveLine = (rowKey: string) => {
   emitSave()
 }
 
-const incompleteDays = computed(() => {
-  const missing: string[] = []
-  for (const day of weekDays.value) {
-    const rows = editableRows.value.get(day) ?? []
-    const total = rows.reduce((sum, row) => sum + hoursToMinutes(row.hours), 0)
-    if (total <= 0) missing.push(day)
+const incompleteDays = computed(() =>
+  collectIncompleteWorkingDays(weekDays.value, editableRows.value, hoursToMinutes)
+)
+
+const submitDialogOpen = computed({
+  get: () => submitDialog.value != null,
+  set: (open: boolean) => {
+    if (!open) submitDialog.value = null
   }
-  return missing
 })
 
-const emitSubmit = () => {
+const submitDialogCanConfirm = computed(() => {
+  const kind = submitDialog.value?.kind
+  return kind === 'incomplete-warn' || kind === 'below-planned-warn'
+})
+
+const submitDialogTitle = computed(() => {
+  const dialog = submitDialog.value
+  if (!dialog) return ''
+  switch (dialog.kind) {
+    case 'incomplete-warn':
+    case 'below-planned-warn':
+      return t('cra.submit_confirm_title')
+    case 'incomplete-block':
+    case 'below-planned-block':
+      return t('cra.submit_blocked_title')
+    default: {
+      const _exhaustive: never = dialog
+      return _exhaustive
+    }
+  }
+})
+
+const submitDialogBody = computed(() => {
+  const dialog = submitDialog.value
+  if (!dialog) return ''
+  switch (dialog.kind) {
+    case 'incomplete-warn':
+      return t('cra.submit_week_incomplete', { n: dialog.n })
+    case 'incomplete-block':
+      return t('cra.submit_week_blocked', { n: dialog.n })
+    case 'below-planned-warn':
+      return t('cra.submit_week_below_planned', {
+        actual: dialog.actual,
+        target: dialog.target
+      })
+    case 'below-planned-block':
+      return t('cra.submit_week_below_planned_blocked', {
+        actual: dialog.actual,
+        target: dialog.target
+      })
+    default: {
+      const _exhaustive: never = dialog
+      return _exhaustive
+    }
+  }
+})
+
+const submitDialogPrimaryLabel = computed(() =>
+  submitDialogCanConfirm.value ? t('cra.submit_anyway') : t('common.close')
+)
+
+const closeSubmitDialog = () => {
+  submitDialog.value = null
+}
+
+const formatHours = (minutes: number) =>
+  (minutes / 60).toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+const continueAfterIncomplete = () => {
+  const planned = props.plannedWeekMinutes
+  const policy = props.weekSubmitPolicy ?? 'warn'
+  if (
+    planned != null &&
+    planned > 0 &&
+    submitTotalMinutes.value < planned &&
+    policy !== 'none'
+  ) {
+    const target = formatHours(planned)
+    const actual = formatHours(submitTotalMinutes.value)
+    if (policy === 'block') {
+      submitDialog.value = { kind: 'below-planned-block', actual, target }
+      return
+    }
+    submitDialog.value = { kind: 'below-planned-warn', actual, target }
+    return
+  }
+  submitDialog.value = null
+  emit('submit')
+}
+
+const startSubmit = () => {
   const missing = incompleteDays.value
   const policy = props.weekSubmitPolicy ?? 'warn'
   if (missing.length > 0) {
     if (policy === 'block') {
-      window.alert(t('cra.submit_week_blocked', { n: missing.length }))
+      submitDialog.value = { kind: 'incomplete-block', n: missing.length }
       return
     }
     if (policy === 'warn') {
-      const ok = window.confirm(t('cra.submit_week_incomplete', { n: missing.length }))
-      if (!ok) return
-    }
-  }
-  const planned = props.plannedWeekMinutes
-  if (
-    planned != null &&
-    planned > 0 &&
-    weekTotalMinutes.value < planned &&
-    policy !== 'none'
-  ) {
-    const target = (planned / 60).toLocaleString(undefined, { maximumFractionDigits: 2 })
-    const actual = (weekTotalMinutes.value / 60).toLocaleString(undefined, { maximumFractionDigits: 2 })
-    if (policy === 'block') {
-      window.alert(t('cra.submit_week_below_planned_blocked', { actual, target }))
+      submitDialog.value = { kind: 'incomplete-warn', n: missing.length }
       return
     }
-    const ok = window.confirm(t('cra.submit_week_below_planned', { actual, target }))
-    if (!ok) return
   }
-  emit('submit')
+  continueAfterIncomplete()
+}
+
+const onSubmitDialogPrimary = () => {
+  const dialog = submitDialog.value
+  if (!dialog) return
+  switch (dialog.kind) {
+    case 'incomplete-block':
+    case 'below-planned-block':
+      closeSubmitDialog()
+      return
+    case 'incomplete-warn':
+      continueAfterIncomplete()
+      return
+    case 'below-planned-warn':
+      closeSubmitDialog()
+      emit('submit')
+      return
+    default: {
+      const _exhaustive: never = dialog
+      return _exhaustive
+    }
+  }
 }
 </script>
 
@@ -289,9 +432,40 @@ const emitSubmit = () => {
   background: linear-gradient(to top, var(--kore-bg) 70%, transparent);
 }
 
+.week-matrix__dialog {
+  display: grid;
+  gap: var(--kore-space-md);
+}
+
+.week-matrix__dialog-title {
+  margin: 0;
+  font-size: var(--kore-text-h3);
+  color: var(--kore-text);
+}
+
+.week-matrix__dialog-body {
+  margin: 0;
+  color: var(--kore-text);
+}
+
+.week-matrix__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kore-space-sm);
+  justify-content: flex-end;
+}
+
 @media (max-width: 768px) {
   .week-matrix__actions :deep(.app-btn) {
     flex: 1 1 100%;
+  }
+
+  .week-matrix__dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .week-matrix__dialog-actions :deep(.app-btn) {
+    width: 100%;
   }
 }
 
