@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import type { MissionSummary } from '~/composables/useCraSourceLabels'
+import { formatMissionOptionLabel } from '~/utils/craPrestation'
 
 const props = withDefaults(defineProps<{
   missions: MissionSummary[]
@@ -40,7 +41,7 @@ const selectedType = ref('manual')
 const selectedMissionId = ref('')
 const titleId = 'cra-add-activity-title'
 
-const missionLabel = (m: MissionSummary) => m.clientName || m.id.slice(0, 8)
+const missionLabel = (m: MissionSummary) => formatMissionOptionLabel(m)
 
 const typeLabels: Record<string, string> = {
   manual: 'cra.source_manual',

@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import {
+  formatMissionOptionLabel,
   isKnownMissionLink,
   missionPrestationPatch,
   prestationInfoComplete,
@@ -135,6 +136,7 @@ export type PrestationMissionOption = {
   id: string
   clientName: string
   clientId?: string
+  title?: string
   label?: string
 }
 
@@ -203,11 +205,7 @@ const technologiesText = computed({
   }
 })
 
-const missionLabel = (mission: PrestationMissionOption) => {
-  const client = mission.clientName?.trim()
-  const name = mission.label?.trim() || mission.id.slice(0, 8)
-  return client ? `${client} — ${name}` : name
-}
+const missionLabel = (mission: PrestationMissionOption) => formatMissionOptionLabel(mission)
 
 const applyMissionDetail = (raw: Record<string, unknown>) => {
   const patch = missionPrestationPatch(raw)
@@ -231,8 +229,9 @@ const onMissionPick = async () => {
   if (picked.clientName) {
     local.client = picked.clientName
   }
-  if (picked.label) {
-    local.mission = picked.label
+  const pickedTitle = (picked.title ?? picked.label ?? '').trim()
+  if (pickedTitle) {
+    local.mission = pickedTitle
   }
   local.technologies = []
   local.responsableClient = ''

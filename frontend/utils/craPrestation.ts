@@ -50,6 +50,49 @@ export function unwrapMissionPayload(res: unknown): Record<string, unknown> {
   return res as Record<string, unknown>
 }
 
+/** Display label for mission option lists: "Title — Client". */
+export type MissionOptionFields = {
+  id?: string
+  title?: string
+  /** @deprecated Prefer title; kept for callers that still pass label. */
+  label?: string
+  clientName?: string
+}
+
+export function formatMissionOptionLabel(mission: MissionOptionFields): string {
+  const title = (mission.title ?? mission.label ?? '').trim()
+  const client = (mission.clientName ?? '').trim()
+  if (title && client) return `${title} — ${client}`
+  if (title) return title
+  if (client) return client
+  const id = String(mission.id ?? '').trim()
+  return id ? id.slice(0, 8) : ''
+}
+
+export function missionTitleFromPayload(raw: Record<string, unknown>): string {
+  return String(raw.title ?? raw.Title ?? raw.label ?? raw.Label ?? '').trim()
+}
+
+export function mapMissionListItem(item: Record<string, unknown>): {
+  id: string
+  clientName: string
+  clientId: string
+  title: string
+  label: string
+} {
+  const id = String(item.id ?? item.ID ?? '').trim()
+  const clientName = String(item.clientName ?? item.ClientName ?? '').trim()
+  const clientId = String(item.clientId ?? item.ClientID ?? '').trim()
+  const title = missionTitleFromPayload(item)
+  return {
+    id,
+    clientName,
+    clientId,
+    title,
+    label: title
+  }
+}
+
 export function missionPrestationPatch(raw: Record<string, unknown>): MissionPrestationPatch {
   const clientName = String(raw.clientName ?? raw.ClientName ?? '').trim()
   const clientId = String(raw.clientId ?? raw.ClientID ?? '').trim()

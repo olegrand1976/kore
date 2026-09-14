@@ -12,7 +12,10 @@ import { hoursToMinutes, minutesToHoursLabel } from '../composables/useWeekCalen
 import { decodeWorkRef, encodeWorkRef } from '../composables/useCraWorkRefs'
 import {
   isManualPrestationEntry,
+  formatMissionOptionLabel,
+  mapMissionListItem,
   missionPrestationPatch,
+  missionTitleFromPayload,
   unwrapMissionPayload
 } from '../utils/craPrestation'
 import { timesheetAdminAction, timesheetAdminConfirmKey } from '../utils/craTimesheetAdmin'
@@ -761,6 +764,32 @@ describe('craPrestation', () => {
     expect(cleared.client).toBe('Initech')
     expect(cleared.technologies).toEqual([])
     expect(cleared.responsableClient).toBe('')
+  })
+
+  it('formats mission options as Title — Client', () => {
+    expect(formatMissionOptionLabel({ title: 'Portail', clientName: 'ACME' })).toBe('Portail — ACME')
+    expect(formatMissionOptionLabel({ title: 'Portail', clientName: '' })).toBe('Portail')
+    expect(formatMissionOptionLabel({ title: '', clientName: 'ACME' })).toBe('ACME')
+    expect(formatMissionOptionLabel({ id: 'abcdefgh-1234', title: '', clientName: '' })).toBe('abcdefgh')
+  })
+
+  it('maps mission list items from title and clientName', () => {
+    const mapped = mapMissionListItem({
+      id: 'm1',
+      title: 'Portail',
+      clientName: 'ACME',
+      clientId: 'c1',
+      startDate: '2026-01-15'
+    })
+    expect(mapped).toEqual({
+      id: 'm1',
+      title: 'Portail',
+      label: 'Portail',
+      clientName: 'ACME',
+      clientId: 'c1'
+    })
+    expect(missionTitleFromPayload({ title: 'X' })).toBe('X')
+    expect(missionTitleFromPayload({ Title: 'Y' })).toBe('Y')
   })
 })
 

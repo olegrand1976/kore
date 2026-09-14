@@ -173,7 +173,7 @@
           >
             <option v-if="canEdit" value="">{{ $t('cra.mission_link_none') }}</option>
             <option v-for="mission in missions" :key="mission.id" :value="mission.id">
-              {{ mission.label || mission.clientName || mission.id }}
+              {{ formatMissionOptionLabel(mission) }}
             </option>
           </select>
           <p class="cra-detail__mission-hint">{{ $t('cra.mission_link_hint') }}</p>
@@ -261,7 +261,15 @@ import type { CraLine } from '~/stores/cra'
 import { weekNumberForDay } from '~/composables/useWeekCalendar'
 import { useCraMonthStats } from '~/composables/useCraMonthStats'
 import { useCraWorkRefs } from '~/composables/useCraWorkRefs'
-import { prestationInfoComplete, canLinkCraMission, unwrapMissionPayload, missionPrestationPatch } from '~/utils/craPrestation'
+import {
+  prestationInfoComplete,
+  canLinkCraMission,
+  unwrapMissionPayload,
+  missionPrestationPatch,
+  formatMissionOptionLabel,
+  mapMissionListItem,
+  missionTitleFromPayload
+} from '~/utils/craPrestation'
 import { normalizeAnomalyMessages } from '~/utils/craAnomalies'
 import { timesheetHasLoggedTime } from '~/utils/craLoggedTime'
 import { formatUserDisplayName } from '~/composables/useUserDisplay'
@@ -296,7 +304,7 @@ const dayCapacityMinutes = ref(480)
 const weekSubmitPolicy = ref<'block' | 'warn' | 'none'>('warn')
 const taskTypesEnabled = ref<string[]>(['manual', 'interne', 'formation', 'mission'])
 const missionPlannedWeekMinutes = ref<number | null>(null)
-const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; label?: string }>>([])
+const missions = ref<Array<{ id: string; clientName?: string; clientId?: string; title?: string; label?: string }>>([])
 const missionLinkId = ref('')
 const linkingMission = ref(false)
 const missionLinkError = ref('')
@@ -352,16 +360,9 @@ const loadOrgSettings = async () => {
 const loadMissions = async () => {
   try {
     const res = await apiFetch<{ data: Array<Record<string, unknown>> }>('/api/ssii/missions')
-    missions.value = (res.data ?? []).map((item) => {
-      const clientName = String(item.clientName ?? item.ClientName ?? '')
-      const startDate = String(item.startDate ?? item.StartDate ?? '').slice(0, 10)
-      return {
-        id: String(item.id ?? item.ID ?? ''),
-        clientName,
-        clientId: String(item.clientId ?? item.ClientID ?? ''),
-        label: startDate ? `${clientName || 'Mission'} (${startDate})` : clientName
-      }
-    }).filter((m) => m.id)
+    missions.value = (res.data ?? [])
+      .map((item) => mapMissionListItem(item))
+      .filter((m) => m.id)
   } catch {
     missions.value = []
   }
@@ -639,15 +640,17 @@ const persistMissionLink = async (missionId: string) => {
   const res = await apiFetch(`/api/ssii/missions/${missionId}`)
   const raw = unwrapMissionPayload(res)
   const patch = missionPrestationPatch(raw)
+  const listed = missions.value.find((m) => m.id === missionId)
   const missionLabel =
-    String(raw.label ?? raw.Label ?? '').trim() ||
+    missionTitleFromPayload(raw) ||
+    listed?.title?.trim() ||
+    listed?.label?.trim() ||
     patch.client ||
-    missions.value.find((m) => m.id === missionId)?.label ||
     missionId
   await apiFetch(`/api/cra/timesheets/${id.value}/commercial-info`, {
     method: 'PUT',
     body: {
-      client: patch.client || missions.value.find((m) => m.id === missionId)?.clientName || '',
+      client: patch.client || listed?.clientName || '',
       mission: missionLabel,
       clientId: patch.clientId || undefined,
       missionId,

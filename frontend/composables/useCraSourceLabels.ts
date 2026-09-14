@@ -1,7 +1,11 @@
+import { formatMissionOptionLabel } from '~/utils/craPrestation'
+
 export type MissionSummary = {
   id: string
   clientName?: string
   clientId?: string
+  title?: string
+  label?: string
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -30,7 +34,10 @@ export function useCraSourceLabels(missions: Ref<MissionSummary[]>) {
   const labelFor = (sourceType: string, sourceId: string) => {
     if (sourceType === 'mission') {
       const mission = missionMap.value.get(sourceId)
-      if (mission?.clientName) return mission.clientName
+      if (mission) {
+        const label = formatMissionOptionLabel(mission)
+        if (label) return label
+      }
     }
     const key = SOURCE_LABELS[sourceType] ?? SOURCE_LABELS.manual
     const base = t(key)
