@@ -2326,8 +2326,8 @@
     "section_prompt_placeholder": "Ex. décrire l'impact sur le module facturation…",
     "section_prompt_required": "Saisissez une consigne avant de générer la section.",
     "section_generate": "Générer la section",
-    "use_rag": "Utiliser les pièces jointes indexées (RAG)",
-    "rag_no_docs": "Aucune pièce jointe indexable (PDF, texte, CSV…) — le RAG est indisponible."
+    "use_attachments": "S'appuyer sur les pièces jointes du dossier",
+    "attachments_unavailable_for_ai": "Aucune pièce jointe exploitable (PDF, texte, CSV…) — la génération se fera sans documents."
   },
   "settings": {
     "title": "Paramètres",

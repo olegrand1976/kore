@@ -34,7 +34,7 @@ const sectionPrompt = reactive<Record<SectionKey, string>>({
   risks: '',
   testScenario: ''
 })
-const sectionUseRAG = reactive<Record<SectionKey, boolean>>({
+const sectionUseAttachments = reactive<Record<SectionKey, boolean>>({
   functional: false,
   technical: false,
   risks: false,
@@ -66,8 +66,8 @@ watch(
   () => props.hasIndexableDocs,
   (ok) => {
     if (!ok) {
-      ;(Object.keys(sectionUseRAG) as SectionKey[]).forEach((k) => {
-        sectionUseRAG[k] = false
+      ;(Object.keys(sectionUseAttachments) as SectionKey[]).forEach((k) => {
+        sectionUseAttachments[k] = false
       })
     }
   }
@@ -113,7 +113,7 @@ const onGenerateSection = async (key: SectionKey) => {
       demandId: props.demandId,
       section: key,
       prompt,
-      useRAG: sectionUseRAG[key] && !!props.hasIndexableDocs,
+      useRAG: sectionUseAttachments[key] && !!props.hasIndexableDocs,
       subject: props.subject
     })
     local[key] = res.text
@@ -163,15 +163,15 @@ const onGenerateSection = async (key: SectionKey) => {
           :placeholder="$t('ai.section_prompt_placeholder')"
           :disabled="disabled || !!sectionBusy[sec.key]"
         />
-        <label class="analysis-editor__rag">
+        <label class="analysis-editor__docs">
           <input
-            v-model="sectionUseRAG[sec.key]"
+            v-model="sectionUseAttachments[sec.key]"
             type="checkbox"
             :disabled="disabled || !hasIndexableDocs || !!sectionBusy[sec.key]"
           >
-          <span>{{ $t('ai.use_rag') }}</span>
+          <span>{{ $t('ai.use_attachments') }}</span>
         </label>
-        <p v-if="!hasIndexableDocs" class="analysis-editor__hint">{{ $t('ai.rag_no_docs') }}</p>
+        <p v-if="!hasIndexableDocs" class="analysis-editor__hint">{{ $t('ai.attachments_unavailable_for_ai') }}</p>
         <div class="analysis-editor__section-actions">
           <AppButton
             variant="secondary"
@@ -266,7 +266,7 @@ const onGenerateSection = async (key: SectionKey) => {
   max-width: var(--kore-form-wide-max);
 }
 
-.analysis-editor__rag {
+.analysis-editor__docs {
   display: flex;
   align-items: center;
   gap: var(--kore-space-xs);

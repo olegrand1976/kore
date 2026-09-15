@@ -2107,8 +2107,8 @@
     "section_prompt_placeholder": "E.g. describe impact on the billing module…",
     "section_prompt_required": "Enter instructions before generating the section.",
     "section_generate": "Generate section",
-    "use_rag": "Use indexed attachments (RAG)",
-    "rag_no_docs": "No indexable attachments (PDF, text, CSV…) — RAG is unavailable."
+    "use_attachments": "Use the request attachments as context",
+    "attachments_unavailable_for_ai": "No usable attachments (PDF, text, CSV…) — generation will run without documents."
   },
   "settings": {
     "title": "Settings",

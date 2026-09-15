@@ -9,6 +9,7 @@ const panelSrc = readFileSync(
 const editorSrc = readFileSync(join(__dirname, '../components/tma/AnalysisEditor.vue'), 'utf8')
 const tmaDetailSrc = readFileSync(join(__dirname, '../pages/tma/[id].vue'), 'utf8')
 const frLocale = readFileSync(join(__dirname, '../locales/fr.json'), 'utf8')
+const enLocale = readFileSync(join(__dirname, '../locales/en.json'), 'utf8')
 
 describe('RequestAttachmentsPanel', () => {
   it('supports embedded mode with unique upload input id', () => {
@@ -44,7 +45,7 @@ describe('TMA detail analysis attachments', () => {
     expect(panelCount).toBe(1)
   })
 
-  it('wires indexable attachments to AnalysisEditor RAG toggle', () => {
+  it('wires indexable attachments to AnalysisEditor document context toggle', () => {
     expect(tmaDetailSrc).toContain('hasIndexableDocs')
     expect(tmaDetailSrc).toContain('indexable-docs-changed')
     expect(tmaDetailSrc).toContain(':has-indexable-docs')
@@ -52,13 +53,22 @@ describe('TMA detail analysis attachments', () => {
 })
 
 describe('AnalysisEditor section AI', () => {
-  it('exposes per-section prompt, RAG and generate controls', () => {
+  it('exposes per-section prompt, document context and generate controls', () => {
     expect(editorSrc).toContain('hasIndexableDocs')
     expect(editorSrc).toContain('generateAnalysisSection')
+    expect(editorSrc).toContain('sectionUseAttachments')
+    expect(editorSrc).not.toContain('sectionUseRAG')
     expect(editorSrc).toContain('ai.section_prompt')
-    expect(editorSrc).toContain('ai.use_rag')
+    expect(editorSrc).toContain('ai.use_attachments')
     expect(editorSrc).toContain('ai.section_generate')
     expect(frLocale).toContain('"section_prompt"')
-    expect(frLocale).toContain('"rag_no_docs"')
+    expect(frLocale).toContain('"use_attachments"')
+    expect(frLocale).toContain('"attachments_unavailable_for_ai"')
+    expect(frLocale).not.toContain('(RAG)')
+    expect(enLocale).toContain('"use_attachments"')
+    expect(enLocale).toContain('"attachments_unavailable_for_ai"')
+    expect(enLocale).toContain('Use the request attachments as context')
+    expect(enLocale).not.toContain('(RAG)')
+    expect(enLocale).not.toContain('dossier attachments')
   })
 })
