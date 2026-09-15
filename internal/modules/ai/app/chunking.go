@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	chunkTargetRunes = 1800 // ~600–700 tokens FR
+	chunkTargetRunes  = 1800 // ~600–700 tokens FR
 	chunkOverlapRunes = 200
-	maxChunksPerFile = 40
+	maxChunksPerFile  = 40
 )
 
 // SplitTextChunks splits text into overlapping rune windows for embedding.

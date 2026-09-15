@@ -35,7 +35,7 @@ func (r *Repository) ReplaceSourceChunks(ctx context.Context, chunks []domain.Do
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	first := chunks[0]
 	if _, err := tx.Exec(ctx, `
