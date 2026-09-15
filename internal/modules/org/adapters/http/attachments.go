@@ -18,6 +18,7 @@ func registerAttachmentRoutes(r chi.Router, attachments ports.AttachmentService,
 	r.Get("/request-attachments", listRequestAttachments(attachments, authorizer))
 	r.Post("/request-attachments", uploadRequestAttachment(attachments, authorizer, uploadsDir))
 	r.Get("/request-attachments/{id}/download", downloadRequestAttachment(attachments, authorizer))
+	r.Delete("/request-attachments/{id}", deleteRequestAttachment(attachments, authorizer))
 }
 
 func listRequestAttachments(attachments ports.AttachmentService, authorizer authx.Authorizer) http.HandlerFunc {
@@ -124,9 +125,40 @@ func downloadRequestAttachment(attachments ports.AttachmentService, authorizer a
 	}
 }
 
+func deleteRequestAttachment(attachments ports.AttachmentService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		att, err := attachments.Get(r.Context(), identity.TenantID, id)
+		if err != nil {
+			if errors.Is(err, domain.ErrAttachmentNotFound) {
+				httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
+				return
+			}
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		module := domain.ResourceModule(att.ResourceType)
+		if module == "" || !authorizer.Can(r.Context(), authx.Module(module), authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		if err := attachments.Delete(r.Context(), identity.TenantID, id); err != nil {
+			writeAttachmentError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func writeAttachmentError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, domain.ErrAttachmentResourceNotFound):
+	case errors.Is(err, domain.ErrAttachmentNotFound),
+		errors.Is(err, domain.ErrAttachmentResourceNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	case errors.Is(err, domain.ErrInvalidAttachmentTarget):
 		httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, err.Error())

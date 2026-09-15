@@ -14,6 +14,7 @@ import (
 	aiconges "github.com/kore/kore/internal/modules/ai/adapters/conges"
 	aicra "github.com/kore/kore/internal/modules/ai/adapters/cra"
 	aihttp "github.com/kore/kore/internal/modules/ai/adapters/http"
+	aiorghook "github.com/kore/kore/internal/modules/ai/adapters/orghook"
 	aipostgres "github.com/kore/kore/internal/modules/ai/adapters/postgres"
 	aitma "github.com/kore/kore/internal/modules/ai/adapters/tma"
 	aiworkflow "github.com/kore/kore/internal/modules/ai/adapters/workflow"
@@ -206,7 +207,6 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 
 	orgService := orgapp.NewOrganizationService(orgRepo, orgintegrations.NewTaigaLinkReader(integrationsRepo))
 	attachmentChecker := NewAttachmentResourceChecker(tmaRepo, supportRepo, maintenanceRepo)
-	attachmentService := orgapp.NewAttachmentService(attachmentRepo, attachmentChecker)
 	userService := orgapp.NewUserService(orgRepo, orgapp.NewArgon2Hasher(), tokenIssuer, billingService, appCache, keyBuilder, cfg.PlatformAdminLogins, totpKey)
 	clientService := orgapp.NewClientService(orgRepo, orgapp.WithMissionContactCleaner(ssiiorg.MissionContactCleaner{Repo: ssiiRepo}))
 
@@ -282,6 +282,12 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		aicra.NewReaderAdapter(craService),
 		aiconges.NewReaderAdapter(congesService),
 		aiworkflow.NewReaderAdapter(wfService),
+		aiapp.WithRAG(aiapp.NewEmbeddingsProvider(cfg), aiRepo),
+	)
+	attachmentService := orgapp.NewAttachmentService(
+		attachmentRepo,
+		attachmentChecker,
+		aiorghook.NewAttachmentIndexer(aiService),
 	)
 	publicService := publicapp.NewServiceWithCache(publicRepo, billingService, publicnotif.NewNotifierAdapter(notifService), cfg.StripePublishableKey, appCache, keyBuilder)
 

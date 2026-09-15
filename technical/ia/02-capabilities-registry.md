@@ -8,6 +8,7 @@
 | Code | Module | Vague | Priorité | Risque IA Act | Annexe III | Statut | Fiche |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `tma.analysis_draft` | 05 TMA | 1 | P0 | minimal/limité | Non | livré | [cap-tma-analysis-draft.md](capabilities/cap-tma-analysis-draft.md) |
+| `tma.analysis_section` | 05 TMA | 1 | P0 | minimal/limité | Non | livré | [cap-tma-analysis-section.md](capabilities/cap-tma-analysis-section.md) |
 | `tma.classify` | 05 TMA | 1 | P0 | minimal | Non | livré | [cap-tma-classify-duplicate.md](capabilities/cap-tma-classify-duplicate.md) |
 | `tma.similar` | 05 TMA | 1 | P0 | minimal | Non | livré | [cap-tma-classify-duplicate.md](capabilities/cap-tma-classify-duplicate.md) |
 | `tma.suggest_assignee` | 05 TMA | 2 | P1 | limité → haut | Potentiel §4(b) | livré | [cap-tma-suggest-assignee.md](capabilities/cap-tma-suggest-assignee.md) |

@@ -52,7 +52,7 @@ flowchart LR
 | **1** | 4–6 sem. | TMA : brouillon analyse, classification, doublons |
 | **2** | 6–8 sem. | CRA prefill + anomalies factuelles, budget estimation, dashboard briefing |
 | **3** | 8–12 sem. | Congés manager context, workflow explain, chatbot publicsite (Art. 50) |
-| **4** | Phase 2+ | Capabilities M08/M09/M10, pgvector embeddings |
+| **4** | Phase 2+ | Capabilities M08/M09/M10, embeddings demande (`demand_embeddings`) — RAG PJ TMA (`document_chunks`) livré |
 
 **Gate IA Vague 1** : registre capabilities à jour, journalisation Art. 12, opt-in tenant, aucune capability interdite IA Act.
 

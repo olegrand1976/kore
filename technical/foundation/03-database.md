@@ -70,7 +70,7 @@ flowchart LR
   - Authentification par mot de passe (Secret Manager) ou **IAM database authentication**.
 - **Pooling** : `pgxpool` dimensionné pour respecter `max_connections` de l'instance compte tenu de l'autoscaling Cloud Run (`concurrence × instances max ≤ connexions`). Activer un pooler (PgBouncer/Cloud SQL) si nécessaire.
 - **Migrations** : exécutées par un **job dédié avant la bascule de trafic** (jamais `MIGRATE_ON_BOOT` en prod ; option réservée au dev local).
-- **Parité dev/prod** : en local, conteneur `postgres:16` via Docker Compose ; seules les variables de connexion changent.
+- **Parité dev/prod** : en local, conteneur `pgvector/pgvector:pg16` via Docker Compose ; seules les variables de connexion changent.
 
 ## 9. Definition of Done (fondation database)
 

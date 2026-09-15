@@ -44,6 +44,14 @@ func NewLLMProvider(cfg config.Config, resolver GeminiModelResolver) ports.LLMPr
 	}
 }
 
+func NewEmbeddingsProvider(cfg config.Config) ports.EmbeddingsProvider {
+	provider := strings.ToLower(strings.TrimSpace(cfg.AILLMProvider))
+	if provider == "gemini" && cfg.GeminiAPIKey != "" {
+		return aigemini.NewEmbeddingProvider(cfg.GeminiAPIKey, cfg.GeminiEmbeddingModel, "", nil)
+	}
+	return stub.NewProvider()
+}
+
 type resolverAdapter struct {
 	resolver GeminiModelResolver
 }

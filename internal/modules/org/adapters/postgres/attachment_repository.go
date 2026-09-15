@@ -59,6 +59,19 @@ func (r *AttachmentRepository) ListByResource(ctx context.Context, tenant kernel
 	return out, rows.Err()
 }
 
+func (r *AttachmentRepository) Delete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `
+		DELETE FROM org.request_attachments WHERE tenant_id = $1 AND id = $2
+	`, tenant.UUID(), id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrAttachmentNotFound
+	}
+	return nil
+}
+
 func (r *AttachmentRepository) scanAttachment(row pgx.Row) (domain.RequestAttachment, error) {
 	var att domain.RequestAttachment
 	var tenantID uuid.UUID

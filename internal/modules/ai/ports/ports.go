@@ -27,6 +27,31 @@ type AnalysisDraftResult struct {
 	RequestID uuid.UUID            `json:"requestId"`
 }
 
+type AnalysisSectionCommand struct {
+	TenantID kernel.TenantID
+	UserID   uuid.UUID
+	DemandID uuid.UUID
+	Section  string
+	Prompt   string
+	UseRAG   bool
+	Subject  string
+}
+
+type AnalysisSectionResult struct {
+	Text      string             `json:"text"`
+	RequestID uuid.UUID          `json:"requestId"`
+	Sources   []domain.RAGSource `json:"sources,omitempty"`
+}
+
+type IndexAttachmentCommand struct {
+	TenantID     kernel.TenantID
+	AttachmentID uuid.UUID
+	DemandID     uuid.UUID
+	FileName     string
+	MimeType     string
+	StoragePath  string
+}
+
 type ClassifyDemandCommand struct {
 	TenantID kernel.TenantID
 	UserID   uuid.UUID
@@ -302,6 +327,17 @@ type LLMProvider interface {
 	Complete(ctx context.Context, req CompletionRequest) (CompletionResponse, error)
 }
 
+type EmbeddingsProvider interface {
+	Embed(ctx context.Context, texts []string) ([][]float32, error)
+}
+
+type ChunkRepository interface {
+	ReplaceSourceChunks(ctx context.Context, chunks []domain.DocumentChunk) error
+	DeleteBySource(ctx context.Context, tenant kernel.TenantID, sourceType string, sourceID uuid.UUID) error
+	SearchSimilar(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID, query []float32, limit int) ([]domain.DocumentChunk, error)
+	CountByDemand(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (int, error)
+}
+
 type Repository interface {
 	IsCapabilityEnabled(ctx context.Context, code string) (bool, error)
 	GetTenantSettings(ctx context.Context, tenant kernel.TenantID) (domain.TenantSettings, error)
@@ -334,6 +370,9 @@ type WorkflowReader interface {
 
 type AIService interface {
 	SuggestAnalysisDraft(ctx context.Context, cmd AnalysisDraftCommand) (AnalysisDraftResult, error)
+	SuggestAnalysisSection(ctx context.Context, cmd AnalysisSectionCommand) (AnalysisSectionResult, error)
+	IndexRequestAttachment(ctx context.Context, cmd IndexAttachmentCommand) error
+	RemoveRequestAttachmentChunks(ctx context.Context, tenant kernel.TenantID, attachmentID uuid.UUID) error
 	ClassifyDemand(ctx context.Context, cmd ClassifyDemandCommand) (ClassifyResult, error)
 	FindSimilarDemands(ctx context.Context, cmd SimilarDemandsCommand) ([]SimilarDemand, error)
 	SuggestCraPrefill(ctx context.Context, cmd CraPrefillCommand) (CraPrefillResult, error)

@@ -23,6 +23,8 @@ import (
 type Service struct {
 	repo     ports.Repository
 	llm      ports.LLMProvider
+	embed    ports.EmbeddingsProvider
+	chunks   ports.ChunkRepository
 	tma      ports.TMAReader
 	cra      ports.CRAReader
 	leaves   ports.LeaveReader
@@ -41,8 +43,9 @@ func NewService(
 	cra ports.CRAReader,
 	leaves ports.LeaveReader,
 	workflow ports.WorkflowReader,
+	opts ...ServiceOption,
 ) *Service {
-	return &Service{
+	s := &Service{
 		repo:     repo,
 		llm:      llm,
 		tma:      tma,
@@ -50,6 +53,19 @@ func NewService(
 		leaves:   leaves,
 		workflow: workflow,
 		clock:    systemClock{},
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+type ServiceOption func(*Service)
+
+func WithRAG(embed ports.EmbeddingsProvider, chunks ports.ChunkRepository) ServiceOption {
+	return func(s *Service) {
+		s.embed = embed
+		s.chunks = chunks
 	}
 }
 

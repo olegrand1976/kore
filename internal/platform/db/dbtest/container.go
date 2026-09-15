@@ -25,7 +25,7 @@ func NewPostgres(t *testing.T) *db.Pool {
 	ctx := context.Background()
 
 	container, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("postgres:16-alpine"),
+		testcontainers.WithImage("pgvector/pgvector:pg16"),
 		postgres.WithDatabase("kore_test"),
 		postgres.WithUsername("kore"),
 		postgres.WithPassword("kore"),

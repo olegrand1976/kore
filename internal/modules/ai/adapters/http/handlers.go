@@ -18,6 +18,7 @@ func RegisterRoutes(r chi.Router, ai ports.AIService, tokens *authx.TokenIssuer,
 	r.Group(func(pr chi.Router) {
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Post("/ai/tma/analysis-draft", analysisDraft(ai))
+		pr.Post("/ai/tma/analysis-section", analysisSection(ai))
 		pr.Post("/ai/tma/classify", classifyDemand(ai))
 		pr.Get("/ai/tma/similar", similarDemands(ai))
 		pr.Post("/ai/tma/suggest-assignee", suggestAssignee(ai))
@@ -46,9 +47,11 @@ func aiError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrAIDisabled), errors.Is(err, domain.ErrCapabilityOff):
 		httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, err.Error())
-	case errors.Is(err, domain.ErrRequestNotFound):
+	case errors.Is(err, domain.ErrRequestNotFound), errors.Is(err, domain.ErrAnalysisDemandNotFound):
 		httpx.WriteError(w, http.StatusNotFound, httpx.ErrCodeNotFound, err.Error())
 	case errors.Is(err, domain.ErrPromptInjectionBlocked):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+	case errors.Is(err, domain.ErrInvalidAnalysisSection), errors.Is(err, domain.ErrEmptyAnalysisPrompt):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
@@ -72,6 +75,38 @@ func analysisDraft(ai ports.AIService) http.HandlerFunc {
 		result, err := ai.SuggestAnalysisDraft(r.Context(), ports.AnalysisDraftCommand{
 			TenantID: identity.TenantID, UserID: identity.UserID,
 			DemandID: demandID, Subject: body.Subject, ApplicationID: appID,
+		})
+		if err != nil {
+			aiError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, result)
+	}
+}
+
+func analysisSection(ai ports.AIService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		var body struct {
+			DemandID string `json:"demandId"`
+			Section  string `json:"section"`
+			Prompt   string `json:"prompt"`
+			UseRAG   bool   `json:"useRAG"`
+			Subject  string `json:"subject"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
+			return
+		}
+		demandID, _ := uuid.Parse(body.DemandID)
+		result, err := ai.SuggestAnalysisSection(r.Context(), ports.AnalysisSectionCommand{
+			TenantID: identity.TenantID,
+			UserID:   identity.UserID,
+			DemandID: demandID,
+			Section:  body.Section,
+			Prompt:   body.Prompt,
+			UseRAG:   body.UseRAG,
+			Subject:  body.Subject,
 		})
 		if err != nil {
 			aiError(w, err)

@@ -13,6 +13,10 @@ var (
 	ErrCapabilityOff          = errors.New("ai capability disabled")
 	ErrRequestNotFound        = errors.New("ai request not found")
 	ErrPromptInjectionBlocked = errors.New("prompt injection blocked")
+	ErrInvalidAnalysisSection = errors.New("invalid analysis section")
+	ErrEmptyAnalysisPrompt    = errors.New("analysis section prompt is required")
+	ErrAttachmentNotIndexable = errors.New("attachment content is not indexable")
+	ErrAnalysisDemandNotFound = errors.New("tma demand not found")
 )
 
 type RiskClass string

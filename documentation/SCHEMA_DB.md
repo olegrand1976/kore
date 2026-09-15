@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 09/09/2026 (ssii `planned_week_minutes` + `mission_billing_events`)
+> **Dernière mise à jour doc** : 15/09/2026 (ai `document_chunks` pgvector + capability `tma.analysis_section`)
 
 ---
 
@@ -905,7 +905,27 @@ Registre global des capabilities (pas de `tenant_id`).
 | `enabled` | BOOLEAN | NOT NULL, DEFAULT TRUE |
 | `wave` | INT | NOT NULL, DEFAULT 0 |
 
-11 capabilities seedées (TMA, CRA, budget, congés, workflow, publicsite).
+Capabilities seedées (TMA, CRA, budget, congés, workflow, publicsite, notifications, mobile) dont `tma.analysis_section`.
+
+### `ai.document_chunks`
+
+Chunks indexés pour RAG (embeddings 768 dims, extension `vector`).
+
+| Colonne | Type | Contraintes |
+| --- | --- | --- |
+| `id` | UUID | PK |
+| `tenant_id` | UUID | NOT NULL |
+| `source_type` | TEXT | NOT NULL (ex. `request_attachment`) |
+| `source_id` | UUID | NOT NULL |
+| `demand_id` | UUID | nullable, indexé avec tenant |
+| `chunk_index` | INT | NOT NULL |
+| `content` | TEXT | NOT NULL |
+| `embedding` | vector(768) | NOT NULL |
+| `mime_type` | TEXT | NOT NULL, DEFAULT `''` |
+| `file_name` | TEXT | NOT NULL, DEFAULT `''` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
+
+**Contraintes / index** : `UNIQUE (source_type, source_id, chunk_index)` ; `document_chunks_tenant_demand_idx` ; `document_chunks_source_idx` ; HNSW `document_chunks_embedding_hnsw_idx` (`vector_cosine_ops`).
 
 ### `ai.tenant_ai_settings`
 

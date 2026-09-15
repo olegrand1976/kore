@@ -2506,6 +2506,32 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
         "200": { description: Fichier }
+  /request-attachments/{id}:
+    delete:
+      summary: Supprimer pièce jointe
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Supprimé }
+  /ai/tma/analysis-section:
+    post:
+      summary: Générer une section du dossier d'analyse TMA (RAG optionnel)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [demandId, section, prompt]
+              properties:
+                demandId: { type: string, format: uuid }
+                section: { type: string, enum: [functional, technical, risks, testScenario] }
+                prompt: { type: string }
+                useRAG: { type: boolean }
+                subject: { type: string }
+      responses:
+        "200": { description: OK }
   /ett/clock-in:
     post:
       summary: Pointage entrée ETT

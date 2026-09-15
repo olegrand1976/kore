@@ -115,7 +115,7 @@ flowchart LR
 
 | Env | Compute | Cloud SQL | Redis |
 | --- | --- | --- | --- |
-| Local | Docker Compose | conteneur `postgres:16` | conteneur `redis:7` |
+| Local | Docker Compose | conteneur `pgvector/pgvector:pg16` | conteneur `redis:7` |
 | Staging | Cloud Run | `premedica-db-staging` / base `kore` | VM Redis DB 13 |
 | Prod | Cloud Run (min=1) | Cloud SQL partagé | VM Redis DB 13 |
 

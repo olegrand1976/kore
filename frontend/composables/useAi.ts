@@ -53,6 +53,19 @@ export function useAi() {
     })
   }
 
+  const generateAnalysisSection = async (payload: {
+    demandId: string
+    section: 'functional' | 'technical' | 'risks' | 'testScenario'
+    prompt: string
+    useRAG?: boolean
+    subject?: string
+  }) => {
+    return apiFetch<{ text: string; requestId: string; sources?: Array<{ fileName: string; chunkIndex: number; score?: number }> }>(
+      '/api/ai/tma/analysis-section',
+      { method: 'POST', body: payload }
+    )
+  }
+
   const classifyDemand = async (subject: string) => {
     return apiFetch<{ category: string; confidence: number; requestId: string }>(
       '/api/ai/tma/classify',
@@ -125,6 +138,7 @@ export function useAi() {
   return {
     extractFetchError,
     generateAnalysisDraft,
+    generateAnalysisSection,
     classifyDemand,
     fetchBriefing,
     fetchManagerContext,

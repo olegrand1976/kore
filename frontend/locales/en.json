@@ -1249,6 +1249,10 @@
     "attachments_empty": "No attachments",
     "attachments_add": "Add files",
     "attachments_upload": "Upload",
+    "attachments_download": "Download",
+    "attachments_preview": "Preview",
+    "attachments_preview_unsupported": "This file type cannot be previewed. Use Download.",
+    "attachments_preview_error": "Unable to load the preview.",
     "col_application": "Application",
     "col_due_at": "Due date",
     "col_priority": "Priority",
@@ -2098,7 +2102,13 @@
     "chat_placeholder": "Your question",
     "chat_send": "Send",
     "chat_section_eyebrow": "Assistant",
-    "chat_section_title": "Ask questions about Kore"
+    "chat_section_title": "Ask questions about Kore",
+    "section_prompt": "Instructions for this section",
+    "section_prompt_placeholder": "E.g. describe impact on the billing module…",
+    "section_prompt_required": "Enter instructions before generating the section.",
+    "section_generate": "Generate section",
+    "use_rag": "Use indexed attachments (RAG)",
+    "rag_no_docs": "No indexable attachments (PDF, text, CSV…) — RAG is unavailable."
   },
   "settings": {
     "title": "Settings",

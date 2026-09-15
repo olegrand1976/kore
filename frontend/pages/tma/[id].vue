@@ -64,6 +64,7 @@
           :demand-id="id"
           :subject="subject"
           :application-id="String(demand?.applicationId ?? demand?.ApplicationID ?? '')"
+          :has-indexable-docs="hasIndexableDocs"
           @save="onSaveAnalysis"
         />
         <RequestAttachmentsPanel
@@ -73,6 +74,7 @@
           :title="$t('tma.analysis_attachments')"
           :input-id="`tma-analysis-attachments-${id}`"
           :can-upload="can('tma', 'E')"
+          @indexable-docs-changed="hasIndexableDocs = $event"
         />
       </AppCard>
     </template>
@@ -117,6 +119,7 @@ await fetchSession()
 const id = computed(() => String(route.params.id))
 const busy = ref(false)
 const errorMsg = ref('')
+const hasIndexableDocs = ref(false)
 const workflowState = ref('')
 const workflowActions = ref<string[]>([])
 const teamUsers = ref<{ id: string; label: string }[]>([])

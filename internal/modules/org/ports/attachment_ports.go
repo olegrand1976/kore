@@ -24,6 +24,13 @@ type AttachmentService interface {
 	List(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) ([]domain.RequestAttachment, error)
 	Create(ctx context.Context, cmd CreateAttachmentCommand) (domain.RequestAttachment, error)
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.RequestAttachment, error)
+	Delete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error
+}
+
+// AttachmentLifecycleHook is notified after attachment create/delete (e.g. RAG index).
+type AttachmentLifecycleHook interface {
+	OnCreated(ctx context.Context, att domain.RequestAttachment) error
+	OnDeleted(ctx context.Context, tenant kernel.TenantID, attachmentID uuid.UUID) error
 }
 
 type AttachmentResourceChecker interface {
@@ -34,4 +41,5 @@ type AttachmentRepository interface {
 	Save(ctx context.Context, att domain.RequestAttachment) error
 	Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.RequestAttachment, error)
 	ListByResource(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) ([]domain.RequestAttachment, error)
+	Delete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error
 }

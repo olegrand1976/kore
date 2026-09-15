@@ -17,6 +17,41 @@ export const REQUEST_RESOURCE = {
 
 export type RequestResourceKey = keyof typeof REQUEST_RESOURCE
 
+export type PreviewKind = 'image' | 'pdf' | 'unsupported' | 'none'
+
+const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp'])
+const PDF_EXT = new Set(['.pdf'])
+
+export function pickMimeType(att: RequestAttachment): string {
+  return (att.mimeType ?? att.MimeType ?? '').toLowerCase()
+}
+
+export function pickFileExtension(fileName: string): string {
+  const i = fileName.lastIndexOf('.')
+  return i >= 0 ? fileName.slice(i).toLowerCase() : ''
+}
+
+export function previewKindFrom(mime: string, fileName: string): PreviewKind {
+  const m = mime.toLowerCase()
+  if (m.startsWith('image/')) return 'image'
+  if (m === 'application/pdf' || m === 'application/x-pdf') return 'pdf'
+  const ext = pickFileExtension(fileName)
+  if (IMAGE_EXT.has(ext)) return 'image'
+  if (PDF_EXT.has(ext)) return 'pdf'
+  if (!fileName && !mime) return 'none'
+  return 'unsupported'
+}
+
+export function isPreviewable(mime: string, fileName: string): boolean {
+  const kind = previewKindFrom(mime, fileName)
+  return kind === 'image' || kind === 'pdf'
+}
+
+export function isIndexableAttachment(fileName: string): boolean {
+  const ext = pickFileExtension(fileName)
+  return ['.txt', '.md', '.csv', '.log', '.pdf'].includes(ext)
+}
+
 export function useRequestAttachments() {
   const { apiFetch } = useApiFetch()
   const pickId = (att: RequestAttachment) => att.id ?? att.ID ?? ''
@@ -49,5 +84,23 @@ export function useRequestAttachments() {
 
   const downloadUrl = (id: string) => `/api/request-attachments/${id}/download`
 
-  return { list, upload, uploadAll, downloadUrl, pickId, pickFileName }
+  const fetchContent = async (id: string) => {
+    return apiFetch<Blob>(downloadUrl(id), { responseType: 'blob' })
+  }
+
+  const remove = async (id: string) => {
+    await apiFetch(`/api/request-attachments/${id}`, { method: 'DELETE' })
+  }
+
+  return {
+    list,
+    upload,
+    uploadAll,
+    downloadUrl,
+    fetchContent,
+    remove,
+    pickId,
+    pickFileName,
+    pickMimeType
+  }
 }

@@ -21,11 +21,19 @@ Défaut : **stub** — génération heuristique structurée.
 - Classification par mots-clés (bug, régression, évolution)
 - Similarité : recherche textuelle LIKE sur sujets TMA résolus (sans pgvector en V1)
 
-## 3. Embeddings (roadmap)
+## 3. Embeddings et RAG documentaire
 
-- Extension PostgreSQL `pgvector`
-- Table `ai.demand_embeddings` (tenant_id, demand_id, vector)
-- Isolation stricte par tenant_id dans requêtes
+**Livré (TMA dossier analyse)** :
+
+- Image Postgres `pgvector/pgvector` (dev, testcontainers, prod Cloud SQL avec extension)
+- Table `ai.document_chunks` : chunks de pièces jointes demande (`source_type=request_attachment`), vecteur 768 dims, index HNSW cosine
+- Adapters : `EmbeddingsProvider` (Gemini `text-embedding-004` ou **stub** déterministe 768d pour CI)
+- Use cases : `IndexRequestAttachment`, `RemoveRequestAttachmentChunks`, retrieval dans `tma.analysis_section`
+
+**Roadmap (hors PJ)** :
+
+- Table `ai.demand_embeddings` (résumé sujet demande, similarité inter-demandes)
+- Isolation stricte par `tenant_id` (+ `demand_id` pour chunks) dans toutes les requêtes
 
 ## 4. Choix par tenant
 

@@ -1249,6 +1249,10 @@
     "attachments_empty": "Aucune pièce jointe",
     "attachments_add": "Ajouter des fichiers",
     "attachments_upload": "Téléverser",
+    "attachments_download": "Télécharger",
+    "attachments_preview": "Aperçu",
+    "attachments_preview_unsupported": "Ce type de fichier ne peut pas être prévisualisé. Utilisez Télécharger.",
+    "attachments_preview_error": "Impossible de charger l'aperçu.",
     "col_application": "Application",
     "col_due_at": "Échéance",
     "col_priority": "Priorité",
@@ -2317,7 +2321,13 @@
     "chat_placeholder": "Votre question",
     "chat_send": "Envoyer",
     "chat_section_eyebrow": "Assistant",
-    "chat_section_title": "Posez vos questions sur Kore"
+    "chat_section_title": "Posez vos questions sur Kore",
+    "section_prompt": "Consigne pour cette section",
+    "section_prompt_placeholder": "Ex. décrire l'impact sur le module facturation…",
+    "section_prompt_required": "Saisissez une consigne avant de générer la section.",
+    "section_generate": "Générer la section",
+    "use_rag": "Utiliser les pièces jointes indexées (RAG)",
+    "rag_no_docs": "Aucune pièce jointe indexable (PDF, texte, CSV…) — le RAG est indisponible."
   },
   "settings": {
     "title": "Paramètres",

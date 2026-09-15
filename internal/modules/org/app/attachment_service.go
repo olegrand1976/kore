@@ -3,6 +3,8 @@ package app
 import (
 	"bytes"
 	"context"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,10 +17,15 @@ import (
 type attachmentService struct {
 	repo    ports.AttachmentRepository
 	checker ports.AttachmentResourceChecker
+	hook    ports.AttachmentLifecycleHook
 }
 
-func NewAttachmentService(repo ports.AttachmentRepository, checker ports.AttachmentResourceChecker) ports.AttachmentService {
-	return &attachmentService{repo: repo, checker: checker}
+func NewAttachmentService(
+	repo ports.AttachmentRepository,
+	checker ports.AttachmentResourceChecker,
+	hook ports.AttachmentLifecycleHook,
+) ports.AttachmentService {
+	return &attachmentService{repo: repo, checker: checker, hook: hook}
 }
 
 func (s *attachmentService) ensureResource(ctx context.Context, tenant kernel.TenantID, resourceType string, resourceID uuid.UUID) error {
@@ -77,11 +84,48 @@ func (s *attachmentService) Create(ctx context.Context, cmd ports.CreateAttachme
 		UploadedBy:   cmd.UploadedBy,
 		CreatedAt:    time.Now().UTC(),
 	}
-	return att, s.repo.Save(ctx, att)
+	if err := s.repo.Save(ctx, att); err != nil {
+		return domain.RequestAttachment{}, err
+	}
+	if s.hook != nil {
+		if err := s.hook.OnCreated(ctx, att); err != nil {
+			slog.Warn("attachment lifecycle OnCreated failed",
+				"attachmentId", att.ID.String(),
+				"resourceType", att.ResourceType,
+				"resourceId", att.ResourceID.String(),
+				"tenantId", att.TenantID.String(),
+				"error", err,
+			)
+		}
+	}
+	return att, nil
 }
 
 func (s *attachmentService) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.RequestAttachment, error) {
 	return s.repo.Get(ctx, tenant, id)
+}
+
+func (s *attachmentService) Delete(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) error {
+	att, err := s.repo.Get(ctx, tenant, id)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.Delete(ctx, tenant, id); err != nil {
+		return err
+	}
+	if att.StoragePath != "" {
+		_ = os.Remove(att.StoragePath)
+	}
+	if s.hook != nil {
+		if err := s.hook.OnDeleted(ctx, tenant, id); err != nil {
+			slog.Warn("attachment lifecycle OnDeleted failed",
+				"attachmentId", id.String(),
+				"tenantId", tenant.String(),
+				"error", err,
+			)
+		}
+	}
+	return nil
 }
 
 var _ ports.AttachmentService = (*attachmentService)(nil)

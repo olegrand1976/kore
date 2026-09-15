@@ -6,7 +6,9 @@ const panelSrc = readFileSync(
   join(__dirname, '../components/requests/RequestAttachmentsPanel.vue'),
   'utf8'
 )
+const editorSrc = readFileSync(join(__dirname, '../components/tma/AnalysisEditor.vue'), 'utf8')
 const tmaDetailSrc = readFileSync(join(__dirname, '../pages/tma/[id].vue'), 'utf8')
+const frLocale = readFileSync(join(__dirname, '../locales/fr.json'), 'utf8')
 
 describe('RequestAttachmentsPanel', () => {
   it('supports embedded mode with unique upload input id', () => {
@@ -17,6 +19,20 @@ describe('RequestAttachmentsPanel', () => {
     expect(panelSrc).toContain(':deep(.app-btn)')
     expect(panelSrc).toContain('var(--kore-error)')
   })
+
+  it('emits indexable docs when attachments change', () => {
+    expect(panelSrc).toContain('isIndexableAttachment')
+    expect(panelSrc).toContain('indexableDocsChanged')
+    expect(panelSrc).toContain('emitIndexableDocs')
+  })
+
+  it('includes preview UI and i18n keys', () => {
+    expect(panelSrc).toContain('attachments_preview')
+    expect(panelSrc).toContain('previewKind')
+    expect(panelSrc).toContain('previewSeq')
+    expect(frLocale).toContain('"attachments_preview"')
+    expect(frLocale).toContain('"attachments_preview_unsupported"')
+  })
 })
 
 describe('TMA detail analysis attachments', () => {
@@ -26,5 +42,23 @@ describe('TMA detail analysis attachments', () => {
     expect(tmaDetailSrc).toMatch(/RequestAttachmentsPanel[\s\S]*analysis_attachments/)
     const panelCount = (tmaDetailSrc.match(/<RequestAttachmentsPanel/g) ?? []).length
     expect(panelCount).toBe(1)
+  })
+
+  it('wires indexable attachments to AnalysisEditor RAG toggle', () => {
+    expect(tmaDetailSrc).toContain('hasIndexableDocs')
+    expect(tmaDetailSrc).toContain('indexable-docs-changed')
+    expect(tmaDetailSrc).toContain(':has-indexable-docs')
+  })
+})
+
+describe('AnalysisEditor section AI', () => {
+  it('exposes per-section prompt, RAG and generate controls', () => {
+    expect(editorSrc).toContain('hasIndexableDocs')
+    expect(editorSrc).toContain('generateAnalysisSection')
+    expect(editorSrc).toContain('ai.section_prompt')
+    expect(editorSrc).toContain('ai.use_rag')
+    expect(editorSrc).toContain('ai.section_generate')
+    expect(frLocale).toContain('"section_prompt"')
+    expect(frLocale).toContain('"rag_no_docs"')
   })
 })

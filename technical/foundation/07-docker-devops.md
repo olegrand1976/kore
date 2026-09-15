@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `api` | build Go multi-stage | API Kore (`cmd/kore-api`) |
 | `frontend` | build Node/Nuxt | SSR + BFF Nuxt 3 |
-| `db` | `postgres:16` | Base de données (miroir local de Cloud SQL) |
+| `db` | `pgvector/pgvector:pg16` | Base de données (Postgres 16 + extension vector) |
 | `redis` | `redis:7` | Cache local (miroir local de Memorystore) |
 | `migrate` | golang-migrate (one-shot) | Application des migrations |
 | `mailhog` (dev) | `mailhog/mailhog` | Capture des mails en dev (module Notifications) |
@@ -36,7 +36,7 @@ flowchart LR
 
 Un fichier `deploy/docker-compose.test.yml` (ou profil `test`) fournit un environnement isolé et reproductible :
 
-- `db` (`postgres:16`) + `redis:7` + `stripe-mock`, éphémères (données jetables).
+- `db` (`pgvector/pgvector:pg16`) + `redis:7` + `stripe-mock`, éphémères (données jetables).
 - Exécution : migrations appliquées puis `go test -tags=integration ./...` et `vitest`.
 - Même topologie qu'en dev pour garantir la fidélité des tests d'intégration (les tests unitaires, eux, utilisent `InMemoryCache` et des mocks — cf. [06-testing-strategy.md](/home/olivier/ll-it-sc/projets/kore/technical/foundation/06-testing-strategy.md)).
 - Les tests Go peuvent aussi piloter leurs propres conteneurs via **testcontainers** (PostgreSQL, Redis) sans dépendre du compose, au choix du développeur/CI.

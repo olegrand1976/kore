@@ -25,4 +25,8 @@ func (NoopAttachmentService) Get(context.Context, kernel.TenantID, uuid.UUID) (d
 	return domain.RequestAttachment{}, domain.ErrAttachmentNotFound
 }
 
+func (NoopAttachmentService) Delete(context.Context, kernel.TenantID, uuid.UUID) error {
+	return domain.ErrAttachmentNotFound
+}
+
 var _ ports.AttachmentService = NoopAttachmentService{}

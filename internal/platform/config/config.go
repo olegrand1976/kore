@@ -35,6 +35,7 @@ type Config struct {
 	AILLMProvider          string
 	GeminiAPIKey           string
 	GeminiModel            string
+	GeminiEmbeddingModel   string
 	PromptGuardBlock       bool
 	TOTPEncryptionKey      string
 	PDPProvider            string
@@ -88,6 +89,7 @@ func Load() (Config, error) {
 		AILLMProvider:          envOr("AI_LLM_PROVIDER", "stub"),
 		GeminiAPIKey:           envOr("GEMINI_API_KEY", ""),
 		GeminiModel:            envOr("GEMINI_MODEL", "gemini-3.6-flash"),
+		GeminiEmbeddingModel:   envOr("GEMINI_EMBEDDING_MODEL", "text-embedding-004"),
 		PromptGuardBlock:       envBool("PROMPT_GUARD_BLOCK", true),
 		TOTPEncryptionKey:      envOr("TOTP_ENCRYPTION_KEY", ""),
 		PDPProvider:            envOr("PDP_PROVIDER", "stub"),
