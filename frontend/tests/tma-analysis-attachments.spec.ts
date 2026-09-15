@@ -8,6 +8,11 @@ const panelSrc = readFileSync(
 )
 const editorSrc = readFileSync(join(__dirname, '../components/tma/AnalysisEditor.vue'), 'utf8')
 const tmaDetailSrc = readFileSync(join(__dirname, '../pages/tma/[id].vue'), 'utf8')
+const useAiSrc = readFileSync(join(__dirname, '../composables/useAi.ts'), 'utf8')
+const bffDocCtx = readFileSync(
+  join(__dirname, '../server/api/ai/tma/document-context.get.ts'),
+  'utf8'
+)
 const frLocale = readFileSync(join(__dirname, '../locales/fr.json'), 'utf8')
 const enLocale = readFileSync(join(__dirname, '../locales/en.json'), 'utf8')
 
@@ -21,10 +26,17 @@ describe('RequestAttachmentsPanel', () => {
     expect(panelSrc).toContain('var(--kore-error)')
   })
 
-  it('emits indexable docs when attachments change', () => {
-    expect(panelSrc).toContain('isIndexableAttachment')
+  it('emits indexable docs from document-context status when TMA', () => {
+    expect(panelSrc).toContain('fetchDocumentContext')
     expect(panelSrc).toContain('indexableDocsChanged')
     expect(panelSrc).toContain('emitIndexableDocs')
+    expect(panelSrc).toContain("props.resource === 'tma'")
+  })
+
+  it('allows deleting attachments', () => {
+    expect(panelSrc).toContain('onDelete')
+    expect(panelSrc).toContain('request-attachments__delete')
+    expect(panelSrc).toContain('common.delete')
   })
 
   it('includes preview UI and i18n keys', () => {
@@ -61,14 +73,25 @@ describe('AnalysisEditor section AI', () => {
     expect(editorSrc).toContain('ai.section_prompt')
     expect(editorSrc).toContain('ai.use_attachments')
     expect(editorSrc).toContain('ai.section_generate')
+    expect(editorSrc).toContain('sectionSources')
+    expect(editorSrc).toContain('attachments_not_applied')
     expect(frLocale).toContain('"section_prompt"')
     expect(frLocale).toContain('"use_attachments"')
     expect(frLocale).toContain('"attachments_unavailable_for_ai"')
+    expect(frLocale).toContain('"section_sources"')
     expect(frLocale).not.toContain('(RAG)')
     expect(enLocale).toContain('"use_attachments"')
     expect(enLocale).toContain('"attachments_unavailable_for_ai"')
     expect(enLocale).toContain('Use the request attachments as context')
     expect(enLocale).not.toContain('(RAG)')
     expect(enLocale).not.toContain('dossier attachments')
+  })
+
+  it('uses document-context BFF and unwraps AI envelopes', () => {
+    expect(useAiSrc).toContain('fetchDocumentContext')
+    expect(useAiSrc).toContain('document-context')
+    expect(useAiSrc).toContain('unwrapData')
+    expect(useAiSrc).toContain('usedDocuments')
+    expect(bffDocCtx).toContain('/api/v1/ai/tma/document-context')
   })
 })

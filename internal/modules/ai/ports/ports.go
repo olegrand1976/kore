@@ -38,9 +38,15 @@ type AnalysisSectionCommand struct {
 }
 
 type AnalysisSectionResult struct {
-	Text      string             `json:"text"`
-	RequestID uuid.UUID          `json:"requestId"`
-	Sources   []domain.RAGSource `json:"sources,omitempty"`
+	Text          string             `json:"text"`
+	RequestID     uuid.UUID          `json:"requestId"`
+	Sources       []domain.RAGSource `json:"sources,omitempty"`
+	UsedDocuments bool               `json:"usedDocuments"`
+}
+
+type DocumentContextResult struct {
+	IndexedChunkCount   int  `json:"indexedChunkCount"`
+	HasIndexedDocuments bool `json:"hasIndexedDocuments"`
 }
 
 type IndexAttachmentCommand struct {
@@ -371,6 +377,7 @@ type WorkflowReader interface {
 type AIService interface {
 	SuggestAnalysisDraft(ctx context.Context, cmd AnalysisDraftCommand) (AnalysisDraftResult, error)
 	SuggestAnalysisSection(ctx context.Context, cmd AnalysisSectionCommand) (AnalysisSectionResult, error)
+	DemandDocumentContext(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (DocumentContextResult, error)
 	IndexRequestAttachment(ctx context.Context, cmd IndexAttachmentCommand) error
 	RemoveRequestAttachmentChunks(ctx context.Context, tenant kernel.TenantID, attachmentID uuid.UUID) error
 	ClassifyDemand(ctx context.Context, cmd ClassifyDemandCommand) (ClassifyResult, error)

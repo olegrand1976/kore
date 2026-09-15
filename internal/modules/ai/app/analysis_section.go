@@ -105,10 +105,12 @@ Réponds par le texte de la section uniquement, sans préfixe de titre.`,
 	if err != nil {
 		return ports.AnalysisSectionResult{}, err
 	}
+	src := ragSources(sources)
 	return ports.AnalysisSectionResult{
-		Text:      text,
-		RequestID: reqID,
-		Sources:   ragSources(sources),
+		Text:          text,
+		RequestID:     reqID,
+		Sources:       src,
+		UsedDocuments: cmd.UseRAG && len(src) > 0,
 	}, nil
 }
 

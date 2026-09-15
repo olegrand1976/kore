@@ -24,10 +24,17 @@ func (m *memChunkRepo) ReplaceSourceChunks(_ context.Context, chunks []domain.Do
 		return nil
 	}
 	demandID := *chunks[0].DemandID
+	sourceID := chunks[0].SourceID
 	if m.byDemand == nil {
 		m.byDemand = make(map[uuid.UUID][]domain.DocumentChunk)
 	}
-	m.byDemand[demandID] = append(m.byDemand[demandID], chunks...)
+	kept := make([]domain.DocumentChunk, 0, len(m.byDemand[demandID]))
+	for _, c := range m.byDemand[demandID] {
+		if c.SourceID != sourceID {
+			kept = append(kept, c)
+		}
+	}
+	m.byDemand[demandID] = append(kept, chunks...)
 	return nil
 }
 
@@ -145,8 +152,31 @@ func TestSuggestAnalysisSection_withRAG(t *testing.T) {
 	assert.Contains(t, result.Text, "Impact utilisateur")
 	assert.NotContains(t, result.Text, "===UNTRUSTED")
 	assert.NotEqual(t, uuid.Nil, result.RequestID)
+	assert.True(t, result.UsedDocuments)
 	require.Len(t, result.Sources, 1)
 	assert.Equal(t, "spec.pdf", result.Sources[0].FileName)
 	assert.Len(t, repo.logs, 1)
 	assert.Equal(t, stub.ModelName, repo.logs[0].Model)
+}
+
+func TestDemandDocumentContext_countsChunks(t *testing.T) {
+	repo := &memRepo{capOn: true, tenantOn: true}
+	provider := stub.NewProvider()
+	demandID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	chunks := &memChunkRepo{
+		byDemand: map[uuid.UUID][]domain.DocumentChunk{
+			demandID: {{ID: uuid.New(), Content: "x"}},
+		},
+	}
+	tma := &fakeTMAReader{demand: tmadomain.Demand{ID: demandID, Subject: "Export"}}
+	svc := app.NewService(repo, provider, tma, nil, nil, nil, app.WithRAG(provider, chunks))
+
+	res, err := svc.DemandDocumentContext(context.Background(), tenant, demandID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.IndexedChunkCount)
+	assert.True(t, res.HasIndexedDocuments)
+
+	_, err = svc.DemandDocumentContext(context.Background(), tenant, uuid.New())
+	require.ErrorIs(t, err, domain.ErrAnalysisDemandNotFound)
 }

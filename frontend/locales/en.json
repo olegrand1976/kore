@@ -2108,7 +2108,10 @@
     "section_prompt_required": "Enter instructions before generating the section.",
     "section_generate": "Generate section",
     "use_attachments": "Use the request attachments as context",
-    "attachments_unavailable_for_ai": "No usable attachments (PDF, text, CSV…) — generation will run without documents."
+    "attachments_unavailable_for_ai": "No indexed attachments for AI (text PDF, TXT, MD, CSV…) — generation will run without documents.",
+    "attachments_not_applied": "No document excerpts could be used for this generation.",
+    "section_sources": "Documents used",
+    "section_source_item": "{file} — excerpt {n}"
   },
   "settings": {
     "title": "Settings",

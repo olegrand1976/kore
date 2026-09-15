@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"path/filepath"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -120,7 +121,7 @@ func downloadRequestAttachment(attachments ports.AttachmentService, authorizer a
 			return
 		}
 		w.Header().Set("Content-Type", att.MimeType)
-		w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(att.FileName))
+		w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(filepath.Base(att.FileName)))
 		http.ServeFile(w, r, path)
 	}
 }

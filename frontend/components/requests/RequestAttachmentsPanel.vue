@@ -33,10 +33,12 @@ const {
   uploadAll,
   downloadUrl,
   fetchContent,
+  remove,
   pickId,
   pickFileName,
   pickMimeType
 } = useRequestAttachments()
+const { fetchDocumentContext } = useAi()
 
 const resourceType = computed(() => REQUEST_RESOURCE[props.resource])
 const heading = computed(() => props.title || t('requests.form_attachments'))
@@ -68,7 +70,21 @@ const previewLoading = ref(false)
 const previewError = ref('')
 const previewSeq = ref(0)
 
-const emitIndexableDocs = () => {
+const emitIndexableDocs = async () => {
+  if (props.resource === 'tma' && props.resourceId) {
+    try {
+      const ctx = await fetchDocumentContext(props.resourceId)
+      emit('indexableDocsChanged', ctx.hasIndexedDocuments)
+      return
+    } catch {
+      emit('indexableDocsChanged', false)
+      return
+    }
+  }
+  if (props.resource === 'tma') {
+    emit('indexableDocsChanged', false)
+    return
+  }
   const ok = attachments.value.some(a => isIndexableAttachment(pickFileName(a)))
   emit('indexableDocsChanged', ok)
 }
@@ -132,7 +148,7 @@ const load = async () => {
   if (!props.resourceId) {
     attachments.value = []
     pending.value = false
-    emitIndexableDocs()
+    await emitIndexableDocs()
     return
   }
   pending.value = true
@@ -140,7 +156,7 @@ const load = async () => {
   try {
     attachments.value = await list(resourceType.value, props.resourceId)
     pickDefaultSelection()
-    emitIndexableDocs()
+    await emitIndexableDocs()
   } catch (e) {
     errorMsg.value = extractFetchError(e)
   } finally {
@@ -163,6 +179,26 @@ const onUpload = async () => {
     errorMsg.value = extractFetchError(e)
   } finally {
     uploading.value = false
+  }
+}
+
+const deletingId = ref('')
+const onDelete = async (id: string) => {
+  if (!id || !props.canUpload) return
+  deletingId.value = id
+  errorMsg.value = ''
+  try {
+    await remove(id)
+    if (selectedId.value === id) {
+      selectedId.value = ''
+      revokePreview()
+      previewKind.value = 'none'
+    }
+    await load()
+  } catch (e) {
+    errorMsg.value = extractFetchError(e)
+  } finally {
+    deletingId.value = ''
   }
 }
 </script>
@@ -198,6 +234,15 @@ const onUpload = async () => {
         >
           {{ t('requests.attachments_download') }}
         </a>
+        <button
+          v-if="canUpload"
+          type="button"
+          class="request-attachments__delete"
+          :disabled="deletingId === pickId(att)"
+          @click="onDelete(pickId(att))"
+        >
+          {{ deletingId === pickId(att) ? t('common.loading') : t('common.delete') }}
+        </button>
       </li>
     </ul>
     <p v-else-if="!pending" class="request-attachments__muted">{{ t('requests.attachments_empty') }}</p>
@@ -306,6 +351,21 @@ const onUpload = async () => {
   text-decoration: underline;
 }
 
+.request-attachments__delete {
+  border: 0;
+  background: transparent;
+  color: var(--kore-error);
+  font: inherit;
+  font-size: var(--kore-text-caption);
+  cursor: pointer;
+  padding: 0;
+}
+
+.request-attachments__delete:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .request-attachments__preview {
   display: grid;
   gap: var(--kore-space-sm);
@@ -369,7 +429,8 @@ const onUpload = async () => {
     align-items: stretch;
   }
 
-  .request-attachments__download {
+  .request-attachments__download,
+  .request-attachments__delete {
     width: 100%;
     text-align: center;
   }

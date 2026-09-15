@@ -19,6 +19,7 @@ func RegisterRoutes(r chi.Router, ai ports.AIService, tokens *authx.TokenIssuer,
 		pr.Use(httpx.AuthStack(tokens, entitlements))
 		pr.Post("/ai/tma/analysis-draft", analysisDraft(ai))
 		pr.Post("/ai/tma/analysis-section", analysisSection(ai))
+		pr.Get("/ai/tma/document-context", documentContext(ai))
 		pr.Post("/ai/tma/classify", classifyDemand(ai))
 		pr.Get("/ai/tma/similar", similarDemands(ai))
 		pr.Post("/ai/tma/suggest-assignee", suggestAssignee(ai))
@@ -98,7 +99,11 @@ func analysisSection(ai ports.AIService) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid body")
 			return
 		}
-		demandID, _ := uuid.Parse(body.DemandID)
+		demandID, err := uuid.Parse(body.DemandID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid demandId")
+			return
+		}
 		result, err := ai.SuggestAnalysisSection(r.Context(), ports.AnalysisSectionCommand{
 			TenantID: identity.TenantID,
 			UserID:   identity.UserID,
@@ -108,6 +113,23 @@ func analysisSection(ai ports.AIService) http.HandlerFunc {
 			UseRAG:   body.UseRAG,
 			Subject:  body.Subject,
 		})
+		if err != nil {
+			aiError(w, err)
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, result)
+	}
+}
+
+func documentContext(ai ports.AIService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, _ := authx.FromContext(r.Context())
+		demandID, err := uuid.Parse(r.URL.Query().Get("demandId"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid demandId")
+			return
+		}
+		result, err := ai.DemandDocumentContext(r.Context(), identity.TenantID, demandID)
 		if err != nil {
 			aiError(w, err)
 			return

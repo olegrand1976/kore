@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/ai/domain"
 	"github.com/kore/kore/internal/modules/ai/ports"
+	tmadomain "github.com/kore/kore/internal/modules/tma/domain"
 	"github.com/kore/kore/pkg/kernel"
 )
 
@@ -62,6 +64,31 @@ func (s *Service) RemoveRequestAttachmentChunks(ctx context.Context, tenant kern
 		return nil
 	}
 	return s.chunks.DeleteBySource(ctx, tenant, domain.SourceTypeRequestAttachment, attachmentID)
+}
+
+func (s *Service) DemandDocumentContext(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (ports.DocumentContextResult, error) {
+	if demandID == uuid.Nil {
+		return ports.DocumentContextResult{}, domain.ErrAnalysisDemandNotFound
+	}
+	if s.tma != nil {
+		if _, err := s.tma.GetDemand(ctx, tenant, demandID); err != nil {
+			if errors.Is(err, tmadomain.ErrDemandNotFound) {
+				return ports.DocumentContextResult{}, domain.ErrAnalysisDemandNotFound
+			}
+			return ports.DocumentContextResult{}, err
+		}
+	}
+	if s.chunks == nil {
+		return ports.DocumentContextResult{}, nil
+	}
+	n, err := s.chunks.CountByDemand(ctx, tenant, demandID)
+	if err != nil {
+		return ports.DocumentContextResult{}, err
+	}
+	return ports.DocumentContextResult{
+		IndexedChunkCount:   n,
+		HasIndexedDocuments: n > 0,
+	}, nil
 }
 
 func (s *Service) retrieveRAG(

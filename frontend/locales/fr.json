@@ -2327,7 +2327,10 @@
     "section_prompt_required": "Saisissez une consigne avant de générer la section.",
     "section_generate": "Générer la section",
     "use_attachments": "S'appuyer sur les pièces jointes du dossier",
-    "attachments_unavailable_for_ai": "Aucune pièce jointe exploitable (PDF, texte, CSV…) — la génération se fera sans documents."
+    "attachments_unavailable_for_ai": "Aucune pièce jointe indexée pour l'IA (PDF texte, TXT, MD, CSV…) — la génération se fera sans documents.",
+    "attachments_not_applied": "Aucun extrait documentaire n'a pu être utilisé pour cette génération.",
+    "section_sources": "Documents utilisés",
+    "section_source_item": "{file} — extrait {n}"
   },
   "settings": {
     "title": "Paramètres",

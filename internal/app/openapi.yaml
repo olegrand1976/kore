@@ -2515,7 +2515,7 @@ paths:
         "204": { description: Supprimé }
   /ai/tma/analysis-section:
     post:
-      summary: Générer une section du dossier d'analyse TMA (RAG optionnel)
+      summary: Générer une section du dossier d'analyse TMA (contexte documents optionnel)
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -2530,6 +2530,17 @@ paths:
                 prompt: { type: string }
                 useRAG: { type: boolean }
                 subject: { type: string }
+      responses:
+        "200": { description: OK }
+  /ai/tma/document-context:
+    get:
+      summary: Statut d'indexation des pièces jointes d'une demande TMA pour le contexte IA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: demandId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
       responses:
         "200": { description: OK }
   /ai/tma/analysis-draft:

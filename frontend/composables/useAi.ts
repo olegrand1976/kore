@@ -10,6 +10,18 @@ export type AnalysisDraftResponse = {
   requestId: string
 }
 
+export type AnalysisSectionResponse = {
+  text: string
+  requestId: string
+  usedDocuments?: boolean
+  sources?: Array<{ fileName: string; chunkIndex: number; score?: number }>
+}
+
+export type DocumentContextResponse = {
+  indexedChunkCount: number
+  hasIndexedDocuments: boolean
+}
+
 export type BriefingResponse = {
   text: string
   requestId: string
@@ -38,6 +50,16 @@ export type ChatResponse = {
   requestId: string
 }
 
+function unwrapData<T extends object>(res: T | { data?: T }): T {
+  if (res && typeof res === 'object' && 'data' in res) {
+    const nested = (res as { data?: T }).data
+    if (nested && typeof nested === 'object') {
+      return nested
+    }
+  }
+  return res as T
+}
+
 export function useAi() {
   const { apiFetch } = useApiFetch()
   const { extractFetchError } = useApiError()
@@ -47,10 +69,11 @@ export function useAi() {
     subject?: string
     applicationId?: string
   }): Promise<AnalysisDraftResponse> => {
-    return apiFetch<AnalysisDraftResponse>('/api/ai/tma/analysis-draft', {
-      method: 'POST',
-      body: payload
-    })
+    const res = await apiFetch<AnalysisDraftResponse | { data: AnalysisDraftResponse }>(
+      '/api/ai/tma/analysis-draft',
+      { method: 'POST', body: payload }
+    )
+    return unwrapData(res)
   }
 
   const generateAnalysisSection = async (payload: {
@@ -59,11 +82,20 @@ export function useAi() {
     prompt: string
     useRAG?: boolean
     subject?: string
-  }) => {
-    return apiFetch<{ text: string; requestId: string; sources?: Array<{ fileName: string; chunkIndex: number; score?: number }> }>(
+  }): Promise<AnalysisSectionResponse> => {
+    const res = await apiFetch<AnalysisSectionResponse | { data: AnalysisSectionResponse }>(
       '/api/ai/tma/analysis-section',
       { method: 'POST', body: payload }
     )
+    return unwrapData(res)
+  }
+
+  const fetchDocumentContext = async (demandId: string): Promise<DocumentContextResponse> => {
+    const res = await apiFetch<DocumentContextResponse | { data: DocumentContextResponse }>(
+      '/api/ai/tma/document-context',
+      { query: { demandId } }
+    )
+    return unwrapData(res)
   }
 
   const classifyDemand = async (subject: string) => {
@@ -139,6 +171,7 @@ export function useAi() {
     extractFetchError,
     generateAnalysisDraft,
     generateAnalysisSection,
+    fetchDocumentContext,
     classifyDemand,
     fetchBriefing,
     fetchManagerContext,

@@ -8,6 +8,8 @@ type AnalysisFields = {
 
 type SectionKey = keyof AnalysisFields
 
+type SectionSource = { fileName: string; chunkIndex: number }
+
 const props = defineProps<{
   analysis: AnalysisFields
   disabled?: boolean
@@ -41,6 +43,18 @@ const sectionUseAttachments = reactive<Record<SectionKey, boolean>>({
   testScenario: false
 })
 const sectionGenerated = reactive<Record<SectionKey, boolean>>({
+  functional: false,
+  technical: false,
+  risks: false,
+  testScenario: false
+})
+const sectionSources = reactive<Record<SectionKey, SectionSource[]>>({
+  functional: [],
+  technical: [],
+  risks: [],
+  testScenario: []
+})
+const sectionDocsMissed = reactive<Record<SectionKey, boolean>>({
   functional: false,
   technical: false,
   risks: false,
@@ -106,18 +120,26 @@ const onGenerateSection = async (key: SectionKey) => {
     sectionError.value[key] = t('ai.section_prompt_required')
     return
   }
+  const wantDocs = sectionUseAttachments[key] && !!props.hasIndexableDocs
   sectionError.value[key] = ''
   sectionBusy.value[key] = true
+  sectionSources[key] = []
+  sectionDocsMissed[key] = false
   try {
     const res = await generateAnalysisSection({
       demandId: props.demandId,
       section: key,
       prompt,
-      useRAG: sectionUseAttachments[key] && !!props.hasIndexableDocs,
+      useRAG: wantDocs,
       subject: props.subject
     })
     local[key] = res.text
     sectionGenerated[key] = true
+    sectionSources[key] = (res.sources ?? []).map(s => ({
+      fileName: s.fileName,
+      chunkIndex: s.chunkIndex
+    }))
+    sectionDocsMissed[key] = wantDocs && !res.usedDocuments
   } catch (err) {
     sectionError.value[key] = extractFetchError(err)
   } finally {
@@ -141,6 +163,13 @@ const onGenerateSection = async (key: SectionKey) => {
         <AppButton variant="ghost" size="sm" type="button" @click="dismissDraft">{{ $t('ai.reject') }}</AppButton>
       </div>
     </div>
+
+    <p
+      v-if="!disabled && demandId && !hasIndexableDocs"
+      class="analysis-editor__hint"
+    >
+      {{ $t('ai.attachments_unavailable_for_ai') }}
+    </p>
 
     <section
       v-for="sec in sections"
@@ -171,7 +200,6 @@ const onGenerateSection = async (key: SectionKey) => {
           >
           <span>{{ $t('ai.use_attachments') }}</span>
         </label>
-        <p v-if="!hasIndexableDocs" class="analysis-editor__hint">{{ $t('ai.attachments_unavailable_for_ai') }}</p>
         <div class="analysis-editor__section-actions">
           <AppButton
             variant="secondary"
@@ -185,6 +213,18 @@ const onGenerateSection = async (key: SectionKey) => {
           <AppAiBadge v-if="sectionGenerated[sec.key]" variant="generated" />
         </div>
         <p v-if="sectionError[sec.key]" class="flash flash--error" role="alert">{{ sectionError[sec.key] }}</p>
+        <p v-if="sectionDocsMissed[sec.key]" class="analysis-editor__hint" role="status">
+          {{ $t('ai.attachments_not_applied') }}
+        </p>
+        <ul
+          v-if="sectionSources[sec.key].length"
+          class="analysis-editor__sources"
+          :aria-label="$t('ai.section_sources')"
+        >
+          <li v-for="(src, idx) in sectionSources[sec.key]" :key="`${src.fileName}-${src.chunkIndex}-${idx}`">
+            {{ $t('ai.section_source_item', { file: src.fileName, n: src.chunkIndex + 1 }) }}
+          </li>
+        </ul>
         <p v-if="sectionGenerated[sec.key]" class="analysis-editor__disclaimer">{{ $t('ai.disclaimer') }}</p>
       </div>
     </section>
@@ -276,6 +316,13 @@ const onGenerateSection = async (key: SectionKey) => {
 
 .analysis-editor__hint {
   margin: 0;
+  font-size: var(--kore-text-caption);
+  color: var(--kore-text-muted);
+}
+
+.analysis-editor__sources {
+  margin: 0;
+  padding-left: 1.25rem;
   font-size: var(--kore-text-caption);
   color: var(--kore-text-muted);
 }
