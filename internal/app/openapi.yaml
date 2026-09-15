@@ -2532,6 +2532,137 @@ paths:
                 subject: { type: string }
       responses:
         "200": { description: OK }
+  /ai/tma/analysis-draft:
+    post:
+      summary: Générer un brouillon complet du dossier d'analyse TMA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/tma/classify:
+    post:
+      summary: Classifier une demande TMA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/tma/similar:
+    get:
+      summary: Demandes TMA similaires
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/tma/suggest-assignee:
+    post:
+      summary: Suggérer un assigné TMA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/tma/executive-summary:
+    post:
+      summary: Synthèse exécutive TMA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/cra/prefill-suggest:
+    post:
+      summary: Suggestion de préremplissage CRA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/cra/anomalies:
+    get:
+      summary: Anomalies CRA détectées
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/cra/comment-summary:
+    post:
+      summary: Résumé des commentaires CRA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/budget/estimate-effort:
+    post:
+      summary: Estimation d'effort budget
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/budget/demand-suggest:
+    get:
+      summary: Suggestions de demandes budget
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/budget/overrun-forecast:
+    get:
+      summary: Prévision de dépassement budget
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/dashboard/briefing:
+    get:
+      summary: Briefing dashboard IA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/conges/manager-context:
+    post:
+      summary: Contexte manager congés
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/conges/date-suggest:
+    post:
+      summary: Suggestion de dates de congés
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/workflow/explain:
+    get:
+      summary: Explication d'instance workflow
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/notifications/digest:
+    post:
+      summary: Digest notifications IA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/mobile/voice-cra:
+    post:
+      summary: Transcription vocale CRA
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/explain/{requestId}:
+    get:
+      summary: Expliquer une requête IA journalisée
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: requestId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK }
+  /ai/settings:
+    get:
+      summary: Paramètres IA du tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/settings/enable:
+    post:
+      summary: Activer l'assistance IA pour le tenant
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+  /ai/public/chat:
+    post:
+      summary: Chatbot public site vitrine
+      responses:
+        "200": { description: OK }
+  /ai/public/lead-scoring:
+    post:
+      summary: Scoring lead public
+      responses:
+        "200": { description: OK }
   /ett/clock-in:
     post:
       summary: Pointage entrée ETT

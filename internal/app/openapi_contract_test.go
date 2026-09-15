@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	adminhttp "github.com/kore/kore/internal/modules/admin/adapters/http"
+	aihttp "github.com/kore/kore/internal/modules/ai/adapters/http"
 	billinghttp "github.com/kore/kore/internal/modules/billing/adapters/http"
 	budgethttp "github.com/kore/kore/internal/modules/budget/adapters/http"
 	congeshttp "github.com/kore/kore/internal/modules/conges/adapters/http"
@@ -59,6 +60,7 @@ func buildAPIRouter() chi.Router {
 		etthttp.RegisterRoutes(r, nil, nil, nil, nil)
 		supporthttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
 		maintenancehttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
+		aihttp.RegisterRoutes(r, nil, nil, nil, nil)
 	})
 	return r
 }
