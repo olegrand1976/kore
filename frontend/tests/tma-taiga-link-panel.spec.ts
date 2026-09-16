@@ -34,11 +34,34 @@ describe('TaigaLinkPanel', () => {
     expect(panelSrc).toContain('hasLink')
     expect(panelSrc).toContain('externalUrl.value')
   })
+
+  it('exposes push CTA for unlinked demands', () => {
+    expect(panelSrc).toContain('canPush')
+    expect(panelSrc).toContain('tma.taiga_push')
+    expect(panelSrc).toContain('/push')
+  })
 })
 
 describe('TMA detail Taiga panel', () => {
   it('embeds TaigaLinkPanel for tma readers', () => {
     expect(tmaDetailSrc).toContain('TaigaLinkPanel')
     expect(tmaDetailSrc).toContain("can('tma', 'L')")
+    expect(tmaDetailSrc).toContain(':can-push')
+  })
+})
+
+describe('Taiga sync BFF', () => {
+  it('proxies sync and push endpoints', () => {
+    const syncSrc = readFileSync(
+      join(__dirname, '../server/api/integrations/taiga/sync.post.ts'),
+      'utf8'
+    )
+    const pushSrc = readFileSync(
+      join(__dirname, '../server/api/integrations/taiga/demands/[id]/push.post.ts'),
+      'utf8'
+    )
+    expect(syncSrc).toContain('/api/v1/integrations/taiga/sync')
+    expect(pushSrc).toContain('/api/v1/integrations/taiga/demands/')
+    expect(pushSrc).toContain('/push')
   })
 })

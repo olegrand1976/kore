@@ -72,15 +72,29 @@ type TaigaRepository interface {
 	UpsertExternalLink(ctx context.Context, link domain.ExternalLink) error
 	InsertApplicationProjectLink(ctx context.Context, link domain.ExternalLink) error
 	FindExternalLinkByKore(ctx context.Context, tenant kernel.TenantID, koreEntityType string, koreEntityID uuid.UUID) (domain.ExternalLink, error)
+	FindExternalLinkByExternal(ctx context.Context, tenant kernel.TenantID, provider, externalType, externalID string) (domain.ExternalLink, error)
+	FindApplicationByTaigaProjectID(ctx context.Context, tenant kernel.TenantID, taigaProjectID string) (domain.ExternalLink, error)
+	ListApplicationProjectLinks(ctx context.Context, tenant kernel.TenantID) ([]domain.ExternalLink, error)
 	ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error)
 	ListLinkedApplicationIDs(ctx context.Context, tenant kernel.TenantID) ([]uuid.UUID, error)
 	UpsertUserMapping(ctx context.Context, mapping domain.UserMapping) error
 	ListUserMappings(ctx context.Context, tenant kernel.TenantID, provider string) ([]domain.UserMapping, error)
 }
 
-// TaigaDemandGate checks Kore TMA demand existence for inbound webhooks.
+// TaigaDemandSummary is the minimal TMA demand surface for Taiga sync.
+type TaigaDemandSummary struct {
+	ID            uuid.UUID
+	ApplicationID uuid.UUID
+	Subject       string
+	Description   string
+}
+
+// TaigaDemandGate bridges integrations ↔ TMA for webhook/sync (no import of tma/app).
 type TaigaDemandGate interface {
 	KoreDemandExists(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (bool, error)
+	CreateDemandFromTaiga(ctx context.Context, tenant kernel.TenantID, applicationID, authorID uuid.UUID, subject, description string) (uuid.UUID, error)
+	GetDemandSummary(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) (TaigaDemandSummary, error)
+	ListDemandsByApplication(ctx context.Context, tenant kernel.TenantID, applicationID uuid.UUID) ([]TaigaDemandSummary, error)
 }
 
 type IntegrationRepository interface {

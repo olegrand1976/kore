@@ -23,6 +23,24 @@ func (g stubTaigaGateway) ListProjects(context.Context) ([]ports.TaigaProject, e
 	}
 	return g.projects, nil
 }
+func (g stubTaigaGateway) CreateIssue(context.Context, int, string, string, []string) (ports.TaigaIssue, error) {
+	if g.err != nil {
+		return ports.TaigaIssue{}, g.err
+	}
+	return ports.TaigaIssue{ID: 1, Ref: 1, ProjectID: 1, Version: 1}, nil
+}
+func (g stubTaigaGateway) ListProjectIssues(context.Context, int) ([]ports.TaigaIssue, error) {
+	if g.err != nil {
+		return nil, g.err
+	}
+	return nil, nil
+}
+func (g stubTaigaGateway) UpdateIssueExternalReference(context.Context, int, int, []string) (ports.TaigaIssue, error) {
+	if g.err != nil {
+		return ports.TaigaIssue{}, g.err
+	}
+	return ports.TaigaIssue{ID: 1, Version: 2}, nil
+}
 
 type stubApplicationCreator struct {
 	created []ports.CreateApplicationInput

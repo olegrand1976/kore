@@ -2063,6 +2063,30 @@ paths:
         "201": { description: Créé }
         "400": { description: Données invalides }
         "409": { description: Utilisateur Kore déjà mappé }
+  /integrations/taiga/sync:
+    post:
+      summary: Synchroniser Issues Taiga ↔ demandes TMA (projets liés)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+        "403": { description: Interdit }
+        "422": { description: Auteur de sync manquant (mapping utilisateur requis) }
+        "503": { description: Taiga non configuré }
+  /integrations/taiga/demands/{id}/push:
+    post:
+      summary: Créer l'issue Taiga pour une demande TMA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201": { description: Créé }
+        "403": { description: Interdit }
+        "409": { description: Déjà lié }
+        "422": { description: Application non liée ou demande introuvable }
+        "503": { description: Taiga non configuré }
   /invoices:
     get:
       summary: Liste factures

@@ -21,6 +21,8 @@ type CreateDemandCommand struct {
 	RequiresChefGate bool
 	EpicID           *uuid.UUID
 	StoryPoints      *int16
+	// SkipOutboundSync suppresses DemandCreatedHook (Taiga pull must not auto-push a duplicate issue).
+	SkipOutboundSync bool
 }
 
 type ChefUtilisateurCommand struct {
@@ -101,6 +103,10 @@ type NotificationEvent struct {
 	Subject  string
 	Body     string
 	Vars     map[string]string
+}
+
+type DemandCreatedHook interface {
+	OnDemandCreated(ctx context.Context, tenant kernel.TenantID, demandID uuid.UUID) error
 }
 
 type TMAService interface {

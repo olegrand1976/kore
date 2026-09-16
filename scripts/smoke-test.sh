@@ -178,6 +178,12 @@ TAIGA_LINK_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
   "http://localhost:${API_PORT}/api/v1/integrations/taiga/links/by-application/${DEMO_APP}" \
   -H "Authorization: Bearer $TOKEN")
 test "$TAIGA_LINK_CODE" = "404" -o "$TAIGA_LINK_CODE" = "200" -o "$TAIGA_LINK_CODE" = "503"
+# Sync bidirectionnel Issues ↔ demandes (200 si compte service OK ; 503 sinon ; 422 si mapping auteur manquant)
+TAIGA_SYNC_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+  "http://localhost:${API_PORT}/api/v1/integrations/taiga/sync" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json')
+test "$TAIGA_SYNC_CODE" = "200" -o "$TAIGA_SYNC_CODE" = "503" -o "$TAIGA_SYNC_CODE" = "422"
 
 # Project agile (manager + app seed DemoAppID)
 curl -sf "http://localhost:${API_PORT}/api/v1/project/applications" -H "Authorization: Bearer $MGR_TOKEN" >/dev/null

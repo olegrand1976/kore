@@ -84,3 +84,48 @@ func TestCreateDemandWithAssigneeAndChefGatePreAssigns(t *testing.T) {
 		t.Fatalf("expected not visible under chef gate")
 	}
 }
+
+type countingDemandHook struct {
+	calls int
+}
+
+func (h *countingDemandHook) OnDemandCreated(context.Context, kernel.TenantID, uuid.UUID) error {
+	h.calls++
+	return nil
+}
+
+func TestCreateDemandSkipOutboundSyncDoesNotInvokeHook(t *testing.T) {
+	repo := &fakeDemandRepo{}
+	svc := NewService(repo, nil, nil).(*service)
+	hook := &countingDemandHook{}
+	svc.SetDemandCreatedHook(hook)
+
+	_, err := svc.CreateDemand(context.Background(), ports.CreateDemandCommand{
+		TenantID:         kernel.NewTenantID(uuid.New()),
+		ApplicationID:    uuid.New(),
+		AuthorID:         uuid.New(),
+		Subject:          "From Taiga",
+		Priority:         "normal",
+		SkipOutboundSync: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateDemand: %v", err)
+	}
+	if hook.calls != 0 {
+		t.Fatalf("hook calls = %d, want 0", hook.calls)
+	}
+
+	_, err = svc.CreateDemand(context.Background(), ports.CreateDemandCommand{
+		TenantID:      kernel.NewTenantID(uuid.New()),
+		ApplicationID: uuid.New(),
+		AuthorID:      uuid.New(),
+		Subject:       "From Kore",
+		Priority:      "normal",
+	})
+	if err != nil {
+		t.Fatalf("CreateDemand: %v", err)
+	}
+	if hook.calls != 1 {
+		t.Fatalf("hook calls = %d, want 1", hook.calls)
+	}
+}

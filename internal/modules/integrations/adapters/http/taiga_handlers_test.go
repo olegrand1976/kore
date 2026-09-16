@@ -30,6 +30,15 @@ func (stubTaigaRepo) InsertApplicationProjectLink(context.Context, domain.Extern
 func (stubTaigaRepo) FindExternalLinkByKore(context.Context, kernel.TenantID, string, uuid.UUID) (domain.ExternalLink, error) {
 	return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
 }
+func (stubTaigaRepo) FindExternalLinkByExternal(context.Context, kernel.TenantID, string, string, string) (domain.ExternalLink, error) {
+	return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
+}
+func (stubTaigaRepo) FindApplicationByTaigaProjectID(context.Context, kernel.TenantID, string) (domain.ExternalLink, error) {
+	return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
+}
+func (stubTaigaRepo) ListApplicationProjectLinks(context.Context, kernel.TenantID) ([]domain.ExternalLink, error) {
+	return nil, nil
+}
 func (stubTaigaRepo) UpsertUserMapping(context.Context, domain.UserMapping) error { return nil }
 func (stubTaigaRepo) ListLinkedTaigaProjectIDs(context.Context, kernel.TenantID) ([]string, error) {
 	return nil, nil

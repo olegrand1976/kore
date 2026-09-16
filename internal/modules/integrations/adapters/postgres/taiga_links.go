@@ -122,6 +122,57 @@ func (r *Repository) FindExternalLinkByKore(ctx context.Context, tenant kernel.T
 	`, tenant.UUID(), koreEntityType, koreEntityID))
 }
 
+func (r *Repository) FindExternalLinkByExternal(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	provider, externalType, externalID string,
+) (domain.ExternalLink, error) {
+	return r.scanExternalLink(r.pool.QueryRow(ctx, `
+		SELECT id, tenant_id, provider, external_type, external_id,
+			external_project_id, external_ref, external_url,
+			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
+		FROM integrations.external_links
+		WHERE tenant_id = $1 AND provider = $2 AND external_type = $3 AND external_id = $4
+		LIMIT 1
+	`, tenant.UUID(), provider, externalType, externalID))
+}
+
+func (r *Repository) FindApplicationByTaigaProjectID(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	taigaProjectID string,
+) (domain.ExternalLink, error) {
+	return r.FindExternalLinkByExternal(ctx, tenant, "taiga", "project", taigaProjectID)
+}
+
+func (r *Repository) ListApplicationProjectLinks(ctx context.Context, tenant kernel.TenantID) ([]domain.ExternalLink, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, tenant_id, provider, external_type, external_id,
+			external_project_id, external_ref, external_url,
+			kore_entity_type, kore_entity_id, metadata, last_sync_at, created_at, updated_at
+		FROM integrations.external_links
+		WHERE tenant_id = $1 AND provider = 'taiga' AND external_type = 'project'
+			AND kore_entity_type = 'application'
+		ORDER BY created_at
+	`, tenant.UUID())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []domain.ExternalLink
+	for rows.Next() {
+		link, err := r.scanExternalLink(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, link)
+	}
+	if out == nil {
+		out = []domain.ExternalLink{}
+	}
+	return out, rows.Err()
+}
+
 func (r *Repository) ListLinkedTaigaProjectIDs(ctx context.Context, tenant kernel.TenantID) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT external_id

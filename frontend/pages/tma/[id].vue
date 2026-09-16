@@ -54,7 +54,7 @@
         />
       </AppCard>
 
-      <TaigaLinkPanel v-if="can('tma', 'L')" :demand-id="id" />
+      <TaigaLinkPanel v-if="can('tma', 'L')" :demand-id="id" :can-push="can('tma', 'E')" />
 
       <AppCard padding="lg" class="mb">
         <h2 class="section-title">{{ $t('tma.analysis_title') }}</h2>

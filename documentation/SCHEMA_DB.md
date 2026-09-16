@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 15/09/2026 (ai `document_chunks` pgvector + capability `tma.analysis_section`)
+> **Dernière mise à jour doc** : 16/09/2026 (sync bidirectionnel Taiga Issues ↔ demandes TMA)
 
 ---
 
@@ -1452,12 +1452,14 @@ Liens bidirectionnels Kore ↔ outils externes (Taiga).
 | `external_url` | TEXT | NOT NULL, DEFAULT `''` |
 | `kore_entity_type` | TEXT | NOT NULL, DEFAULT `'demand'` |
 | `kore_entity_id` | UUID | NOT NULL |
-| `metadata` | JSONB | NOT NULL, DEFAULT `'{}'` |
+| `metadata` | JSONB | NOT NULL, DEFAULT `'{}'` — ex. `syncOrigin` (`kore` \| `taiga`), `action` webhook |
 | `last_sync_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |
 
 Index : `(tenant_id, kore_entity_type, kore_entity_id)`. Unique : `(tenant_id, provider, external_type, external_id)` et `(tenant_id, kore_entity_type, kore_entity_id)`.
+
+Types d'usage Taiga : `external_type=project` + `kore_entity_type=application` ; `external_type=issue` (ou `userstory`/`task` legacy webhook) + `kore_entity_type=demand`. Sync bidirectionnel Issues ↔ demandes TMA via `POST /integrations/taiga/sync`.
 
 ### `integrations.user_mappings`
 

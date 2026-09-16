@@ -11,13 +11,14 @@ import (
 )
 
 type service struct {
-	repo           ports.DemandRepository
-	workflow       ports.WorkflowService
-	cra            ports.CRAFeeder
-	notifier       ports.NotificationPublisher
-	clock          ports.Clock
-	agileValidator ports.AgileArtifactValidator
-	wipChecker     ports.WipChecker
+	repo              ports.DemandRepository
+	workflow          ports.WorkflowService
+	cra               ports.CRAFeeder
+	notifier          ports.NotificationPublisher
+	clock             ports.Clock
+	agileValidator    ports.AgileArtifactValidator
+	wipChecker        ports.WipChecker
+	demandCreatedHook ports.DemandCreatedHook
 }
 
 func NewService(
@@ -54,6 +55,10 @@ func WithAgileValidator(v ports.AgileArtifactValidator) Option {
 
 func WithWipChecker(w ports.WipChecker) Option {
 	return func(s *service) { s.wipChecker = w }
+}
+
+func (s *service) SetDemandCreatedHook(hook ports.DemandCreatedHook) {
+	s.demandCreatedHook = hook
 }
 
 type realClock struct{}
@@ -104,7 +109,17 @@ func (s *service) CreateDemand(ctx context.Context, cmd ports.CreateDemandComman
 	if err := s.repo.Save(ctx, demand); err != nil {
 		return domain.Demand{}, err
 	}
-	return s.repo.Get(ctx, demand.TenantID, demand.ID)
+	saved, err := s.repo.Get(ctx, demand.TenantID, demand.ID)
+	if err != nil {
+		return domain.Demand{}, err
+	}
+	if s.demandCreatedHook != nil && !cmd.SkipOutboundSync {
+		if hookErr := s.demandCreatedHook.OnDemandCreated(ctx, saved.TenantID, saved.ID); hookErr != nil {
+			// Best-effort outbound sync must not fail demand creation.
+			_ = hookErr
+		}
+	}
+	return saved, nil
 }
 
 func (s *service) Get(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (domain.Demand, error) {

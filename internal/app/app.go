@@ -112,6 +112,7 @@ import (
 	tmaproject "github.com/kore/kore/internal/modules/tma/adapters/project"
 	tmaworkflow "github.com/kore/kore/internal/modules/tma/adapters/workflow"
 	tmaapp "github.com/kore/kore/internal/modules/tma/app"
+	tmaports "github.com/kore/kore/internal/modules/tma/ports"
 	wfhttp "github.com/kore/kore/internal/modules/workflow/adapters/http"
 	wfnotif "github.com/kore/kore/internal/modules/workflow/adapters/notifications"
 	wfpostgres "github.com/kore/kore/internal/modules/workflow/adapters/postgres"
@@ -316,6 +317,11 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		BaseURL:     cfg.TaigaBaseURL,
 		ProjectSlug: cfg.TaigaProjectSlug,
 	}, integrationstma.NewDemandGate(tmaService), taigaGateway, taigaAppCreator)
+	if setter, ok := tmaService.(interface {
+		SetDemandCreatedHook(tmaports.DemandCreatedHook)
+	}); ok {
+		setter.SetDemandCreatedHook(taigaIntegrationService)
+	}
 	adminService := adminapp.NewService(adminRepo)
 	reportingLeaveReader := reportingconges.NewLeaveReader(congesService)
 	reportingService := reportingapp.NewService(

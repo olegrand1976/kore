@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,28 +53,20 @@ func Enabled(cfg Config) bool {
 		cfg.Password != ""
 }
 
-func (c *Client) ListProjects(ctx context.Context) ([]ports.TaigaProject, error) {
+func (c *Client) ensureConfigured() error {
 	if c.apiBase == "" || c.username == "" || c.password == "" {
-		return nil, domain.ErrTaigaNotConfigured
+		return domain.ErrTaigaNotConfigured
 	}
-	token, err := c.auth(ctx)
-	if err != nil {
+	return nil
+}
+
+func (c *Client) ListProjects(ctx context.Context) ([]ports.TaigaProject, error) {
+	if err := c.ensureConfigured(); err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiBase+"/projects", nil)
+	body, err := c.doJSON(ctx, http.MethodGet, "/projects", nil)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/json")
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrTaigaUnavailable, err)
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("%w: status %d", domain.ErrTaigaUnavailable, resp.StatusCode)
 	}
 	var raw []struct {
 		ID   int    `json:"id"`
@@ -94,6 +88,150 @@ func (c *Client) ListProjects(ctx context.Context) ([]ports.TaigaProject, error)
 		})
 	}
 	return out, nil
+}
+
+func (c *Client) CreateIssue(
+	ctx context.Context,
+	projectID int,
+	subject, description string,
+	externalRef []string,
+) (ports.TaigaIssue, error) {
+	if err := c.ensureConfigured(); err != nil {
+		return ports.TaigaIssue{}, err
+	}
+	if projectID <= 0 {
+		return ports.TaigaIssue{}, domain.ErrTaigaProjectNotFound
+	}
+	payload := map[string]any{
+		"project":     projectID,
+		"subject":     strings.TrimSpace(subject),
+		"description": strings.TrimSpace(description),
+	}
+	if len(externalRef) > 0 {
+		payload["external_reference"] = externalRef
+	}
+	body, err := c.doJSON(ctx, http.MethodPost, "/issues", payload)
+	if err != nil {
+		return ports.TaigaIssue{}, err
+	}
+	return decodeIssue(body)
+}
+
+func (c *Client) ListProjectIssues(ctx context.Context, projectID int) ([]ports.TaigaIssue, error) {
+	if err := c.ensureConfigured(); err != nil {
+		return nil, err
+	}
+	if projectID <= 0 {
+		return nil, domain.ErrTaigaProjectNotFound
+	}
+	path := "/issues?" + url.Values{"project": {strconv.Itoa(projectID)}}.Encode()
+	body, err := c.doJSON(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	var raw []json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("taiga decode issues: %w", err)
+	}
+	out := make([]ports.TaigaIssue, 0, len(raw))
+	for _, item := range raw {
+		issue, err := decodeIssue(item)
+		if err != nil {
+			continue
+		}
+		if issue.ID <= 0 {
+			continue
+		}
+		out = append(out, issue)
+	}
+	return out, nil
+}
+
+func (c *Client) UpdateIssueExternalReference(
+	ctx context.Context,
+	issueID int,
+	version int,
+	externalRef []string,
+) (ports.TaigaIssue, error) {
+	if err := c.ensureConfigured(); err != nil {
+		return ports.TaigaIssue{}, err
+	}
+	if issueID <= 0 {
+		return ports.TaigaIssue{}, domain.ErrTaigaUnavailable
+	}
+	payload := map[string]any{
+		"version":            version,
+		"external_reference": externalRef,
+	}
+	body, err := c.doJSON(ctx, http.MethodPatch, fmt.Sprintf("/issues/%d", issueID), payload)
+	if err != nil {
+		return ports.TaigaIssue{}, err
+	}
+	return decodeIssue(body)
+}
+
+func decodeIssue(body []byte) (ports.TaigaIssue, error) {
+	var raw struct {
+		ID                int    `json:"id"`
+		Ref               int    `json:"ref"`
+		Project           int    `json:"project"`
+		Subject           string `json:"subject"`
+		Description       string `json:"description"`
+		Version           int    `json:"version"`
+		ExternalReference []any  `json:"external_reference"`
+		Permalink         string `json:"permalink"`
+	}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return ports.TaigaIssue{}, fmt.Errorf("taiga decode issue: %w", err)
+	}
+	refs := make([]string, 0, len(raw.ExternalReference))
+	for _, v := range raw.ExternalReference {
+		refs = append(refs, fmt.Sprint(v))
+	}
+	return ports.TaigaIssue{
+		ID:                raw.ID,
+		Ref:               raw.Ref,
+		ProjectID:         raw.Project,
+		Subject:           strings.TrimSpace(raw.Subject),
+		Description:       strings.TrimSpace(raw.Description),
+		Version:           raw.Version,
+		ExternalReference: refs,
+		Permalink:         strings.TrimSpace(raw.Permalink),
+	}, nil
+}
+
+func (c *Client) doJSON(ctx context.Context, method, path string, payload any) ([]byte, error) {
+	token, err := c.auth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var reader io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.apiBase+path, reader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrTaigaUnavailable, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("%w: status %d", domain.ErrTaigaUnavailable, resp.StatusCode)
+	}
+	return body, nil
 }
 
 func (c *Client) auth(ctx context.Context) (string, error) {
@@ -130,3 +268,5 @@ func (c *Client) auth(ctx context.Context) (string, error) {
 	}
 	return parsed.AuthToken, nil
 }
+
+var _ ports.TaigaGateway = (*Client)(nil)

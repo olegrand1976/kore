@@ -30,6 +30,8 @@ func RegisterTaigaRoutes(r chi.Router, taiga *app.TaigaService, tokens *authx.To
 		pr.Post("/integrations/taiga/applications/import", importTaigaApplications(taiga, authorizer))
 		pr.Get("/integrations/taiga/user-mappings", listTaigaUserMappings(taiga, authorizer))
 		pr.Post("/integrations/taiga/user-mappings", upsertTaigaUserMapping(taiga, authorizer))
+		pr.Post("/integrations/taiga/sync", syncTaiga(taiga, authorizer))
+		pr.Post("/integrations/taiga/demands/{id}/push", pushTaigaDemand(taiga, authorizer))
 	})
 }
 
@@ -98,6 +100,62 @@ func findTaigaLinkByDemand(taiga *app.TaigaService, authorizer authx.Authorizer)
 			return
 		}
 		httpx.WriteData(w, http.StatusOK, link)
+	}
+}
+
+func syncTaiga(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "integrations", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		actor := identity.UserID
+		result, err := taiga.SyncLinkedProjects(r.Context(), identity.TenantID, &actor)
+		if errors.Is(err, domain.ErrTaigaNotConfigured) || errors.Is(err, domain.ErrTaigaUnavailable) {
+			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		if errors.Is(err, domain.ErrTaigaSyncAuthorRequired) {
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+			return
+		}
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+			return
+		}
+		httpx.WriteData(w, http.StatusOK, result)
+	}
+}
+
+func pushTaigaDemand(taiga *app.TaigaService, authorizer authx.Authorizer) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !authorizer.Can(r.Context(), "tma", authx.ActionWrite) {
+			httpx.WriteError(w, http.StatusForbidden, httpx.ErrCodeForbidden, "forbidden")
+			return
+		}
+		demandID, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, httpx.ErrCodeValidation, "invalid demand id")
+			return
+		}
+		identity, _ := authx.FromContext(r.Context())
+		link, err := taiga.PushDemandToTaiga(r.Context(), identity.TenantID, demandID)
+		switch {
+		case errors.Is(err, domain.ErrTaigaNotConfigured), errors.Is(err, domain.ErrTaigaUnavailable):
+			httpx.WriteError(w, http.StatusServiceUnavailable, httpx.ErrCodeInternal, err.Error())
+		case errors.Is(err, domain.ErrTaigaDemandAlreadyLinked):
+			httpx.WriteError(w, http.StatusConflict, httpx.ErrCodeConflict, err.Error())
+		case errors.Is(err, domain.ErrTaigaApplicationNotLinked),
+			errors.Is(err, domain.ErrExternalLinkNotFound),
+			errors.Is(err, domain.ErrKoreDemandNotFound),
+			errors.Is(err, domain.ErrTaigaProjectNotFound):
+			httpx.WriteError(w, http.StatusUnprocessableEntity, httpx.ErrCodeValidation, err.Error())
+		case err != nil:
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.ErrCodeInternal, err.Error())
+		default:
+			httpx.WriteData(w, http.StatusCreated, link)
+		}
 	}
 }
 

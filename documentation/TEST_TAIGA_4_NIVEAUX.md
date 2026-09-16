@@ -134,6 +134,16 @@ Webhook `type: "task"` (même demande, upsert) → **OK** après fix SQL :
 - Kore TMA : type domaine `incident` uniquement — pas de distinction incident / issue côté Kore.
 - Unicité : 1 lien Taiga par demande (`external_links_kore_entity_unique`).
 
+### Sync bidirectionnel (depuis Kore) — livré
+
+| Flux | Endpoint / trigger | Prérequis |
+|------|-------------------|-----------|
+| Kore → Taiga | Hook `CreateDemand` + CTA panneau + push | App liée à un projet + compte service |
+| Taiga → Kore | Webhook `type=issue` create (sans `external_reference`) + `POST /integrations/taiga/sync` | Projet lié + **mapping utilisateur** (auteur) |
+| Admin | Bouton « Synchroniser Taiga » sur `/admin/integrations` | `integrations:E` |
+
+Ops : `./scripts/taiga-setup-gcp.sh` puis secrets `kore-taiga-service-*` + redeploy.
+
 ---
 
 ## Écarts priorisés (roadmap)

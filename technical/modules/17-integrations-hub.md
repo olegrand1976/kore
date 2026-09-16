@@ -176,9 +176,11 @@ Peut être regroupé sous [13-admin-parametrage.md](13-admin-parametrage.md) §a
 - [ ] Connecteur calendrier (Google ou M365).
 - [ ] Au moins 2 providers compta.
 
-## 13. Connecteur Taiga (phase 2 — inbound)
+## 13. Connecteur Taiga (phase 2 inbound + phase 3 sync issues)
 
-Webhook entrant Taiga → lien `external_links` ↔ demande TMA Kore. Sync sortant (création user story) : phase 3.
+Webhook entrant Taiga → lien `external_links` ↔ demande TMA Kore.  
+**Sync bidirectionnel (depuis Kore)** : Issues Taiga ↔ demandes TMA (création auto / `POST /integrations/taiga/sync` / CTA fiche demande).  
+Prérequis : secrets compte service `kore-taiga-service-username` / `password` (+ `TAIGA_BASE_URL`) injectés sur Cloud Run — sinon `503 taiga not configured`.
 
 ### Configuration GCP
 
@@ -208,7 +210,10 @@ echo -n 'mon-projet' | gcloud secrets versions add kore-taiga-project-slug --dat
 - **Auth** : header `X-Taiga-Webhook-Secret` (smoke / relais) **ou** signature native `X-TAIGA-WEBHOOK-SIGNATURE` (HMAC-SHA1 du corps brut)
 - **Header optionnel** : `X-Kore-Tenant-ID: <uuid-tenant>`
 - **Rate-limit** : 60 req/min/IP (Redis), **après** validation du secret/signature
-- **Validation** : la demande TMA Kore doit exister (`422` sinon)
+- **Validation** :
+  - `userstory` / `task` / `issue` avec `external_reference = ["kore", <uuid>]` → upsert lien (demande doit exister, sinon `422`)
+  - `issue` create **sans** ref kore + projet lié à une application → crée une demande TMA + lien + pose `external_reference` côté Taiga
+  - anti-boucle : ignore les `change` dont le seul delta est `external_reference` ; metadata `syncOrigin`
 
 Script ops complet : `TAIGA_BASE_URL=... TAIGA_PROJECT_SLUG=... ./scripts/taiga-ops-complete.sh`
 

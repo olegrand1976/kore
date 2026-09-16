@@ -44,6 +44,18 @@
 
     <AppCard padding="lg" class="mb">
       <div class="section-head">
+        <h2 class="section-title">{{ $t('integrations.taiga_sync_title') }}</h2>
+        <AppButton variant="secondary" size="sm" :loading="taigaSyncPending" @click="runTaigaSync">
+          {{ $t('integrations.taiga_sync_button') }}
+        </AppButton>
+      </div>
+      <p class="section-hint">{{ $t('integrations.taiga_sync_subtitle') }}</p>
+      <p v-if="taigaSyncMsg" class="mapping-success">{{ taigaSyncMsg }}</p>
+      <p v-if="taigaSyncError" class="mapping-error">{{ taigaSyncError }}</p>
+    </AppCard>
+
+    <AppCard padding="lg" class="mb">
+      <div class="section-head">
         <h2 class="section-title">{{ $t('integrations.taiga_mappings_title') }}</h2>
         <AppButton variant="secondary" size="sm" @click="toggleMappingForm">
           {{ $t('integrations.taiga_mappings_add') }}
@@ -221,6 +233,42 @@ const mappingForm = reactive({
   koreUserId: '',
   matchMethod: 'email'
 })
+
+const taigaSyncPending = ref(false)
+const taigaSyncMsg = ref('')
+const taigaSyncError = ref('')
+const { extractFetchError } = useApiError()
+
+const runTaigaSync = async () => {
+  taigaSyncPending.value = true
+  taigaSyncMsg.value = ''
+  taigaSyncError.value = ''
+  try {
+    const res = await apiFetch<{
+      data?: { pulled?: number; pushed?: number; skipped?: number; errors?: string[] }
+      pulled?: number
+      pushed?: number
+      skipped?: number
+      errors?: string[]
+    }>('/api/integrations/taiga/sync', { method: 'POST' })
+    const data = res?.data ?? res
+    const errors = data?.errors ?? []
+    const key = errors.length > 0 ? 'integrations.taiga_sync_done_with_errors' : 'integrations.taiga_sync_done'
+    taigaSyncMsg.value = t(key, {
+      pulled: data?.pulled ?? 0,
+      pushed: data?.pushed ?? 0,
+      skipped: data?.skipped ?? 0,
+      errorCount: errors.length
+    })
+    if (errors.length > 0) {
+      taigaSyncError.value = errors.slice(0, 5).join(' · ')
+    }
+  } catch (err) {
+    taigaSyncError.value = extractFetchError(err) || t('integrations.taiga_sync_error')
+  } finally {
+    taigaSyncPending.value = false
+  }
+}
 
 const connectFec = async () => {
   connectPending.value = true

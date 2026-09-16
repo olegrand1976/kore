@@ -1,9 +1,11 @@
 <script setup lang="ts">
 const props = defineProps<{
   demandId: string
+  canPush?: boolean
 }>()
 
 const { apiFetch } = useApiFetch()
+const { extractFetchError } = useApiError()
 const { t } = useI18n()
 
 type TaigaLink = {
@@ -17,6 +19,8 @@ type TaigaLink = {
 
 const link = ref<TaigaLink | null>(null)
 const loaded = ref(false)
+const pushing = ref(false)
+const pushError = ref('')
 
 const externalRef = computed(() => link.value?.externalRef ?? link.value?.ExternalRef ?? null)
 const externalUrl = computed(() => {
@@ -40,6 +44,7 @@ async function loadLink(demandId: string) {
   const generation = ++loadGeneration
   loaded.value = false
   link.value = null
+  pushError.value = ''
   try {
     const res = await apiFetch<{ data?: TaigaLink }>(
       `/api/integrations/taiga/links/by-demand/${demandId}`
@@ -53,6 +58,23 @@ async function loadLink(demandId: string) {
     if (generation === loadGeneration) {
       loaded.value = true
     }
+  }
+}
+
+async function pushToTaiga() {
+  if (!props.demandId || pushing.value) return
+  pushing.value = true
+  pushError.value = ''
+  try {
+    const res = await apiFetch<{ data?: TaigaLink }>(
+      `/api/integrations/taiga/demands/${props.demandId}/push`,
+      { method: 'POST' }
+    )
+    link.value = res?.data ?? res ?? null
+  } catch (e) {
+    pushError.value = extractFetchError(e) || t('tma.taiga_push_error')
+  } finally {
+    pushing.value = false
   }
 }
 
@@ -85,7 +107,21 @@ watch(
         {{ $t('tma.taiga_open') }}
       </a>
     </template>
-    <p v-else class="muted">{{ $t('tma.taiga_not_linked') }}</p>
+    <template v-else>
+      <p class="muted">{{ $t('tma.taiga_not_linked') }}</p>
+      <AppButton
+        v-if="canPush"
+        variant="secondary"
+        size="sm"
+        type="button"
+        class="taiga-panel__push"
+        :disabled="pushing"
+        @click="pushToTaiga"
+      >
+        {{ pushing ? $t('common.loading') : $t('tma.taiga_push') }}
+      </AppButton>
+      <p v-if="pushError" class="taiga-panel__error" role="alert">{{ pushError }}</p>
+    </template>
   </AppCard>
 </template>
 
@@ -116,6 +152,15 @@ watch(
 .taiga-panel__link:hover {
   background: color-mix(in srgb, var(--kore-accent) 8%, transparent);
 }
+.taiga-panel__push {
+  margin-top: var(--kore-space-sm);
+  width: 100%;
+}
+.taiga-panel__error {
+  margin: var(--kore-space-sm) 0 0;
+  color: var(--kore-error);
+  font-size: var(--kore-text-small);
+}
 .muted {
   color: var(--kore-text-muted);
 }
@@ -126,6 +171,9 @@ watch(
   .taiga-panel__link {
     width: auto;
     justify-content: flex-start;
+  }
+  .taiga-panel__push {
+    width: auto;
   }
 }
 </style>

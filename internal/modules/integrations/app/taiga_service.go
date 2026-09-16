@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -50,9 +51,11 @@ func (cmd UpsertUserMappingCommand) Validate() error {
 }
 
 type TaigaWebhookPayload struct {
-	Action string         `json:"action"`
-	Type   string         `json:"type"`
-	Data   map[string]any `json:"data"`
+	Action     string         `json:"action"`
+	Type       string         `json:"type"`
+	Data       map[string]any `json:"data"`
+	ValuesDiff map[string]any `json:"values_diff"`
+	Change     map[string]any `json:"change"`
 }
 
 func (s *TaigaService) UpsertUserMapping(ctx context.Context, cmd UpsertUserMappingCommand) (domain.UserMapping, error) {
@@ -90,22 +93,43 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 		return fmt.Errorf("invalid webhook payload: %w", err)
 	}
 	data := payload.Data
-	extRaw, ok := data["external_reference"]
-	if !ok {
+	if data == nil {
+		data = map[string]any{}
+	}
+
+	// Ignore change events that only stamp external_reference from Kore (anti-loop).
+	if payload.Action == "change" && isExternalReferenceOnlyChange(payload, data) {
 		return nil
 	}
-	extSlice, ok := extRaw.([]any)
-	if !ok || len(extSlice) < 2 {
-		return nil
+
+	entityType := payload.Type
+	if entityType == "" {
+		entityType = "userstory"
 	}
-	if fmt.Sprint(extSlice[0]) != "kore" {
-		return nil
+
+	if extRaw, ok := data["external_reference"]; ok {
+		if demandID, ok := parseKoreDemandRef(extRaw); ok {
+			return s.linkExistingDemandFromWebhook(ctx, tenant, payload.Action, entityType, data, demandID)
+		}
+		if isKoreRefShape(extRaw) {
+			return fmt.Errorf("%w: %q", domain.ErrInvalidKoreDemandID, fmt.Sprint(extRaw))
+		}
 	}
-	koreIDRaw := fmt.Sprint(extSlice[1])
-	koreID, err := uuid.Parse(koreIDRaw)
-	if err != nil {
-		return fmt.Errorf("%w: %q", domain.ErrInvalidKoreDemandID, koreIDRaw)
+
+	// Phase 3: create Kore demand from new Taiga issue on a linked project.
+	if entityType == "issue" && (payload.Action == "create" || payload.Action == "") {
+		return s.createDemandFromWebhookIssue(ctx, tenant, data)
 	}
+	return nil
+}
+
+func (s *TaigaService) linkExistingDemandFromWebhook(
+	ctx context.Context,
+	tenant kernel.TenantID,
+	action, entityType string,
+	data map[string]any,
+	koreID uuid.UUID,
+) error {
 	if s.demands != nil {
 		exists, err := s.demands.KoreDemandExists(ctx, tenant, koreID)
 		if err != nil {
@@ -115,31 +139,109 @@ func (s *TaigaService) HandleWebhook(ctx context.Context, tenant kernel.TenantID
 			return domain.ErrKoreDemandNotFound
 		}
 	}
-	entityType := payload.Type
-	if entityType == "" {
-		entityType = "userstory"
-	}
 	entityID := fmt.Sprint(data["id"])
 	projectID := intFromAny(data["project"])
 	ref := intFromAny(data["ref"])
 	externalURL := resolveTaigaExternalURL(data, s.cfg, ref)
 	now := time.Now().UTC()
+	extType := entityType
+	if extType == "" {
+		extType = "userstory"
+	}
 	link := domain.ExternalLink{
 		TenantID:          tenant,
 		Provider:          "taiga",
-		ExternalType:      entityType,
+		ExternalType:      extType,
 		ExternalID:        entityID,
 		ExternalProjectID: projectID,
 		ExternalRef:       ref,
 		ExternalURL:       externalURL,
 		KoreEntityType:    "demand",
 		KoreEntityID:      koreID,
-		Metadata:          map[string]any{"action": payload.Action},
+		Metadata:          map[string]any{"action": action, "syncOrigin": syncOriginTaiga},
 		LastSyncAt:        &now,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
 	return s.repo.UpsertExternalLink(ctx, link)
+}
+
+func (s *TaigaService) createDemandFromWebhookIssue(ctx context.Context, tenant kernel.TenantID, data map[string]any) error {
+	projectID := intFromAny(data["project"])
+	if projectID == nil || *projectID <= 0 {
+		return nil
+	}
+	issueID := fmt.Sprint(data["id"])
+	if issueID == "" || issueID == "<nil>" {
+		return nil
+	}
+	if _, err := s.repo.FindExternalLinkByExternal(ctx, tenant, "taiga", externalTypeIssue, issueID); err == nil {
+		return nil
+	} else if err != domain.ErrExternalLinkNotFound {
+		return err
+	}
+	if _, err := s.repo.FindApplicationByTaigaProjectID(ctx, tenant, strconv.Itoa(*projectID)); err != nil {
+		if err == domain.ErrExternalLinkNotFound {
+			return nil
+		}
+		return err
+	}
+	authorID, err := s.resolveSyncAuthor(ctx, tenant, nil)
+	if err != nil {
+		slog.Warn("taiga webhook skip create demand: no sync author",
+			"tenantId", tenant.String(), "error", err)
+		return nil
+	}
+	refPtr := intFromAny(data["ref"])
+	ref := 0
+	if refPtr != nil {
+		ref = *refPtr
+	}
+	version := 1
+	if v := intFromAny(data["version"]); v != nil {
+		version = *v
+	}
+	issue := ports.TaigaIssue{
+		ID:          atoiSafe(issueID),
+		Ref:         ref,
+		ProjectID:   *projectID,
+		Subject:     strings.TrimSpace(fmt.Sprint(data["subject"])),
+		Description: strings.TrimSpace(fmt.Sprint(data["description"])),
+		Version:     version,
+		Permalink:   strings.TrimSpace(fmt.Sprint(data["permalink"])),
+	}
+	if issue.ID <= 0 {
+		return nil
+	}
+	_, err = s.PullIssueToKore(ctx, tenant, issue, authorID)
+	return err
+}
+
+func isExternalReferenceOnlyChange(payload TaigaWebhookPayload, data map[string]any) bool {
+	candidates := []map[string]any{nil, payload.ValuesDiff, payload.Change}
+	if vals, ok := data["values_diff"].(map[string]any); ok {
+		candidates[0] = vals
+	}
+	for _, vals := range candidates {
+		if vals == nil {
+			continue
+		}
+		if nested, ok := vals["values_diff"].(map[string]any); ok {
+			vals = nested
+		}
+		if _, onlyRef := vals["external_reference"]; onlyRef && len(vals) == 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func atoiSafe(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 func intFromAny(v any) *int {
@@ -149,6 +251,13 @@ func intFromAny(v any) *int {
 		return &n
 	case int:
 		return &t
+	case json.Number:
+		n64, err := t.Int64()
+		if err != nil {
+			return nil
+		}
+		n := int(n64)
+		return &n
 	default:
 		return nil
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kore/kore/internal/modules/integrations/domain"
+	"github.com/kore/kore/internal/modules/integrations/ports"
 	"github.com/kore/kore/pkg/kernel"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +42,29 @@ func (f *taigaRepoFake) FindExternalLinkByKore(_ context.Context, _ kernel.Tenan
 		}
 	}
 	return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
+}
+
+func (f *taigaRepoFake) FindExternalLinkByExternal(_ context.Context, tenant kernel.TenantID, provider, externalType, externalID string) (domain.ExternalLink, error) {
+	for _, link := range f.links {
+		if link.TenantID == tenant && link.Provider == provider && link.ExternalType == externalType && link.ExternalID == externalID {
+			return link, nil
+		}
+	}
+	return domain.ExternalLink{}, domain.ErrExternalLinkNotFound
+}
+
+func (f *taigaRepoFake) FindApplicationByTaigaProjectID(ctx context.Context, tenant kernel.TenantID, taigaProjectID string) (domain.ExternalLink, error) {
+	return f.FindExternalLinkByExternal(ctx, tenant, "taiga", "project", taigaProjectID)
+}
+
+func (f *taigaRepoFake) ListApplicationProjectLinks(_ context.Context, tenant kernel.TenantID) ([]domain.ExternalLink, error) {
+	var out []domain.ExternalLink
+	for _, link := range f.links {
+		if link.TenantID == tenant && link.Provider == "taiga" && link.ExternalType == "project" && link.KoreEntityType == "application" {
+			out = append(out, link)
+		}
+	}
+	return out, nil
 }
 
 func (f *taigaRepoFake) UpsertUserMapping(_ context.Context, mapping domain.UserMapping) error {
@@ -253,6 +277,15 @@ type stubTaigaDemandGate struct {
 func (g stubTaigaDemandGate) KoreDemandExists(context.Context, kernel.TenantID, uuid.UUID) (bool, error) {
 	return g.exists, nil
 }
+func (g stubTaigaDemandGate) CreateDemandFromTaiga(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID, string, string) (uuid.UUID, error) {
+	return uuid.New(), nil
+}
+func (g stubTaigaDemandGate) GetDemandSummary(context.Context, kernel.TenantID, uuid.UUID) (ports.TaigaDemandSummary, error) {
+	return ports.TaigaDemandSummary{}, nil
+}
+func (g stubTaigaDemandGate) ListDemandsByApplication(context.Context, kernel.TenantID, uuid.UUID) ([]ports.TaigaDemandSummary, error) {
+	return nil, nil
+}
 
 func TestHandleWebhook_InvalidKoreDemandID(t *testing.T) {
 	svc := NewTaigaService(&taigaRepoFake{}, TaigaConfig{}, nil, nil, nil)
@@ -283,4 +316,157 @@ func TestHandleWebhook_KoreDemandNotFound(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.HandleWebhook(context.Background(), kernel.NewTenantID(uuid.New()), body)
 	require.ErrorIs(t, err, domain.ErrKoreDemandNotFound)
+}
+
+func TestHandleWebhook_CreatesDemandFromIssue(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	authorID := uuid.New()
+	createdDemand := uuid.New()
+	repo := &taigaRepoFake{}
+	repo.links = []domain.ExternalLink{{
+		TenantID:       tenant,
+		Provider:       "taiga",
+		ExternalType:   "project",
+		ExternalID:     "9",
+		KoreEntityType: "application",
+		KoreEntityID:   appID,
+	}}
+	repo.mappings = []domain.UserMapping{{
+		TenantID:   tenant,
+		Provider:   "taiga",
+		KoreUserID: authorID,
+	}}
+	gate := &recordingDemandGate{createID: createdDemand}
+	svc := NewTaigaService(repo, TaigaConfig{BaseURL: "https://taiga.example"}, gate, nil, nil)
+	body, err := json.Marshal(map[string]any{
+		"action": "create",
+		"type":   "issue",
+		"data": map[string]any{
+			"id": 55, "ref": 3, "project": 9, "subject": "Bug", "description": "d", "version": 1,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, svc.HandleWebhook(context.Background(), tenant, body))
+	require.Equal(t, 1, gate.createCalls)
+	require.True(t, len(repo.links) >= 2)
+}
+
+type recordingDemandGate struct {
+	createID    uuid.UUID
+	createCalls int
+}
+
+func (g *recordingDemandGate) KoreDemandExists(context.Context, kernel.TenantID, uuid.UUID) (bool, error) {
+	return true, nil
+}
+func (g *recordingDemandGate) CreateDemandFromTaiga(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID, string, string) (uuid.UUID, error) {
+	g.createCalls++
+	return g.createID, nil
+}
+func (g *recordingDemandGate) GetDemandSummary(context.Context, kernel.TenantID, uuid.UUID) (ports.TaigaDemandSummary, error) {
+	return ports.TaigaDemandSummary{ID: g.createID, Subject: "s"}, nil
+}
+func (g *recordingDemandGate) ListDemandsByApplication(context.Context, kernel.TenantID, uuid.UUID) ([]ports.TaigaDemandSummary, error) {
+	return nil, nil
+}
+
+func TestHandleWebhook_IgnoresExternalReferenceOnlyChange(t *testing.T) {
+	repo := &taigaRepoFake{}
+	svc := NewTaigaService(repo, TaigaConfig{}, stubTaigaDemandGate{exists: true}, nil, nil)
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+	body, err := json.Marshal(map[string]any{
+		"action": "change",
+		"type":   "issue",
+		"data": map[string]any{
+			"id":                 9,
+			"external_reference": []any{"kore", demandID.String()},
+			"values_diff":        map[string]any{"external_reference": []any{nil, []any{"kore", demandID.String()}}},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, svc.HandleWebhook(context.Background(), tenant, body))
+	require.Empty(t, repo.links)
+}
+
+func TestPullIssueToKore_DoesNotCreateExtraIssueViaGateway(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	appID := uuid.New()
+	authorID := uuid.New()
+	createdDemand := uuid.New()
+	repo := &taigaRepoFake{}
+	repo.links = []domain.ExternalLink{{
+		TenantID: tenant, Provider: "taiga", ExternalType: "project", ExternalID: "9",
+		KoreEntityType: "application", KoreEntityID: appID,
+	}}
+	gw := &recordingGateway{created: ports.TaigaIssue{ID: 999, Ref: 1, ProjectID: 9}}
+	gate := &recordingDemandGate{createID: createdDemand}
+	svc := NewTaigaService(repo, TaigaConfig{}, gate, gw, nil)
+	_, err := svc.PullIssueToKore(context.Background(), tenant, ports.TaigaIssue{
+		ID: 55, Ref: 3, ProjectID: 9, Subject: "Bug", Version: 1,
+	}, authorID)
+	require.NoError(t, err)
+	require.Equal(t, 0, gw.createCalls, "pull must not CreateIssue (auto-push)")
+	require.Equal(t, 1, gate.createCalls)
+}
+
+func TestPushDemandToTaiga(t *testing.T) {
+	tenant := kernel.NewTenantID(uuid.New())
+	demandID := uuid.New()
+	appID := uuid.New()
+	repo := &taigaRepoFake{}
+	repo.links = []domain.ExternalLink{{
+		TenantID: tenant, Provider: "taiga", ExternalType: "project", ExternalID: "4",
+		KoreEntityType: "application", KoreEntityID: appID,
+	}}
+	gw := &recordingGateway{created: ports.TaigaIssue{ID: 77, Ref: 8, ProjectID: 4, Version: 1, Permalink: "https://t/i/8"}}
+	gateSummary := &pushDemandGate{summary: ports.TaigaDemandSummary{
+		ID: demandID, ApplicationID: appID, Subject: "Sub", Description: "Desc",
+	}}
+	svc := NewTaigaService(repo, TaigaConfig{}, gateSummary, gw, nil)
+	link, err := svc.PushDemandToTaiga(context.Background(), tenant, demandID)
+	require.NoError(t, err)
+	require.Equal(t, "77", link.ExternalID)
+	require.Equal(t, 1, gw.createCalls)
+}
+
+type pushDemandGate struct {
+	summary ports.TaigaDemandSummary
+}
+
+func (g *pushDemandGate) KoreDemandExists(context.Context, kernel.TenantID, uuid.UUID) (bool, error) {
+	return true, nil
+}
+func (g *pushDemandGate) CreateDemandFromTaiga(context.Context, kernel.TenantID, uuid.UUID, uuid.UUID, string, string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+func (g *pushDemandGate) GetDemandSummary(context.Context, kernel.TenantID, uuid.UUID) (ports.TaigaDemandSummary, error) {
+	return g.summary, nil
+}
+func (g *pushDemandGate) ListDemandsByApplication(context.Context, kernel.TenantID, uuid.UUID) ([]ports.TaigaDemandSummary, error) {
+	return nil, nil
+}
+
+type recordingGateway struct {
+	created     ports.TaigaIssue
+	createCalls int
+}
+
+func (g *recordingGateway) ListProjects(context.Context) ([]ports.TaigaProject, error) {
+	return nil, nil
+}
+func (g *recordingGateway) CreateIssue(_ context.Context, projectID int, subject, _ string, ref []string) (ports.TaigaIssue, error) {
+	g.createCalls++
+	out := g.created
+	out.ProjectID = projectID
+	out.Subject = subject
+	out.ExternalReference = ref
+	return out, nil
+}
+func (g *recordingGateway) ListProjectIssues(context.Context, int) ([]ports.TaigaIssue, error) {
+	return nil, nil
+}
+func (g *recordingGateway) UpdateIssueExternalReference(context.Context, int, int, []string) (ports.TaigaIssue, error) {
+	return g.created, nil
 }

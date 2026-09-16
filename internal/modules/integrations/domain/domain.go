@@ -25,6 +25,10 @@ var (
 	ErrTaigaProjectLinked            = errors.New("taiga project already linked")
 	ErrTaigaApplicationAlreadyLinked = errors.New("taiga application already linked")
 	ErrTaigaKoreUserAlreadyMapped    = errors.New("kore user already mapped to taiga")
+	ErrTaigaSyncAuthorRequired       = errors.New("taiga sync author required: map at least one user")
+	ErrTaigaDemandAlreadyLinked      = errors.New("kore demand already linked to taiga")
+	ErrTaigaIssueAlreadyLinked       = errors.New("taiga issue already linked")
+	ErrTaigaApplicationNotLinked     = errors.New("application not linked to a taiga project")
 )
 
 const (
