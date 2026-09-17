@@ -9,4 +9,15 @@ test.describe('auth login', () => {
     // sanity: credentials used by the helper stay documented for reviewers
     expect(SEED_ADMIN.login).toBe('ADM_admin')
   })
+
+  test('forgot password link opens reset page', async ({ page }) => {
+    await ensureFrenchLocale(page)
+    await page.goto('/login')
+    await page.getByRole('link', { name: /mot de passe oublié|forgot password/i }).click()
+    await expect(page).toHaveURL(/\/reset-password/)
+    await expect(page.getByRole('heading', { name: /mot de passe oublié|forgot password/i })).toBeVisible()
+    await page.getByLabel(/email/i).fill('unknown@example.com')
+    await page.getByRole('button', { name: /envoyer le lien|send reset link/i }).click()
+    await expect(page.getByText(/si cet email est connu|if this email is known/i)).toBeVisible({ timeout: 10_000 })
+  })
 })

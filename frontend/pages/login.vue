@@ -16,6 +16,9 @@
       <form v-if="step === 'credentials'" @submit.prevent="submit">
         <PublicInput id="login" v-model="login" :label="$t('login.identifier')" placeholder="ADM_admin" required />
         <PublicInput id="password" v-model="password" type="password" :label="$t('login.password')" required />
+        <p class="login-card__forgot">
+          <NuxtLink to="/reset-password" class="login-card__link-inline">{{ $t('login.forgot_password') }}</NuxtLink>
+        </p>
         <PublicButton variant="primary" type="submit" class="login-card__submit">{{ $t('login.submit') }}</PublicButton>
       </form>
 
@@ -314,6 +317,9 @@ onMounted(async () => {
     if (prefill) login.value = prefill
     password.value = ''
   }
+  if (route.query.reset === 'ok') {
+    signupFlash.value = t('login.reset_success')
+  }
   const params = new URLSearchParams(window.location.search)
   const inviteToken = params.get('invite')
   const discoverToken = params.get('discover')
@@ -444,6 +450,12 @@ onMounted(async () => {
 form { display: flex; flex-direction: column; gap: var(--kore-space-md); }
 
 .login-card__submit { width: 100%; margin-top: var(--kore-space-sm); }
+
+.login-card__forgot {
+  margin: calc(-1 * var(--kore-space-xs)) 0 0;
+  text-align: right;
+  font-size: var(--kore-text-small);
+}
 
 .login-card__error {
   margin: var(--kore-space-md) 0 0;

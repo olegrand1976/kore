@@ -217,7 +217,8 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 		notifapp.WithPush(notifRepo, pushSender, cfg.PushEnabled),
 	)
 	deviceService := notifapp.NewDeviceService(notifRepo)
-	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService})
+	tenantAccessService := orgapp.NewTenantAccessService(orgRepo, tenantAccessEmailAdapter{notifier: notifService}).
+		WithPasswordReset(orgRepo, orgapp.NewArgon2Hasher())
 	wfEffects := wfnotif.NewEffectsExecutor(orgRepo, notifService)
 	wfService := wfapp.NewService(wfRepo, appCache, keyBuilder, wfnotif.NewTransitionPublisher(notifService), wfEffects)
 	craService := craapp.NewService(craRepo, appCache, keyBuilder).
@@ -386,7 +387,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 	router.Route("/api/v1", func(r chi.Router) {
 		oidcService := orgapp.NewOIDCService(orgRepo, tokenIssuer, billingService, orgapp.NewArgon2Hasher(), appCache, keyBuilder)
 		idpService := orgapp.NewIdentityProviderService(orgRepo)
-		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService, taigaIntegrationService)
+		orghttp.RegisterRoutes(r, orgService, userService, clientService, tenantAccessService, tokenIssuer, authorizer, cfg.UploadsDir, attachmentService, billingService, leaveTypeConfigService, requestSettingsService, taigaIntegrationService, cfg.PublicBaseURL, appCache, keyBuilder)
 		orghttp.RegisterOIDCRoutes(r, oidcService, idpService, authorizer)
 		orghttp.RegisterPlatformRoutes(r, platformService, tokenIssuer, billingService)
 		orghttp.RegisterPublicSignupRoutes(r, platformService, appCache, keyBuilder, cfg.PublicSignupEnabled)

@@ -133,6 +133,7 @@ type CreateUserCommand struct {
 	TenantID  kernel.TenantID
 	Login     string
 	Password  string
+	Email     string           // optional contact email (required for password reset)
 	Profile   domain.Profile   // legacy single; used when Profiles empty
 	Profiles  []domain.Profile // preferred multi
 	EquipeID  *uuid.UUID       // legacy single; used when EquipeIDs empty
@@ -501,13 +502,18 @@ type TenantAccessResolveResult struct {
 type TenantAccessRepository interface {
 	FindTenantIDsByEmail(ctx context.Context, email string) ([]kernel.TenantID, error)
 	SaveAccessToken(ctx context.Context, tokenHash string, tenant kernel.TenantID, email, kind string, expiresAt time.Time) error
+	FindAccessToken(ctx context.Context, tokenHash string) (AccessTokenRow, bool, error)
+	InvalidateUnusedAccessTokens(ctx context.Context, tenant kernel.TenantID, email, kind string, now time.Time) error
 	ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (AccessTokenRow, bool, error)
+	ConsumeAccessTokenOfKind(ctx context.Context, tokenHash, kind string, now time.Time) (AccessTokenRow, bool, error)
 }
 
 type TenantAccessService interface {
 	RequestTenantDiscovery(ctx context.Context, email string, baseLoginURL string) error
 	CreateInvitation(ctx context.Context, tenant kernel.TenantID, email string, baseLoginURL string) error
 	Resolve(ctx context.Context, token string) (TenantAccessResolveResult, error)
+	RequestPasswordReset(ctx context.Context, email string, baseResetURL string) error
+	ConfirmPasswordReset(ctx context.Context, token, newPassword string) error
 }
 
 type TransactionalEmailSender interface {

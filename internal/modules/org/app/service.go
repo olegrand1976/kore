@@ -723,6 +723,13 @@ func (s *userService) CreateUser(ctx context.Context, cmd ports.CreateUserComman
 			Activation: s.clock().UTC().Truncate(24 * time.Hour),
 		},
 	}
+	if email := strings.TrimSpace(cmd.Email); email != "" {
+		normalized, err := normalizeProvisionEmail(email)
+		if err != nil {
+			return domain.User{}, err
+		}
+		user.Email = normalized
+	}
 	user.SyncPrimaryMemberships()
 	if err := s.applyTotpPolicyOnCreate(ctx, &user); err != nil {
 		return domain.User{}, err

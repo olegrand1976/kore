@@ -2,7 +2,7 @@
 
 > **Source de vérité** : migrations SQL dans `internal/modules/<module>/migrations/`  
 > **Appliquées par** : `kore-api migrate` (runner Go maison, cf. `internal/platform/db`)  
-> **Dernière mise à jour doc** : 16/09/2026 (sync bidirectionnel Taiga Issues ↔ demandes TMA)
+> **Dernière mise à jour doc** : 17/09/2026 (mot de passe oublié — kind `password_reset` sur `org.access_tokens`)
 
 ---
 
@@ -106,14 +106,14 @@ Organisation, identité, RBAC.
 
 ### `org.access_tokens`
 
-Tokens à usage unique pour **invitation** et **récupération d’organisation** (liens envoyés par email).
+Tokens à usage unique pour **invitation**, **récupération d’organisation** et **réinitialisation de mot de passe** (liens envoyés par email).
 
 | Colonne | Type | Contraintes |
 | --- | --- | --- |
 | `token_hash` | TEXT | PK (hash SHA-256 hex du token) |
 | `tenant_id` | UUID | NOT NULL |
 | `email` | TEXT | NOT NULL |
-| `kind` | TEXT | NOT NULL (`invite` / `discovery`) |
+| `kind` | TEXT | NOT NULL (`invite` / `discovery` / `password_reset`) |
 | `expires_at` | TIMESTAMPTZ | NOT NULL |
 | `used_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT NOW() |

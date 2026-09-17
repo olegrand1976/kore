@@ -44,7 +44,7 @@ make gcp-domain
 
 > **Tenant LL-IT** : `bootstrap-llit` crée un **tenant dédié** (distinct du jeu démo `ADM_admin`), une société `seed_protected`, et `ADM_olivier` sur ce tenant. Le seed-reset du tenant démo reste possible ; il est refusé uniquement s'il cible un tenant avec société protégée.
 >
-> Compte admin LL-IT : `ADM_olivier` — `make bootstrap-llit` / deploy staging `--bootstrap-llit`. Mot de passe : `KORE_PROD_ADMIN_PASSWORD` ou secret GCP `kore-prod-admin-password` ; sinon généré une fois (logs du job).
+> Compte admin LL-IT : `ADM_olivier` — `make bootstrap-llit` / deploy staging `--bootstrap-llit`. Mot de passe : `KORE_PROD_ADMIN_PASSWORD` ou secret GCP `kore-prod-admin-password` ; sinon généré une fois (logs du job). Email optionnel : `KORE_PROD_ADMIN_EMAIL` (requis pour le « mot de passe oublié »).
 
 Secret GitHub requis pour le wiki (le `GITHUB_TOKEN` ne peut pas pousser vers le dépôt `.wiki`) :
 

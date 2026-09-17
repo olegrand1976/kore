@@ -2026,34 +2026,73 @@ func (r *Repository) SaveAccessToken(ctx context.Context, tokenHash string, tena
 	return err
 }
 
-func (r *Repository) ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (ports.AccessTokenRow, bool, error) {
+func (r *Repository) FindAccessToken(ctx context.Context, tokenHash string) (ports.AccessTokenRow, bool, error) {
 	var row ports.AccessTokenRow
 	var tenantID uuid.UUID
 	err := r.pool.QueryRow(ctx, `
+		SELECT token_hash, tenant_id, email, kind, expires_at, used_at, created_at
+		FROM org.access_tokens
+		WHERE token_hash = $1
+	`, tokenHash).Scan(&row.TokenHash, &tenantID, &row.Email, &row.Kind, &row.ExpiresAt, &row.UsedAt, &row.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ports.AccessTokenRow{}, false, nil
+		}
+		return ports.AccessTokenRow{}, false, err
+	}
+	row.TenantID = kernel.NewTenantID(tenantID)
+	return row, true, nil
+}
+
+func (r *Repository) InvalidateUnusedAccessTokens(ctx context.Context, tenant kernel.TenantID, email, kind string, now time.Time) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE org.access_tokens
+		SET used_at = $4
+		WHERE tenant_id = $1
+		  AND lower(email) = lower($2)
+		  AND kind = $3
+		  AND used_at IS NULL
+	`, tenant.UUID(), email, kind, now)
+	return err
+}
+
+func (r *Repository) ConsumeAccessToken(ctx context.Context, tokenHash string, now time.Time) (ports.AccessTokenRow, bool, error) {
+	return r.consumeAccessToken(ctx, tokenHash, "", now)
+}
+
+func (r *Repository) ConsumeAccessTokenOfKind(ctx context.Context, tokenHash, kind string, now time.Time) (ports.AccessTokenRow, bool, error) {
+	return r.consumeAccessToken(ctx, tokenHash, kind, now)
+}
+
+func (r *Repository) consumeAccessToken(ctx context.Context, tokenHash, kind string, now time.Time) (ports.AccessTokenRow, bool, error) {
+	var row ports.AccessTokenRow
+	var tenantID uuid.UUID
+	query := `
 		UPDATE org.access_tokens
 		SET used_at = $2
 		WHERE token_hash = $1
 		  AND used_at IS NULL
-		  AND expires_at > $2
-		RETURNING token_hash, tenant_id, email, kind, expires_at, used_at, created_at
-	`, tokenHash, now).Scan(&row.TokenHash, &tenantID, &row.Email, &row.Kind, &row.ExpiresAt, &row.UsedAt, &row.CreatedAt)
+		  AND expires_at > $2`
+	args := []any{tokenHash, now}
+	if kind != "" {
+		query += `
+		  AND kind = $3`
+		args = append(args, kind)
+	}
+	query += `
+		RETURNING token_hash, tenant_id, email, kind, expires_at, used_at, created_at`
+	err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&row.TokenHash, &tenantID, &row.Email, &row.Kind, &row.ExpiresAt, &row.UsedAt, &row.CreatedAt,
+	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// Try to load the row to distinguish invalid / used / expired.
-			var out ports.AccessTokenRow
-			var tID uuid.UUID
-			selErr := r.pool.QueryRow(ctx, `
-				SELECT token_hash, tenant_id, email, kind, expires_at, used_at, created_at
-				FROM org.access_tokens
-				WHERE token_hash = $1
-			`, tokenHash).Scan(&out.TokenHash, &tID, &out.Email, &out.Kind, &out.ExpiresAt, &out.UsedAt, &out.CreatedAt)
+			out, found, selErr := r.FindAccessToken(ctx, tokenHash)
 			if selErr != nil {
-				if errors.Is(selErr, pgx.ErrNoRows) {
-					return ports.AccessTokenRow{}, false, nil
-				}
 				return ports.AccessTokenRow{}, false, selErr
 			}
-			out.TenantID = kernel.NewTenantID(tID)
+			if !found {
+				return ports.AccessTokenRow{}, false, nil
+			}
 			return out, false, nil
 		}
 		return ports.AccessTokenRow{}, false, err

@@ -38,7 +38,7 @@ import (
 func buildAPIRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(r chi.Router) {
-		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", orgapp.NoopAttachmentService{}, nil, nil, orgapp.NoopRequestSettingsService(), nil)
+		orghttp.RegisterRoutes(r, nil, nil, nil, nil, nil, nil, "", orgapp.NoopAttachmentService{}, nil, nil, orgapp.NoopRequestSettingsService(), nil, "http://localhost:3001", nil, nil)
 		orghttp.RegisterOIDCRoutes(r, nil, nil, nil)
 		orghttp.RegisterPlatformRoutes(r, nil, nil, nil)
 		orghttp.RegisterPublicSignupRoutes(r, nil, nil, nil, true)

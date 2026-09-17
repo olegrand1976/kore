@@ -33,6 +33,19 @@ SIGNUP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:$
   -H 'Content-Type: application/json' -d '{}')
 test "$SIGNUP_CODE" = "400"
 
+# Password reset request (always 200, anti-enumeration)
+RESET_REQ=$(curl -sf -X POST "http://localhost:${API_PORT}/api/v1/auth/password-reset/request" \
+  -H 'Content-Type: application/json' \
+  -H 'x-public-base-url: http://localhost:3001' \
+  -d '{"email":"unknown@example.com"}')
+echo "$RESET_REQ" | jq -e '.data.sent == true' >/dev/null
+
+# Password reset confirm with bogus token → 401
+RESET_CONFIRM_CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://localhost:${API_PORT}/api/v1/auth/password-reset/confirm" \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"invalid","newPassword":"ValidPass1"}')
+test "$RESET_CONFIRM_CODE" = "401"
+
 # Platform overview (ADM_admin is platform admin by default)
 curl -sf "http://localhost:${API_PORT}/api/v1/platform/overview" -H "Authorization: Bearer $TOKEN" >/dev/null
 

@@ -494,6 +494,41 @@ paths:
           description: Résolu
         "401":
           description: Token invalide/expiré/utilisé
+  /auth/password-reset/request:
+    post:
+      summary: Demander un lien de réinitialisation de mot de passe par email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string }
+      responses:
+        "200":
+          description: OK (toujours, anti-énumération)
+  /auth/password-reset/confirm:
+    post:
+      summary: Confirmer la réinitialisation avec token + nouveau mot de passe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { type: string }
+      responses:
+        "200":
+          description: Mot de passe mis à jour
+        "401":
+          description: Token invalide/expiré/utilisé
+        "422":
+          description: Mot de passe trop faible
   /public/invitations/resolve:
     get:
       summary: Résoudre un token d’invitation → tenantId

@@ -152,10 +152,13 @@ func (r *Runner) ensureProdAdmin(ctx context.Context, tenant kernel.TenantID) er
 		generated = true
 	}
 
+	email := strings.TrimSpace(os.Getenv("KORE_PROD_ADMIN_EMAIL"))
+
 	if _, err := r.deps.Users.CreateUser(ctx, orgports.CreateUserCommand{
 		TenantID: tenant,
 		Login:    ProdAdminLogin,
 		Password: password,
+		Email:    email,
 		Profile:  orgdomain.ProfileAdmin,
 	}); err != nil {
 		return err
@@ -166,6 +169,11 @@ func (r *Runner) ensureProdAdmin(ctx context.Context, tenant kernel.TenantID) er
 		log.Println("bootstrap-llit: enregistrez ce mot de passe puis changez-le après connexion")
 	} else {
 		log.Printf("bootstrap-llit: compte %s créé sur tenant LL-IT (mot de passe depuis KORE_PROD_ADMIN_PASSWORD)", ProdAdminLogin)
+	}
+	if email != "" {
+		log.Printf("bootstrap-llit: email %s associé à %s", email, ProdAdminLogin)
+	} else {
+		log.Printf("bootstrap-llit: aucun KORE_PROD_ADMIN_EMAIL — reset par mail indisponible jusqu’à saisie d’un email")
 	}
 	return nil
 }

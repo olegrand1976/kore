@@ -17,6 +17,7 @@ import (
 	"github.com/kore/kore/internal/modules/org/domain"
 	"github.com/kore/kore/internal/modules/org/ports"
 	"github.com/kore/kore/internal/platform/authx"
+	"github.com/kore/kore/internal/platform/cache"
 	"github.com/kore/kore/internal/platform/httpx"
 	"github.com/kore/kore/internal/platform/uploads"
 	"github.com/kore/kore/pkg/kernel"
@@ -36,6 +37,9 @@ func RegisterRoutes(
 	leaveBootstrap ports.LeaveTypeBootstrapper,
 	requestSettings ports.RequestSettingsService,
 	taigaBridge TaigaApplicationBridge,
+	publicBaseURL string,
+	appCache cache.Cache,
+	keys cache.KeyBuilder,
 ) {
 	r.Post("/auth/login", loginHandler(users))
 	r.Post("/auth/2fa/verify", verify2FAHandler(users))
@@ -43,8 +47,10 @@ func RegisterRoutes(
 	r.Post("/auth/2fa/enrollment/confirm", verify2FAEnrollmentHandler(users))
 	r.Post("/auth/refresh", refreshHandler(users))
 	r.Post("/auth/logout", logoutHandler())
-	r.Post("/auth/tenant-discovery/request", tenantDiscoveryRequestHandler(tenantAccess))
+	r.Post("/auth/tenant-discovery/request", tenantDiscoveryRequestHandler(tenantAccess, publicBaseURL))
 	r.Get("/auth/tenant-discovery/resolve", tenantDiscoveryResolveHandler(tenantAccess))
+	r.With(passwordResetRateLimit(appCache, keys)).Post("/auth/password-reset/request", passwordResetRequestHandler(tenantAccess, publicBaseURL))
+	r.Post("/auth/password-reset/confirm", passwordResetConfirmHandler(tenantAccess))
 	r.Get("/public/invitations/resolve", invitationResolveHandler(tenantAccess))
 
 	r.Group(func(pr chi.Router) {
@@ -91,7 +97,7 @@ func RegisterRoutes(
 		pr.Put("/clients/{id}", updateClient(clients, authorizer))
 		pr.Put("/clients/{id}/contacts", replaceClientContacts(clients, authorizer))
 
-		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer))
+		pr.Post("/admin/invitations", createInvitationHandler(tenantAccess, authorizer, publicBaseURL))
 		registerAttachmentRoutes(pr, attachments, authorizer, uploadsDir)
 		if requestSettings != nil {
 			registerRequestSettingsRoutes(pr, requestSettings, authorizer)

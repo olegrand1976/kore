@@ -1,5 +1,5 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  const publicRoutes = ['/', '/login', '/signup', '/modules', '/tarifs', '/reserver', '/contact', '/billing/success', '/billing/cancel', '/public']
+  const publicRoutes = ['/', '/login', '/signup', '/reset-password', '/modules', '/tarifs', '/reserver', '/contact', '/billing/success', '/billing/cancel', '/public']
   if (publicRoutes.some((route) => to.path === route || to.path.startsWith(route + '/'))) {
     return
   }
