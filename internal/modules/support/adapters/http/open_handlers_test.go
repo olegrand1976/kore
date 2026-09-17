@@ -22,32 +22,7 @@ import (
 )
 
 type openTicketOrgStub struct {
-	apps    []orgdomain.Application
-	sites   []orgdomain.SiteSummary
-	created []orgports.CreateApplicationCommand
-}
-
-func (s *openTicketOrgStub) CreateApplication(_ context.Context, cmd orgports.CreateApplicationCommand) (orgdomain.Application, error) {
-	s.created = append(s.created, cmd)
-	app := orgdomain.Application{
-		ID:                 uuid.New(),
-		TenantID:           cmd.TenantID,
-		Libelle:            cmd.Libelle,
-		Proprietaire:       cmd.Proprietaire,
-		ModeFacturation:    cmd.ModeFacturation,
-		MethodologyProfile: orgdomain.MethodologyProfile(cmd.MethodologyProfile),
-		Active:             true,
-		SiteIDs:            append([]uuid.UUID(nil), cmd.SiteIDs...),
-	}
-	s.apps = append(s.apps, app)
-	return app, nil
-}
-
-func (s *openTicketOrgStub) ListSites(_ context.Context, _ kernel.TenantID) ([]orgdomain.SiteSummary, error) {
-	if len(s.sites) > 0 {
-		return s.sites, nil
-	}
-	return []orgdomain.SiteSummary{{ID: uuid.New(), Libelle: "default"}}, nil
+	apps []orgdomain.Application
 }
 
 func (s *openTicketOrgStub) ListApplications(_ context.Context, _ kernel.TenantID, _ orgports.ApplicationListFilter) ([]orgdomain.Application, error) {
@@ -101,13 +76,19 @@ func (alwaysOnChannels) IsChannelEnabled(context.Context, kernel.TenantID, kerne
 	return true, nil
 }
 
-func TestOpenCreateTicket_ensuresLessonsStudioApp(t *testing.T) {
-	org := &openTicketOrgStub{}
+func TestOpenCreateTicket_resolvesExistingLessonsStudioApp(t *testing.T) {
+	existingID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	org := &openTicketOrgStub{apps: []orgdomain.Application{{
+		ID:       existingID,
+		TenantID: tenant,
+		Libelle:  "Lessons-studio",
+		Active:   true,
+	}}}
 	support := &openTicketSupportStub{}
 	r := chi.NewRouter()
 	supporthttp.RegisterOpenRoutes(r, support, org, alwaysOnChannels{})
 
-	tenant := kernel.NewTenantID(uuid.New())
 	body := `{"subject":"Bug UI","description":"page crash","priority":"high"}`
 	req := httptest.NewRequest(http.MethodPost, "/tickets", strings.NewReader(body))
 	req = req.WithContext(authx.WithIdentity(req.Context(), authx.Identity{
@@ -120,11 +101,8 @@ func TestOpenCreateTicket_ensuresLessonsStudioApp(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusCreated, rec.Code)
-	require.Len(t, org.created, 1)
-	require.Equal(t, "Lessons-studio", org.created[0].Libelle)
-	require.Equal(t, orgdomain.ModeFacturationNon, org.created[0].ModeFacturation)
-	require.Len(t, org.created[0].SiteIDs, 1)
 	require.Len(t, support.created, 1)
+	require.Equal(t, existingID, support.created[0].ApplicationID)
 	require.Nil(t, support.created[0].ReporterID)
 	require.Equal(t, "Bug UI", support.created[0].Subject)
 
@@ -135,6 +113,19 @@ func TestOpenCreateTicket_ensuresLessonsStudioApp(t *testing.T) {
 	require.NotEmpty(t, payload.Data.ID)
 	require.Equal(t, "Bug UI", payload.Data.Subject)
 	require.Equal(t, "open", payload.Data.State)
+}
+
+func TestOpenCreateTicket_missingAppReturnsNotFound(t *testing.T) {
+	r := chi.NewRouter()
+	supporthttp.RegisterOpenRoutes(r, &openTicketSupportStub{}, &openTicketOrgStub{}, alwaysOnChannels{})
+	req := httptest.NewRequest(http.MethodPost, "/tickets", strings.NewReader(`{"subject":"x","description":"y"}`))
+	req = req.WithContext(authx.WithIdentity(req.Context(), authx.Identity{
+		UserID:   uuid.New(),
+		TenantID: kernel.NewTenantID(uuid.New()),
+	}))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestOpenCreateTicket_reusesExistingAppByLibelle(t *testing.T) {
@@ -165,34 +156,6 @@ func TestOpenCreateTicket_reusesExistingAppByLibelle(t *testing.T) {
 	r.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusCreated, rec.Code)
-	require.Empty(t, org.created)
-	require.Equal(t, existingID, support.created[0].ApplicationID)
-}
-
-func TestOpenCreateTicket_reusesLessonStudioAlias(t *testing.T) {
-	existingID := uuid.New()
-	tenant := kernel.NewTenantID(uuid.New())
-	org := &openTicketOrgStub{apps: []orgdomain.Application{{
-		ID:       existingID,
-		TenantID: tenant,
-		Libelle:  "Lesson-Studio",
-		Active:   true,
-	}}}
-	support := &openTicketSupportStub{}
-	r := chi.NewRouter()
-	supporthttp.RegisterOpenRoutes(r, support, org, alwaysOnChannels{})
-
-	body := `{"subject":"Alias","description":"reuse Lesson-Studio"}`
-	req := httptest.NewRequest(http.MethodPost, "/tickets", strings.NewReader(body))
-	req = req.WithContext(authx.WithIdentity(req.Context(), authx.Identity{
-		UserID:   uuid.New(),
-		TenantID: tenant,
-	}))
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusCreated, rec.Code)
-	require.Empty(t, org.created)
 	require.Equal(t, existingID, support.created[0].ApplicationID)
 }
 
@@ -227,4 +190,26 @@ func TestOpenCreateTicket_applicationNotFound(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestOpenCreateTicket_descriptionTooLong(t *testing.T) {
+	existingID := uuid.New()
+	tenant := kernel.NewTenantID(uuid.New())
+	org := &openTicketOrgStub{apps: []orgdomain.Application{{
+		ID: existingID, TenantID: tenant, Libelle: "Lessons-studio", Active: true,
+	}}}
+	r := chi.NewRouter()
+	supporthttp.RegisterOpenRoutes(r, &openTicketSupportStub{}, org, alwaysOnChannels{})
+	body, err := json.Marshal(map[string]any{
+		"subject":     "x",
+		"description": strings.Repeat("d", 100_001),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/tickets", bytes.NewReader(body))
+	req = req.WithContext(authx.WithIdentity(req.Context(), authx.Identity{
+		UserID: uuid.New(), TenantID: tenant,
+	}))
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
 }

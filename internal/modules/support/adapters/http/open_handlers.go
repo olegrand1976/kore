@@ -27,12 +27,11 @@ const (
 	openTicketMaxDescriptionRunes       = 100_000 // includes diagnostic markdown + screenshot data-url
 )
 
-// OpenApplicationResolver resolves or creates the application targeted by an open ticket.
+// OpenApplicationResolver resolves the application targeted by an open ticket.
+// Application ensure/create belongs to bootstrap scripts, not this hot path.
 type OpenApplicationResolver interface {
 	ListApplications(ctx context.Context, tenant kernel.TenantID, filter orgports.ApplicationListFilter) ([]orgdomain.Application, error)
 	GetApplication(ctx context.Context, tenant kernel.TenantID, id uuid.UUID) (orgdomain.Application, error)
-	CreateApplication(ctx context.Context, cmd orgports.CreateApplicationCommand) (orgdomain.Application, error)
-	ListSites(ctx context.Context, tenant kernel.TenantID) ([]orgdomain.SiteSummary, error)
 }
 
 // OpenTicketResponse is the stable JSON contract for POST /open/tickets.
@@ -149,59 +148,10 @@ func resolveOpenTicketApplication(
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if id, ok := findApplicationByLibelle(apps, label); ok {
-		return id, nil
-	}
-	sites, err := org.ListSites(ctx, tenant)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	if len(sites) == 0 {
-		return uuid.Nil, orgdomain.ErrApplicationWithoutShare
-	}
-	created, err := org.CreateApplication(ctx, orgports.CreateApplicationCommand{
-		TenantID:           tenant,
-		Libelle:            label,
-		Proprietaire:       "Lessons Studio",
-		ModeFacturation:    orgdomain.ModeFacturationNon,
-		MethodologyProfile: string(orgdomain.MethodologyPSA),
-		SiteIDs:            []uuid.UUID{sites[0].ID},
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return created.ID, nil
-}
-
-func findApplicationByLibelle(apps []orgdomain.Application, label string) (uuid.UUID, bool) {
-	want := strings.TrimSpace(label)
-	wantFold := strings.ToLower(want)
-	wantNorm := normalizeAppLibelle(want)
 	for _, app := range apps {
-		got := strings.TrimSpace(app.Libelle)
-		if strings.EqualFold(got, want) {
-			return app.ID, true
-		}
-		if wantNorm != "" && normalizeAppLibelle(got) == wantNorm {
-			return app.ID, true
-		}
-		// Lessons Studio aliases used in staging before the canonical libelle.
-		if wantFold == strings.ToLower(defaultOpenTicketApplicationLibelle) {
-			switch strings.ToLower(got) {
-			case "lesson-studio", "lesson studio", "lessons studio", "lessons-studio":
-				return app.ID, true
-			}
+		if strings.EqualFold(strings.TrimSpace(app.Libelle), label) {
+			return app.ID, nil
 		}
 	}
-	return uuid.Nil, false
-}
-
-func normalizeAppLibelle(s string) string {
-	var b strings.Builder
-	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
+	return uuid.Nil, orgdomain.ErrApplicationNotFound
 }

@@ -35,7 +35,7 @@ Identifiants seed : `ADM_admin` / `Admin123!`
 
 ## Lessons Studio (tickets open API)
 
-`POST /api/v1/open/tickets` (header `X-Api-Key`) crée un ticket support et assure l'application `Lessons-studio` sur le tenant de la clé.
+`POST /api/v1/open/tickets` (header `X-Api-Key`) crée un ticket support sur une application existante (`applicationId` ou libellé exact `Lessons-studio`).
 
 Bootstrap one-shot (compte `ADM_olivier` en prod) :
 
