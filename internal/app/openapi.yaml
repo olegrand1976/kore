@@ -2750,6 +2750,49 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         "200": { description: Rapport de réconciliation }
+  /open/tickets:
+    post:
+      summary: Créer un ticket support (API key)
+      description: >
+        Endpoint partenaire authentifié par X-Api-Key. Résout ou crée l'application
+        (défaut libelle Lessons-studio) sur le tenant de la clé, puis ouvre le ticket.
+      security: [{ apiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, description]
+              properties:
+                subject: { type: string, maxLength: 200 }
+                description: { type: string, maxLength: 100000 }
+                priority: { type: string, enum: [low, normal, high, urgent] }
+                applicationId: { type: string, format: uuid }
+                applicationLibelle: { type: string, example: Lessons-studio }
+      responses:
+        "201":
+          description: Ticket créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [id, applicationId, subject, state]
+                    properties:
+                      id: { type: string, format: uuid }
+                      applicationId: { type: string, format: uuid }
+                      subject: { type: string }
+                      state: { type: string }
+                      priority: { type: string }
+        "400": { description: Validation }
+        "401": { description: Clé API manquante ou invalide }
+        "403": { description: Canal support désactivé }
+        "404": { description: Application introuvable }
+        "413": { description: Body trop volumineux }
+        "429": { description: Rate limit clé API }
   /tickets:
     get:
       summary: Liste tickets support
@@ -2972,3 +3015,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key

@@ -433,6 +433,7 @@ func New(ctx context.Context, cfg config.Config) (*Application, error) {
 				}
 				httpx.WriteData(w, http.StatusOK, items)
 			})
+			supporthttp.RegisterOpenRoutes(pr, supportService, orgService, requestSettingsService)
 		})
 	})
 

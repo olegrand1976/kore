@@ -33,6 +33,21 @@ make up    # frontend :3001, API :8081, PostgreSQL, Redis
 
 Identifiants seed : `ADM_admin` / `Admin123!`
 
+## Lessons Studio (tickets open API)
+
+`POST /api/v1/open/tickets` (header `X-Api-Key`) crée un ticket support et assure l'application `Lessons-studio` sur le tenant de la clé.
+
+Bootstrap one-shot (compte `ADM_olivier` en prod) :
+
+```bash
+KORE_API_URL=https://kore.ll-it-sc.be/api/v1 \
+KORE_LOGIN=ADM_olivier \
+KORE_PASSWORD='…' \
+./scripts/ensure-lessons-studio-app.sh
+```
+
+Copier les variables affichées (`KORE_API_URL`, `KORE_API_KEY`, `KORE_APPLICATION_ID`) dans `create-courses/deploy/.env`.
+
 ## Structure du dépôt
 
 ```

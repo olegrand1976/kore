@@ -59,6 +59,9 @@ func buildAPIRouter() chi.Router {
 		ssiihttp.RegisterRoutes(r, nil, nil, nil, nil)
 		etthttp.RegisterRoutes(r, nil, nil, nil, nil)
 		supporthttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
+		r.Route("/open", func(pr chi.Router) {
+			supporthttp.RegisterOpenRoutes(pr, nil, nil, orgapp.NoopRequestChannelReader())
+		})
 		maintenancehttp.RegisterRoutes(r, nil, nil, nil, nil, orgapp.NoopRequestChannelReader())
 		aihttp.RegisterRoutes(r, nil, nil, nil, nil)
 	})
